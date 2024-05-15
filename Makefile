@@ -2,7 +2,7 @@ SHELL = /bin/bash
 SRCTREE := $(CURDIR)
 TARGET_OUT_DIR := $(CURDIR)/out
 TOPTARGETS := all clean install
-TOPSUBDIRS := ipcamera smart_doorbell mars_alios
+TOPSUBDIRS := recamera ipcamera
 
 ## setup path ##
 ifeq ($(findstring $(CHIP_ARCH), CV182X CV183X MARS PHOBOS CV180X CV181X), )
