@@ -318,11 +318,14 @@ static int GetWsAddrCallBack(void* param, const char* cmd, const char* val)
     //FIXME: Only one websocket connection is supported.
     if (g_wsi == NULL) {
         if (app_ipcam_LocalIP_Get("eth0", ip) != 0) {
-            if (app_ipcam_LocalIP_Get("wlan0", ip) != 0)
-                printf("Error: [%s][%d] getlocalIP [eth0/wlan0] failed!\n",
-                    __func__, __LINE__);
+            if (app_ipcam_LocalIP_Get("wlan0", ip) != 0) {
+                if (app_ipcam_LocalIP_Get("usb0", ip) != 0) {
+                    printf("Error: [%s][%d] getlocalIP [eth0/wlan0/usb0] failed!\n",
+                        __func__, __LINE__);
+                }
+            }
         }
-        printf("getlocalIP [eth0/wlan0] %s\n", ip);
+        printf("getlocalIP [eth0/wlan0/usb0] %s\n", ip);
     }
 
     CVI_NET_AddCgiResponse(param, "ws://%s:8000", ip);
