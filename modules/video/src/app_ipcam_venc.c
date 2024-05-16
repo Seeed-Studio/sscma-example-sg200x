@@ -1706,9 +1706,10 @@ int app_ipcam_VencResize_Stop(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset)
     iTime = GetCurTimeInMsec();
     #endif
 
-
+    #ifdef OSD_SUPPORT
     APP_CHK_RET(app_ipcam_Osdc_DeInit(), "draw rect deinit");
     APP_PROF_LOG_PRINT(LEVEL_WARN, "osdc deinit takes %u ms \n", (GetCurTimeInMsec() - iTime));
+    #endif
 
     #ifdef AI_SUPPORT
     app_ipcam_Ai_PD_Pause_Set(CVI_TRUE);
@@ -1808,9 +1809,11 @@ int app_ipcam_VencResize_Start(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset)
     APP_CHK_RET(app_ipcam_Venc_Start(APP_VENC_ALL), "start video processing");
     APP_PROF_LOG_PRINT(LEVEL_WARN, "venc start takes %u ms \n", (GetCurTimeInMsec() - iTime));
     
+    #ifdef OSD_SUPPORT
     iTime = GetCurTimeInMsec();
     APP_CHK_RET(app_ipcam_Osdc_Init(), "draw rect init");
     APP_PROF_LOG_PRINT(LEVEL_WARN, "osdc init takes %u ms \n", (GetCurTimeInMsec() - iTime));
+    #endif
     
     #ifdef AI_SUPPORT
     app_ipcam_Ai_PD_Pause_Set(CVI_FALSE);

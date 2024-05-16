@@ -155,6 +155,7 @@ WEB_SOCKET_LIB_DIR = $(APP_PREBUILT_DIR)/libwebsockets/libglibc_riscv64
 else
 $(error "SDK_VER = $(SDK_VER) not match??")
 endif
+
 #RECORD
 FFMPEG_LIB_DIR = $(APP_PREBUILT_DIR)/ffmpeg/musl_riscv
 LIBS-$(CONFIG_MODULE_RECORD) += -L$(FFMPEG_LIB_DIR) -lavformat -lavcodec -lavutil -lswresample
@@ -175,6 +176,9 @@ OPENSSL_LIB_DIR = $(APP_PREBUILT_DIR)/openssl/lib64bit
 INCS-$(CONFIG_MODULE_NETWORK) += -I$(APP_PREBUILT_DIR)/openssl/include/openssl
 #kernel include
 INCS-$(CONFIG_PROJECT_SUPPORT_INCLUDE_KERNEL) += -I$(KERNEL_INC)
+
+# OSD
+DEFS-$(CONFIG_MODULE_OSD) += -DOSD_SUPPORT
 
 #这里指定全局的GLOBAL CFLAGS
 DEFS-y += $(KBUILD_DEFINES)

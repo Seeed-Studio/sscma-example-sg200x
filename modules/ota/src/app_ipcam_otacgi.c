@@ -828,7 +828,9 @@ int app_ipcam_OTA_CloseThreadBeforeUpgrade(void)
     #endif
     APP_CHK_RET(app_ipcam_IrCut_DeInit(), "IrCut Stop");
 
+    #ifdef OSD_SUPPORT
     APP_CHK_RET(app_ipcam_Osdc_DeInit(), "OsdC DeInit");
+    #endif
 
     #ifdef AI_SUPPORT
     APP_CHK_RET(app_ipcam_Ai_PD_Stop(), "PD Stop");

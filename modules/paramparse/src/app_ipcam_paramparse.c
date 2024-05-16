@@ -360,6 +360,7 @@ const char *venc_gop_mode[VENC_GOPMODE_BUTT] = {
     [VENC_GOPMODE_LOWDELAYB] = "VENC_GOPMODE_LOWDELAYB"
 };
 
+#ifdef OSD_SUPPORT
 const char *osdc_osd_format[NUM_OF_FORMAT] = {
     [OSD_ARGB8888] = "OSD_ARGB8888",
     [OSD_ARGB4444] = "OSD_ARGB4444",
@@ -380,6 +381,7 @@ const char *osd_type[TYPE_END] = {
     [TYPE_TIME] = "TYPE_TIME",
     [TYPE_DEBUG] = "TYPE_DEBUG"
 };
+#endif
 
 #ifdef AUDIO_SUPPORT
 const char *audio_sound_mode[AUDIO_SOUND_MODE_BUTT] = {
@@ -1234,6 +1236,7 @@ static int _Load_Param_Audio(const char *file, APP_PARAM_AUDIO_CFG_T *Auido)
 }
 #endif
 
+#ifdef OSD_SUPPORT
 static int _Load_Param_Osdc(const char *file, APP_PARAM_OSDC_CFG_S *Osdc)
 {
     APP_PROF_LOG_PRINT(LEVEL_INFO, "loading Osdc config ------------------> start \n");
@@ -1349,6 +1352,7 @@ static int _Load_Param_Osdc(const char *file, APP_PARAM_OSDC_CFG_S *Osdc)
 
     return CVI_SUCCESS;
 }
+#endif
 
 static int _Load_Param_Rtsp(const char *file, APP_PARAM_RTSP_T *Rtsp)
 {
@@ -1702,7 +1706,9 @@ int app_ipcam_Param_Load(void)
     #ifdef AUDIO_SUPPORT
     APP_CHK_RET(_Load_Param_Audio(ParamCfgFile, app_ipcam_Audio_Param_Get()), "load Audio Param");
     #endif
+    #ifdef OSD_SUPPORT
     APP_CHK_RET(_Load_Param_Osdc(ParamCfgFile, app_ipcam_Osdc_Param_Get()),   "load Osdc Param");
+    #endif
     APP_CHK_RET(_Load_Param_Rtsp(ParamCfgFile, app_ipcam_Rtsp_Param_Get()),   "load Rtsp Param");
     APP_CHK_RET(_Load_Param_Gpio(ParamCfgFile, app_ipcam_Gpio_Param_Get()),   "load GPIO Param");
     #ifdef AI_SUPPORT

@@ -7,7 +7,9 @@
 #include "app_ipcam_sys.h"
 #include "app_ipcam_vi.h"
 #include "app_ipcam_vpss.h"
+#ifdef OSD_SUPPORT
 #include "app_ipcam_osd.h"
+#endif
 #include "app_ipcam_venc.h"
 #include "app_ipcam_rtsp.h"
 #include "app_ipcam_dump.h"

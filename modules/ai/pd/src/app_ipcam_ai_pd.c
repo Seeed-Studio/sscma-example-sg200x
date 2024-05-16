@@ -8,7 +8,9 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "app_ipcam_ai.h"
+#ifdef OSD_SUPPORT
 #include "app_ipcam_osd.h"
+#endif
 
 // Ai Model info
 /*****************************************************************

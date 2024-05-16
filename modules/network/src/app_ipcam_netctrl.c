@@ -33,7 +33,9 @@
 #ifdef AI_SUPPORT
 #include "app_ipcam_ai.h"
 #endif
+#ifdef OSD_SUPPORT
 #include "app_ipcam_osd.h"
+#endif
 #ifdef AUDIO_SUPPORT
 #include "app_ipcam_audio.h"
 #endif
@@ -2199,6 +2201,7 @@ static int RegiserAiFaceCallBack(void *param, const char *cmd, const char *val)
 /*
 *   osd page start
 */
+#ifdef OSD_SUPPORT
 static int GetOsdInfoCallBack(void *param, const char *cmd, const char *val)
 {
     cJSON* cjsonOsdAttr = NULL;
@@ -2259,7 +2262,6 @@ static int GetOsdInfoCallBack(void *param, const char *cmd, const char *val)
 
     return 0;
 }
-
 
 
 static int SetOsdInfoCallBack(void *param, const char *cmd, const char *val)
@@ -2405,6 +2407,7 @@ static int SetOsdInfoCallBack(void *param, const char *cmd, const char *val)
     cJSON_Delete(cjsonParser);
     return 0;
 }
+#endif
 /*
 *   osd page end
 */
@@ -2638,6 +2641,8 @@ static int app_ipcam_IcgiRegister_Video(void)
 #endif
     return 0;
 }
+
+#ifdef OSD_SUPPORT
 /*
 *  OSD page get/set CB list
 */
@@ -2648,6 +2653,7 @@ static int app_ipcam_IcgiRegister_Osd(void)
     IcgiRegister("set_osd_info.cgi", NULL, (void *)SetOsdInfoCallBack);
     return 0;
 }
+#endif
 
 /*
 *  AUDIO page get/set CB list
@@ -2699,7 +2705,9 @@ int app_ipcam_NetCtrl_Init()
     app_ipcam_IcgiRegister_Preview();
     app_ipcam_IcgiRegister_Image();
     app_ipcam_IcgiRegister_Video();
+#ifdef OSD_SUPPORT
     app_ipcam_IcgiRegister_Osd();
+#endif
 #ifdef AUDIO_SUPPORT
     app_ipcam_IcgiRegister_Audio();
 #endif
