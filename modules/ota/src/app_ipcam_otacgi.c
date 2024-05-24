@@ -1,8 +1,9 @@
 #include "app_ipcam_ota.h"
 #include "app_ipcam_otacgi.h"
+#ifdef IRCUT_SUPPORT
 #include "app_ipcam_ircut.h"
+#endif
 #include "app_ipcam_paramparse.h"
-#include "app_ipcam_ircut.h"
 #include "libhttpd.h"
 #include <sys/prctl.h>
 
@@ -826,7 +827,10 @@ int app_ipcam_OTA_CloseThreadBeforeUpgrade(void)
     #ifdef RECORD_SUPPORT
     APP_CHK_RET(app_ipcam_Record_UnInit(), "running SD Record");
     #endif
+
+    #ifdef IRCUT_SUPPORT
     APP_CHK_RET(app_ipcam_IrCut_DeInit(), "IrCut Stop");
+    #endif
 
     #ifdef OSD_SUPPORT
     APP_CHK_RET(app_ipcam_Osdc_DeInit(), "OsdC DeInit");

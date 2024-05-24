@@ -27,7 +27,9 @@
 #include "app_ipcam_vi.h"
 #include "app_ipcam_vpss.h"
 #include "app_ipcam_venc.h"
+#ifdef IRCUT_SUPPORT
 #include "app_ipcam_ircut.h"
+#endif
 #include "app_ipcam_rtsp.h"
 #include "app_ipcam_ota.h"
 #ifdef AI_SUPPORT
@@ -873,7 +875,9 @@ static int ImagePage_Set_IRCut_Auto(int value)
 {
     printf("enter: %s, %d\n", __func__, value);
     s_irCut = value;
+    #ifdef IRCUT_SUPPORT
     app_ipcam_IRCutMode_Select(value);
+    #endif
     return 0;
 }
 
@@ -881,7 +885,9 @@ static int ImagePage_Set_IRCut_Manual(int value, int state)
 {
     printf("enter: %s, %d\n", __func__, value);
     s_irCut = value;
+    #ifdef IRCUT_SUPPORT
     app_ipcam_IRCutMode_ManualCtrl(value, state);
+    #endif
     return 0;
 }
 

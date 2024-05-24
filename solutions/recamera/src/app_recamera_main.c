@@ -6,7 +6,10 @@
 #include <signal.h>
 
 #include "app_ipcam_paramparse.h"
+
+#ifdef IRCUT_SUPPORT
 #include "app_ipcam_ircut.h"
+#endif
 
 #ifdef WEB_SOCKET
 #include "app_ipcam_websocket.h"
@@ -64,7 +67,9 @@ static int app_ipcam_Peripheral_Init(void)
 {
     /* do peripheral Init here */
 
+#if IRCUT_SUPPORT
     app_ipcam_IRCut_Init();
+#endif
 
     return CVI_SUCCESS;
 }

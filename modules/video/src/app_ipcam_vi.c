@@ -12,7 +12,9 @@
 #include "app_ipcam_vi.h"
 #include "cvi_ispd2.h"
 #include "app_ipcam_paramparse.h"
+#ifdef IRCUT_SUPPORT
 #include "app_ipcam_ircut.h"
+#endif
 #ifdef SUPPORT_ISP_PQTOOL
 #include <dlfcn.h>
 #endif
@@ -2079,6 +2081,7 @@ VI_EXIT0:
 
 #define USING_VPSS_ADJUSTMENT
 
+#ifdef IRCUT_SUPPORT
 #define WHITE_LED   CVI_GPIOE_21
 #define IR_LED      CVI_GPIOE_20
 #define IRUT_GPIO_A CVI_GPIOE_19
@@ -2259,6 +2262,7 @@ int app_ipcam_CmdTask_Setect_Pq(CVI_MQ_MSG_t *msg, CVI_VOID *userdate)
 
     return CVI_SUCCESS;
 }
+#endif
 
 int app_ipcam_CmdTask_Flip_Switch(CVI_MQ_MSG_t *msg, CVI_VOID *userdate)
 {
