@@ -32,9 +32,34 @@ $(SUBDIRS) :
 
 install:
 	@mkdir -p $(APP_INSTALL_DIR)
-	@cp -rf $(TARGET) $(APP_INSTALL_DIR)
-	@cp -rf $(APP_RESOURCE_DIR)/www $(APP_INSTALL_DIR)
-	@cp -rf $(APP_RESOURCE_DIR)/parameter/fbm/$(CONFIG_INI_FILE) $(APP_INSTALL_DIR)/
+
+	@echo "INFO: installing bin..."
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/system/usr/bin/)
+	@mkdir -p $(OUT_DIR)
+	@cp -rf $(TARGET) $(OUT_DIR)
+
+	@echo "Info: installing www..."
+	$(eval OUT_DIR := "$(APP_INSTALL_DIR)/mnt/sd/")
+	@mkdir -p $(OUT_DIR)
+	@cp -rf $(APP_RESOURCE_DIR)/www $(OUT_DIR)
+
+	@echo "Info: installing ini..."
+	$(eval OUT_DIR := "$(APP_INSTALL_DIR)/mnt/data/")
+	@mkdir -p $(OUT_DIR)
+	@cp -rf $(APP_RESOURCE_DIR)/parameter/fbm/$(CONFIG_INI_FILE) $(OUT_DIR)
+	ln -s $(CONFIG_INI_FILE) $(OUT_DIR)/param_config.ini
+
+	@echo "Info: installing PQ_BINs..."
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/data/)
+	@mkdir -p $(OUT_DIR)
+	@cp -rf $(APP_RESOURCE_DIR)/isp_tuning/$(CHIP_ARCH)/$(CONFIG_SENSOR_NAME)/$(CONFIG_PQ_BIN_SDR) $(OUT_DIR)
+	ln -s $(CONFIG_PQ_BIN_SDR) $(OUT_DIR)/cvi_sdr_bin
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/cfg/param)
+	@mkdir -p $(OUT_DIR)
+	ln -s ../../data/cvi_sdr_bin $(OUT_DIR)/cvi_sdr_bin
+
+	@echo "Info: packing..."
+	@tar -zcf $(TARGET_OUT_DIR)/$(PROJECT).tar.gz -C $(APP_INSTALL_DIR) .
 
 include $(SRCTREE)/build/build.mk
 
