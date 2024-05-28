@@ -8,7 +8,7 @@ include $(BUILD_PATH)/.config
 #获取sensor配置
 include $(SRCTREE)/build/sensor.mk
 #获取默认配置
-include $(SRCTREE)/build/module_config/$(PROJECT).mk
+include $(SRCTREE)/solutions/$(PROJECT)/config.mk
 
 APP_MODULE_PATH  := $(SRCTREE)/modules
 APP_PREBUILT_DIR := $(SRCTREE)/prebuilt
