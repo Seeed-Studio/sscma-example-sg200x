@@ -1,47 +1,37 @@
-set(SRCS "")
-set(INCLUDE_DIRS "")
-set(PRIVATE_INCLUDE_DIRS "")
 set(REQUIREDS "")
-set(LIBRARIES "")
-set(LIBRARY_DIRS "")
 
 function(component_register)
-    set(options)
-    set(one_value_args)
-    set(multi_value_args SRCS INCLUDE_DIRS PRIVATE_INCLUDE_DIRS REQUIREDS LIBRARIES LIBRARY_DIRS)
-    
-    cmake_parse_arguments(PROJECT_REGISTER "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+    set(options SHARED)
+    set(one_value_args COMPONENT_NAME)
+    set(multi_value_args SRCS INCLUDE_DIRS PRIVATE_INCLUDE_DIRS REQUIREDS PRIVATE_REQUIREDS LIBRARY_DIRS)
 
-    foreach(src IN LISTS PROJECT_REGISTER_SRCS)
-        list(APPEND SRCS ${src})
-    endforeach()
-    
-    foreach(inc IN LISTS PROJECT_REGISTER_INCLUDE_DIRS)
-        list(APPEND INCLUDE_DIRS ${inc})
-    endforeach()
-    
-    foreach(inc IN LISTS PROJECT_REGISTER_PRIVATE_INCLUDE_DIRS)
-        list(APPEND PRIVATE_INCLUDE_DIRS ${inc})
-    endforeach()
+    cmake_parse_arguments(COMPONENT_REGISTER "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
-    foreach(req IN LISTS PROJECT_REGISTER_REQUIREDS)
-        list(APPEND REQUIREDS ${req})
+    message(STATUS "Registering component ${COMPONENT_REGISTER_COMPONENT_NAME}")
+
+
+    foreach(lib_dir IN LISTS COMPONENT_REGISTER_LIBRARY_DIRS)
+        message(STATUS "Linking ${lib_dir}")
+        link_directories(${lib_dir})
     endforeach()
     
-
-    foreach(lib IN LISTS PROJECT_REGISTER_LIBRARIES)
-        list(APPEND LIBRARIES ${lib})
+    foreach(inc IN LISTS COMPONENT_REGISTER_INCLUDE_DIRS)
+        message(STATUS "Including ${inc}")
+        include_directories(${inc})
     endforeach()
+
+    if(DEFINED COMPONENT_REGISTER_SRCS)
+        if(COMPONENT_REGISTER_SHARED)
+            add_library(${COMPONENT_REGISTER_COMPONENT_NAME} SHARED ${COMPONENT_REGISTER_SRCS})
+        else()
+            add_library(${COMPONENT_REGISTER_COMPONENT_NAME} STATIC ${COMPONENT_REGISTER_SRCS})
+        endif()
+        target_include_directories(${COMPONENT_REGISTER_COMPONENT_NAME} PUBLIC ${COMPONENT_REGISTER_PRIVATE_INCLUDE_DIRS})
+        target_link_libraries(${COMPONENT_REGISTER_COMPONENT_NAME} PUBLIC ${COMPONENT_REGISTER_REQUIREDS})
+        target_link_libraries(${COMPONENT_REGISTER_COMPONENT_NAME} PRIVATE ${COMPONENT_REGISTER_PRIVATE_REQUIREDS})
+        list(APPEND REQUIREDS ${COMPONENT_REGISTER_REQUIREDS})
+        set(REQUIREDS ${REQUIREDS} PARENT_SCOPE)
+    endif()
+
     
-    foreach(lib_dir IN LISTS PROJECT_REGISTER_LIBRARY_DIRS)
-        list(APPEND LIBRARY_DIRS ${lib_dir})
-    endforeach()
-
-    set(SRCS ${SRCS} PARENT_SCOPE)
-    set(INCLUDE_DIRS ${INCLUDE_DIRS} PARENT_SCOPE)
-    set(PRIVATE_INCLUDE_DIRS ${PRIVATE_INCLUDE_DIRS} PARENT_SCOPE)
-    set(REQUIREDS ${REQUIREDS} PARENT_SCOPE)
-    set(LIBRARIES ${LIBRARIES} PARENT_SCOPE)
-    set(LIBRARY_DIRS ${LIBRARY_DIRS} PARENT_SCOPE)
-
 endfunction()
