@@ -176,6 +176,15 @@ DEFS-$(CONFIG_MODULE_NETWORK) += -DWEB_SOCKET
 OPENSSL_LIB_DIR = $(APP_PREBUILT_DIR)/openssl/lib64bit
 INCS-$(CONFIG_MODULE_NETWORK) += -I$(APP_PREBUILT_DIR)/openssl/include/openssl
 
+#LIBHV
+HV_LIB_DIR=$(APP_PREBUILT_DIR)/libhv/musl_riscv64
+INCS-$(CONFIG_MODULE_HV) += -I$(HV_LIB_DIR)/include/hv
+ifeq ($(CONFIG_PROJECT_STATIC), y)
+LIBS-$(CONFIG_MODULE_HV) += -L$(HV_LIB_DIR)/lib -Wl,-Bstatic -lhv
+else
+LIBS-$(CONFIG_MODULE_HV) += -L$(HV_LIB_DIR)/lib -lhv
+endif
+
 # kernel include
 INCS-$(CONFIG_PROJECT_SUPPORT_INCLUDE_KERNEL) += -I$(KERNEL_INC)
 
