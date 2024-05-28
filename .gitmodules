@@ -1,0 +1,4 @@
+[submodule "components/sscma"]
+	path = components/sscma
+	url = https://github.com/Seeed-Studio/SSCMA-Micro.git
+	branch = refactor/sscma-deploy
