@@ -20,6 +20,7 @@ INCS-$(CONFIG_MODULE_NETWORK)		+= -I$(SRCTREE)/modules/network/include
 INCS-$(CONFIG_MODULE_IRCUT)			+= -I$(SRCTREE)/modules/peripheral/ircut/include
 INCS-$(CONFIG_MODULE_GPIO)			+= -I$(SRCTREE)/modules/peripheral/gpio/include
 INCS-$(CONFIG_MODULE_RECORD)		+= -I$(SRCTREE)/modules/record/include
+INCS-$(CONFIG_MODULE_IPC)			+= -I$(SRCTREE)/modules/ipc/include
 INCS += $(INCS-y)
 
 SUBDIRS := \
@@ -34,25 +35,25 @@ install:
 	@mkdir -p $(APP_INSTALL_DIR)
 
 	@echo "INFO: installing bin..."
-	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/system/usr/bin/)
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/system/usr/bin)
 	@mkdir -p $(OUT_DIR)
-	@cp -rf $(TARGET) $(OUT_DIR)
+	@cp -rf $(TARGET) $(OUT_DIR)/
 
 	@echo "INFO: installing www..."
-	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/)
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt)
 	@mkdir -p $(OUT_DIR)
-	@cp -rf $(SRCTREE)/solutions/$(PROJECT)/www/ $(OUT_DIR)
+	@cp -rf $(SRCTREE)/solutions/$(PROJECT)/www/ $(OUT_DIR)/
 
 	@echo "INFO: installing ini..."
-	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/data/)
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/data)
 	@mkdir -p $(OUT_DIR)
-	@cp -rf $(APP_RESOURCE_DIR)/parameter/fbm/$(CONFIG_INI_FILE) $(OUT_DIR)
+	@cp -rf $(APP_RESOURCE_DIR)/parameter/fbm/$(CONFIG_INI_FILE) $(OUT_DIR)/
 	ln -s $(CONFIG_INI_FILE) $(OUT_DIR)/param_config.ini
 
 	@echo "INFO: installing PQ_BINs..."
-	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/data/)
+	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/data)
 	@mkdir -p $(OUT_DIR)
-	@cp -rf $(APP_RESOURCE_DIR)/isp_tuning/$(CHIP_ARCH)/$(CONFIG_SENSOR_NAME)/$(CONFIG_PQ_BIN_SDR) $(OUT_DIR)
+	@cp -rf $(APP_RESOURCE_DIR)/isp_tuning/$(CHIP_ARCH)/$(CONFIG_SENSOR_NAME)/$(CONFIG_PQ_BIN_SDR) $(OUT_DIR)/
 	ln -s $(CONFIG_PQ_BIN_SDR) $(OUT_DIR)/cvi_sdr_bin
 	$(eval OUT_DIR := $(APP_INSTALL_DIR)/mnt/cfg/param)
 	@mkdir -p $(OUT_DIR)

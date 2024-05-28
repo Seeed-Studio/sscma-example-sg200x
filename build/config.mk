@@ -8,7 +8,7 @@ include $(BUILD_PATH)/.config
 #获取sensor配置
 include $(SRCTREE)/build/sensor.mk
 #获取默认配置
-include $(SRCTREE)/solutions/$(PROJECT)/config.mk
+include $(SRCTREE)/solutions/$(PROJECT)/$(PROJECT).mk
 
 APP_MODULE_PATH  := $(SRCTREE)/modules
 APP_PREBUILT_DIR := $(SRCTREE)/prebuilt
@@ -176,6 +176,9 @@ DEFS-$(CONFIG_MODULE_NETWORK) += -DWEB_SOCKET
 OPENSSL_LIB_DIR = $(APP_PREBUILT_DIR)/openssl/lib64bit
 INCS-$(CONFIG_MODULE_NETWORK) += -I$(APP_PREBUILT_DIR)/openssl/include/openssl
 
+#IPC
+DEFS-$(CONFIG_MODULE_IPC) += -DIPC_SUPPORT
+
 #LIBHV
 HV_LIB_DIR=$(APP_PREBUILT_DIR)/libhv/musl_riscv64
 INCS-$(CONFIG_MODULE_HV) += -I$(HV_LIB_DIR)/include/hv
@@ -199,6 +202,7 @@ ifeq ($(GDB_DEBUG), 1)
 CFLAGS += -g -O0
 endif
 
+INCS-y += -I$(SRCTREE)/build
 INCS += $(INCS-y)
 TARGETFLAGS += $(INCS)
 TARGETFLAGS += -Os -Wl,--gc-sections -rdynamic
