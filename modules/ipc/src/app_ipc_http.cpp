@@ -31,6 +31,40 @@ EXTERN_C_START()
 
 static HttpServer server;
 
+static void register_Httpd_Redirect(HttpService& router)
+{
+    router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) { // android
+        // resp->File(WWW("err.html"));
+        std::cout << "\n[/generate*]current url: " << req->Url() << "\n";
+        std::cout << "-> redirect to " << REDIRECT_URL << "\n";
+
+        return resp->Redirect(REDIRECT_URL);
+    });
+
+    router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) { // windows
+        // resp->File(WWW("err.html"));
+        std::cout << "\n[/*.txt]current url: " << req->Url() << "\n";
+        std::cout << "-> redirect to \n"
+                  << REDIRECT_URL << REDIRECT_URL << "\n";
+
+        return resp->Redirect(REDIRECT_URL);
+    });
+
+    router.GET("/index.html", [](HttpRequest* req, HttpResponse* resp) {
+        return resp->File(WWW("index.html"));
+    });
+}
+
+static void register_WebSocket(HttpService& router)
+{
+    router.GET("/cgi/get_ws_addr.cgi", [](HttpRequest* req, HttpResponse* resp) {
+        static char data[64] = "";
+        snprintf(data, sizeof(data), "ws://%s:%d", req->host.c_str(), WS_PORT);
+        APP_PROF_LOG_PRINT(LEVEL_INFO, "get_ws_addr: %s\n", data);
+        return resp->Data(data, sizeof(data));
+    });
+}
+
 int app_ipc_Httpd_Init()
 {
     static HttpService router;
@@ -39,19 +73,8 @@ int app_ipc_Httpd_Init()
     // curl -v http://ip:port/
     router.Static("/", WWW(""));
 
-    router.GET("/cgi/get_ws_addr.cgi", [](HttpRequest* req, HttpResponse* resp) {
-        static char data[64] = "";
-        snprintf(data, sizeof(data), "ws://%s:%d", req->host.c_str(), WS_PORT);
-        APP_PROF_LOG_PRINT(LEVEL_INFO, "get_ws_addr: %s\n", data);
-        return resp->Data(data, sizeof(data));
-    });
-
-    router.GET("/cgi/get_cur_chn.cgi", [](const HttpContextPtr& ctx) {
-        hv::Json resp;
-        resp["current_chn"] = 1;
-        printf("get_cur_chn\n");
-        return ctx->send(resp.dump(2));
-    });
+    register_Httpd_Redirect(router);
+    register_WebSocket(router);
 
     server.service = &router;
     server.port = HTTPD_PORT;
