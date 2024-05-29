@@ -24,6 +24,7 @@
 
 #include "app_ipc_http.h"
 #include "app_ipc_user.h"
+#include "app_ipc_wifi.h"
 #include "app_ipcam_comm.h"
 
 using namespace hv;
@@ -62,6 +63,17 @@ static void register_User_Api(HttpService &router) {
     router.POST("/api/userMgr/updatePassword", updatePassword);
     router.POST("/api/userMgr/addSShkey", addSShkey);
     router.POST("/api/userMgr/deleteSShkey", deleteSShkey);
+}
+
+static void register_WiFi_Api(HttpService &router) {
+    router.GET("/api/wifiMgr/queryWiFiInfo", queryWiFiInfo);
+    router.POST("/api/wifiMgr/scanWiFi", scanWiFi);
+    router.POST("/api/wifiMgr/connectWiFi", connectWiFi);
+    router.POST("/api/wifiMgr/disconnectWiFi", disconnectWiFi);
+    router.POST("/api/wifiMgr/switchWiFi", switchWiFi);
+    router.GET("/api/wifiMgr/getWifiStatus", getWifiStatus);
+    router.POST("/api/wifiMgr/autoConnectWiFi", autoConnectWiFi);
+    router.POST("/api/wifiMgr/forgetWiFi", forgetWiFi);
 }
 
 static void register_WebSocket(HttpService& router)
