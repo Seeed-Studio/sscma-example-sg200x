@@ -23,6 +23,7 @@
 #include "hv.h"
 
 #include "app_ipc_http.h"
+#include "app_ipc_user.h"
 #include "app_ipcam_comm.h"
 
 using namespace hv;
@@ -53,6 +54,14 @@ static void register_Httpd_Redirect(HttpService& router)
     router.GET("/index.html", [](HttpRequest* req, HttpResponse* resp) {
         return resp->File(WWW("index.html"));
     });
+}
+
+static void register_User_Api(HttpService &router) {
+    router.GET("/api/userMgr/queryUserInfo", queryUserInfo);
+    router.POST("/api/userMgr/updateUserName", updateUserName);
+    router.POST("/api/userMgr/updatePassword", updatePassword);
+    router.POST("/api/userMgr/addSShkey", addSShkey);
+    router.POST("/api/userMgr/deleteSShkey", deleteSShkey);
 }
 
 static void register_WebSocket(HttpService& router)
