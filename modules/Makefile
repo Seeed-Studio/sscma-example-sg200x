@@ -16,6 +16,7 @@ module-$(CONFIG_MODULE_RECORD)					+= file_recover
 module-$(CONFIG_MODULE_RINGBUF)					+= ringbuffer
 module-$(CONFIG_MODULE_VIDEO)					+= video
 module-$(CONFIG_MODULE_COMMON)					+= common
+module-$(CONFIG_MODULE_IPC)						+= ipc
 
 SUBDIRS += $(module-y)
 

@@ -22,6 +22,7 @@ TARGETFLAGS += -L$(TARGET_OUT_DIR)/lib/
 TARGET_LIB-$(CONFIG_MODULE_AUDIO)                       += -lapp_audio
 TARGET_LIB-$(CONFIG_MODULE_MSG)                         += -lapp_msg
 TARGET_LIB-$(CONFIG_MODULE_NETWORK)                     += -lapp_network
+TARGET_LIB-$(CONFIG_MODULE_IPC)                     	+= -lapp_ipc
 
 
 TARGET_LIB-$(CONFIG_MODULE_OSD)                         += -lapp_osd

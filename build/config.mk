@@ -8,17 +8,12 @@ include $(BUILD_PATH)/.config
 #获取sensor配置
 include $(SRCTREE)/build/sensor.mk
 #获取默认配置
-include $(SRCTREE)/build/module_config/$(PROJECT).mk
+include $(SRCTREE)/solutions/$(PROJECT)/$(PROJECT).mk
 
 APP_MODULE_PATH  := $(SRCTREE)/modules
-APP_INSTALL_DIR  := $(SRCTREE)/install
-
 APP_PREBUILT_DIR := $(SRCTREE)/prebuilt
-APP_SOPH_LIB	:= $(APP_PREBUILT_DIR)/lib
-APP_SOPH_INC	:= $(APP_PREBUILT_DIR)/include
 APP_RESOURCE_DIR := $(SRCTREE)/resource
-APP_INSTALL_DIR  := $(SRCTREE)/install
-
+APP_INSTALL_DIR  := $(TARGET_OUT_DIR)/install
 
 MW_PATH := $(TOP_DIR)/middleware/$(MW_VER)
 
@@ -69,11 +64,11 @@ DEFS-$(CONFIG_MODULE_AUDIO) += -DAUDIO_SUPPORT
 ifeq ($(CONFIG_PROJECT_STATIC), y)
 DEFS-$(CONFIG_MODULE_AUDIO) += -DCVIAUDIO_STATIC
 endif
-LIBS-$(CONFIG_MODULE_AUDIO)  += -lcvi_audio -ltinyalsa -lcvi_vqe -lcvi_ssp -lcvi_RES1 -lcvi_VoiceEngine -ldnvqe 
-LIBS-$(CONFIG_MODULE_AUDIO)  += -laacdec2 -laacenc2 -laacsbrdec2 -laacsbrenc2 -laaccomm2
+LIBS-$(CONFIG_MODULE_AUDIO) += -lcvi_audio -ltinyalsa -lcvi_vqe -lcvi_ssp -lcvi_RES1 -lcvi_VoiceEngine -ldnvqe 
+LIBS-$(CONFIG_MODULE_AUDIO) += -laacdec2 -laacenc2 -laacsbrdec2 -laacsbrenc2 -laaccomm2
 LIBS-$(CONFIG_MODULE_AUDIO) += -lcli
 DEFS-$(CONFIG_MODULE_AUDIO_MP3) += -DMP3_SUPPORT
-LIBS-$(CONFIG_MODULE_AUDIO_MP3)  += -lcvi_mp3 -lmad
+LIBS-$(CONFIG_MODULE_AUDIO_MP3) += -lcvi_mp3 -lmad
 
 #AI
 ifeq ($(SDK_VER), musl_riscv64)
@@ -83,24 +78,26 @@ LIBS-$(CONFIG_MODULE_AI) += -L$(APP_PREBUILT_DIR)/jpegturbo/glibc_lib
 else
 $(error "SDK_VER = $(SDK_VER) not match??")
 endif
+
 INCS-$(CONFIG_MODULE_AI) += -I$(APP_PREBUILT_DIR)/jpegturbo/include
-DEFS-$(CONFIG_MODULE_AI)+= -DAI_SUPPORT
-INCS-$(CONFIG_MODULE_AI)+= -I$(MW_PATH)/include/cviai
-INCS-$(CONFIG_MODULE_AI)+= -I$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_ai_sdk/include/cviai
+DEFS-$(CONFIG_MODULE_AI) += -DAI_SUPPORT
+INCS-$(CONFIG_MODULE_AI) += -I$(MW_PATH)/include/cviai
+INCS-$(CONFIG_MODULE_AI) += -I$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_ai_sdk/include/cviai
 JPEG-TUBRO = -lturbojpeg
 LIBS-$(CONFIG_MODULE_AI) += -L$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_ai_sdk/lib/
 LIBS-$(CONFIG_MODULE_AI) += -L$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_tpu_sdk/lib/
+
 ifeq ($(CONFIG_PROJECT_STATIC), y) # AI libs static link
 AISDK = -lcviai-static
 ifeq ($(CHIP_ARCH), CV180X)
-LIBS-$(CONFIG_MODULE_AI) += -L$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_ive_sdk/lib/
-IVE = -lcvi_ive_tpu-static
+  LIBS-$(CONFIG_MODULE_AI) += -L$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_ive_sdk/lib/
+  IVE = -lcvi_ive_tpu-static
 else
-#INCS-$(CONFIG_MODULE_AI) += -I$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_tpu_sdk/include
-DEFS-$(CONFIG_MODULE_AI_FD_FACE) += -DFACE_SUPPORT
-AISDK += -lcviai_app-static
-IVE = -lcvi_ive
-OPENCV = -lopencv_core -lopencv_imgproc
+  #INCS-$(CONFIG_MODULE_AI) += -I$(OUTPUT_DIR)/tpu_$(SDK_VER)/cvitek_tpu_sdk/include
+  DEFS-$(CONFIG_MODULE_AI_FD_FACE) += -DFACE_SUPPORT
+  AISDK += -lcviai_app-static
+  IVE = -lcvi_ive
+  OPENCV = -lopencv_core -lopencv_imgproc
 endif
 TPU = -lcvikernel-static -lcviruntime-static -lcnpy -lcvimath-static -lz
 LIBS-$(CONFIG_MODULE_AI) += -Wl,--start-group $(AISDK) $(IVE) $(TPU) $(OPENCV) $(JPEG-TUBRO) -Wl,--end-group
@@ -111,6 +108,7 @@ IVE = -lcvi_ive
 TPU = -lcnpy  -lcvikernel  -lcvimath  -lcviruntime  -lz
 LIBS-$(CONFIG_MODULE_AI) += $(AISDK) $(TPU) $(IVE) $(JPEG-TUBRO)
 endif
+
 #AI_IR_FACE
 DEFS-$(CONFIG_MODULE_AI_IRFAECE) += -DIR_FACE_SUPPORT
 
@@ -141,6 +139,9 @@ LIBS-$(CONFIG_MODULE_PQTOOL) += -ldl -ljson-c
 endif
 DEFS-$(CONFIG_MODULE_PQTOOL) += -DSUPPORT_ISP_PQTOOL
 
+#IRCUT
+DEFS-$(CONFIG_MODULE_IRCUT) += -DIRCUT_SUPPORT
+
 # MULTI_PROCESS_SUPPORT
 LIBS-$(CONFIG_PROJECT_MULTI_PROCESS_SUPPORT) += -lnanomsg
 DEFS-$(CONFIG_PROJECT_MULTI_PROCESS_SUPPORT) += -DRPC_MULTI_PROCESS
@@ -156,7 +157,7 @@ else
 $(error "SDK_VER = $(SDK_VER) not match??")
 endif
 
-#RECORD
+# RECORD
 FFMPEG_LIB_DIR = $(APP_PREBUILT_DIR)/ffmpeg/musl_riscv
 LIBS-$(CONFIG_MODULE_RECORD) += -L$(FFMPEG_LIB_DIR) -lavformat -lavcodec -lavutil -lswresample
 DEFS-$(CONFIG_MODULE_RECORD) += -DRECORD_SUPPORT
@@ -174,7 +175,27 @@ DEFS-$(CONFIG_MODULE_NETWORK) += -DWEB_SOCKET
 # openssl
 OPENSSL_LIB_DIR = $(APP_PREBUILT_DIR)/openssl/lib64bit
 INCS-$(CONFIG_MODULE_NETWORK) += -I$(APP_PREBUILT_DIR)/openssl/include/openssl
-#kernel include
+
+#IPC
+DEFS-$(CONFIG_MODULE_IPC) += -DIPC_SUPPORT
+
+#LIBHV
+HV_LIB_DIR=$(APP_PREBUILT_DIR)/libhv/musl_riscv64
+INCS-$(CONFIG_MODULE_HV) += -I$(HV_LIB_DIR)/include/hv
+ifeq ($(CONFIG_PROJECT_STATIC), y)
+LIBS-$(CONFIG_MODULE_HV) += -L$(HV_LIB_DIR)/lib -Wl,-Bstatic -lhv
+else
+LIBS-$(CONFIG_MODULE_HV) += -L$(HV_LIB_DIR)/lib -lhv
+endif
+
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include/libwebsockets
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include/libwebsockets/protocols
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include/libwebsockets/transports
+LIBS-$(CONFIG_MODULE_HV) += -L$(WEB_SOCKET_LIB_DIR) -lwebsockets
+DEFS-$(CONFIG_MODULE_HV) += -DWEB_SOCKET
+
+# kernel include
 INCS-$(CONFIG_PROJECT_SUPPORT_INCLUDE_KERNEL) += -I$(KERNEL_INC)
 
 # OSD
@@ -188,16 +209,16 @@ ifeq ($(GDB_DEBUG), 1)
 CFLAGS += -g -O0
 endif
 
-
+INCS-y += -I$(SRCTREE)/build
 INCS += $(INCS-y)
 TARGETFLAGS += $(INCS)
 TARGETFLAGS += -Os -Wl,--gc-sections -rdynamic
 
 ifeq ($(SDK_VER), musl_riscv64)
-CFLAGS		+= -MMD -Os -mcpu=c906fdv -march=rv64imafdcv0p7xthead -mcmodel=medany -mabi=lp64d
+CFLAGS      += -MMD -Os -mcpu=c906fdv -march=rv64imafdcv0p7xthead -mcmodel=medany -mabi=lp64d
 TARGETFLAGS += -mcpu=c906fdv -march=rv64imafdcv0p7xthead -mcmodel=medany -mabi=lp64d
 else ifeq ($(SDK_VER), glibc_riscv64)
-CFLAGS		+= -MMD -Os -mcpu=c906fdv -march=rv64imafdcv0p7xthead -mcmodel=medany -mabi=lp64d
+CFLAGS      += -MMD -Os -mcpu=c906fdv -march=rv64imafdcv0p7xthead -mcmodel=medany -mabi=lp64d
 TARGETFLAGS += -mcpu=c906fdv -march=rv64imafdcv0p7xthead -mcmodel=medany -mabi=lp64d
 else
 $(error "SDK_VER = $(SDK_VER) not match??")
@@ -214,7 +235,6 @@ endif
 CFLAGS += -std=gnu11 -g -Wall -Wextra -Werror -fPIC -ffunction-sections -fdata-sections -Wl,--gc-sections -mno-ldd
 CFLAGS += $(DEFS-y)
 CFLAGS += -Wno-unused-parameter
-
 
 LIBS += $(LIBS-y)
 ifeq ($(CONFIG_PROJECT_STATIC), y)

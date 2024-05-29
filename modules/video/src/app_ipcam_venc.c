@@ -10,9 +10,6 @@
 #include "cvi_ae.h"
 #include "app_ipcam_paramparse.h"
 #include "app_ipcam_ll.h"
-#ifdef WEB_SOCKET
-#include "app_ipcam_websocket.h"
-#endif
 
 #define P_MAX_SIZE (512 * 1024) //P oversize 512K lost it
 /**************************************************************************
@@ -998,7 +995,8 @@ int fpStreamingSendToRtsp(void *pData, void *pArgs)
 int fpStreamingSendToWeb(void *pData, void *pArgs)
 {
     #ifdef WEB_SOCKET
-    app_ipcam_WebSocket_Stream_Send(pData, pArgs);
+    extern int app_ipc_WebSocket_Stream_Send(void* pData, void* pArgs);
+    app_ipc_WebSocket_Stream_Send(pData, pArgs);
     #endif
 
     return CVI_SUCCESS;

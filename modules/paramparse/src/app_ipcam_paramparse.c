@@ -1379,6 +1379,7 @@ static int _Load_Param_Rtsp(const char *file, APP_PARAM_RTSP_T *Rtsp)
     return CVI_SUCCESS;
 }
 
+#ifdef IRCUT_SUPPORT
 static int _Load_Param_Gpio(const char *file, APP_PARAM_GPIO_CFG_S *Gpio)
 {
     APP_PROF_LOG_PRINT(LEVEL_INFO, "loading GPIO config ------------------> start \n");
@@ -1394,6 +1395,7 @@ static int _Load_Param_Gpio(const char *file, APP_PARAM_GPIO_CFG_S *Gpio)
 
     return CVI_SUCCESS;
 }
+#endif
 
 #ifdef AI_SUPPORT
 #ifdef IR_FACE_SUPPORT
@@ -1710,7 +1712,9 @@ int app_ipcam_Param_Load(void)
     APP_CHK_RET(_Load_Param_Osdc(ParamCfgFile, app_ipcam_Osdc_Param_Get()),   "load Osdc Param");
     #endif
     APP_CHK_RET(_Load_Param_Rtsp(ParamCfgFile, app_ipcam_Rtsp_Param_Get()),   "load Rtsp Param");
+    #ifdef IRCUT_SUPPORT
     APP_CHK_RET(_Load_Param_Gpio(ParamCfgFile, app_ipcam_Gpio_Param_Get()),   "load GPIO Param");
+    #endif
     #ifdef AI_SUPPORT
     APP_CHK_RET(_Load_Param_Ai_PD(ParamCfgFile, app_ipcam_Ai_PD_Param_Get()), "load Ai PD Param");
     APP_CHK_RET(_Load_Param_Ai_MD(ParamCfgFile, app_ipcam_Ai_MD_Param_Get()), "load Ai MD Param");
