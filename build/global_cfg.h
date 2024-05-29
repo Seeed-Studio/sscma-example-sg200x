@@ -16,4 +16,6 @@
 /* WebSocket */
 #define WS_PORT 8000
 
+#define REDIRECT_URL "http://192.168.16.1/index.html"
+
 #endif
