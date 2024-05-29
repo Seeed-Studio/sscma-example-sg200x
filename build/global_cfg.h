@@ -13,4 +13,7 @@
 #define HTTPD_PORT 80
 #define WWW(file) ("/mnt/www/" file)
 
+/* WebSocket */
+#define WS_PORT 8000
+
 #endif

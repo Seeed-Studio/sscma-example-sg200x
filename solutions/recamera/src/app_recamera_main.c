@@ -12,32 +12,11 @@
 #endif
 
 #include "app_ipc_http.h"
+#include "app_ipc_websocket.h"
 
-/**************************************************************************
- *                              M A C R O S                               *
- **************************************************************************/
-
-/**************************************************************************
- *                           C O N S T A N T S                            *
- **************************************************************************/
-
-/**************************************************************************
- *                          D A T A    T Y P E S                          *
- **************************************************************************/
-
-/**************************************************************************
- *                         G L O B A L    D A T A                         *
- **************************************************************************/
 static pthread_t g_pthMisc;
 static CVI_BOOL g_bMisc;
 
-/**************************************************************************
- *                 E X T E R N A L    R E F E R E N C E S                 *
- **************************************************************************/
-
-/**************************************************************************
- *               F U N C T I O N    D E C L A R A T I O N S               *
- **************************************************************************/
 static int app_ipcam_Exit(void);
 
 static CVI_VOID app_ipcam_ExitSig_handle(CVI_S32 signo)
@@ -80,7 +59,7 @@ static int app_ipcam_Peripheral_Init(void)
 static void* ThreadMisc(void* arg)
 {
     while (g_bMisc) {
-#ifdef WEB_SOCKET
+#if 0//def WEB_SOCKET
         app_ipcam_WebSocket_AiFps_Send();
 #endif
         sleep(1);
@@ -172,7 +151,7 @@ static int app_ipcam_Init(void)
 
 #ifdef IPC_SUPPORT
     APP_CHK_RET(app_ipc_Httpd_Init(), "IPC http server init");
-    // APP_CHK_RET(app_ipcam_WebSocket_Init(), "websocket init");
+    APP_CHK_RET(app_ipc_WebSocket_Init(), "IPC websocket init");
 #endif
 
     APP_CHK_RET(app_ipcam_Venc_Init(APP_VENC_ALL), "init video encode");

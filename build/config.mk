@@ -188,6 +188,13 @@ else
 LIBS-$(CONFIG_MODULE_HV) += -L$(HV_LIB_DIR)/lib -lhv
 endif
 
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include/libwebsockets
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include/libwebsockets/protocols
+INCS-$(CONFIG_MODULE_HV) += -I$(APP_PREBUILT_DIR)/libwebsockets/include/libwebsockets/transports
+LIBS-$(CONFIG_MODULE_HV) += -L$(WEB_SOCKET_LIB_DIR) -lwebsockets
+DEFS-$(CONFIG_MODULE_HV) += -DWEB_SOCKET
+
 # kernel include
 INCS-$(CONFIG_PROJECT_SUPPORT_INCLUDE_KERNEL) += -I$(KERNEL_INC)
 
