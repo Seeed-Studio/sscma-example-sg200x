@@ -14,7 +14,7 @@
 int main(int argc, char** argv) {
 
     ma_err_t ret = MA_OK;
-    auto* engine = new EngineCVI();
+    auto* engine = new engine::EngineCVI();
     ret          = engine->init();
     if (ret != MA_OK) {
         MA_LOGE(TAG, "engine init failed");
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
     printf("scale: %f\n", output.quant_param.scale);
     printf("zero_point: %d\n", output.quant_param.zero_point);
 
-    ma::model::Detector* detector = static_cast<ma::model::Detector*>(new ma::model::Yolo(engine));
+    ma::model::Detector* detector = static_cast<ma::model::Detector*>(new ma::model::YoloV5(engine));
 
     ma_img_t img;
     img.data   = (uint8_t*)gImage_meter;

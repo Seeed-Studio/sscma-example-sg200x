@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
 
     MA_LOGD(TAG, "build %s %s", __DATE__, __TIME__);
 
-    CodecJSON codec;
+    EncoderJSON codec;
     ATServer server(&codec);
 
     server.init();
