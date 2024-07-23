@@ -52,7 +52,20 @@ int main(int argc, char** argv) {
     printf("scale: %f\n", output.quant_param.scale);
     printf("zero_point: %d\n", output.quant_param.zero_point);
 
-    ma::model::Detector* detector = static_cast<ma::model::Detector*>(new ma::model::YoloV5(engine));
+    // ma::model::Detector* detector = static_cast<ma::model::Detector*>(new
+    // ma::model::YoloV5(engine));
+    ma::model::Model* model       = ma::model::ModelFactory::create(engine);
+    ma::model::Detector* detector = nullptr;
+
+
+    if (model != NULL && model->getType() == MA_MODEL_TYPE_YOLOV5) {
+        detector = static_cast<ma::model::YoloV5*>(model);
+        detector->setConfig(MA_MODEL_CFG_OPT_THRESHOLD, 0.6f);
+        detector->setConfig(MA_MODEL_CFG_OPT_NMS, 0.2f);
+    } else {
+        MA_LOGE(TAG, "create model failed");
+        return 1;
+    }
 
     ma_img_t img;
     img.data   = (uint8_t*)gImage_meter;
@@ -62,8 +75,6 @@ int main(int argc, char** argv) {
     img.format = MA_PIXEL_FORMAT_RGB888;
     img.rotate = MA_PIXEL_ROTATE_0;
 
-    detector->setConfig(MA_MODEL_CFG_OPT_THRESHOLD, 0.6f);
-    detector->setConfig(MA_MODEL_CFG_OPT_NMS, 0.2f);
 
     while (1) {
 

@@ -9,16 +9,25 @@
 
 #define TAG "main"
 
+bool exit_flag = false;
+
+void handle_sigint(int sig) {
+    printf("Caught signal %d\n", sig);
+    // Clean up code here
+    exit_flag = true;
+}
+
 int main(int argc, char** argv) {
 
-    ma_err_t ret    = MA_OK;
-    auto*    engine = new EngineCVI();
-    ret             = engine->init();
+    signal(SIGINT, handle_sigint);
+    ma_err_t ret = MA_OK;
+    auto* engine = new ma::engine::EngineCVI();
+    ret          = engine->init();
     if (ret != MA_OK) {
         MA_LOGE(TAG, "engine init failed");
         return 1;
     }
-    ret = engine->loadModel("mobilenet_v2.cvimodel");
+    ret = engine->loadModel(argv[1]);
     if (ret != MA_OK) {
         MA_LOGE(TAG, "engine load model failed");
         return 1;
@@ -48,11 +57,23 @@ int main(int argc, char** argv) {
     printf("scale: %f\n", output.quant_param.scale);
     printf("zero_point: %d\n", output.quant_param.zero_point);
 
-    ret = engine->run();
-    if (ret != MA_OK) {
-        MA_LOGE(TAG, "engine run failed");
-        return 1;
+    while (!exit_flag) {
+        uint32_t start = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::system_clock::now().time_since_epoch())
+                             .count();
+        ret          = engine->run();
+        uint32_t end = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::system_clock::now().time_since_epoch())
+                           .count();
+        if (ret != MA_OK) {
+            MA_LOGE(TAG, "engine run failed");
+            return 1;
+        }
+
+        printf("run time: %d ms\n", end - start);
+
     }
 
+    //engine->deinit();
     return 0;
 }

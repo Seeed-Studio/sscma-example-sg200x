@@ -7,7 +7,9 @@ include(${ROOT_DIR}/cmake/macro.cmake)
 file(GLOB COMPONENTS LIST_DIRECTORIES  true ${ROOT_DIR}/components/*)
 
 foreach(component IN LISTS COMPONENTS)
-    include(${component}/CMakeLists.txt)
+    if(EXISTS ${component}/CMakeLists.txt)
+        include(${component}/CMakeLists.txt)
+    endif()
 endforeach()
 
 include(${PROJECT_DIR}/main/CMakeLists.txt)
