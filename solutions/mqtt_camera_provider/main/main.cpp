@@ -24,10 +24,10 @@ int main(int argc, char** argv) {
 
     camera.setCallback(callback);
 
-    uint32_t count     = 0;
-    double fps         = 0;
-    ma_tick_t start    = Tick::current();
-    uint8_t* fake_data = static_cast<uint8_t*>(ma_malloc(640 * 640 * 3));
+    uint32_t count  = 0;
+    double fps      = 0;
+    ma_tick_t start = Tick::current();
+    // uint8_t* fake_data = static_cast<uint8_t*>(ma_malloc(640 * 640 * 3));
     while (1) {
         if (camera.isStreaming()) {
             count++;
@@ -38,14 +38,14 @@ int main(int argc, char** argv) {
             }
             MA_LOGI(TAG, "fps: %f count: %d", fps, count);
             ma_img_t img;
-            img.data   = fake_data;
-            img.size   = 640 * 640 * 3;
-            img.width  = 640;
-            img.height = 640;
+            img.data   = static_cast<uint8_t*>(gImage_meter);
+            img.size   = sizeof(gImage_meter);
+            img.width  = 240;
+            img.height = 240;
             img.format = MA_PIXEL_FORMAT_RGB888;
             img.rotate = MA_PIXEL_ROTATE_0;
             camera.write(&img);
-            Tick::sleep(Tick::fromMilliseconds(30));  // 100fps
+            Tick::sleep(Tick::fromMilliseconds(30));  // 30 fps
         }
     }
 

@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
     MA_LOGD(TAG, "build %s %s", __DATE__, __TIME__);
 
     ma_err_t ret = MA_OK;
-    auto* engine = new EngineCVI();
+    auto* engine = new EngineDefault();
     ret          = engine->init();
     if (ret != MA_OK) {
         MA_LOGE(TAG, "engine init failed");
@@ -15,7 +15,8 @@ int main(int argc, char** argv) {
     }
     ret = engine->loadModel(argv[1]);
 
-    ma::model::Detector* detector = static_cast<ma::model::Detector*>(new ma::model::Yolo(engine));
+    ma::model::Detector* detector =
+        static_cast<ma::model::Detector*>(new ma::model::YoloV5(engine));
     detector->setConfig(MA_MODEL_CFG_OPT_THRESHOLD, 0.6f);
     detector->setConfig(MA_MODEL_CFG_OPT_NMS, 0.2f);
 
@@ -55,7 +56,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    int count = 0;
+    int count       = 0;
     double fps      = 0;
     ma_tick_t start = Tick::current();
 
@@ -63,35 +64,34 @@ int main(int argc, char** argv) {
         ma_img_t img;
         if (camera.read(&img) == MA_OK) {
             count++;
-            if(Tick::current() - start > Tick::fromSeconds(1)) {
-                 start              = Tick::current();
-                 fps                = count;
-                 count              = 0;
+            if (Tick::current() - start > Tick::fromSeconds(1)) {
+                start = Tick::current();
+                fps   = count;
+                count = 0;
             }
             MA_LOGD(TAG, "fps: %f", fps);
-            // detector->run(&img);
-            // auto perf = detector->getPerf();
-            // MA_LOGI(TAG,
-            //         "fps: %f %d, pre: %ldms, infer: %ldms, post: %ldms",
-            //         fps,
-            //         interval,
-            //         perf.preprocess,
-            //         perf.inference,
-            //         perf.postprocess);
-            // auto _results = detector->getResults();
-            // int value     = 0;
-            // for (int i = 0; i < _results.size(); i++) {
-            //     auto result = _results[i];
-            //     MA_LOGI(TAG,
-            //             "class: %d, score: %f, x: %f, y: %f, w: %f, h: %f",
-            //             result.target,
-            //             result.score,
-            //             result.x,
-            //             result.y,
-            //             result.w,
-            //             result.h);
-            //     value = value * 10 + result.target;
-            // }
+            detector->run(&img);
+            auto perf = detector->getPerf();
+            MA_LOGI(TAG,
+                    "fps: %f, pre: %ldms, infer: %ldms, post: %ldms",
+                    fps,
+                    perf.preprocess,
+                    perf.inference,
+                    perf.postprocess);
+            auto _results = detector->getResults();
+            int value     = 0;
+            for (int i = 0; i < _results.size(); i++) {
+                auto result = _results[i];
+                MA_LOGI(TAG,
+                        "class: %d, score: %f, x: %f, y: %f, w: %f, h: %f",
+                        result.target,
+                        result.score,
+                        result.x,
+                        result.y,
+                        result.w,
+                        result.h);
+                value = value * 10 + result.target;
+            }
             camera.release(&img);
         }
     }

@@ -1,8 +1,22 @@
 set(SG200X_PLATFORM ON)
 
-include(${ROOT_DIR}/cmake/toolchain-riscv64-linux-musl-x86_64.cmake)
-
 include(${ROOT_DIR}/cmake/macro.cmake)
+
+if( NOT "${SG200X_SDK_PATH}" STREQUAL "" )
+message(STATUS "SG200X_SDK_PATH: ${SG200X_SDK_PATH}")
+
+include_directories("${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot/usr/include")
+link_directories("${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot/usr/lib")
+
+include_directories("${SG200X_SDK_PATH}/middleware/v2/include")
+link_directories("${SG200X_SDK_PATH}/v2/lib")
+
+include_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_tpu_sdk/include")
+link_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_tpu_sdk/lib")
+
+else()
+message(WARNING "SG200X_SDK_PATH is not set")
+endif()
 
 file(GLOB COMPONENTS LIST_DIRECTORIES  true ${ROOT_DIR}/components/*)
 
@@ -15,3 +29,4 @@ endforeach()
 include(${PROJECT_DIR}/main/CMakeLists.txt)
 
 include(${ROOT_DIR}/cmake/build.cmake)
+
