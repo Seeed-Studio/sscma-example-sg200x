@@ -7,14 +7,14 @@
 
 static void exitHandle(int signo) {
     system(SCRIPT_WIFI_STOP);
-    app_ipc_Httpd_DeInit();
+    deinitHttpd();
 
     exit(0);
 }
 
 static void initSupervisor() {
     system(SCRIPT_WIFI_START);
-    app_ipc_Httpd_Init();
+    initHttpd();
 
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     while(1) sleep(1000);
 
     system(SCRIPT_WIFI_STOP);
-    app_ipc_Httpd_DeInit();
+    deinitHttpd();
 
     return 0;
 }
