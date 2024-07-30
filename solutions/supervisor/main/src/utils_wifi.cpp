@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <algorithm>
+#include <syslog.h>
 
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
@@ -33,7 +34,7 @@ static int getWifiInfo(std::vector<std::string>& wifiStatus)
 
     fp = popen(SCRIPT_WIFI_STATUS, "r");
     if (fp == NULL) {
-        printf("Failed to run `%s`\n", SCRIPT_WIFI_STATUS);
+        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_STATUS);
         return -1;
     }
 
@@ -83,7 +84,7 @@ static int getWifiList()
 
     fp = popen(SCRIPT_WIFI_SCAN, "r");
     if (fp == NULL) {
-        printf("Failed to run `%s`\n", SCRIPT_WIFI_SCAN);
+        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_SCAN);
         return -1;
     }
 
@@ -119,11 +120,11 @@ static int updateConnectedWifiInfo()
     FILE* fp;
     char info[128];
 
-    std::cout << "updateConnectedWifiInfo operation\n";
+    syslog(LOG_INFO, "updateConnectedWifiInfo operation...\n");
 
     fp = popen(SCRIPT_WIFI_LIST, "r");
     if (fp == NULL) {
-        printf("Failed to run `%s`\n", SCRIPT_WIFI_LIST);
+        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_LIST);
         return -1;
     }
 
@@ -158,14 +159,14 @@ static int getLocalNetInfo(const char *name, std::string &ip, std::string &mask,
     mac.clear();
 
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("socket");
+        syslog(LOG_ERR, "[%s] socket failed here\n", name);
         return 1;
     }
 
     strncpy(ifr.ifr_name, name, IFNAMSIZ);
 
     if (ioctl(sock, SIOCGIFADDR, &ifr) < 0) {
-        perror("ioctl SIOCGIFADDR");
+        syslog(LOG_ERR, "[%s] ioctl SIOCGIFADDR failed here\n", name);
         close(sock);
         return 1;
     }
@@ -173,7 +174,7 @@ static int getLocalNetInfo(const char *name, std::string &ip, std::string &mask,
     ip = info;
 
     if (ioctl(sock, SIOCGIFNETMASK, &ifr) < 0) {
-        perror("ioctl SIOCGIFNETMASK");
+        syslog(LOG_ERR, "[%s] ioctl SIOCGIFNETMASK failed here\n", name);
         close(sock);
         return 1;
     }
@@ -181,7 +182,7 @@ static int getLocalNetInfo(const char *name, std::string &ip, std::string &mask,
     mask = info;
 
     if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
-        perror("ioctl SIOCGIFHWADDR");
+        syslog(LOG_ERR, "[%s] ioctl SIOCGIFHWADDR failed here\n", name);
         close(sock);
         exit(1);
     }
@@ -196,9 +197,9 @@ static int getLocalNetInfo(const char *name, std::string &ip, std::string &mask,
 
     close(sock);
 
-    std::cout << "ip: " << ip << "\n";
-    std::cout << "mask: " << mask << "\n";
-    std::cout << "mac: " << mac << "\n";
+    syslog(LOG_INFO, "ip: %s\n", ip.c_str());
+    syslog(LOG_INFO, "mask: %s\n", mask.c_str());
+    syslog(LOG_INFO, "mac: %s\n", mac.c_str());
 
 	return 0;
 }
@@ -243,8 +244,8 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)
 
 int scanWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nscan WiFi operation...\n";
-    std::cout << "scanTime: " << req->GetString("scanTime") << "\n";
+    syslog(LOG_INFO, "\nscan WiFi operation...\n");
+    syslog(LOG_INFO, "scanTime: %s\n", req->GetString("scanTime").c_str());
 
     std::string ip, mask, mac;
 
@@ -265,10 +266,10 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
     hv::Json wifiInfo;
     std::vector<hv::Json> wifiInfoList;
 
-    std::cout << "current wifi: =" << g_currentWifi << "=\n";
+    syslog(LOG_DEBUG, "current wifi: =%s=\n", g_currentWifi.c_str());
 
     if (getLocalNetInfo("wlan0", ip, mask, mac) == 0) {
-        std::cout << "wlan0 connect here\n";
+        syslog(LOG_INFO, "wlan0 connect here\n");
     }
 
     for (auto wifi : g_wifiList) {
@@ -304,7 +305,7 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
     }
 
     if (getLocalNetInfo("eth0", ip, mask, mac) == 0) {
-        std::cout << "eth0 connect here\n";
+        syslog(LOG_INFO, "eth0 connect here\n");
     }
 
     if (ip.empty() || ip.find("169.254") != std::string::npos) {
@@ -338,9 +339,9 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
 
 int connectWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nconnect WiFi...\n";
-    std::cout << "ssid: " << req->GetString("ssid") << "\n";
-    std::cout << "ssid: " << req->GetString("password") << "\n";
+    syslog(LOG_INFO, "\nconnect WiFi...\n");
+    syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
+    syslog(LOG_INFO, "password: %s\n", req->GetString("password").c_str());
 
     std::string msg;
     int id;
@@ -359,10 +360,10 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
         strcat(cmd, req->GetString("password").c_str());
     }
 
-    printf("cmd: %s\n", cmd);
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        printf("Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
         return -1;
     }
 
@@ -394,8 +395,8 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
 int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\ndisconnect WiFi...\n";
-    std::cout << "ssid: " << req->GetString("ssid") << "\n";
+    syslog(LOG_INFO, "\ndisconnect WiFi...\n");
+    syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
     std::string msg;
     int id = g_wifiInfo[req->GetString("ssid")].id;
@@ -403,13 +404,14 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
     char info[128];
     char cmd[128] = SCRIPT_WIFI_DISCONNECT;
 
-    printf("id: %d\n", id);
-
     strcat(cmd, std::to_string(id).c_str());
-    printf("cmd: %s\n", cmd);
+
+    syslog(LOG_DEBUG, "id: %d\n", id);
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
+
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        printf("Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
         return -1;
     }
 
@@ -436,12 +438,12 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
 
 int switchWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nswitch WiFi operation...\n";
-    std::cout << "mode: " << req->GetString("mode") << "\n";
+    syslog(LOG_INFO, "\nswitch WiFi operation...\n");
+    syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
     g_wifiMode = stoi(req->GetString("mode"));
 
-    std::cout << "g_wifiMode: " << g_wifiMode << "\n";
+    syslog(LOG_DEBUG, "g_wifiMode: %d\n", g_wifiMode);
 
     hv::Json response;
     response["code"] = 0;
@@ -462,7 +464,7 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(SCRIPT_WIFI_STATE, "r");
     if (fp == NULL) {
-        printf("Failed to run `%s`\n", SCRIPT_WIFI_STATE);
+        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_STATE);
         return -1;
     }
 
@@ -496,9 +498,9 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp)
 
 int autoConnectWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nauto Connect operation...\n";
-    std::cout << "ssid: " << req->GetString("ssid") << "\n";
-    std::cout << "mode: " << req->GetString("mode") << "\n";
+    syslog(LOG_INFO, "\nauto Connect operation...\n");
+    syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
+    syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
     hv::Json response;
     response["code"] = 0;
@@ -510,8 +512,8 @@ int autoConnectWiFi(HttpRequest* req, HttpResponse* resp)
 
 int forgetWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nforget WiFi operation...\n";
-    std::cout << "ssid: " << req->GetString("ssid") << "\n";
+    syslog(LOG_INFO, "\nforget WiFi operation...\n");
+    syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
     std::string msg;
     int id;
@@ -522,10 +524,10 @@ int forgetWiFi(HttpRequest* req, HttpResponse* resp)
     id = g_wifiInfo[req->GetString("ssid")].id;
     strcat(cmd, std::to_string(id).c_str());
 
-    printf("cmd: %s\n", cmd);
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        printf("Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
         return -1;
     }
 

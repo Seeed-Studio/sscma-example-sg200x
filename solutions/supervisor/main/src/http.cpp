@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <syslog.h>
 
 #include "hv/HttpServer.h"
 #include "hv/hthread.h"    // import hv_gettid
@@ -19,25 +20,19 @@ static HttpServer server;
 static void registerHttpRedirect(HttpService& router)
 {
     router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) { // IOS
-        // resp->File(WWW("err.html"));
-        std::cout << "\n[/hotspot-detect*]current url: " << req->Url() << "\n";
-        std::cout << "-> redirect to " << REDIRECT_URL << "\n";
+        syslog(LOG_DEBUG, "\n[/hotspot-detect*]current url: %s \n-> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
     router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) { // android
-        // resp->File(WWW("err.html"));
-        std::cout << "\n[/generate*]current url: " << req->Url() << "\n";
-        std::cout << "-> redirect to " << REDIRECT_URL << "\n";
+        syslog(LOG_DEBUG, "\n[/generate*]current url: %s \n-> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
     router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) { // windows
-        // resp->File(WWW("err.html"));
-        std::cout << "\n[/*.txt]current url: " << req->Url() << "\n";
-        std::cout << "-> redirect to " << REDIRECT_URL << "\n";
+        syslog(LOG_DEBUG, "\n[/*.txt]current url: %s \n-> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
@@ -96,7 +91,7 @@ static void registerWebSocket(HttpService& router)
         std::string cmd = "date -s @" + std::to_string(time);
         system(cmd.c_str());
 
-        std::cout << "WebSocket:" << data["websocketUrl"] << "\n";
+        syslog(LOG_INFO, "WebSocket: %s\n", data["websocketUrl"]);
         return resp->Json(res);
     });
 }
@@ -105,8 +100,6 @@ int initHttpd()
 {
     static HttpService router;
 
-    /* Static file service */
-    // curl -v http://ip:port/
     router.Static("/", WWW(""));
 
     registerHttpRedirect(router);
