@@ -12,12 +12,16 @@ static void exitHandle(int signo) {
     exit(0);
 }
 
-int main(int argc, char** argv) {
+static void initSupervisor() {
     system(SCRIPT_WIFI_START);
     app_ipc_Httpd_Init();
 
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);
+}
+
+int main(int argc, char** argv) {
+    initSupervisor();
 
     while(1) sleep(1000);
 
