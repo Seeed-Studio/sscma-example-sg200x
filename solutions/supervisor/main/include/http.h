@@ -5,8 +5,8 @@
 
 extern "C" {
 
-int app_ipc_Httpd_Init();
-int app_ipc_Httpd_DeInit();
+int initHttpd();
+int deinitHttpd();
 
 } // extern "C" {
 

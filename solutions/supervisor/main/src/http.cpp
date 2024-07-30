@@ -16,7 +16,7 @@ extern "C" {
 
 static HttpServer server;
 
-static void register_Httpd_Redirect(HttpService& router)
+static void registerHttpRedirect(HttpService& router)
 {
     router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) { // IOS
         // resp->File(WWW("err.html"));
@@ -47,7 +47,7 @@ static void register_Httpd_Redirect(HttpService& router)
     });
 }
 
-static void register_User_Api(HttpService& router)
+static void registerUserApi(HttpService& router)
 {
     router.GET("/api/userMgr/queryUserInfo", queryUserInfo);
     router.POST("/api/userMgr/updateUserName", updateUserName);
@@ -56,7 +56,7 @@ static void register_User_Api(HttpService& router)
     router.POST("/api/userMgr/deleteSShkey", deleteSShkey);
 }
 
-static void register_WiFi_Api(HttpService& router)
+static void registerWiFiApi(HttpService& router)
 {
     router.GET("/api/wifiMgr/queryWiFiInfo", queryWiFiInfo);
     router.POST("/api/wifiMgr/scanWiFi", scanWiFi);
@@ -68,7 +68,7 @@ static void register_WiFi_Api(HttpService& router)
     router.POST("/api/wifiMgr/forgetWiFi", forgetWiFi);
 }
 
-static void register_Device_Api(HttpService& router)
+static void registerDeviceApi(HttpService& router)
 {
     router.POST("/api/deviceMgr/getSystemUpdateVesionInfo", getSystemUpdateVesionInfo);
     router.GET("/api/deviceMgr/queryDeviceInfo", queryDeviceInfo);
@@ -80,7 +80,7 @@ static void register_Device_Api(HttpService& router)
     router.POST("/api/deviceMgr/cancelUpdate", cancelUpdate);
 }
 
-static void register_WebSocket(HttpService& router)
+static void registerWebSocket(HttpService& router)
 {
     router.GET("/api/deviceMgr/getCameraWebsocketUrl", [](HttpRequest* req, HttpResponse* resp) {
         hv::Json data;
@@ -101,7 +101,7 @@ static void register_WebSocket(HttpService& router)
     });
 }
 
-int app_ipc_Httpd_Init()
+int initHttpd()
 {
     static HttpService router;
 
@@ -109,11 +109,11 @@ int app_ipc_Httpd_Init()
     // curl -v http://ip:port/
     router.Static("/", WWW(""));
 
-    register_Httpd_Redirect(router);
-    register_User_Api(router);
-    register_WiFi_Api(router);
-    register_Device_Api(router);
-    register_WebSocket(router);
+    registerHttpRedirect(router);
+    registerUserApi(router);
+    registerWiFiApi(router);
+    registerDeviceApi(router);
+    registerWebSocket(router);
 
     server.service = &router;
     server.port = HTTPD_PORT;
@@ -122,7 +122,7 @@ int app_ipc_Httpd_Init()
     return 0;
 }
 
-int app_ipc_Httpd_DeInit()
+int deinitHttpd()
 {
     server.stop();
     hv::async::cleanup();
