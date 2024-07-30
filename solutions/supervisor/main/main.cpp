@@ -2,12 +2,14 @@
 #include <string>
 #include <unistd.h>
 #include <signal.h>
+#include <syslog.h>
 
 #include "http.h"
 
 static void exitHandle(int signo) {
     system(SCRIPT_WIFI_STOP);
     deinitHttpd();
+    closelog();
 
     exit(0);
 }
@@ -18,6 +20,8 @@ static void initSupervisor() {
 
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);
+
+    openlog("supervisor", LOG_CONS | LOG_PID, 0);
 }
 
 int main(int argc, char** argv) {
@@ -27,6 +31,7 @@ int main(int argc, char** argv) {
 
     system(SCRIPT_WIFI_STOP);
     deinitHttpd();
+    closelog();
 
     return 0;
 }

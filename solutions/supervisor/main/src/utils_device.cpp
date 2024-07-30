@@ -3,6 +3,7 @@
 #include <iterator>
 #include <stdio.h>
 #include <string>
+#include <syslog.h>
 
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
@@ -28,7 +29,7 @@ static int writeFile(const std::string& path, const std::string& strWrite)
     if (outfile.is_open()) {
         outfile << strWrite;
         outfile.close();
-        std::cout << "Write Success: " << path << std::endl;
+        syslog(LOG_DEBUG, "Write Success: %s\n", path.c_str());
         return 0;
     }
 
@@ -45,7 +46,7 @@ static std::string getGateWay(std::string ip)
     strcat(cmd, ip.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        printf("Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
         return res;
     }
 
@@ -62,7 +63,7 @@ static std::string getGateWay(std::string ip)
 
 int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nstart to get SystemUpdateVersinInfo...\n";
+    syslog(LOG_INFO, "\nstart to get SystemUpdateVersinInfo...\n");
 
     std::string content = readFile(PATH_UPGRADE_URL), url = "";
     std::string cmd = SCRIPT_UPGRADE_LATEST, msg = "";
@@ -85,7 +86,7 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
         cmd += url;
     }
 
-    std::cout << "cmd: " << cmd << "\n";
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd.c_str());
     system(cmd.c_str());
 
     content = readFile(PATH_UPGRADE_PROGRESS_FILE);
@@ -108,9 +109,9 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
         version.erase(version.size() - 1);
     }
 
-    std::cout << "content: " << content << "\n";
-    std::cout << "progress: " << progress << ", msg: " << msg << "\n";
-    std::cout << "os: " << os << ", version: " << version << "\n";
+    syslog(LOG_INFO, "content: %s\n", content.c_str());
+    syslog(LOG_INFO, "progress: %d\n, msg: %s\n", progress, msg.c_str());
+    syslog(LOG_INFO, "os: %s, version: %s\n", os.c_str(), version.c_str());
 
     if (progress == 0) {
         response["code"] = 0;
@@ -184,9 +185,9 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     device["data"] = data;
 
     // output
-    std::cout << "Device name: " << data["deviceName"] << std::endl;
-    std::cout << "OS,Version: " << os_version << std::endl;
-    std::cout << "Channel,Url: " << ch_url << std::endl;
+    syslog(LOG_INFO, "Device name: %s\n", data["deviceName"].template get<std::string>().c_str());
+    syslog(LOG_INFO, "OS,Version: %s\n", os_version.c_str());
+    syslog(LOG_INFO, "Channel,Url: %s\n", ch_url.c_str());
 
     return resp->Json(device);
 }
@@ -195,8 +196,9 @@ int updateDeviceName(HttpRequest* req, HttpResponse* resp)
 {
     std::string dev_name = req->GetString("deviceName");
 
-    std::cout << "\nupdate Device Name operation...\n";
-    std::cout << "deviceName: " << dev_name << "\n";
+    syslog(LOG_INFO, "\nupdate Device Name operation...\n");
+    syslog(LOG_INFO, "deviceName: %s\n", dev_name.c_str());
+
     writeFile(PATH_DEVICE_NAME, dev_name);
 
     hv::Json response;
@@ -214,9 +216,9 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
     std::string str_url = req->GetString("serverUrl");
     std::string str_cmd;
 
-    std::cout << "\nupdate channel operation...\n";
-    std::cout << "channel: " << str_ch << "\n";
-    std::cout << "serverUrl: " << str_url << "\n";
+    syslog(LOG_INFO, "\nupdate channel operation...\n");
+    syslog(LOG_INFO, "channel: %s\n", str_ch.c_str());
+    syslog(LOG_INFO, "serverUrl: %s\n", str_url.c_str());
 
     if (str_ch.empty()) {
         response["code"] = 1109;
@@ -245,16 +247,16 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
 
 int setPower(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nset Power operation...\n";
-    std::cout << "mode: " << req->GetString("mode") << "\n";
+    syslog(LOG_INFO, "\nset Power operation...\n");
+    syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
     int mode = stoi(req->GetString("mode"));
 
     if (mode) {
-        printf("start to reboot system\n");
+        syslog(LOG_INFO, "start to reboot system\n");
         system("reboot");
     } else {
-        printf("start to shut down system\n");
+        syslog(LOG_INFO, "start to shut down system\n");
         system("poweroff");
     }
 
@@ -270,7 +272,7 @@ int setPower(HttpRequest* req, HttpResponse* resp)
 /* upgrade */
 int updateSystem(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nstart to update System now...\n";
+    syslog(LOG_INFO, "\nstart to update System now...\n");
 
     std::string ch_url = readFile(PATH_UPGRADE_URL), url = "";
     std::string cmd = SCRIPT_UPGRADE_START;
@@ -305,7 +307,7 @@ int updateSystem(HttpRequest* req, HttpResponse* resp)
 
 int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nget Update Progress...\n";
+    syslog(LOG_INFO, "\nget Update Progress...\n");
 
     FILE* fp;
     char info[128];
@@ -313,7 +315,7 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(SCRIPT_UPGRADE_QUERY, "r");
     if (fp == NULL) {
-        printf("Failed to run `%s`\n", SCRIPT_UPGRADE_QUERY);
+        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_UPGRADE_QUERY);
         return -1;
     }
 
@@ -322,7 +324,8 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
         if (s.back() == '\n') {
             s.erase(s.size() - 1);
         }
-        std::cout << "info: " << s << "\n";
+
+        syslog(LOG_INFO, "info: %s\n", s.c_str());
         size_t pos = s.find(',');
         if (pos != std::string::npos) {
             g_progress = stoi(s.substr(0, pos));
@@ -349,7 +352,7 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
 
 int cancelUpdate(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\ncancel update...\n";
+    syslog(LOG_INFO, "\ncancel update...\n");
 
     system(SCRIPT_UPGRADE_STOP);
 

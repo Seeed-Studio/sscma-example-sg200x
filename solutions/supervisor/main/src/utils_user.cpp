@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <vector>
+#include <syslog.h>
 
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
@@ -23,7 +24,7 @@ static int getUserName()
     if (pw) {
         strncpy(username, pw->pw_name, sizeof(username));
     } else {
-        perror("getpwuid");
+        syslog(LOG_ERR, "getpwuid failed here\n");
         return -1;
     }
 
@@ -42,7 +43,7 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
     if (g_sPassword.back() == '\n') {
         g_sPassword.erase(g_sPassword.size() - 1);
     }
-    printf("%s, %s\n", g_sUserName.c_str(), g_sPassword.c_str());
+    syslog(LOG_DEBUG, "%s, %s\n", g_sUserName.c_str(), g_sPassword.c_str());
 
     hv::Json data;
     data["userName"] = g_sUserName;
@@ -54,7 +55,7 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(SCRIPT_USER_SSH, "r");
     if (fp == NULL) {
-        printf("Failed to run %s\n", SCRIPT_USER_SSH);
+        syslog(LOG_ERR, "Failed to run %s\n", SCRIPT_USER_SSH);
     }
 
     while (fgets(info, sizeof(info) - 1, fp) != NULL) {
@@ -96,8 +97,8 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
 
 int updateUserName(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nupdate UserName operation...\n";
-    std::cout << "userName: " << req->GetString("userName") << "\n";
+    syslog(LOG_INFO, "\nupdate UserName operation...\n");
+    syslog(LOG_INFO, "userName: %s\n", req->GetString("userName").c_str());
 
     FILE* fp;
     char cmd[128] = SCRIPT_USER_NAME;
@@ -105,11 +106,11 @@ int updateUserName(HttpRequest* req, HttpResponse* resp)
     strcat(cmd, g_sUserName.c_str());
     strcat(cmd, " ");
     strcat(cmd, req->GetString("userName").c_str());
-    printf("cmd: %s\n", cmd);
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        printf("Failed to run %s list\n", cmd);
+        syslog(LOG_ERR, "Failed to run %s list\n", cmd);
         return -1;
     }
     pclose(fp);
@@ -124,9 +125,9 @@ int updateUserName(HttpRequest* req, HttpResponse* resp)
 
 int updatePassword(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nupdate Password operation...\n";
-    // std::cout << "oldPassword: " << req->GetString("oldPassword") << "\n";
-    // std::cout << "newPassword: " << req->GetString("newPassword") << "\n";
+    syslog(LOG_INFO, "\nupdate Password operation...\n");
+    syslog(LOG_INFO, "oldPassword: %s\n", req->GetString("oldPassword").c_str());
+    syslog(LOG_INFO, "newPassword: %s\n", req->GetString("newPassword").c_str());
 
     FILE* fp;
     char info[128];
@@ -143,11 +144,11 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     strcat(cmd, req->GetString("oldPassword").c_str());
     strcat(cmd, " ");
     strcat(cmd, req->GetString("newPassword").c_str());
-    printf("cmd: %s\n", cmd);
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        printf("Failed to run %s list\n", cmd);
+        syslog(LOG_ERR, "Failed to run %s list\n", cmd);
         return -1;
     }
 
@@ -157,12 +158,12 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     User["data"] = hv::Json({});
 
     if (fgets(info, sizeof(info) - 1, fp) != NULL) {
-        printf("info: =%s=\n", info);
+        syslog(LOG_INFO, "info: =%s=\n", info);
         if (strcmp(info, "OK\n") != 0) {
-            printf("error here\n");
+            syslog(LOG_WARNING, "error here\n");
             User["code"] = 1109;
             if (fgets(info, sizeof(info) - 1, fp) != NULL) {
-                printf("error info: %s\n", info);
+                syslog(LOG_WARNING, "error info: %s\n", info);
                 User["msg"] = std::string(info);
             }
         } else {
@@ -183,14 +184,14 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
 
 int addSShkey(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\nAdd ssh key operation...\n";
-    std::cout << "name:" << req->GetString("name") << "\n";
-    std::cout << "value: " << req->GetString("value") << "\n";
+    syslog(LOG_INFO, "\nAdd ssh key operation...\n");
+    syslog(LOG_INFO, "name: %s\n", req->GetString("name").c_str());
+    syslog(LOG_INFO, "value: %s\n", req->GetString("value").c_str());
 
     std::ofstream file(PATH_SSH_KEY_FILE, std::ios_base::app);
 
     if (!file.is_open()) {
-        std::cerr << "Error opening the file!" << std::endl;
+        syslog(LOG_ERR, "open %s file failed here!\n", PATH_SSH_KEY_FILE);
         return 1;
     }
 
@@ -210,8 +211,8 @@ int addSShkey(HttpRequest* req, HttpResponse* resp)
 
 int deleteSShkey(HttpRequest* req, HttpResponse* resp)
 {
-    std::cout << "\ndelete ssh key operation...\n";
-    std::cout << "id: " << req->GetString("id") << "\n";
+    syslog(LOG_INFO, "\ndelete ssh key operation...\n");
+    syslog(LOG_INFO, "id: %s\n", req->GetString("id").c_str());
 
     char cmd[128];
 
