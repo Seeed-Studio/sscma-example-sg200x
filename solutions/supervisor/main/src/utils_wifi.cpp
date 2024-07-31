@@ -244,7 +244,7 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)
 
 int scanWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nscan WiFi operation...\n");
+    syslog(LOG_INFO, "scan WiFi operation...\n");
     syslog(LOG_INFO, "scanTime: %s\n", req->GetString("scanTime").c_str());
 
     std::string ip, mask, mac;
@@ -339,7 +339,7 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
 
 int connectWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nconnect WiFi...\n");
+    syslog(LOG_INFO, "connect WiFi...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
     syslog(LOG_INFO, "password: %s\n", req->GetString("password").c_str());
 
@@ -395,7 +395,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
 int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\ndisconnect WiFi...\n");
+    syslog(LOG_INFO, "disconnect WiFi...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
     std::string msg;
@@ -438,7 +438,7 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
 
 int switchWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nswitch WiFi operation...\n");
+    syslog(LOG_INFO, "switch WiFi operation...\n");
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
     g_wifiMode = stoi(req->GetString("mode"));
@@ -498,7 +498,7 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp)
 
 int autoConnectWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nauto Connect operation...\n");
+    syslog(LOG_INFO, "auto Connect operation...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
@@ -512,7 +512,7 @@ int autoConnectWiFi(HttpRequest* req, HttpResponse* resp)
 
 int forgetWiFi(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nforget WiFi operation...\n");
+    syslog(LOG_INFO, "forget WiFi operation...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
     std::string msg;

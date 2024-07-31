@@ -63,7 +63,7 @@ static std::string getGateWay(std::string ip)
 
 int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nstart to get SystemUpdateVersinInfo...\n");
+    syslog(LOG_INFO, "start to get SystemUpdateVersinInfo...\n");
 
     std::string content = readFile(PATH_UPGRADE_URL), url = "";
     std::string cmd = SCRIPT_UPGRADE_LATEST, msg = "";
@@ -196,7 +196,7 @@ int updateDeviceName(HttpRequest* req, HttpResponse* resp)
 {
     std::string dev_name = req->GetString("deviceName");
 
-    syslog(LOG_INFO, "\nupdate Device Name operation...\n");
+    syslog(LOG_INFO, "update Device Name operation...\n");
     syslog(LOG_INFO, "deviceName: %s\n", dev_name.c_str());
 
     writeFile(PATH_DEVICE_NAME, dev_name);
@@ -216,7 +216,7 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
     std::string str_url = req->GetString("serverUrl");
     std::string str_cmd;
 
-    syslog(LOG_INFO, "\nupdate channel operation...\n");
+    syslog(LOG_INFO, "update channel operation...\n");
     syslog(LOG_INFO, "channel: %s\n", str_ch.c_str());
     syslog(LOG_INFO, "serverUrl: %s\n", str_url.c_str());
 
@@ -247,7 +247,7 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
 
 int setPower(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nset Power operation...\n");
+    syslog(LOG_INFO, "set Power operation...\n");
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
     int mode = stoi(req->GetString("mode"));
@@ -272,7 +272,7 @@ int setPower(HttpRequest* req, HttpResponse* resp)
 /* upgrade */
 int updateSystem(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nstart to update System now...\n");
+    syslog(LOG_INFO, "start to update System now...\n");
 
     std::string ch_url = readFile(PATH_UPGRADE_URL), url = "";
     std::string cmd = SCRIPT_UPGRADE_START;
@@ -307,7 +307,7 @@ int updateSystem(HttpRequest* req, HttpResponse* resp)
 
 int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nget Update Progress...\n");
+    syslog(LOG_INFO, "get Update Progress...\n");
 
     FILE* fp;
     char info[128];
@@ -352,7 +352,7 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
 
 int cancelUpdate(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\ncancel update...\n");
+    syslog(LOG_INFO, "cancel update...\n");
 
     system(SCRIPT_UPGRADE_STOP);
 
