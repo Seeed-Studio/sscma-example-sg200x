@@ -20,19 +20,19 @@ static HttpServer server;
 static void registerHttpRedirect(HttpService& router)
 {
     router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) { // IOS
-        syslog(LOG_DEBUG, "\n[/hotspot-detect*]current url: %s \n-> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
+        syslog(LOG_DEBUG, "[/hotspot-detect*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
     router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) { // android
-        syslog(LOG_DEBUG, "\n[/generate*]current url: %s \n-> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
+        syslog(LOG_DEBUG, "[/generate*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
     router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) { // windows
-        syslog(LOG_DEBUG, "\n[/*.txt]current url: %s \n-> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
+        syslog(LOG_DEBUG, "[/*.txt]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });

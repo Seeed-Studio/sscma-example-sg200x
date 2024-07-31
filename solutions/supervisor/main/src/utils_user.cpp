@@ -97,7 +97,7 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
 
 int updateUserName(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nupdate UserName operation...\n");
+    syslog(LOG_INFO, "update UserName operation...\n");
     syslog(LOG_INFO, "userName: %s\n", req->GetString("userName").c_str());
 
     FILE* fp;
@@ -125,7 +125,7 @@ int updateUserName(HttpRequest* req, HttpResponse* resp)
 
 int updatePassword(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nupdate Password operation...\n");
+    syslog(LOG_INFO, "update Password operation...\n");
     syslog(LOG_INFO, "oldPassword: %s\n", req->GetString("oldPassword").c_str());
     syslog(LOG_INFO, "newPassword: %s\n", req->GetString("newPassword").c_str());
 
@@ -184,7 +184,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
 
 int addSShkey(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\nAdd ssh key operation...\n");
+    syslog(LOG_INFO, "Add ssh key operation...\n");
     syslog(LOG_INFO, "name: %s\n", req->GetString("name").c_str());
     syslog(LOG_INFO, "value: %s\n", req->GetString("value").c_str());
 
@@ -211,7 +211,7 @@ int addSShkey(HttpRequest* req, HttpResponse* resp)
 
 int deleteSShkey(HttpRequest* req, HttpResponse* resp)
 {
-    syslog(LOG_INFO, "\ndelete ssh key operation...\n");
+    syslog(LOG_INFO, "delete ssh key operation...\n");
     syslog(LOG_INFO, "id: %s\n", req->GetString("id").c_str());
 
     char cmd[128];
