@@ -9,12 +9,13 @@
 #include "cvi_isp.h"
 #include "cvi_vi.h"
 #include "cvi_sys.h"
-#include "app_ipcam_mq.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define SNS0_OV_OV5647
 
 #define WDR_MAX_PIPE_NUM 4 //need checking by jammy
 
@@ -182,12 +183,6 @@ int app_ipcam_Vi_DeInit(void);
 int app_ipcam_PQBin_Load(const CVI_CHAR *pBinPath);
 void app_ipcam_Framerate_Set(CVI_U8 viPipe, CVI_U8 fps);
 CVI_U8 app_ipcam_Framerate_Get(CVI_U8 viPipe);
-
-int app_ipcam_CmdTask_Auto_Rgb_Ir_Switch(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
-int app_ipcam_CmdTask_Setect_Pq(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
-int app_ipcam_CmdTask_Mirror_Switch(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
-int app_ipcam_CmdTask_Flip_Switch(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
-int app_ipcam_CmdTask_Flip_Mirror_Switch(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
 
 #ifdef __cplusplus
 }

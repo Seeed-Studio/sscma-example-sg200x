@@ -7,28 +7,14 @@
 #include "app_ipcam_sys.h"
 #include "app_ipcam_vi.h"
 #include "app_ipcam_vpss.h"
-#ifdef OSD_SUPPORT
-#include "app_ipcam_osd.h"
-#endif
 #include "app_ipcam_venc.h"
-#include "app_ipcam_rtsp.h"
-#include "app_ipcam_dump.h"
-#include "app_ipcam_mq.h"
-#ifdef AUDIO_SUPPORT
-#include "app_ipcam_audio.h"
-#endif
-
-#ifdef AI_SUPPORT
-#include "app_ipcam_ai.h"
-#endif
-#ifdef RECORD_SUPPORT
-#include "app_ipcam_record.h"
-#endif
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define PARAM_CFG_INI "/mnt/data/param_config.ini"
 
 #define  CODEC_TYPE_H264    "264"
 #define  CODEC_TYPE_H265    "265"
@@ -50,15 +36,8 @@ extern "C"
 #define VENC0_OUTPUT_FRAMERATE	15
 #define VENC1_OUTPUT_FRAMERATE	15
 
-typedef enum APP_STREAM_TO_T {
-    TO_RTSP     = 0x0001,
-    TO_FLASH    = 0x0010
-
-} APP_STREAM_TO_E;
 
 int app_ipcam_Param_Load(void);
-
-int app_ipcam_Opts_Parse(int argc, char *argv[]);
 
 #ifdef __cplusplus
 }

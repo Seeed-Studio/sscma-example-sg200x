@@ -4,7 +4,7 @@
 #include "linux/cvi_comm_video.h"
 #include "linux/cvi_comm_sys.h"
 #include "linux/cvi_comm_vpss.h"
-#include "app_ipcam_mq.h"
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -41,7 +41,6 @@ int app_ipcam_Vpss_Create(VPSS_GRP VpssGrp);
 int app_ipcam_Vpss_Destroy(VPSS_GRP VpssGrp);
 int app_ipcam_Vpss_Bind(VPSS_GRP VpssGrp);
 int app_ipcam_Vpss_Unbind(VPSS_GRP VpssGrp);
-int app_ipcam_CmdTask_Rotate_Switch(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
 
 #ifdef __cplusplus
 }

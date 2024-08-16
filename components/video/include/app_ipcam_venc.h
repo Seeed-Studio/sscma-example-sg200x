@@ -7,7 +7,7 @@
 #include "linux/cvi_comm_video.h"
 #include "linux/cvi_comm_sys.h"
 #include "cvi_venc.h"
-#include "app_ipcam_mq.h"
+#include "app_ipcam_ll.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -17,6 +17,7 @@ extern "C"
 #define VENC_CHN_MAX    8
 #define MAX_NUM_ROI     8
 
+#if 0
 typedef enum APP_VENC_STREAMING_ID_T {
     APP_VENC_STREAM_MAIN    = 0x00,
     APP_VENC_STREAM_SUB     = 0x01,
@@ -28,6 +29,7 @@ typedef enum APP_NEED_STOP_MODULE_T {
     APP_NEED_STOP_STREAM = 0x02,
     APP_NEED_STOP_ALL    = 0xFF
 } APP_NEED_STOP_MODULE_E;
+#endif
 
 typedef enum APP_VATTR_FLAG_T {
     APP_VATTR_CHN       = 0x0001,
@@ -195,7 +197,7 @@ typedef struct APP_VENC_CHN_CFG_T {
     PAYLOAD_TYPE_E enType;
     CVI_U32 StreamTo;
     CVI_U32 u32Duration;
-    CVI_BOOL bRtspEn;
+    // CVI_BOOL bRtspEn;
     CVI_U32 u32Width;
     CVI_U32 u32Height;
     CVI_U32 u32SrcFrameRate;
@@ -252,6 +254,7 @@ typedef struct APP_PARAM_VENC_CTX_T {
 
 APP_PARAM_VENC_CTX_S *app_ipcam_Venc_Param_Get(void);
 APP_VENC_CHN_CFG_S *app_ipcam_VencChnCfg_Get(VENC_CHN VencChn);
+int app_ipcam_Venc_Consumes(int chn, int index, pfpDataConsumes consume);
 int app_ipcam_Venc_Init(APP_VENC_CHN_E VencIdx);
 int app_ipcam_Venc_Start(APP_VENC_CHN_E VencIdx);
 int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx);
@@ -259,14 +262,6 @@ void app_ipcam_JpgCapFlag_Set(CVI_BOOL bEnable);
 int app_ipcam_VencSize_Set(void);
 int app_ipcam_VencResize_Stop(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset);
 int app_ipcam_VencResize_Start(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset);
-
-/*****************************************************************
- *  The following API for command test used             S
- * **************************************************************/
-int app_ipcam_CmdTask_VideoAttr_Set(CVI_MQ_MSG_t *msg, CVI_VOID *userdate);
-/*****************************************************************
- *  The above API for command test used                 E
- * **************************************************************/
 
 #ifdef __cplusplus
 }

@@ -3,13 +3,16 @@
 #include <sys/prctl.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <stdlib.h>
+
 #include "cvi_vpss.h"
 #include "errno.h"
 #include "app_ipcam_venc.h"
 #include "cvi_type.h"
 #include "cvi_ae.h"
 #include "app_ipcam_paramparse.h"
-#include "app_ipcam_ll.h"
+
+#include "video.h"
 
 #define P_MAX_SIZE (512 * 1024) //P oversize 512K lost it
 /**************************************************************************
@@ -38,6 +41,7 @@ pthread_cond_t JpgCapCond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t JpgCapMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *g_pDataCtx[VENC_CHN_MAX];
+static pfpDataConsumes g_consumes[VENC_CHN_MAX][APP_DATA_COMSUMES_MAX];
 
 CVI_S32 g_s32SwitchSizeiTime;
 static pthread_once_t venc_remap_once = PTHREAD_ONCE_INIT;
@@ -60,6 +64,20 @@ APP_VENC_CHN_CFG_S *app_ipcam_VencChnCfg_Get(VENC_CHN VencChn)
     APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[VencChn];
 
     return pstVencChnCfg;
+}
+
+int app_ipcam_Venc_Consumes(int chn, int index, pfpDataConsumes consume)
+{
+    if (chn < 0 || chn >= VENC_CHN_MAX) {
+        return -1;
+    }
+    if (index < 0 || index >= APP_DATA_COMSUMES_MAX) {
+        return -1;
+    }
+
+    g_consumes[chn][index] = consume;
+
+    return 0;
 }
 
 int app_ipcam_Venc_RefPara_Set(VENC_CHN VencChn, APP_REF_PARAM_S *pstRefCfg)
@@ -945,142 +963,6 @@ CVI_BOOL app_ipcam_JpgCapFlag_Get(void)
     return bJpgCapFlag;
 }
 
-int fpStreamingSendToRtsp(void *pData, void *pArgs)
-{
-    APP_DATA_CTX_S *pstDataCtx = (APP_DATA_CTX_S *)pArgs;
-    APP_DATA_PARAM_S *pstDataParam = &pstDataCtx->stDataParam;
-    APP_VENC_CHN_CFG_S *pstVencChnCfg = (APP_VENC_CHN_CFG_S *)pstDataParam->pParam;
-    VENC_CHN VencChn = pstVencChnCfg->VencChn;
-
-
-    APP_PARAM_RTSP_T *prtspCtx = app_ipcam_Rtsp_Param_Get();
-
-    if ((!prtspCtx->bStart[VencChn])) {
-        return CVI_SUCCESS;
-    }
-
-    VENC_STREAM_S *pstStream = (VENC_STREAM_S *)pData;
-
-    CVI_S32 s32Ret = CVI_SUCCESS;
-    VENC_PACK_S *ppack;
-    CVI_RTSP_DATA data;
-
-    memset(&data, 0, sizeof(CVI_RTSP_DATA));
-
-    data.blockCnt = pstStream->u32PackCount;
-    for (CVI_U32 i = 0; i < pstStream->u32PackCount; i++) {
-        ppack = &pstStream->pstPack[i];
-        data.dataPtr[i] = ppack->pu8Addr + ppack->u32Offset;
-        data.dataLen[i] = ppack->u32Len - ppack->u32Offset;
-
-        APP_PROF_LOG_PRINT(LEVEL_DEBUG, "pack[%d], PTS = %"PRId64", Addr = %p, Len = 0x%X, Offset = 0x%X DataType=%d\n",
-            i, ppack->u64PTS, ppack->pu8Addr, ppack->u32Len, ppack->u32Offset, ppack->DataType.enH265EType);
-    }
-    if (0 == pstStream->u32PackCount) {
-        APP_PROF_LOG_PRINT(LEVEL_ERROR, "pstStream->u32PackCount is %d\n", pstStream->u32PackCount);
-        return s32Ret;
-    }
-
-    if ((NULL != prtspCtx->pstServerCtx) && (NULL != prtspCtx->pstSession[VencChn])) {
-        s32Ret = CVI_RTSP_WriteFrame(prtspCtx->pstServerCtx, prtspCtx->pstSession[VencChn]->video, &data);
-        if (s32Ret != CVI_SUCCESS) {
-            APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_RTSP_WriteFrame failed\n");
-        }
-    }
-    
-    return CVI_SUCCESS;
-
-}
-
-int fpStreamingSendToWeb(void *pData, void *pArgs)
-{
-    #ifdef WEB_SOCKET
-    extern int app_ipc_WebSocket_Stream_Send(void* pData, void* pArgs);
-    app_ipc_WebSocket_Stream_Send(pData, pArgs);
-    #endif
-
-    return CVI_SUCCESS;
-}
-
-int fpStreamingSaveToFlash(void *pData, void *pArgs)
-{
-    VENC_STREAM_S *pstStream = (VENC_STREAM_S *)pData;
-
-    APP_DATA_CTX_S *pstDataCtx = (APP_DATA_CTX_S *)pArgs;
-    APP_DATA_PARAM_S *pstDataParam = &pstDataCtx->stDataParam;
-    APP_VENC_CHN_CFG_S *pstVencChnCfg = (APP_VENC_CHN_CFG_S *)pstDataParam->pParam;
-
-    /* dynamic touch a file: /tmp/rec then start save sreaming to flash or SD Card */
-    if (access("/tmp/rec", F_OK) == 0) {
-        if (pstVencChnCfg->pFile == NULL) {
-            char szPostfix[8] = {0};
-            char szFilePath[100] = {0};
-            app_ipcam_Postfix_Get(pstVencChnCfg->enType, szPostfix);
-            sprintf(szFilePath, "%s/Venc%d_idx_%d%s", pstVencChnCfg->SavePath, pstVencChnCfg->VencChn, pstVencChnCfg->frameNum++, szPostfix);
-            APP_PROF_LOG_PRINT(LEVEL_INFO, "start save file to %s\n", szFilePath);
-            pstVencChnCfg->pFile = fopen(szFilePath, "wb");
-            if (pstVencChnCfg->pFile == NULL) {
-                APP_PROF_LOG_PRINT(LEVEL_ERROR, "open file err, %s\n", szFilePath);
-                return CVI_FAILURE;
-            }
-        }
-
-        VENC_PACK_S *ppack;
-        /* just from I-frame saving */
-        if ((pstVencChnCfg->enType == PT_H264) || (pstVencChnCfg->enType == PT_H265)) {
-            if (pstVencChnCfg->fileNum == 0 && pstStream->u32PackCount < 2)
-                return CVI_SUCCESS;
-        }
-        for (CVI_U32 i = 0; i < pstStream->u32PackCount; i++) {
-            ppack = &pstStream->pstPack[i];
-            fwrite(ppack->pu8Addr + ppack->u32Offset,
-                    ppack->u32Len - ppack->u32Offset, 1, pstVencChnCfg->pFile);
-
-            APP_PROF_LOG_PRINT(LEVEL_DEBUG, "pack[%d], PTS = %"PRId64", Addr = %p, Len = 0x%X, Offset = 0x%X DataType=%d\n",
-                    i, ppack->u64PTS, ppack->pu8Addr, ppack->u32Len, ppack->u32Offset, ppack->DataType.enH265EType);
-        }
-
-        if (pstVencChnCfg->enType == PT_JPEG) {
-            fclose(pstVencChnCfg->pFile);
-            pstVencChnCfg->pFile = NULL;
-            APP_PROF_LOG_PRINT(LEVEL_INFO, "End save! \n");
-            remove("/tmp/rec");
-
-        } else {
-            if (++pstVencChnCfg->fileNum > pstVencChnCfg->u32Duration) {
-                pstVencChnCfg->fileNum = 0;
-                fclose(pstVencChnCfg->pFile);
-                pstVencChnCfg->pFile = NULL;
-                APP_PROF_LOG_PRINT(LEVEL_INFO, "End save! \n");
-                remove("/tmp/rec");
-            }
-        }
-    }
-
-    return CVI_SUCCESS;
-}
-
-int fpStreamingSendToRecord(void *pData, void *pArgs)
-{
-  #ifdef RECORD_SUPPORT
-    VENC_STREAM_S *pstStream = (VENC_STREAM_S *)pData;
-
-    APP_DATA_CTX_S *pstDataCtx = (APP_DATA_CTX_S *)pArgs;
-  
-    APP_DATA_PARAM_S *pstDataParam = &pstDataCtx->stDataParam;
-    APP_VENC_CHN_CFG_S *pstVencChnCfg = (APP_VENC_CHN_CFG_S *)pstDataParam->pParam;
-    VENC_CHN VencChn = pstVencChnCfg->VencChn;
-
-  
-    /* process streaming ; save to SD Card */
-    if (VencChn == 0) {
-        app_ipcam_Record_VideoInput(pstVencChnCfg->enType, pstStream);
-    }
-    #endif
-
-    return CVI_SUCCESS;
-}
-
 static void _Data_Handle(void *pData, void *pArgs)
 {
     APP_DATA_CTX_S *pDataCtx = (APP_DATA_CTX_S *)pArgs;
@@ -1091,7 +973,6 @@ static void _Data_Handle(void *pData, void *pArgs)
             pstDataParam->fpDataConsumes[i](pData, pArgs);
         }
     }
-
 }
 
 static CVI_S32 _Data_Save(void **dst, void *src)
@@ -1288,7 +1169,49 @@ static void *Thread_Streaming_Proc(void *pArgs)
     }
 
     return (CVI_VOID *) CVI_SUCCESS;
+}
 
+CVI_S32 SAMPLE_COMM_FRAME_SaveToFile(VENC_CHN VencChn, VIDEO_FRAME_INFO_S* pstVideoFrame)
+{
+    CVI_U32 u32len, u32DataLen;
+
+    // for (int i = 0; i < 3; ++i) {
+        int i = 0;
+        u32DataLen = pstVideoFrame->stVFrame.u32Stride[i] * pstVideoFrame->stVFrame.u32Height;
+        printf("plane(%d): stride(%d) height(%d), u32DataLen=%d\n", i, pstVideoFrame->stVFrame.u32Stride[i], pstVideoFrame->stVFrame.u32Height, u32DataLen);
+        if (u32DataLen == 0)
+            return -1;// continue;
+        if (i > 0 && ((pstVideoFrame->stVFrame.enPixelFormat == PIXEL_FORMAT_YUV_PLANAR_420) || (pstVideoFrame->stVFrame.enPixelFormat == PIXEL_FORMAT_NV12) || (pstVideoFrame->stVFrame.enPixelFormat == PIXEL_FORMAT_NV21)))
+            u32DataLen >>= 1;
+
+        pstVideoFrame->stVFrame.pu8VirAddr[i]
+            = CVI_SYS_Mmap(pstVideoFrame->stVFrame.u64PhyAddr[i], pstVideoFrame->stVFrame.u32Length[i]);
+
+        CVI_TRACE_LOG(CVI_DBG_INFO, "plane(%d): paddr(%#" PRIx64 ") vaddr(%p) stride(%d)\n",
+            i, pstVideoFrame->stVFrame.u64PhyAddr[i],
+            pstVideoFrame->stVFrame.pu8VirAddr[i],
+            pstVideoFrame->stVFrame.u32Stride[i]);
+        CVI_TRACE_LOG(CVI_DBG_INFO, " data_len(%d) plane_len(%d)\n",
+            u32DataLen, pstVideoFrame->stVFrame.u32Length[i]);
+
+        for (uint8_t i = 0; i < APP_DATA_COMSUMES_MAX; ++i) {
+            video_frame_t frame;
+
+            frame.width = pstVideoFrame->stVFrame.u32Width;
+            frame.height = pstVideoFrame->stVFrame.u32Height;
+            frame.pdata = pstVideoFrame->stVFrame.pu8VirAddr[i];
+            frame.size = u32DataLen;
+            frame.id = pstVideoFrame->stVFrame.u32TimeRef;
+            frame.timestamp = GetCurTimeInMsec();
+            if (g_consumes[VencChn][i]) {
+                g_consumes[VencChn][i](&frame, NULL);
+            }
+        }
+
+        CVI_SYS_Munmap(pstVideoFrame->stVFrame.pu8VirAddr[i], pstVideoFrame->stVFrame.u32Length[i]);
+    // }
+
+    return CVI_SUCCESS;
 }
 
 static void *Thread_Jpg_Proc(void *pArgs)
@@ -1301,7 +1224,7 @@ static void *Thread_Jpg_Proc(void *pArgs)
     CVI_CHAR TaskName[64];
     sprintf(TaskName, "Thread_JpegEnc");
     prctl(PR_SET_NAME, TaskName, 0, 0, 0);
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "jpg encode task start \n");
+    APP_PROF_LOG_PRINT(LEVEL_INFO, "jpg encode task start(VencChn=%d)\n", VencChn);
     
     CVI_S32 vpssGrp = pstVencChnCfg->VpssGrp;
     CVI_S32 vpssChn = pstVencChnCfg->VpssChn;
@@ -1309,6 +1232,7 @@ static void *Thread_Jpg_Proc(void *pArgs)
 
     pstVencChnCfg->bStart = CVI_TRUE;
 
+    app_ipcam_JpgCapFlag_Set(CVI_TRUE);
     while (pstVencChnCfg->bStart) {
         if (!pstVencChnCfg->bStart) {
             break;
@@ -1321,6 +1245,10 @@ static void *Thread_Jpg_Proc(void *pArgs)
                 continue;
             }
             
+            SAMPLE_COMM_FRAME_SaveToFile(VencChn, &stVencFrame);
+
+#if 0
+            APP_PROF_LOG_PRINT(LEVEL_INFO, "save jpg to %s\n", name);
             s32Ret = CVI_VENC_SendFrame(VencChn, &stVencFrame, 2000);
             if (s32Ret != CVI_SUCCESS) {
                 APP_PROF_LOG_PRINT(LEVEL_INFO, "CVI_VENC_SendFrame failed! %d\n", s32Ret);
@@ -1343,12 +1271,16 @@ static void *Thread_Jpg_Proc(void *pArgs)
             } else {
                 CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVencFrame);
             }
+#endif
 
-            app_ipcam_JpgCapFlag_Set(CVI_FALSE);
+            // app_ipcam_JpgCapFlag_Set(CVI_FALSE);
 
+#if 0
             /* save jpg to flash */
             _streaming_save_to_flash(pstVencChnCfg, &stStream);
+#endif
 
+#if 0
             CVI_VENC_ReleaseStream(VencChn, &stStream);
             free(stStream.pstPack);
             stStream.pstPack = NULL;
@@ -1356,6 +1288,7 @@ static void *Thread_Jpg_Proc(void *pArgs)
             continue;
 
         rls_frame:
+#endif
             CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVencFrame);
         } else {
             pthread_mutex_lock(&JpgCapMutex);
@@ -1522,10 +1455,13 @@ int app_ipcam_Venc_Init(APP_VENC_CHN_E VencIdx)
             stDataParam.fpDataSave = _Data_Save;
             stDataParam.fpDataFree = _Data_Free;
             stDataParam.fpDataHandle = _Data_Handle;
-            stDataParam.fpDataConsumes[0] = fpStreamingSendToRtsp;
-            stDataParam.fpDataConsumes[1] = (VencChn == APP_VENC_STREAM_SUB) ? fpStreamingSendToWeb : NULL;
-            stDataParam.fpDataConsumes[2] = (VencChn == APP_VENC_STREAM_MAIN) ? fpStreamingSendToRecord : NULL;
-            stDataParam.fpDataConsumes[3] = (VencChn == APP_VENC_STREAM_MAIN) ? fpStreamingSaveToFlash : NULL;
+            for (uint8_t i = 0; i < APP_DATA_COMSUMES_MAX; ++i) {
+                stDataParam.fpDataConsumes[i] = g_consumes[VencChn][i];
+            }
+            // stDataParam.fpDataConsumes[0] = fpStreamingSendToRtsp;
+            // stDataParam.fpDataConsumes[1] = NULL;//(VencChn == APP_VENC_STREAM_SUB) ? fpStreamingSendToWeb : NULL;
+            // stDataParam.fpDataConsumes[2] = NULL;//(VencChn == APP_VENC_STREAM_MAIN) ? fpStreamingSendToRecord : NULL;
+            // stDataParam.fpDataConsumes[3] = NULL;//(VencChn == APP_VENC_STREAM_MAIN) ? fpStreamingSaveToFlash : NULL;
 
             s32Ret = app_ipcam_LList_Data_Init(&g_pDataCtx[VencChn], &stDataParam);
             if (s32Ret != CVI_SUCCESS) {
@@ -1691,268 +1627,3 @@ int app_ipcam_Venc_Start(APP_VENC_CHN_E VencIdx)
     return CVI_SUCCESS;
 }
 
-int app_ipcam_VencResize_Stop(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset)
-{
-    CVI_S32 iTime = GetCurTimeInMsec();
-    g_s32SwitchSizeiTime = iTime;
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "stop video channle (0x%x)\n", enVencChn);
-
-    //avoid lost record
-    #ifdef RECORD_SUPPORT
-    app_ipcam_Record_UnInit();
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "Set_Record_Status to 0 takes %u ms \n", (GetCurTimeInMsec() - iTime));
-    iTime = GetCurTimeInMsec();
-    #endif
-
-    #ifdef OSD_SUPPORT
-    APP_CHK_RET(app_ipcam_Osdc_DeInit(), "draw rect deinit");
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "osdc deinit takes %u ms \n", (GetCurTimeInMsec() - iTime));
-    #endif
-
-    #ifdef AI_SUPPORT
-    app_ipcam_Ai_PD_Pause_Set(CVI_TRUE);
-    app_ipcam_Ai_MD_Pause_Set(CVI_TRUE);
-    #ifdef FACE_SUPPORT
-    app_ipcam_Ai_FD_Pause_Set(CVI_TRUE);
-    #endif
-    #endif
-    /*          stop RTSP server          */
-    // APP_CHK_RET(app_ipcam_rtsp_Server_Destroy(), "Destory RTSP Server");
-
-    iTime = GetCurTimeInMsec();
-    #if 0
-    APP_CHK_RET(app_ipcam_Vpss_DeInit(), "Vpss deinit");
-    #else
-    for (VENC_CHN s32ChnIdx = 0; s32ChnIdx < g_pstVencCtx->s32VencChnCnt; s32ChnIdx++) {
-        // if (!((enVencChn >> s32ChnIdx) & 0x01)) continue;
-        APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[s32ChnIdx];
-        VPSS_GRP VpssGrp = pstVencChnCfg->VpssGrp;
-        APP_VPSS_GRP_CFG_T *pstVpssGrpCfg = &app_ipcam_Vpss_Param_Get()->astVpssGrpCfg[VpssGrp];
-        if (!pstVpssGrpCfg->bCreate) {
-            continue;
-        }
-        app_ipcam_Vpss_Destroy(VpssGrp);
-        if (VpssGrp != 0) app_ipcam_Vpss_Unbind(VpssGrp);     /* group0 no need unbind */
-    }
-    #ifdef AI_SUPPORT
-    APP_PARAM_AI_PD_CFG_S *pstAiPdCfg = app_ipcam_Ai_PD_Param_Get();
-    VPSS_GRP VpssGrp_PD = pstAiPdCfg->VpssGrp;
-    app_ipcam_Vpss_Unbind(VpssGrp_PD);
-    APP_PARAM_AI_MD_CFG_S *pstAiMdCfg = app_ipcam_Ai_MD_Param_Get();
-    VPSS_GRP VpssGrp_MD = pstAiMdCfg->VpssGrp;
-    app_ipcam_Vpss_Unbind(VpssGrp_MD);
-
-    //MainStream not support reboot ai, avoid take a long time
-    if (bSubSizeReset) {
-        app_ipcam_Vpss_Destroy(VpssGrp_MD);
-        app_ipcam_Vpss_Destroy(VpssGrp_PD);
-        app_ipcam_Ai_PD_Stop();
-        app_ipcam_Ai_MD_Stop();
-    }
-    #endif
-    #endif
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "vpss deinit takes %u ms \n", (GetCurTimeInMsec() - iTime));
-
-    iTime = GetCurTimeInMsec();
-    APP_CHK_RET(app_ipcam_Venc_Stop(APP_VENC_ALL), "Venc Stop");
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "venc (0x%x) stop takes %u ms \n", enVencChn, (GetCurTimeInMsec() - iTime));
-
-    return 0;
-}
-
-int app_ipcam_VencResize_Start(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset)
-{
-    CVI_S32 iTime = GetCurTimeInMsec();
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "start video channle (0x%x)\n", enVencChn);
-
-    #if 0
-    APP_CHK_RET(app_ipcam_Vpss_Init(), "vpss init");
-    #else
-    for (VENC_CHN s32ChnIdx = 0; s32ChnIdx < g_pstVencCtx->s32VencChnCnt; s32ChnIdx++) {
-        // if (!((enVencChn >> s32ChnIdx) & 0x01)) continue;
-        APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[s32ChnIdx];
-        VPSS_GRP VpssGrp = pstVencChnCfg->VpssGrp;
-        APP_VPSS_GRP_CFG_T *pstVpssGrpCfg = &app_ipcam_Vpss_Param_Get()->astVpssGrpCfg[VpssGrp];
-        if (pstVpssGrpCfg->bCreate) {
-            continue;
-        }
-        app_ipcam_Vpss_Create(VpssGrp);
-        if (VpssGrp != 0) app_ipcam_Vpss_Bind(VpssGrp);     /* group0 no need bind, because online mode */
-    }
-    #ifdef AI_SUPPORT
-    APP_PARAM_AI_PD_CFG_S *pstAiPdCfg = app_ipcam_Ai_PD_Param_Get();
-    VPSS_GRP VpssGrp_PD = pstAiPdCfg->VpssGrp;
-    app_ipcam_Vpss_Bind(VpssGrp_PD);
-    APP_PARAM_AI_MD_CFG_S *pstAiMdCfg = app_ipcam_Ai_MD_Param_Get();
-    VPSS_GRP VpssGrp_MD = pstAiMdCfg->VpssGrp;
-    app_ipcam_Vpss_Bind(VpssGrp_MD);
-
-    if (bSubSizeReset) {
-        app_ipcam_Vpss_Create(VpssGrp_PD);
-        app_ipcam_Vpss_Create(VpssGrp_MD);
-        app_ipcam_Ai_PD_Start();
-        app_ipcam_Ai_MD_Start();
-    }
-    #endif
-    #endif
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "vpss init takes %u ms \n", (GetCurTimeInMsec() - iTime));
-
-    // APP_CHK_RET(app_ipcam_Rtsp_Server_Create(), "Create RTSP Server");
-    
-    iTime = GetCurTimeInMsec();
-    APP_CHK_RET(app_ipcam_Venc_Init(APP_VENC_ALL), "init video encode");
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "venc init takes %u ms \n", (GetCurTimeInMsec() - iTime));
-    
-    iTime = GetCurTimeInMsec();
-    APP_CHK_RET(app_ipcam_Venc_Start(APP_VENC_ALL), "start video processing");
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "venc start takes %u ms \n", (GetCurTimeInMsec() - iTime));
-    
-    #ifdef OSD_SUPPORT
-    iTime = GetCurTimeInMsec();
-    APP_CHK_RET(app_ipcam_Osdc_Init(), "draw rect init");
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "osdc init takes %u ms \n", (GetCurTimeInMsec() - iTime));
-    #endif
-    
-    #ifdef AI_SUPPORT
-    app_ipcam_Ai_PD_Pause_Set(CVI_FALSE);
-    app_ipcam_Ai_MD_Pause_Set(CVI_FALSE);
-    #ifdef FACE_SUPPORT
-    app_ipcam_Ai_FD_Pause_Set(CVI_FALSE);
-    #endif
-    #endif
-
-    #ifdef RECORD_SUPPORT
-    iTime = GetCurTimeInMsec();
-    app_ipcam_Record_Init();
-    APP_PROF_LOG_PRINT(LEVEL_WARN, "Set_Record_Status to 0 takes %u ms \n", (GetCurTimeInMsec() - iTime));
-    #endif
-
-    return CVI_SUCCESS;
-}
-/*****************************************************************
- *  The following API for command test used             Front
- * **************************************************************/
-
-static int app_ipcam_CmdTask_VideoAttr_Parse(CVI_MQ_MSG_t *msg, CVI_VOID *userdate)
-{
-
-    CVI_CHAR param[512] = {0};
-    snprintf(param, sizeof(param), "%s", msg->payload);
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "%s param:%s Venc=%d\n", __FUNCTION__, param, msg->arg2);
-
-    CVI_U32 VattrUpdateFlag = 0;
-
-    VENC_CHN VencChnIdx = 0;
-    PAYLOAD_TYPE_E enType = 0;
-    CVI_U32 u32Width = 0;
-    CVI_U32 u32Height = 0;
-    VENC_RC_MODE_E enRcMode = 0;
-    CVI_U32 u32DstFrameRate = 0;
-    CVI_U32 u32BitRate= 0;
-    CVI_U32 u32Gop = 0;
-    CVI_U32 VpssGrp = 0;
-    CVI_U32 VpssChn = 0;
-
-    CVI_CHAR *temp = strtok(param, ":");
-    while(NULL != temp) {
-        APP_PROF_LOG_PRINT(LEVEL_INFO, "%s switch case -> %c \n", __FUNCTION__, *temp);
-        switch (*temp) {
-            case 'i': 
-                temp = strtok(NULL, "/");
-                VencChnIdx = atoi(temp);
-                VattrUpdateFlag |= APP_VATTR_CHN;
-                break;
-            case 'c':
-                temp = strtok(NULL, "/");
-                APP_IPCAM_CODEC_CHECK(temp, enType);
-                VattrUpdateFlag |= APP_VATTR_CODEC;
-                break;
-            case 'w':
-                temp = strtok(NULL, "/");
-                u32Width = atoi(temp);
-                VattrUpdateFlag |= APP_VATTR_SIZE_W;
-                break;
-            case 'h':
-                temp = strtok(NULL, "/");
-                u32Height = atoi(temp);
-                VattrUpdateFlag |= APP_VATTR_SIZE_H;
-                break;
-            case 'r':
-                temp = strtok(NULL, "/");
-                APP_IPCAM_RCMODE_CHECK(temp, enRcMode);
-                VattrUpdateFlag |= APP_VATTR_RC_MODE;
-                break;
-            case 'b':
-                temp = strtok(NULL, "/");
-                u32BitRate = atoi(temp);
-                VattrUpdateFlag |= APP_VATTR_BITRATE;
-                break;
-            case 'f':
-                temp = strtok(NULL, "/");
-                u32DstFrameRate = atoi(temp);
-                VattrUpdateFlag |= APP_VATTR_FRAMERATE;
-                break;
-            case 'g':
-                temp = strtok(NULL, "/");
-                u32Gop = atoi(temp);
-                VattrUpdateFlag |= APP_VATTR_GOP;
-                break;
-            default:
-                return 0;
-                break;
-        }
-        
-        temp = strtok(NULL, ":");
-    }
-
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "venc channel attr need update flag:0x%x\n", VattrUpdateFlag);
-
-    if ((VattrUpdateFlag & APP_VATTR_CHN) != APP_VATTR_CHN) {
-        APP_PROF_LOG_PRINT(LEVEL_WARN, "pls use -i specify which venc channel you want set!!!\n");
-        return CVI_SUCCESS;
-    } else if (VencChnIdx > VENC_CHN_MAX) {
-        APP_PROF_LOG_PRINT(LEVEL_WARN, "VencChnIdx(%d) > VENC_CHN_MAX(%d)!!!\n", VencChnIdx, VENC_CHN_MAX);
-        return CVI_SUCCESS;
-    }
-
-    APP_VENC_CHN_CFG_S *pstVencChnCfg = app_ipcam_VencChnCfg_Get(VencChnIdx);
-
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->enType,     enType,     APP_VATTR_CODEC,   VattrUpdateFlag);
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->u32Width,   u32Width,   APP_VATTR_SIZE_W,  VattrUpdateFlag);
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->u32Height,  u32Height,  APP_VATTR_SIZE_H,  VattrUpdateFlag);
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->enRcMode,   enRcMode,   APP_VATTR_RC_MODE, VattrUpdateFlag);
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->u32BitRate, u32BitRate, APP_VATTR_BITRATE, VattrUpdateFlag);
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->u32Gop,     u32Gop,     APP_VATTR_GOP,     VattrUpdateFlag);
-    CHK_PARAM_IS_NEED_UPDATE(pstVencChnCfg->u32DstFrameRate, u32DstFrameRate, APP_VATTR_FRAMERATE, VattrUpdateFlag);
-
-    VpssGrp = pstVencChnCfg->VpssGrp;
-    VpssChn = pstVencChnCfg->VpssChn;
-
-    /* get vpss channel attr and update vpss channel size */
-    VPSS_CHN_ATTR_S *pVpssChnAttr = &app_ipcam_Vpss_Param_Get()->astVpssGrpCfg[VpssGrp].astVpssChnAttr[VpssChn];
-    pVpssChnAttr->u32Width = pstVencChnCfg->u32Width;
-    pVpssChnAttr->u32Height = pstVencChnCfg->u32Height;
-
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "VpssGrp=%d VpssChn=%d enType=%d Width=%d Height=%d RcMode=%d BitRate=%d Gop=%d fps=%d\n", 
-        VpssGrp, VpssChn, pstVencChnCfg->enType, pstVencChnCfg->u32Width, pstVencChnCfg->u32Height,
-        pstVencChnCfg->enRcMode, pstVencChnCfg->u32BitRate, pstVencChnCfg->u32Gop, pstVencChnCfg->u32DstFrameRate);
-
-    return CVI_SUCCESS;
-}
-
-int app_ipcam_CmdTask_VideoAttr_Set(CVI_MQ_MSG_t *msg, CVI_VOID *userdate)
-{
-    /*                 stop venc flow                */
-    APP_CHK_RET(app_ipcam_VencResize_Stop(APP_VENC_ALL, 0), "video resize stop");
-
-    /*          update venc parameter          */
-    APP_CHK_RET(app_ipcam_CmdTask_VideoAttr_Parse(msg, userdate), "video Attr Parse");
-
-    /*                 re-start venc flow                */
-    APP_CHK_RET(app_ipcam_VencResize_Start(APP_VENC_ALL, 0), "video resize start");
-    return 0;
-}
-
-/*****************************************************************
- *  The above API for command test used                 End
- * **************************************************************/
