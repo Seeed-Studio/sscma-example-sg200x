@@ -160,7 +160,7 @@ typedef enum APP_IPCAM_CMD_ID_E {
 #define ADDERRTAG(fmt)              STRINGIFY([app][err][%s %u], fmt)
 
 #ifndef DEF_DEBUG_LEVEL
-#define DEF_DEBUG_LEVEL            	LEVEL_INFO  //use level
+#define DEF_DEBUG_LEVEL            	LEVEL_ERROR  //use level
 #endif
 
 #define APP_PROF_LOG_PRINT(level, fmt, args...)                                                                     \

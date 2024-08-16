@@ -1178,7 +1178,7 @@ CVI_S32 SAMPLE_COMM_FRAME_SaveToFile(VENC_CHN VencChn, VIDEO_FRAME_INFO_S* pstVi
     // for (int i = 0; i < 3; ++i) {
         int i = 0;
         u32DataLen = pstVideoFrame->stVFrame.u32Stride[i] * pstVideoFrame->stVFrame.u32Height;
-        printf("plane(%d): stride(%d) height(%d), u32DataLen=%d\n", i, pstVideoFrame->stVFrame.u32Stride[i], pstVideoFrame->stVFrame.u32Height, u32DataLen);
+        CVI_TRACE_LOG(CVI_DBG_INFO, "plane(%d): stride(%d) height(%d), u32DataLen=%d\n", i, pstVideoFrame->stVFrame.u32Stride[i], pstVideoFrame->stVFrame.u32Height, u32DataLen);
         if (u32DataLen == 0)
             return -1;// continue;
         if (i > 0 && ((pstVideoFrame->stVFrame.enPixelFormat == PIXEL_FORMAT_YUV_PLANAR_420) || (pstVideoFrame->stVFrame.enPixelFormat == PIXEL_FORMAT_NV12) || (pstVideoFrame->stVFrame.enPixelFormat == PIXEL_FORMAT_NV21)))
