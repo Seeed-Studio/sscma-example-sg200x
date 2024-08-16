@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
     server.start();
 
     while (true) {
-        Tick::sleep(Tick::fromSeconds(1));
+        Thread::sleep(Tick::fromSeconds(1));
     }
 
     return 0;
