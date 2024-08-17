@@ -1495,6 +1495,7 @@ int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx)
 
     APP_PROF_LOG_PRINT(LEVEL_INFO, "Venc Count=%d and will stop VencChn=0x%x\n", g_pstVencCtx->s32VencChnCnt, VencIdx);
 
+#if 0
     for (VENC_CHN s32ChnIdx = 0; s32ChnIdx < g_pstVencCtx->s32VencChnCnt; s32ChnIdx++) {
         APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[s32ChnIdx];
 
@@ -1506,6 +1507,7 @@ int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx)
 
         pstVencChnCfg->bStart = CVI_FALSE;
     }
+#endif
 
     for (VENC_CHN s32ChnIdx = 0; s32ChnIdx < g_pstVencCtx->s32VencChnCnt; s32ChnIdx++) {
         APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[s32ChnIdx];
@@ -1513,6 +1515,10 @@ int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx)
 
         if (!((VencIdx >> s32ChnIdx) & 0x01))
             continue;
+
+        if (!pstVencChnCfg->bStart)
+            continue;
+        pstVencChnCfg->bStart = CVI_FALSE;
 
         /* for jpg capture */
         if (pstVencChnCfg->enType == PT_JPEG) {

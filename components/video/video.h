@@ -19,15 +19,15 @@ typedef enum {
     VIDEO_FORMAT_RGB888 = 0,
     VIDEO_FORMAT_H264,
     VIDEO_FORMAT_H265,
-    // VIDEO_FORMAT_JPEG,
+    VIDEO_FORMAT_JPEG,
 
-    VIDEO_FORMAT_INVALID
+    VIDEO_FORMAT_COUNT
 } video_format_t;
 
 typedef enum {
-    VIDEO_CH0 = 0, /* H265 */
-    VIDEO_CH1, /* H264 */
-    VIDEO_CH2, /* RGB888 */
+    VIDEO_CH0 = 0,
+    VIDEO_CH1,
+    VIDEO_CH2,
 
     VIDEO_CH_MAX
 } video_ch_index_t;

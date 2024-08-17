@@ -89,12 +89,12 @@ int app_ipcam_Vpss_Create(VPSS_GRP VpssGrp)
 
     APP_PROF_LOG_PRINT(LEVEL_INFO, "GrpID=%d isEnable=%d\n", pstVpssGrpCfg->VpssGrp, pstVpssGrpCfg->bEnable);
 
-    if (CVI_VPSS_CreateGrp(pstVpssGrpCfg->VpssGrp, &pstVpssGrpCfg->stVpssGrpAttr) != CVI_SUCCESS) {
+    if ((s32Ret = CVI_VPSS_CreateGrp(pstVpssGrpCfg->VpssGrp, &pstVpssGrpCfg->stVpssGrpAttr)) != CVI_SUCCESS) {
         APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_VPSS_CreateGrp(grp:%d) failed with %d!\n", pstVpssGrpCfg->VpssGrp, s32Ret);
         goto VPSS_EXIT;
     }
 
-    if (CVI_VPSS_ResetGrp(pstVpssGrpCfg->VpssGrp) != CVI_SUCCESS) {
+    if ((s32Ret = CVI_VPSS_ResetGrp(pstVpssGrpCfg->VpssGrp)) != CVI_SUCCESS) {
         APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_VPSS_ResetGrp(grp:%d) failed with %d!\n", pstVpssGrpCfg->VpssGrp, s32Ret);
         goto VPSS_EXIT;
     }
@@ -113,7 +113,7 @@ int app_ipcam_Vpss_Create(VPSS_GRP VpssGrp)
         APP_PROF_LOG_PRINT(LEVEL_INFO, "\tChnID=%d isEnable=%d\n", VpssChn, pstVpssGrpCfg->abChnEnable[VpssChn]);
         if (pstVpssGrpCfg->abChnEnable[VpssChn]) {
 
-            if (CVI_VPSS_SetChnAttr(pstVpssGrpCfg->VpssGrp, VpssChn, &pstVpssGrpCfg->astVpssChnAttr[VpssChn]) != CVI_SUCCESS) {
+            if ((s32Ret = CVI_VPSS_SetChnAttr(pstVpssGrpCfg->VpssGrp, VpssChn, &pstVpssGrpCfg->astVpssChnAttr[VpssChn])) != CVI_SUCCESS) {
                 APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_VPSS_SetChnAttr(%d) failed with %d\n", VpssChn, s32Ret);
                 goto VPSS_EXIT;
             }

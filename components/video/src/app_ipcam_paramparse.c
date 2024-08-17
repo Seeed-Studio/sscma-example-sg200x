@@ -9,7 +9,7 @@
 
 // SYS - vb_pool
 static const APP_PARAM_VB_CFG_S vbpool = {
-    .bEnable = 1,
+    .bEnable = 0,
     .width = 1920,
     .height = 1080,
     .fmt = PIXEL_FORMAT_NV21,
@@ -120,8 +120,8 @@ static const APP_RC_PARAM_S h264_stRcParam = {
     .s32AvbrPureStillThr = 4,
 };
 
-static const APP_VENC_CHN_CFG_S venc_h264 = {
-    .bEnable = 1,
+const APP_VENC_CHN_CFG_S venc_h264 = {
+    .bEnable = 0,
     .enType = PT_H264,
     .u32Duration = 75,
     .u32Width = 1920,
@@ -184,8 +184,8 @@ static const APP_RC_PARAM_S h265_stRcParam = {
     .s32AvbrPureStillThr = 4,
 };
 
-static const APP_VENC_CHN_CFG_S venc_h265 = {
-    .bEnable = 1,
+const APP_VENC_CHN_CFG_S venc_h265 = {
+    .bEnable = 0,
     .enType = PT_H265,
     .u32Duration = 75,
     .u32Width = 1920,
@@ -222,8 +222,8 @@ static const APP_VENC_CHN_CFG_S venc_h265 = {
     .stRcParam = h265_stRcParam,
 };
 
-static const APP_VENC_CHN_CFG_S venc_jpeg = {
-    .bEnable = 1,
+const APP_VENC_CHN_CFG_S venc_jpeg = {
+    .bEnable = 0,
     .enType = PT_JPEG,
     .u32Duration = 0,
     .u32Width = 1920,
@@ -241,14 +241,53 @@ static const APP_VENC_CHN_CFG_S venc_jpeg = {
 
 static const APP_VENC_ROI_CFG_S roi_cfg = { 0 };
 
+int app_set_VencChnType(int ch, PAYLOAD_TYPE_E enType)
+{
+    APP_PARAM_VENC_CTX_S* venc = app_ipcam_Venc_Param_Get();
+
+    if (ch >= venc->s32VencChnCnt) {
+        return -1;
+    }
+
+    APP_VENC_CHN_CFG_S* pvchn = &venc->astVencChnCfg[ch];
+    if (enType == PT_H264) {
+        *pvchn = venc_h264;
+        pvchn->enGopMode = VENC_GOPMODE_NORMALP;
+        pvchn->unGopParam = h264_stNormalP;
+        pvchn->enRcMode = VENC_RC_MODE_H264CBR;
+        pvchn->stRcParam = h264_stRcParam;
+    } else if (enType == PT_H265) {
+        *pvchn = venc_h265;
+        pvchn->enGopMode = VENC_GOPMODE_NORMALP;
+        pvchn->unGopParam = h265_stNormalP;
+        pvchn->enRcMode = VENC_RC_MODE_H265CBR;
+        pvchn->stRcParam = h265_stRcParam;
+    } else if (enType == PT_JPEG) {
+        *pvchn = venc_jpeg;
+    }
+    pvchn->VencChn = ch;
+    pvchn->VpssGrp = 0;
+    pvchn->VpssChn = ch;
+    pvchn->astChn[0].enModId = CVI_ID_VPSS;
+    pvchn->astChn[0].s32DevId = 0; // src
+    pvchn->astChn[0].s32ChnId = ch;
+    pvchn->astChn[1].enModId = CVI_ID_VENC;
+    pvchn->astChn[1].s32DevId = 0; // dst
+    pvchn->astChn[1].s32ChnId = ch;
+
+    return 0;
+}
+
+#define APP_IPCAM_CHN_NUM 3
+
 int app_ipcam_Param_Load(void)
 {
     // sys
     APP_PARAM_SYS_CFG_S* sys = app_ipcam_Sys_Param_Get();
-    sys->vb_pool[0] = vbpool;
-    sys->vb_pool[1] = vbpool;
-    sys->vb_pool[2] = vbpool;
-    sys->vb_pool_num = 3;
+    sys->vb_pool_num = APP_IPCAM_CHN_NUM;
+    for (uint32_t i = 0; i < sys->vb_pool_num; i++) {
+        sys->vb_pool[i] = vbpool;
+    }
     sys->stVIVPSSMode.aenMode[0] = VI_OFFLINE_VPSS_ONLINE;
     sys->stVPSSMode.enMode = VPSS_MODE_DUAL;
     sys->stVPSSMode.aenInput[0] = VPSS_INPUT_MEM;
@@ -284,66 +323,19 @@ int app_ipcam_Param_Load(void)
     pgrp->astChn[1].enModId = CVI_ID_VPSS; // src
     pgrp->astChn[1].s32DevId = 0;
     pgrp->astChn[1].s32ChnId = 0;
-    pgrp->abChnEnable[0] = 1; // ch0
-    pgrp->aAttachEn[0] = 1;
-    pgrp->aAttachPool[0] = 0;
-    pgrp->astVpssChnAttr[0] = chn_attr;
-    pgrp->abChnEnable[1] = 1; // ch1
-    pgrp->aAttachEn[1] = 1;
-    pgrp->aAttachPool[1] = 1;
-    pgrp->astVpssChnAttr[1] = chn_attr;
-    pgrp->abChnEnable[2] = 1; // ch2
-    pgrp->aAttachEn[2] = 1;
-    pgrp->aAttachPool[2] = 2;
-    pgrp->astVpssChnAttr[2] = chn_attr;
+    for (uint32_t i = 0; i < APP_IPCAM_CHN_NUM; i++) {
+        pgrp->abChnEnable[i] = 0; // default disabled
+        pgrp->aAttachEn[i] = 0;
+        pgrp->aAttachPool[i] = i;
+        pgrp->astVpssChnAttr[i] = chn_attr;
+    }
 
     // venc
     APP_PARAM_VENC_CTX_S* venc = app_ipcam_Venc_Param_Get();
-    venc->s32VencChnCnt = 3;
-    APP_VENC_CHN_CFG_S* pvchn;
-    venc->astVencChnCfg[0] = venc_h265;
-    pvchn = &venc->astVencChnCfg[0];
-    pvchn->enGopMode = VENC_GOPMODE_NORMALP;
-    pvchn->unGopParam = h265_stNormalP;
-    pvchn->enRcMode = VENC_RC_MODE_H265CBR;
-    pvchn->stRcParam = h265_stRcParam;
-    pvchn->VencChn = 0;
-    pvchn->VpssGrp = 0;
-    pvchn->VpssChn = 0;
-    pvchn->astChn[0].enModId = CVI_ID_VPSS;
-    pvchn->astChn[0].s32DevId = 0; // src
-    pvchn->astChn[0].s32ChnId = 0;
-    pvchn->astChn[1].enModId = CVI_ID_VENC;
-    pvchn->astChn[1].s32DevId = 0; // dst
-    pvchn->astChn[1].s32ChnId = 0;
-
-    venc->astVencChnCfg[1] = venc_h264;
-    pvchn = &venc->astVencChnCfg[1];
-    pvchn->enGopMode = VENC_GOPMODE_NORMALP;
-    pvchn->unGopParam = h264_stNormalP;
-    pvchn->enRcMode = VENC_RC_MODE_H264CBR;
-    pvchn->stRcParam = h264_stRcParam;
-    pvchn->VencChn = 1;
-    pvchn->VpssGrp = 0;
-    pvchn->VpssChn = 1;
-    pvchn->astChn[0].enModId = CVI_ID_VPSS;
-    pvchn->astChn[0].s32DevId = 0; // src
-    pvchn->astChn[0].s32ChnId = 1;
-    pvchn->astChn[1].enModId = CVI_ID_VENC;
-    pvchn->astChn[1].s32DevId = 0; // dst
-    pvchn->astChn[1].s32ChnId = 1;
-
-    venc->astVencChnCfg[2] = venc_jpeg;
-    pvchn = &venc->astVencChnCfg[2];
-    pvchn->VencChn = 2;
-    pvchn->VpssGrp = 0;
-    pvchn->VpssChn = 2;
-    pvchn->astChn[0].enModId = CVI_ID_VPSS;
-    pvchn->astChn[0].s32DevId = 0; // src
-    pvchn->astChn[0].s32ChnId = 2;
-    pvchn->astChn[1].enModId = CVI_ID_VENC;
-    pvchn->astChn[1].s32DevId = 0; // dst
-    pvchn->astChn[1].s32ChnId = 2;
+    venc->s32VencChnCnt = APP_IPCAM_CHN_NUM;
+    for (uint32_t i = 0; i < venc->s32VencChnCnt; i++) {
+        app_set_VencChnType(i, PT_H264);
+    }
 
     return CVI_SUCCESS;
 }
