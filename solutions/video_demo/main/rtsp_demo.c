@@ -5,6 +5,7 @@
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
+#define PARAM_CFG_INI "/mnt/data/param_config.ini"
 
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -27,32 +28,16 @@ APP_PARAM_RTSP_T *pstRtspCtx = &stRtspCtx;
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
-APP_PARAM_RTSP_T *app_ipcam_Rtsp_Param_Get(void)
+static int _Load_Param_Rtsp(void)
 {
-    return pstRtspCtx;
-}
+    APP_PARAM_RTSP_T *Rtsp = pstRtspCtx;
 
-int loadRtspParam(const char* file, APP_PARAM_RTSP_T* Rtsp)
-{
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "loading RTSP config ------------------> start \n");
-
-    char tmp_section[16] = { 0 };
-
-    Rtsp->session_cnt = ini_getl("rtsp_config", "rtsp_cnt", 0, file);
-    Rtsp->port = ini_getl("rtsp_config", "port", 0, file);
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "rtsp session cnt=%d port:%d\n", Rtsp->session_cnt, Rtsp->port);
-    for (int i = 0; i < Rtsp->session_cnt; i++) {
-        memset(tmp_section, 0, sizeof(tmp_section));
-        snprintf(tmp_section, sizeof(tmp_section), "session%d", i);
-
-        Rtsp->VencChn[i] = ini_getl(tmp_section, "venc_chn", 0, file);
-        Rtsp->SessionAttr[i].video.bitrate = ini_getl(tmp_section, "bitrate", 0, file);
-
-        APP_PROF_LOG_PRINT(LEVEL_INFO, "Vecn Chn=%d Vbitrate=%d\n",
-            Rtsp->VencChn[i], Rtsp->SessionAttr[i].video.bitrate);
-    }
-
-    APP_PROF_LOG_PRINT(LEVEL_INFO, "loading RTSP config ------------------> done \n\n");
+    Rtsp->session_cnt = 2;
+    Rtsp->port = 8554;
+    Rtsp->VencChn[0] = 0;
+    Rtsp->SessionAttr[0].video.bitrate = 30720;
+    Rtsp->VencChn[1] = 1;
+    Rtsp->SessionAttr[1].video.bitrate = 30720;
 
     return CVI_SUCCESS;
 }
@@ -184,7 +169,7 @@ int fpStreamingSendToRtsp(void* pData, void* pArgs)
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pstDataParam->pParam;
     VENC_CHN VencChn = pstVencChnCfg->VencChn;
 
-    APP_PARAM_RTSP_T* prtspCtx = app_ipcam_Rtsp_Param_Get();
+    APP_PARAM_RTSP_T* prtspCtx = pstRtspCtx;
 
     if ((!prtspCtx->bStart[VencChn])) {
         return CVI_SUCCESS;
@@ -220,4 +205,19 @@ int fpStreamingSendToRtsp(void* pData, void* pArgs)
     }
 
     return CVI_SUCCESS;
+}
+
+int initRtsp(void)
+{
+    _Load_Param_Rtsp();
+    app_ipcam_Rtsp_Server_Create();
+
+    return 0;
+}
+
+int deinitRtsp(void)
+{
+    app_ipcam_rtsp_Server_Destroy();
+
+    return 0;
 }

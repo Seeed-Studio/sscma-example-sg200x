@@ -8,7 +8,6 @@
 #include "cvi_type.h"
 #include "linux/cvi_common.h"
 #include "rtsp.h"
-#include "minIni.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -40,13 +39,9 @@ typedef struct APP_PARAM_RTSP_S {
     pthread_mutex_t RsRtspMutex;
 } APP_PARAM_RTSP_T;
 
-APP_PARAM_RTSP_T *app_ipcam_Rtsp_Param_Get(void);
-int loadRtspParam(const char* file, APP_PARAM_RTSP_T* Rtsp);
-
-int app_ipcam_Rtsp_Server_Create(CVI_VOID);
-int app_ipcam_rtsp_Server_Destroy(CVI_VOID);
-
 int fpStreamingSendToRtsp(void* pData, void* pArgs);
+int initRtsp(void);
+int deinitRtsp(void);
 
 #ifdef __cplusplus
 }

@@ -13,7 +13,7 @@ static CVI_VOID app_ipcam_ExitSig_handle(CVI_S32 signo)
 
     if ((SIGINT == signo) || (SIGTERM == signo)) {
         deinitVideo();
-        app_ipcam_rtsp_Server_Destroy();
+        deinitRtsp();
         APP_PROF_LOG_PRINT(LEVEL_INFO, "ipcam receive a signal(%d) from terminate\n", signo);
     }
 
@@ -65,8 +65,6 @@ int main(int argc, char* argv[])
 
     initVideo();
 
-    loadRtspParam(PARAM_CFG_INI, app_ipcam_Rtsp_Param_Get());
-
     // rtsp0
     video_ch_param_t param;
     param.format = VIDEO_FORMAT_H265;
@@ -84,8 +82,6 @@ int main(int argc, char* argv[])
     setupVideo(VIDEO_CH1, &param);
     registerVideoFrameHandler(VIDEO_CH1, 0, fpStreamingSendToRtsp);
 
-    app_ipcam_Rtsp_Server_Create();
-
     param.format = VIDEO_FORMAT_RGB888;
     param.width = 1920;
     param.height = 1080;
@@ -93,6 +89,7 @@ int main(int argc, char* argv[])
     setupVideo(VIDEO_CH2, &param);
     registerVideoFrameHandler(VIDEO_CH2, 0, fpSaveRgb888Frame);
 
+    initRtsp();
     startVideo();
 
     while (1) {
