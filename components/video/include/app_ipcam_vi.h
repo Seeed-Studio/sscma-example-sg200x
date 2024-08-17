@@ -133,11 +133,11 @@ typedef struct APP_PARAM_DEV_CFG_S {
 typedef struct APP_PARAM_PIPE_CFG_S {
     VI_PIPE aPipe[WDR_MAX_PIPE_NUM];
     VI_VPSS_MODE_E enMastPipeMode;
-    bool bMultiPipe;
-    bool bVcNumCfged;
-    bool bIspBypass;
-    PIXEL_FORMAT_E enPixFmt;
-    CVI_U32 u32VCNum[WDR_MAX_PIPE_NUM];
+    // bool bMultiPipe;
+    // bool bVcNumCfged;
+    // bool bIspBypass;
+    // PIXEL_FORMAT_E enPixFmt;
+    // CVI_U32 u32VCNum[WDR_MAX_PIPE_NUM];
 } APP_PARAM_PIPE_CFG_T;
 
 typedef struct APP_PARAM_CHN_CFG_S {
@@ -171,10 +171,10 @@ typedef struct APP_PARAM_VI_CFG_T {
     APP_PARAM_DEV_CFG_T astDevInfo[VI_MAX_DEV_NUM];
     APP_PARAM_PIPE_CFG_T astPipeInfo[VI_MAX_DEV_NUM];
     APP_PARAM_CHN_CFG_T astChnInfo[VI_MAX_DEV_NUM];
-    APP_PARAM_SNAP_INFO_T astSnapInfo[VI_MAX_DEV_NUM];
+    // APP_PARAM_SNAP_INFO_T astSnapInfo[VI_MAX_DEV_NUM];
     APP_PARAM_ISP_CFG_S astIspCfg[VI_MAX_DEV_NUM];
-    CVI_U32 u32Depth;
-    SIZE_S stSize;
+    // CVI_U32 u32Depth;
+    // SIZE_S stSize;
 } APP_PARAM_VI_CTX_S;
 
 APP_PARAM_VI_CTX_S *app_ipcam_Vi_Param_Get(void);

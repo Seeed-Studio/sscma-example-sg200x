@@ -163,13 +163,13 @@ typedef struct APP_RC_PARAM_T {
     CVI_U32 u32ThrdI[RC_TEXTURE_THR_SIZE];
     CVI_U32 u32ThrdP[RC_TEXTURE_THR_SIZE];
     CVI_U32 u32ThrdB[RC_TEXTURE_THR_SIZE];
-    CVI_U32 u32DirectionThrd;
-    CVI_U32 u32RowQpDelta;
+    // CVI_U32 u32DirectionThrd;
+    // CVI_U32 u32RowQpDelta;
     CVI_S32 s32FirstFrameStartQp;
     CVI_S32 s32InitialDelay;
     CVI_U32 u32ThrdLv;
-    CVI_BOOL bBgEnhanceEn;
-    CVI_S32 s32BgDeltaQp;
+    // CVI_BOOL bBgEnhanceEn;
+    // CVI_S32 s32BgDeltaQp;
     CVI_S32 s32ChangePos;
     CVI_U32 u32MinIprop;
     CVI_U32 u32MaxIprop;
@@ -195,7 +195,7 @@ typedef struct APP_VENC_CHN_CFG_T {
     CVI_BOOL bStart;
     VENC_CHN VencChn;
     PAYLOAD_TYPE_E enType;
-    CVI_U32 StreamTo;
+    // CVI_U32 StreamTo;
     CVI_U32 u32Duration;
     // CVI_BOOL bRtspEn;
     CVI_U32 u32Width;
@@ -226,7 +226,7 @@ typedef struct APP_VENC_CHN_CFG_T {
     CVI_U32 fileNum;
     CVI_BOOL bFirstStreamTCost; // for get first streaming time cost
     CVI_CHAR SavePath[32];
-    volatile CVI_S32 savePic;
+    // volatile CVI_S32 savePic;
 } APP_VENC_CHN_CFG_S;
 
 typedef struct APP_VENC_ROI_CFG_T {

@@ -13,7 +13,7 @@ extern "C"
 
 typedef struct APP_PARAM_VB_CFG_T {
     CVI_BOOL            bEnable;
-    uint32_t            size;
+    // uint32_t            size;
     uint32_t            width;
     uint32_t            height;
     PIXEL_FORMAT_E      fmt;
