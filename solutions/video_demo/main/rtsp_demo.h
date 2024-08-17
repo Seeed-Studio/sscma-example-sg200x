@@ -40,7 +40,7 @@ typedef struct APP_PARAM_RTSP_S {
 } APP_PARAM_RTSP_T;
 
 int fpStreamingSendToRtsp(void* pData, void* pArgs);
-int initRtsp(void);
+int initRtsp(uint8_t chEnableFlag);
 int deinitRtsp(void);
 
 #ifdef __cplusplus

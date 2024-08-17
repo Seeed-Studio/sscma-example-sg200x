@@ -32,12 +32,12 @@ static int _Load_Param_Rtsp(void)
 {
     APP_PARAM_RTSP_T *Rtsp = pstRtspCtx;
 
-    Rtsp->session_cnt = 2;
+    Rtsp->session_cnt = 0;
     Rtsp->port = 8554;
-    Rtsp->VencChn[0] = 0;
-    Rtsp->SessionAttr[0].video.bitrate = 30720;
-    Rtsp->VencChn[1] = 1;
-    Rtsp->SessionAttr[1].video.bitrate = 30720;
+    for (uint8_t i = 0; i < MAX_RTSP_SESSION; i++) {
+        Rtsp->VencChn[i] = i;
+        Rtsp->SessionAttr[i].video.bitrate = 30720;
+    }
 
     return CVI_SUCCESS;
 }
@@ -93,9 +93,9 @@ int app_ipcam_rtsp_Server_Destroy(CVI_VOID)
     pthread_mutex_lock(&pstRtspCtx->RsRtspMutex);
     for (CVI_S32 i = 0; i < pstRtspCtx->session_cnt; i++) {
 
-        if (pstRtspCtx->bStart[i]) {
+        if (pstRtspCtx->bStart[0]) {
             CVI_RTSP_DestroySession(pstRtspCtx->pstServerCtx, pstRtspCtx->pstSession[i]);
-            pstRtspCtx->bStart[i] = CVI_FALSE;
+            pstRtspCtx->bStart[0] = CVI_FALSE;
         }
     }
     pthread_mutex_unlock(&pstRtspCtx->RsRtspMutex);
@@ -171,7 +171,15 @@ int fpStreamingSendToRtsp(void* pData, void* pArgs)
 
     APP_PARAM_RTSP_T* prtspCtx = pstRtspCtx;
 
-    if ((!prtspCtx->bStart[VencChn])) {
+    uint8_t idx = 0;
+    for (uint8_t i = 0; i < prtspCtx->session_cnt; i++) {
+        if (prtspCtx->VencChn[i] == VencChn) {
+            idx = i;
+            break;
+        }
+    }
+
+    if ((!prtspCtx->bStart[idx])) {
         return CVI_SUCCESS;
     }
 
@@ -197,8 +205,8 @@ int fpStreamingSendToRtsp(void* pData, void* pArgs)
         return s32Ret;
     }
 
-    if ((NULL != prtspCtx->pstServerCtx) && (NULL != prtspCtx->pstSession[VencChn])) {
-        s32Ret = CVI_RTSP_WriteFrame(prtspCtx->pstServerCtx, prtspCtx->pstSession[VencChn]->video, &data);
+    if ((NULL != prtspCtx->pstServerCtx) && (NULL != prtspCtx->pstSession[idx])) {
+        s32Ret = CVI_RTSP_WriteFrame(prtspCtx->pstServerCtx, prtspCtx->pstSession[idx]->video, &data);
         if (s32Ret != CVI_SUCCESS) {
             APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_RTSP_WriteFrame failed\n");
         }
@@ -207,9 +215,20 @@ int fpStreamingSendToRtsp(void* pData, void* pArgs)
     return CVI_SUCCESS;
 }
 
-int initRtsp(void)
+int initRtsp(uint8_t chEnableFlag)
 {
     _Load_Param_Rtsp();
+
+    APP_PARAM_RTSP_T* Rtsp = pstRtspCtx;
+    int cnt = 0;
+    for (int i = 0; i < MAX_RTSP_SESSION; i++) {
+        if (chEnableFlag & (0x1 << i)) {
+            Rtsp->VencChn[cnt] = i;
+            cnt++;
+        }
+    }
+    Rtsp->session_cnt = cnt;
+
     app_ipcam_Rtsp_Server_Create();
 
     return 0;

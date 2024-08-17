@@ -3,8 +3,8 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "video.h"
 #include "rtsp_demo.h"
+#include "video.h"
 
 static CVI_VOID app_ipcam_ExitSig_handle(CVI_S32 signo)
 {
@@ -65,31 +65,32 @@ int main(int argc, char* argv[])
 
     initVideo();
 
-    // rtsp0
     video_ch_param_t param;
-    param.format = VIDEO_FORMAT_H265;
-    param.width = 1920;
-    param.height = 1080;
-    param.fps = 30;
-    setupVideo(VIDEO_CH0, &param);
-    registerVideoFrameHandler(VIDEO_CH0, 0, fpStreamingSendToRtsp);
 
-    // rtsp1
-    param.format = VIDEO_FORMAT_H264;
-    param.width = 1280;
-    param.height = 720;
-    param.fps = 15;
-    setupVideo(VIDEO_CH1, &param);
-    registerVideoFrameHandler(VIDEO_CH1, 0, fpStreamingSendToRtsp);
-
+    // rtsp0
     param.format = VIDEO_FORMAT_RGB888;
     param.width = 1920;
     param.height = 1080;
-    param.fps = 1;
-    setupVideo(VIDEO_CH2, &param);
-    registerVideoFrameHandler(VIDEO_CH2, 0, fpSaveRgb888Frame);
+    param.fps = 5;
+    setupVideo(VIDEO_CH0, &param);
+    registerVideoFrameHandler(VIDEO_CH0, 0, fpSaveRgb888Frame);
 
-    initRtsp();
+    // rtsp1
+    param.format = VIDEO_FORMAT_H264;
+    param.width = 1920;
+    param.height = 1080;
+    param.fps = 30;
+    setupVideo(VIDEO_CH1, &param);
+    registerVideoFrameHandler(VIDEO_CH1, 0, fpStreamingSendToRtsp);
+
+    param.format = VIDEO_FORMAT_H265;
+    param.width = 1280;
+    param.height = 720;
+    param.fps = 15;
+    setupVideo(VIDEO_CH2, &param);
+    registerVideoFrameHandler(VIDEO_CH2, 0, fpStreamingSendToRtsp);
+
+    initRtsp((0x01 << VIDEO_CH1) | (0x01 << VIDEO_CH2));
     startVideo();
 
     while (1) {
