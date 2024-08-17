@@ -22,7 +22,6 @@ set(SENSOR_SRC
     "${CMAKE_CURRENT_LIST_DIR}/src/app_ipcam_venc.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/app_ipcam_vi.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/app_ipcam_vpss.c"
-    "${CMAKE_CURRENT_LIST_DIR}/src/minIni.c"
 )
 
 component_register(
