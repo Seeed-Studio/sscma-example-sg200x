@@ -222,15 +222,15 @@ int app_ipcam_Vpss_DeInit(void)
     CVI_S32 s32Ret = CVI_SUCCESS;
 
     for (CVI_U32 VpssGrp = 0; VpssGrp < g_pstVpssCfg->u32GrpCnt; VpssGrp++) {
-        s32Ret = app_ipcam_Vpss_Destroy(VpssGrp);
-        if (s32Ret != CVI_SUCCESS) {
-            APP_PROF_LOG_PRINT(LEVEL_ERROR, "Vpss grp(%d) Destroy failed with 0x%x!\n", VpssGrp, s32Ret);
-            return s32Ret;
-        }
-
         s32Ret = app_ipcam_Vpss_Unbind(VpssGrp);
         if (s32Ret != CVI_SUCCESS) {
             APP_PROF_LOG_PRINT(LEVEL_ERROR, "Vpss grp(%d) Unbind failed with 0x%x!\n", VpssGrp, s32Ret);
+            return s32Ret;
+        }
+
+        s32Ret = app_ipcam_Vpss_Destroy(VpssGrp);
+        if (s32Ret != CVI_SUCCESS) {
+            APP_PROF_LOG_PRINT(LEVEL_ERROR, "Vpss grp(%d) Destroy failed with 0x%x!\n", VpssGrp, s32Ret);
             return s32Ret;
         }
     }
