@@ -46,7 +46,8 @@ static int app_ipcam_RtspAttr_Init(void)
 {
     /* update vidoe streaming codec type from video attr */
     for (CVI_S32 i = 0; i < pstRtspCtx->session_cnt; i++) {
-        APP_VENC_CHN_CFG_S *pstVencChnCfg = app_ipcam_VencChnCfg_Get(pstRtspCtx->VencChn[i]);
+        APP_PARAM_VENC_CTX_S* venc = app_ipcam_Venc_Param_Get();
+        APP_VENC_CHN_CFG_S *pstVencChnCfg = &venc->astVencChnCfg[pstRtspCtx->VencChn[i]];
         PAYLOAD_TYPE_E enType = pstVencChnCfg->enType;
         APP_RTSP_VCODEC_CHK(enType, pstRtspCtx->SessionAttr[i].video.codec);
 #ifdef AUDIO_SUPPORT

@@ -17,20 +17,6 @@ extern "C"
 #define VENC_CHN_MAX    8
 #define MAX_NUM_ROI     8
 
-#if 0
-typedef enum APP_VENC_STREAMING_ID_T {
-    APP_VENC_STREAM_MAIN    = 0x00,
-    APP_VENC_STREAM_SUB     = 0x01,
-} APP_VENC_STREAMING_ID_E;
-
-typedef enum APP_NEED_STOP_MODULE_T {
-    APP_NEED_STOP_NULL   = 0x00,
-    APP_NEED_STOP_RTSP   = 0x01,
-    APP_NEED_STOP_STREAM = 0x02,
-    APP_NEED_STOP_ALL    = 0xFF
-} APP_NEED_STOP_MODULE_E;
-#endif
-
 typedef enum APP_VATTR_FLAG_T {
     APP_VATTR_CHN       = 0x0001,
     APP_VATTR_SIZE_W    = 0x0002,
@@ -253,15 +239,10 @@ typedef struct APP_PARAM_VENC_CTX_T {
     } while(0)
 
 APP_PARAM_VENC_CTX_S *app_ipcam_Venc_Param_Get(void);
-APP_VENC_CHN_CFG_S *app_ipcam_VencChnCfg_Get(VENC_CHN VencChn);
 int app_ipcam_Venc_Consumes(int chn, int index, pfpDataConsumes consume);
 int app_ipcam_Venc_Init(APP_VENC_CHN_E VencIdx);
 int app_ipcam_Venc_Start(APP_VENC_CHN_E VencIdx);
 int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx);
-void app_ipcam_JpgCapFlag_Set(CVI_BOOL bEnable);
-int app_ipcam_VencSize_Set(void);
-int app_ipcam_VencResize_Stop(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset);
-int app_ipcam_VencResize_Start(APP_VENC_CHN_E enVencChn, CVI_S32 bSubSizeReset);
 
 #ifdef __cplusplus
 }

@@ -70,7 +70,7 @@ static int setVencChn(video_ch_index_t ch, const video_ch_param_t* param)
     } else if (VIDEO_FORMAT_H265 == param->format) {
         enType = PT_H265;
     }
-    app_set_VencChnType(ch, enType);
+    app_ipcam_Param_setVencChnType(ch, enType);
     APP_VENC_CHN_CFG_S* pvchn = &venc->astVencChnCfg[ch];
     pvchn->bEnable = 1;
     pvchn->u32Width = param->width;
@@ -78,26 +78,6 @@ static int setVencChn(video_ch_index_t ch, const video_ch_param_t* param)
     pvchn->u32DstFrameRate = param->fps;
 
     return 0;
-}
-
-static int app_ipcam_Exit(void)
-{
-    APP_CHK_RET(app_ipcam_Venc_Stop(APP_VENC_ALL), "Venc Stop");
-    APP_CHK_RET(app_ipcam_Vpss_DeInit(), "Vpss DeInit");
-    APP_CHK_RET(app_ipcam_Vi_DeInit(), "Vi DeInit");
-    APP_CHK_RET(app_ipcam_Sys_DeInit(), "System DeInit");
-
-    return CVI_SUCCESS;
-}
-
-static int app_ipcam_Init(void)
-{
-    APP_CHK_RET(app_ipcam_Sys_Init(), "init systerm");
-    APP_CHK_RET(app_ipcam_Vi_Init(), "init vi module");
-    APP_CHK_RET(app_ipcam_Vpss_Init(), "init vpss module");
-    APP_CHK_RET(app_ipcam_Venc_Init(APP_VENC_ALL), "init video encode");
-
-    return CVI_SUCCESS;
 }
 
 int initVideo(void)
@@ -109,13 +89,19 @@ int initVideo(void)
 
 int deinitVideo(void)
 {
-    app_ipcam_Exit();
+    APP_CHK_RET(app_ipcam_Venc_Stop(APP_VENC_ALL), "Venc Stop");
+    APP_CHK_RET(app_ipcam_Vpss_DeInit(), "Vpss DeInit");
+    APP_CHK_RET(app_ipcam_Vi_DeInit(), "Vi DeInit");
+    APP_CHK_RET(app_ipcam_Sys_DeInit(), "System DeInit");
 }
 
 int startVideo(void)
 {
     /* init modules include <Peripheral; Sys; VI; VB; OSD; Venc; AI; Audio; etc.> */
-    APP_CHK_RET(app_ipcam_Init(), "app_ipcam_Init");
+    APP_CHK_RET(app_ipcam_Sys_Init(), "init systerm");
+    APP_CHK_RET(app_ipcam_Vi_Init(), "init vi module");
+    APP_CHK_RET(app_ipcam_Vpss_Init(), "init vpss module");
+    APP_CHK_RET(app_ipcam_Venc_Init(APP_VENC_ALL), "init video encode");
 
     /* start video encode */
     APP_CHK_RET(app_ipcam_Venc_Start(APP_VENC_ALL), "start video processing");

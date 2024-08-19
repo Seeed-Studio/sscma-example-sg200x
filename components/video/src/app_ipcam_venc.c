@@ -32,7 +32,7 @@
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-APP_PARAM_VENC_CTX_S g_stVencCtx, *g_pstVencCtx = &g_stVencCtx;
+static APP_PARAM_VENC_CTX_S g_stVencCtx, *g_pstVencCtx = &g_stVencCtx;
 
 static pthread_t g_Venc_pthread[VENC_CHN_MAX];
 
@@ -59,12 +59,12 @@ APP_PARAM_VENC_CTX_S *app_ipcam_Venc_Param_Get(void)
     return g_pstVencCtx;
 }
 
-APP_VENC_CHN_CFG_S *app_ipcam_VencChnCfg_Get(VENC_CHN VencChn)
-{
-    APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[VencChn];
+// APP_VENC_CHN_CFG_S *app_ipcam_VencChnCfg_Get(VENC_CHN VencChn)
+// {
+//     APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[VencChn];
 
-    return pstVencChnCfg;
-}
+//     return pstVencChnCfg;
+// }
 
 int app_ipcam_Venc_Consumes(int chn, int index, pfpDataConsumes consume)
 {
@@ -80,6 +80,7 @@ int app_ipcam_Venc_Consumes(int chn, int index, pfpDataConsumes consume)
     return 0;
 }
 
+#if 0
 int app_ipcam_Venc_RefPara_Set(VENC_CHN VencChn, APP_REF_PARAM_S *pstRefCfg)
 {
     VENC_REF_PARAM_S stRefParam, *pstRefParam = &stRefParam;
@@ -122,8 +123,9 @@ CVI_S32 app_ipcam_Venc_ReEncode_Close(void)
 {
     return 0;
 }
+#endif
 
-CVI_S32 app_ipcam_Venc_FrameLost_Set(VENC_CHN VencChn, APP_FRAMELOST_PARAM_S *pFrameLostCfg)
+static CVI_S32 app_ipcam_Venc_FrameLost_Set(VENC_CHN VencChn, APP_FRAMELOST_PARAM_S *pFrameLostCfg)
 {
     VENC_FRAMELOST_S stFL, *pstFL = &stFL;
 
@@ -139,7 +141,7 @@ CVI_S32 app_ipcam_Venc_FrameLost_Set(VENC_CHN VencChn, APP_FRAMELOST_PARAM_S *pF
     return CVI_SUCCESS;
 }
 
-CVI_S32 app_ipcam_Venc_H264Trans_Set(VENC_CHN VencChn)
+static CVI_S32 app_ipcam_Venc_H264Trans_Set(VENC_CHN VencChn)
 {
     VENC_H264_TRANS_S h264Trans = { 0 };
 
@@ -156,7 +158,7 @@ CVI_S32 app_ipcam_Venc_H264Trans_Set(VENC_CHN VencChn)
 }
 
 
-CVI_S32 app_ipcam_Venc_H264Entropy_Set(VENC_CHN VencChn)
+static CVI_S32 app_ipcam_Venc_H264Entropy_Set(VENC_CHN VencChn)
 {
     APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[VencChn];
     VENC_H264_ENTROPY_S h264Entropy = { 0 };
@@ -176,7 +178,7 @@ CVI_S32 app_ipcam_Venc_H264Entropy_Set(VENC_CHN VencChn)
     return CVI_SUCCESS;
 }
 
-CVI_S32 app_ipcam_Venc_H264Vui_Set(VENC_CHN VencChn)
+static CVI_S32 app_ipcam_Venc_H264Vui_Set(VENC_CHN VencChn)
 {
     VENC_H264_VUI_S h264Vui = { 0 };
     APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[VencChn];
@@ -239,7 +241,7 @@ CVI_S32 app_ipcam_Venc_H264Vui_Set(VENC_CHN VencChn)
     return CVI_SUCCESS;
 }
 
-CVI_S32 app_ipcam_Venc_H265Trans_Set(VENC_CHN VencChn)
+static CVI_S32 app_ipcam_Venc_H265Trans_Set(VENC_CHN VencChn)
 {
     VENC_H265_TRANS_S h265Trans = { 0 };
 
@@ -257,7 +259,7 @@ CVI_S32 app_ipcam_Venc_H265Trans_Set(VENC_CHN VencChn)
     return CVI_SUCCESS;
 }
 
-CVI_S32 app_ipcam_Venc_H265Vui_Set(VENC_CHN VencChn)
+static CVI_S32 app_ipcam_Venc_H265Vui_Set(VENC_CHN VencChn)
 {
     VENC_H265_VUI_S h265Vui = { 0 };
     APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[VencChn];
@@ -361,7 +363,7 @@ static CVI_S32 app_ipcam_Venc_Roi_Set(VENC_CHN vencChn, APP_VENC_ROI_CFG_S *pstR
     return CVI_SUCCESS;
 }
 
-CVI_S32 app_ipcam_Venc_Jpeg_Param_Set(VENC_CHN VencChn, APP_JPEG_CODEC_PARAM_S *pstJpegCodecCfg)
+static CVI_S32 app_ipcam_Venc_Jpeg_Param_Set(VENC_CHN VencChn, APP_JPEG_CODEC_PARAM_S *pstJpegCodecCfg)
 {
     VENC_JPEG_PARAM_S stJpegParam, *pstJpegParam = &stJpegParam;
 
@@ -380,7 +382,7 @@ CVI_S32 app_ipcam_Venc_Jpeg_Param_Set(VENC_CHN VencChn, APP_JPEG_CODEC_PARAM_S *
     return CVI_SUCCESS;
 }
 
-int app_ipcam_Venc_Chn_Attr_Set(VENC_ATTR_S *pstVencAttr, APP_VENC_CHN_CFG_S *pstVencChnCfg)
+static int app_ipcam_Venc_Chn_Attr_Set(VENC_ATTR_S *pstVencAttr, APP_VENC_CHN_CFG_S *pstVencChnCfg)
 {
     pstVencAttr->enType = pstVencChnCfg->enType;
     pstVencAttr->u32MaxPicWidth = pstVencChnCfg->u32Width;
@@ -421,7 +423,7 @@ int app_ipcam_Venc_Chn_Attr_Set(VENC_ATTR_S *pstVencAttr, APP_VENC_CHN_CFG_S *ps
     return CVI_SUCCESS;
 }
 
-int app_ipcam_Venc_Gop_Attr_Set(VENC_GOP_ATTR_S *pstGopAttr, APP_VENC_CHN_CFG_S *pstVencChnCfg)
+static int app_ipcam_Venc_Gop_Attr_Set(VENC_GOP_ATTR_S *pstGopAttr, APP_VENC_CHN_CFG_S *pstVencChnCfg)
 {
     VENC_GOP_MODE_E enGopMode = pstVencChnCfg->enGopMode;
 
@@ -480,7 +482,7 @@ int app_ipcam_Venc_Gop_Attr_Set(VENC_GOP_ATTR_S *pstGopAttr, APP_VENC_CHN_CFG_S 
     return CVI_SUCCESS;
 }
 
-int app_ipcam_Venc_Rc_Attr_Set(VENC_RC_ATTR_S *pstRCAttr, APP_VENC_CHN_CFG_S *pstVencChnCfg)
+static int app_ipcam_Venc_Rc_Attr_Set(VENC_RC_ATTR_S *pstRCAttr, APP_VENC_CHN_CFG_S *pstVencChnCfg)
 {
     int SrcFrmRate = pstVencChnCfg->u32SrcFrameRate;
     int DstFrmRate = pstVencChnCfg->u32DstFrameRate;
@@ -661,7 +663,7 @@ int app_ipcam_Venc_Rc_Attr_Set(VENC_RC_ATTR_S *pstRCAttr, APP_VENC_CHN_CFG_S *ps
     return CVI_SUCCESS;
 }
 
-void app_ipcam_Venc_Attr_Check(VENC_CHN_ATTR_S *pstVencChnAttr)
+static void app_ipcam_Venc_Attr_Check(VENC_CHN_ATTR_S *pstVencChnAttr)
 {
     if (pstVencChnAttr->stVencAttr.enType == PT_H264) {
         // pstVencChnAttr->stVencAttr.stAttrH264e.bSingleLumaBuf = 1;
@@ -699,7 +701,7 @@ void app_ipcam_Venc_Attr_Check(VENC_CHN_ATTR_S *pstVencChnAttr)
     }
 }
 
-int app_ipcam_Venc_Rc_Param_Set(
+static int app_ipcam_Venc_Rc_Param_Set(
     VENC_CHN VencChn,
     PAYLOAD_TYPE_E enCodecType,
     VENC_RC_MODE_E enRcMode,
@@ -830,7 +832,7 @@ int app_ipcam_Venc_Rc_Param_Set(
     return CVI_SUCCESS;
 }
 
-CVI_S32 app_ipcam_Venc_SingleEsBuff_Set(CVI_VOID)
+static CVI_S32 app_ipcam_Venc_SingleEsBuff_Set(CVI_VOID)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
 
@@ -903,6 +905,7 @@ static CVI_S32 app_ipcam_Postfix_Get(PAYLOAD_TYPE_E enPayload, char *szPostfix)
     return CVI_SUCCESS;
 }
 
+#if 0
 static int _streaming_save_to_flash(APP_VENC_CHN_CFG_S *pstVencChnCfg, VENC_STREAM_S *pstStream)
 {
     if (pstVencChnCfg->pFile == NULL) {
@@ -947,6 +950,7 @@ static int _streaming_save_to_flash(APP_VENC_CHN_CFG_S *pstVencChnCfg, VENC_STRE
 
     return CVI_SUCCESS;
 }
+#endif
 
 void app_ipcam_JpgCapFlag_Set(CVI_BOOL bEnable)
 {
@@ -1171,7 +1175,7 @@ static void *Thread_Streaming_Proc(void *pArgs)
     return (CVI_VOID *) CVI_SUCCESS;
 }
 
-CVI_S32 SAMPLE_COMM_FRAME_SaveToFile(VENC_CHN VencChn, VIDEO_FRAME_INFO_S* pstVideoFrame)
+static CVI_S32 SAMPLE_COMM_FRAME_SaveToFile(VENC_CHN VencChn, VIDEO_FRAME_INFO_S* pstVideoFrame)
 {
     CVI_U32 u32len, u32DataLen;
 
@@ -1489,6 +1493,65 @@ VENC_EXIT0:
     return s32Ret;
 }
 
+int app_ipcam_Venc_Start(APP_VENC_CHN_E VencIdx)
+{
+    CVI_S32 s32Ret = CVI_SUCCESS;
+    APP_PARAM_SYS_CFG_S *pstSysCfg = app_ipcam_Sys_Param_Get();
+    CVI_BOOL bSBMEnable = pstSysCfg->bSBMEnable;
+
+    for (VENC_CHN s32ChnIdx = 0; s32ChnIdx < g_pstVencCtx->s32VencChnCnt; s32ChnIdx++) {
+        APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[s32ChnIdx];
+        VENC_CHN VencChn = pstVencChnCfg->VencChn;
+        if ((!pstVencChnCfg->bEnable) || (pstVencChnCfg->bStart))
+            continue;
+
+        if (!((VencIdx >> s32ChnIdx) & 0x01))
+            continue;
+
+        VENC_RECV_PIC_PARAM_S stRecvParam = {0};
+        stRecvParam.s32RecvPicNum = -1;
+
+        APP_CHK_RET(CVI_VENC_StartRecvFrame(VencChn, &stRecvParam), "Start recv frame");
+       
+        if (bSBMEnable) {
+            if ((s32ChnIdx == 0) && (pstVencChnCfg->enBindMode != VENC_BIND_DISABLE)) {
+                s32Ret = CVI_SYS_Bind(&pstVencChnCfg->astChn[0], &pstVencChnCfg->astChn[1]);
+                if (s32Ret != CVI_SUCCESS) {
+                    APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_SYS_Bind failed with %#x\n", s32Ret);
+                }
+            }
+        }
+
+        pthread_attr_t pthread_attr;
+        pthread_attr_init(&pthread_attr);
+
+        // pthread_mutex_init(&pastVencChnCfg->SwitchMutex, NULL);
+        pfp_task_entry fun_entry = NULL;
+        if (pstVencChnCfg->enType == PT_JPEG) {
+            fun_entry = Thread_Jpg_Proc;
+        } else {
+            struct sched_param param;
+            param.sched_priority = 80;
+            pthread_attr_setschedpolicy(&pthread_attr, SCHED_RR);
+            pthread_attr_setschedparam(&pthread_attr, &param);
+            pthread_attr_setinheritsched(&pthread_attr, PTHREAD_EXPLICIT_SCHED);
+            fun_entry = Thread_Streaming_Proc;
+        }
+
+        g_Venc_pthread[VencChn] = 0;
+        s32Ret = pthread_create(
+                        &g_Venc_pthread[VencChn],
+                        &pthread_attr,
+                        fun_entry,
+                        (CVI_VOID *)pstVencChnCfg);
+        if (s32Ret) {
+            APP_PROF_LOG_PRINT(LEVEL_ERROR, "[Chn %d]pthread_create failed:0x%x\n", VencChn, s32Ret);
+            return CVI_FAILURE;
+        }
+    }
+    return CVI_SUCCESS;
+}
+
 int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx)
 {
     CVI_S32 s32Ret;
@@ -1573,63 +1636,3 @@ int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx)
 
     return CVI_SUCCESS;
 }
-
-int app_ipcam_Venc_Start(APP_VENC_CHN_E VencIdx)
-{
-    CVI_S32 s32Ret = CVI_SUCCESS;
-    APP_PARAM_SYS_CFG_S *pstSysCfg = app_ipcam_Sys_Param_Get();
-    CVI_BOOL bSBMEnable = pstSysCfg->bSBMEnable;
-
-    for (VENC_CHN s32ChnIdx = 0; s32ChnIdx < g_pstVencCtx->s32VencChnCnt; s32ChnIdx++) {
-        APP_VENC_CHN_CFG_S *pstVencChnCfg = &g_pstVencCtx->astVencChnCfg[s32ChnIdx];
-        VENC_CHN VencChn = pstVencChnCfg->VencChn;
-        if ((!pstVencChnCfg->bEnable) || (pstVencChnCfg->bStart))
-            continue;
-
-        if (!((VencIdx >> s32ChnIdx) & 0x01))
-            continue;
-
-        VENC_RECV_PIC_PARAM_S stRecvParam = {0};
-        stRecvParam.s32RecvPicNum = -1;
-
-        APP_CHK_RET(CVI_VENC_StartRecvFrame(VencChn, &stRecvParam), "Start recv frame");
-       
-        if (bSBMEnable) {
-            if ((s32ChnIdx == 0) && (pstVencChnCfg->enBindMode != VENC_BIND_DISABLE)) {
-                s32Ret = CVI_SYS_Bind(&pstVencChnCfg->astChn[0], &pstVencChnCfg->astChn[1]);
-                if (s32Ret != CVI_SUCCESS) {
-                    APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_SYS_Bind failed with %#x\n", s32Ret);
-                }
-            }
-        }
-
-        pthread_attr_t pthread_attr;
-        pthread_attr_init(&pthread_attr);
-
-        // pthread_mutex_init(&pastVencChnCfg->SwitchMutex, NULL);
-        pfp_task_entry fun_entry = NULL;
-        if (pstVencChnCfg->enType == PT_JPEG) {
-            fun_entry = Thread_Jpg_Proc;
-        } else {
-            struct sched_param param;
-            param.sched_priority = 80;
-            pthread_attr_setschedpolicy(&pthread_attr, SCHED_RR);
-            pthread_attr_setschedparam(&pthread_attr, &param);
-            pthread_attr_setinheritsched(&pthread_attr, PTHREAD_EXPLICIT_SCHED);
-            fun_entry = Thread_Streaming_Proc;
-        }
-
-        g_Venc_pthread[VencChn] = 0;
-        s32Ret = pthread_create(
-                        &g_Venc_pthread[VencChn],
-                        &pthread_attr,
-                        fun_entry,
-                        (CVI_VOID *)pstVencChnCfg);
-        if (s32Ret) {
-            APP_PROF_LOG_PRINT(LEVEL_ERROR, "[Chn %d]pthread_create failed:0x%x\n", VencChn, s32Ret);
-            return CVI_FAILURE;
-        }
-    }
-    return CVI_SUCCESS;
-}
-

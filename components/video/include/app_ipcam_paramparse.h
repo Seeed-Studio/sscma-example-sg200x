@@ -14,7 +14,7 @@ extern "C"
 {
 #endif
 
-int app_set_VencChnType(int ch, PAYLOAD_TYPE_E enType);
+int app_ipcam_Param_setVencChnType(int ch, PAYLOAD_TYPE_E enType);
 int app_ipcam_Param_Load(void);
 
 #ifdef __cplusplus

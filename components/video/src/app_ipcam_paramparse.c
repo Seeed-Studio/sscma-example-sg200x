@@ -120,7 +120,7 @@ static const APP_RC_PARAM_S h264_stRcParam = {
     .s32AvbrPureStillThr = 4,
 };
 
-const APP_VENC_CHN_CFG_S venc_h264 = {
+static const APP_VENC_CHN_CFG_S venc_h264 = {
     .bEnable = 0,
     .enType = PT_H264,
     .u32Duration = 75,
@@ -184,7 +184,7 @@ static const APP_RC_PARAM_S h265_stRcParam = {
     .s32AvbrPureStillThr = 4,
 };
 
-const APP_VENC_CHN_CFG_S venc_h265 = {
+static const APP_VENC_CHN_CFG_S venc_h265 = {
     .bEnable = 0,
     .enType = PT_H265,
     .u32Duration = 75,
@@ -222,7 +222,7 @@ const APP_VENC_CHN_CFG_S venc_h265 = {
     .stRcParam = h265_stRcParam,
 };
 
-const APP_VENC_CHN_CFG_S venc_jpeg = {
+static const APP_VENC_CHN_CFG_S venc_jpeg = {
     .bEnable = 0,
     .enType = PT_JPEG,
     .u32Duration = 0,
@@ -241,7 +241,7 @@ const APP_VENC_CHN_CFG_S venc_jpeg = {
 
 static const APP_VENC_ROI_CFG_S roi_cfg = { 0 };
 
-int app_set_VencChnType(int ch, PAYLOAD_TYPE_E enType)
+int app_ipcam_Param_setVencChnType(int ch, PAYLOAD_TYPE_E enType)
 {
     APP_PARAM_VENC_CTX_S* venc = app_ipcam_Venc_Param_Get();
 
@@ -334,7 +334,7 @@ int app_ipcam_Param_Load(void)
     APP_PARAM_VENC_CTX_S* venc = app_ipcam_Venc_Param_Get();
     venc->s32VencChnCnt = APP_IPCAM_CHN_NUM;
     for (uint32_t i = 0; i < venc->s32VencChnCnt; i++) {
-        app_set_VencChnType(i, PT_H264);
+        app_ipcam_Param_setVencChnType(i, PT_H264);
     }
 
     return CVI_SUCCESS;

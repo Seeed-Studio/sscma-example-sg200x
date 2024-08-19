@@ -16,8 +16,8 @@
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-APP_PARAM_VPSS_CFG_T g_stVpssCfg;
-APP_PARAM_VPSS_CFG_T *g_pstVpssCfg = &g_stVpssCfg;
+static APP_PARAM_VPSS_CFG_T g_stVpssCfg;
+static APP_PARAM_VPSS_CFG_T *g_pstVpssCfg = &g_stVpssCfg;
 
 /**************************************************************************
  *                 E X T E R N A L    R E F E R E N C E S                 *
@@ -32,7 +32,7 @@ APP_PARAM_VPSS_CFG_T *app_ipcam_Vpss_Param_Get(void)
     return g_pstVpssCfg;
 }
 
-int app_ipcam_Vpss_Destroy(VPSS_GRP VpssGrp)
+static int app_ipcam_Vpss_Destroy(VPSS_GRP VpssGrp)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
 
@@ -70,7 +70,7 @@ int app_ipcam_Vpss_Destroy(VPSS_GRP VpssGrp)
     return CVI_SUCCESS;
 }
 
-int app_ipcam_Vpss_Create(VPSS_GRP VpssGrp)
+static int app_ipcam_Vpss_Create(VPSS_GRP VpssGrp)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
     APP_PARAM_SYS_CFG_S *pstSysCfg = app_ipcam_Sys_Param_Get();
@@ -171,7 +171,7 @@ VPSS_EXIT:
 
 }
 
-int app_ipcam_Vpss_Unbind(VPSS_GRP VpssGrp)
+static int app_ipcam_Vpss_Unbind(VPSS_GRP VpssGrp)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
 
@@ -194,7 +194,7 @@ int app_ipcam_Vpss_Unbind(VPSS_GRP VpssGrp)
     return CVI_SUCCESS;
 }
 
-int app_ipcam_Vpss_Bind(VPSS_GRP VpssGrp)
+static int app_ipcam_Vpss_Bind(VPSS_GRP VpssGrp)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
 
