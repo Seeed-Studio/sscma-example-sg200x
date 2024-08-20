@@ -14,7 +14,7 @@
 
 #include "video.h"
 
-#define P_MAX_SIZE (1536 * 1024) //P oversize 512K lost it
+#define P_MAX_SIZE (2048 * 1024) //P oversize 512K lost it
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -68,24 +68,19 @@ int app_ipcam_Venc_Consumes_Set(int chn, int index, pfpDataConsumes consume, voi
     return 0;
 }
 
-CVI_S32 app_ipcam_Postfix_Get(PAYLOAD_TYPE_E enPayload, char *szPostfix)
+char* app_ipcam_Postfix_Get(PAYLOAD_TYPE_E enPayload)
 {
-    _NULL_POINTER_CHECK_(szPostfix, -1);
-
     if (enPayload == PT_H264)
-        strcpy(szPostfix, ".h264");
+        return ".h264";
     else if (enPayload == PT_H265)
-        strcpy(szPostfix, ".h265");
+        return ".h265";
     else if (enPayload == PT_JPEG)
-        strcpy(szPostfix, ".jpg");
+        return ".jpg";
     else if (enPayload == PT_MJPEG)
-        strcpy(szPostfix, ".mjp");
+        return ".mjp";
     else {
-        APP_PROF_LOG_PRINT(LEVEL_ERROR, "payload type(%d) err!\n", enPayload);
-        return CVI_FAILURE;
+        return NULL;
     }
-    
-    return CVI_SUCCESS;
 }
 
 static CVI_S32 app_ipcam_Venc_FrameLost_Set(VENC_CHN VencChn, APP_FRAMELOST_PARAM_S *pFrameLostCfg)
@@ -883,42 +878,65 @@ static CVI_S32 _Data_Free(void **src)
     return CVI_SUCCESS;
 }
 
-
-static void *Thread_Streaming_Proc(void *pArgs)
+static void* Thread_Streaming_Proc(void* pArgs)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
-    APP_VENC_CHN_CFG_S *pastVencChnCfg = (APP_VENC_CHN_CFG_S *)pArgs;
+    APP_VENC_CHN_CFG_S* pastVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
     VENC_CHN VencChn = pastVencChnCfg->VencChn;
     CVI_S32 vpssGrp = pastVencChnCfg->VpssGrp;
     CVI_S32 vpssChn = pastVencChnCfg->VpssChn;
     CVI_S32 iTime = GetCurTimeInMsec();
 
-    CVI_CHAR TaskName[64] = {'\0'};
+    CVI_CHAR TaskName[64] = { '\0' };
     sprintf(TaskName, "Thread_Venc%d_Proc", VencChn);
     prctl(PR_SET_NAME, TaskName, 0, 0, 0);
     APP_PROF_LOG_PRINT(LEVEL_INFO, "Venc channel_%d start running\n", VencChn);
 
-    usleep(1000);
     pastVencChnCfg->bStart = CVI_TRUE;
     while (pastVencChnCfg->bStart) {
-        VIDEO_FRAME_INFO_S stVencFrame = {0};
-        iTime = GetCurTimeInMsec();
+        VIDEO_FRAME_INFO_S stVpssFrame = { 0 };
 
         if (pastVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
-            if (CVI_VPSS_GetChnFrame(vpssGrp, vpssChn, &stVencFrame, 3000) != CVI_SUCCESS) {
+            if (CVI_VPSS_GetChnFrame(vpssGrp, vpssChn, &stVpssFrame, 3000) != CVI_SUCCESS) {
                 continue;
             }
             APP_PROF_LOG_PRINT(LEVEL_DEBUG, "VencChn-%d Get Frame takes %u ms \n", VencChn, (GetCurTimeInMsec() - iTime));
-        
-            if (CVI_VENC_SendFrame(VencChn, &stVencFrame, 3000) != CVI_SUCCESS) {   /* takes 0~1ms */
+            iTime = GetCurTimeInMsec();
+
+            if (PIXEL_FORMAT_RGB_888 == stVpssFrame.stVFrame.enPixelFormat) {
+                // get rgb frame
+                VENC_STREAM_S stStream = { 0 };
+                VENC_PACK_S pack = { 0 };
+                stStream.u32PackCount = 1;
+                stStream.pstPack = &pack;
+                pack.u32Len = stVpssFrame.stVFrame.u32Stride[0] * stVpssFrame.stVFrame.u32Height;
+                if (pack.u32Len > 0) {
+                    pack.u32DataNum = stVpssFrame.stVFrame.u32TimeRef;
+                    pack.u64PTS = stVpssFrame.stVFrame.u64PTS;
+                    pack.u64PhyAddr = stVpssFrame.stVFrame.u64PhyAddr[0];
+                    pack.pu8Addr = CVI_SYS_Mmap(pack.u64PhyAddr, pack.u32Len);
+                    s32Ret = app_ipcam_LList_Data_Push(&stStream, g_pDataCtx[VencChn]);
+                    if (s32Ret != CVI_SUCCESS) {
+                        APP_PROF_LOG_PRINT(LEVEL_ERROR, "Venc streaming push linklist failed!\n");
+                    }
+                    CVI_SYS_Munmap(pack.pu8Addr, pack.u32Len);
+                }
+
+                // release frame
+                s32Ret = CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVpssFrame);
+                if (s32Ret != CVI_SUCCESS)
+                    APP_PROF_LOG_PRINT(LEVEL_ERROR, "vpss release Chn-frame failed with:0x%x\n", s32Ret);
+                continue;
+            } else if (CVI_VENC_SendFrame(VencChn, &stVpssFrame, 3000) != CVI_SUCCESS) { /* takes 0~1ms */
                 APP_PROF_LOG_PRINT(LEVEL_ERROR, "Venc send frame failed with %#x\n", s32Ret);
-                s32Ret = CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVencFrame);
+                s32Ret = CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVpssFrame);
                 if (s32Ret != CVI_SUCCESS)
                     APP_PROF_LOG_PRINT(LEVEL_ERROR, "vpss release Chn-frame failed with:0x%x\n", s32Ret);
                 continue;
             }
         }
 
+        // vencFd
         CVI_S32 vencFd = CVI_VENC_GetFd(VencChn);
         if (vencFd <= 0) {
             APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_VENC_GetFd failed with%#x!\n", vencFd);
@@ -930,7 +948,7 @@ static void *Thread_Streaming_Proc(void *pArgs)
 
         struct timeval timeoutVal;
         timeoutVal.tv_sec = 0;
-        timeoutVal.tv_usec = 80*1000;
+        timeoutVal.tv_usec = 80 * 1000;
         iTime = GetCurTimeInMsec();
         s32Ret = select(vencFd + 1, &readFds, NULL, NULL, &timeoutVal);
         if (s32Ret < 0) {
@@ -939,13 +957,14 @@ static void *Thread_Streaming_Proc(void *pArgs)
             APP_PROF_LOG_PRINT(LEVEL_ERROR, "VencChn(%d) select failed!\n", VencChn);
             break;
         } else if (s32Ret == 0) {
-            APP_PROF_LOG_PRINT(LEVEL_DEBUG, "VencChn(%d) select timeout %u ms \n", 
-                                            VencChn, (GetCurTimeInMsec() - iTime));
+            APP_PROF_LOG_PRINT(LEVEL_DEBUG, "VencChn(%d) select timeout %u ms \n",
+                VencChn, (GetCurTimeInMsec() - iTime));
             continue;
         }
 
-        VENC_STREAM_S stStream = {0};
-        stStream.pstPack = (VENC_PACK_S *)malloc(sizeof(VENC_PACK_S) * H26X_MAX_NUM_PACKS);
+        // get stream
+        VENC_STREAM_S stStream = { 0 };
+        stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * H26X_MAX_NUM_PACKS);
         if (stStream.pstPack == NULL) {
             APP_PROF_LOG_PRINT(LEVEL_ERROR, "streaming malloc memory failed!\n");
             break;
@@ -954,21 +973,15 @@ static void *Thread_Streaming_Proc(void *pArgs)
         ISP_EXP_INFO_S stExpInfo;
         memset(&stExpInfo, 0, sizeof(stExpInfo));
         CVI_ISP_QueryExposureInfo(0, &stExpInfo);
-        CVI_S32 timeout = (1000 * 2) / (stExpInfo.u32Fps / 100); //u32Fps = fps * 100
+        CVI_S32 timeout = (1000 * 2) / (stExpInfo.u32Fps / 100); // u32Fps = fps * 100
         s32Ret = CVI_VENC_GetStream(VencChn, &stStream, timeout);
+        if (pastVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
+            CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVpssFrame);
+        }
         if (s32Ret != CVI_SUCCESS || (0 == stStream.u32PackCount)) {
-            APP_PROF_LOG_PRINT(LEVEL_DEBUG, "CVI_VENC_GetStream, VencChn(%d) cnt(%d), s32Ret = 0x%X timeout:%d %d\n", 
+            APP_PROF_LOG_PRINT(LEVEL_WARN, "CVI_VENC_GetStream, VencChn(%d) cnt(%d), s32Ret = 0x%X timeout:%d %d\n",
                 VencChn, stStream.u32PackCount, s32Ret, timeout, stExpInfo.u32Fps);
-            free(stStream.pstPack);
-            stStream.pstPack = NULL;
-            if (pastVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
-                CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVencFrame);
-            }
-            continue;
-        } else {
-            if (pastVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
-                CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVencFrame);
-            }
+            goto CONTINUE;
         }
 
         if ((1 == stStream.u32PackCount) && (stStream.pstPack[0].u32Len > P_MAX_SIZE)) {
@@ -985,15 +998,15 @@ static void *Thread_Streaming_Proc(void *pArgs)
         s32Ret = CVI_VENC_ReleaseStream(VencChn, &stStream);
         if (s32Ret != CVI_SUCCESS) {
             APP_PROF_LOG_PRINT(LEVEL_ERROR, "CVI_VENC_ReleaseStream, s32Ret = %d\n", s32Ret);
-            free(stStream.pstPack);
-            stStream.pstPack = NULL;
-            continue;
+            goto CONTINUE;
         }
+
+    CONTINUE:
         free(stStream.pstPack);
         stStream.pstPack = NULL;
     }
 
-    return (CVI_VOID *)CVI_SUCCESS;
+    return (CVI_VOID*)CVI_SUCCESS;
 }
 
 static void app_ipcam_VencRemap(void)
@@ -1150,7 +1163,6 @@ int app_ipcam_Venc_Init(APP_VENC_CHN_E VencIdx)
             stDataParam.fpDataSave = _Data_Save;
             stDataParam.fpDataFree = _Data_Free;
             stDataParam.fpDataHandle = _Data_Handle;
-
             s32Ret = app_ipcam_LList_Data_Init(&g_pDataCtx[VencChn], &stDataParam);
             if (s32Ret != CVI_SUCCESS) {
                 APP_PROF_LOG_PRINT(LEVEL_ERROR, "Link list data init failed with %#x\n", s32Ret);
