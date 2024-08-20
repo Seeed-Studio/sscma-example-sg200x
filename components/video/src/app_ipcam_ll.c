@@ -191,7 +191,7 @@ static void *Thread_LList_Data_Consume(void *pArgs)
     return NULL;
 }
 
-int app_ipcam_LList_Data_Init(void * *pCtx, void *pParam)
+int app_ipcam_LList_Data_Init(void **pCtx, void *pParam)
 {
     if ((pCtx == NULL) || (pParam == NULL)) {
         printf("pCtx or pParam is NULL\n");
@@ -206,16 +206,8 @@ int app_ipcam_LList_Data_Init(void * *pCtx, void *pParam)
         return -1;
     }
 
-    pDataCtx->stDataParam.pParam = (void *)pDataParam->pParam;
-    pDataCtx->stDataParam.fpDataSave   = pDataParam->fpDataSave;
-    pDataCtx->stDataParam.fpDataFree   = pDataParam->fpDataFree;
-    pDataCtx->stDataParam.fpDataHandle = pDataParam->fpDataHandle;
-    for (int i = 0; i < APP_DATA_COMSUMES_MAX; i++) {
-        pDataCtx->stDataParam.fpDataConsumes[i] = pDataParam->fpDataConsumes[i];
-    }
-
+    pDataCtx->stDataParam = *pDataParam;
     pDataCtx->LListDepth = 0;
-
     pthread_mutex_init(&pDataCtx->mutex, NULL);
 
     /* init link list head */

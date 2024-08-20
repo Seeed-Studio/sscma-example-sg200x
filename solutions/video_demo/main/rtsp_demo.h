@@ -39,7 +39,7 @@ typedef struct APP_PARAM_RTSP_S {
     pthread_mutex_t RsRtspMutex;
 } APP_PARAM_RTSP_T;
 
-int fpStreamingSendToRtsp(void* pData, void* pArgs);
+int fpStreamingSendToRtsp(void* pData, void* pArgs, void *pUserData);
 int initRtsp(uint8_t chEnableFlag);
 int deinitRtsp(void);
 

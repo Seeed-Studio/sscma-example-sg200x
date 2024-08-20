@@ -48,13 +48,12 @@ typedef struct {
     uint32_t id;
 } video_frame_t;
 
-typedef int (*video_data_handler)(void *pdata, void *pargs);
 
 int initVideo(void);
 int deinitVideo(void);
 int startVideo(void);
 int setupVideo(video_ch_index_t ch, const video_ch_param_t* param);
-int registerVideoFrameHandler(video_ch_index_t ch, int index, video_data_handler handler);
+int registerVideoFrameHandler(video_ch_index_t ch, int index, pfpDataConsumes handler, void* pUserData);
 
 #ifdef __cplusplus
 }

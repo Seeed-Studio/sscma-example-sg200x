@@ -163,7 +163,7 @@ error:
     return s32Ret;
 }
 
-int fpStreamingSendToRtsp(void* pData, void* pArgs)
+int fpStreamingSendToRtsp(void* pData, void* pArgs, void *pUserData)
 {
     APP_DATA_CTX_S* pstDataCtx = (APP_DATA_CTX_S*)pArgs;
     APP_DATA_PARAM_S* pstDataParam = &pstDataCtx->stDataParam;

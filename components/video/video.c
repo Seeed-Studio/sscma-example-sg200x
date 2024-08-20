@@ -129,8 +129,8 @@ int setupVideo(video_ch_index_t ch, const video_ch_param_t* param)
     return 0;
 }
 
-int registerVideoFrameHandler(video_ch_index_t ch, int index, video_data_handler handler)
+int registerVideoFrameHandler(video_ch_index_t ch, int index, pfpDataConsumes handler, void* pUserData)
 {
-    app_ipcam_Venc_Consumes(ch, index, handler);
+    app_ipcam_Venc_Consumes_Set(ch, index, handler, pUserData);
     return 0;
 }

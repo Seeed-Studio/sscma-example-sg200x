@@ -13,7 +13,6 @@ extern "C"
 typedef int (*pfpDataSave)(void **dst, void *src);
 typedef int (*pfpDataFree)(void **src);
 typedef void (*pfpDataHandle)(void *data, void *param);
-typedef int (*pfpDataConsumes)(void *pData, void *pCtx);
 
 typedef struct llhead {
     struct llhead *prev;
@@ -30,7 +29,6 @@ typedef struct APP_DATA_PARAM_T {
     pfpDataSave fpDataSave;
     pfpDataFree fpDataFree;
     pfpDataHandle fpDataHandle;
-    pfpDataConsumes fpDataConsumes[APP_DATA_COMSUMES_MAX];
 } APP_DATA_PARAM_S;
 
 typedef struct APP_DATA_CTX_T {

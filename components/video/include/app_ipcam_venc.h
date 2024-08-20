@@ -234,12 +234,11 @@ typedef struct APP_PARAM_VENC_CTX_T {
     APP_VENC_ROI_CFG_S astRoiCfg[MAX_NUM_ROI];
 } APP_PARAM_VENC_CTX_S;
 
-#define CHK_PARAM_IS_NEED_UPDATE(SRC, DST, PARAM, FLAG) do {   \
-        if ((FLAG & PARAM) == PARAM)    SRC = DST;      \
-    } while(0)
+typedef int (*pfpDataConsumes)(void *pData, void *pCtx, void *pUserData);
 
 APP_PARAM_VENC_CTX_S *app_ipcam_Venc_Param_Get(void);
-int app_ipcam_Venc_Consumes(int chn, int index, pfpDataConsumes consume);
+int app_ipcam_Venc_Consumes_Set(int chn, int index, pfpDataConsumes consume, void *pUserData);
+CVI_S32 app_ipcam_Postfix_Get(PAYLOAD_TYPE_E enPayload, char *szPostfix);
 int app_ipcam_Venc_Init(APP_VENC_CHN_E VencIdx);
 int app_ipcam_Venc_Start(APP_VENC_CHN_E VencIdx);
 int app_ipcam_Venc_Stop(APP_VENC_CHN_E VencIdx);
