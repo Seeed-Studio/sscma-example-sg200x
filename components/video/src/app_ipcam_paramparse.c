@@ -10,8 +10,8 @@
 // SYS - vb_pool
 static const APP_PARAM_VB_CFG_S vbpool = {
     .bEnable = 0,
-    .width = 1920,
-    .height = 1080,
+    .width = 1,//1920,
+    .height = 1,//1080,
     .fmt = PIXEL_FORMAT_NV21,
     .enBitWidth = DATA_BITWIDTH_8,
     .enCmpMode = COMPRESS_MODE_NONE,
