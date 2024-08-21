@@ -16,10 +16,11 @@ vpss - grp0 - chn0(max 1920) - vencchn0 FILE(H264/H265/JPGE)
 */
 
 typedef enum {
-    VIDEO_FORMAT_RGB888 = 0,
+    VIDEO_FORMAT_RGB888 = 0, // no need venc
+    VIDEO_FORMAT_NV21, // no need venc
+    VIDEO_FORMAT_JPEG,
     VIDEO_FORMAT_H264,
     VIDEO_FORMAT_H265,
-    VIDEO_FORMAT_JPEG,
 
     VIDEO_FORMAT_COUNT
 } video_format_t;

@@ -77,6 +77,10 @@ static int setVencChn(video_ch_index_t ch, const video_ch_param_t* param)
     pvchn->u32Height = param->height;
     pvchn->u32DstFrameRate = param->fps;
 
+    if ((VIDEO_FORMAT_RGB888 == param->format) || (VIDEO_FORMAT_NV21 == param->format)) {
+        pvchn->no_need_venc = 1;
+    }
+
     return 0;
 }
 

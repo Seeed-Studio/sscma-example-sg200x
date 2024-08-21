@@ -213,6 +213,7 @@ typedef struct APP_VENC_CHN_CFG_T {
     CVI_BOOL bFirstStreamTCost; // for get first streaming time cost
     CVI_CHAR SavePath[32];
     // volatile CVI_S32 savePic;
+    CVI_BOOL no_need_venc;
 } APP_VENC_CHN_CFG_S;
 
 typedef struct APP_VENC_ROI_CFG_T {

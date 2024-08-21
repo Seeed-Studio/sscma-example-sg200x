@@ -903,26 +903,13 @@ static void* Thread_Streaming_Proc(void* pArgs)
             APP_PROF_LOG_PRINT(LEVEL_DEBUG, "VencChn-%d Get Frame takes %u ms \n", VencChn, (GetCurTimeInMsec() - iTime));
             iTime = GetCurTimeInMsec();
 
-            if (PIXEL_FORMAT_RGB_888 == stVpssFrame.stVFrame.enPixelFormat) {
-                // get rgb frame
-                VENC_STREAM_S stStream = { 0 };
-                VENC_PACK_S pack = { 0 };
-                stStream.u32PackCount = 1;
-                stStream.pstPack = &pack;
-                pack.u32Len = stVpssFrame.stVFrame.u32Stride[0] * stVpssFrame.stVFrame.u32Height;
-                if (pack.u32Len > 0) {
-                    pack.u32DataNum = stVpssFrame.stVFrame.u32TimeRef;
-                    pack.u64PTS = stVpssFrame.stVFrame.u64PTS;
-                    pack.u64PhyAddr = stVpssFrame.stVFrame.u64PhyAddr[0];
-                    pack.pu8Addr = CVI_SYS_Mmap(pack.u64PhyAddr, pack.u32Len);
-                    s32Ret = app_ipcam_LList_Data_Push(&stStream, g_pDataCtx[VencChn]);
-                    if (s32Ret != CVI_SUCCESS) {
-                        APP_PROF_LOG_PRINT(LEVEL_ERROR, "Venc streaming push linklist failed!\n");
+            if (pastVencChnCfg->no_need_venc) {
+                for (uint32_t i = 0; i < APP_DATA_COMSUMES_MAX; i++) {
+                    if (g_Consumes[VencChn][i]) {
+                        g_Consumes[VencChn][i](&stVpssFrame, &pastVencChnCfg, g_pUserData[VencChn][i]);
                     }
-                    CVI_SYS_Munmap(pack.pu8Addr, pack.u32Len);
                 }
-
-                // release frame
+                // release vpss frame
                 s32Ret = CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVpssFrame);
                 if (s32Ret != CVI_SUCCESS)
                     APP_PROF_LOG_PRINT(LEVEL_ERROR, "vpss release Chn-frame failed with:0x%x\n", s32Ret);
