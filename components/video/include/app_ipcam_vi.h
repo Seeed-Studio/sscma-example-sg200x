@@ -10,6 +10,7 @@
 #include "cvi_vi.h"
 #include "cvi_sys.h"
 
+#include "app_ipcam_isp.h"
 #include "app_ipcam_sensors.h"
 
 #ifdef __cplusplus
@@ -18,18 +19,6 @@ extern "C"
 #endif
 
 #define WDR_MAX_PIPE_NUM 4 //need checking by jammy
-
-#ifdef SUPPORT_ISP_PQTOOL
-#define PQ_BIN_SDR          "/mnt/data/cvi_sdr_bin"
-#define PQ_BIN_IR           "/mnt/data/cvi_sdr_ir_bin"
-#define PQ_BIN_NIGHT_COLOR  "/mnt/data/cvi_night_color_bin"
-#define PQ_BIN_WDR          "/mnt/data/cvi_wdr_bin"
-#else
-#define PQ_BIN_SDR          "/mnt/cfg/param/cvi_sdr_bin"
-#define PQ_BIN_IR           "/mnt/cfg/param/cvi_sdr_ir_bin"
-#define PQ_BIN_NIGHT_COLOR  "/mnt/cfg/param/cvi_night_color_bin"
-#define PQ_BIN_WDR          "/mnt/cfg/param/cvi_wdr_bin"
-#endif
 
 typedef struct APP_PARAM_VI_PM_DATA_T {
 	VI_PIPE ViPipe;
@@ -117,8 +106,6 @@ typedef struct APP_PARAM_VI_CFG_T {
 APP_PARAM_VI_CTX_S *app_ipcam_Vi_Param_Get(void);
 int app_ipcam_Vi_Init(void);
 int app_ipcam_Vi_DeInit(void);
-void app_ipcam_Framerate_Set(CVI_U8 viPipe, CVI_U8 fps);
-CVI_U8 app_ipcam_Framerate_Get(CVI_U8 viPipe);
 
 #ifdef __cplusplus
 }

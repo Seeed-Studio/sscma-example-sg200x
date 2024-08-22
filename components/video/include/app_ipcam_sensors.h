@@ -1,15 +1,6 @@
 #ifndef __APP_IPCAM_SENSORS_H__
 #define __APP_IPCAM_SENSORS_H__
 
-#include "cvi_comm_3a.h"
-#include "cvi_comm_isp.h"
-#include "cvi_comm_sns.h"
-#include "cvi_isp.h"
-#include "cvi_mipi.h"
-#include "cvi_sns_ctrl.h"
-#include "cvi_sys.h"
-#include "cvi_vi.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
