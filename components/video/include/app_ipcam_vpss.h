@@ -1,9 +1,7 @@
 #ifndef __APP_IPCAM_VPSS_H__
 #define __APP_IPCAM_VPSS_H__
-#include "cvi_vpss.h"
-#include "linux/cvi_comm_video.h"
-#include "linux/cvi_comm_sys.h"
-#include "linux/cvi_comm_vpss.h"
+
+#include <cvi_vpss.h>
 
 #ifdef __cplusplus
 extern "C"

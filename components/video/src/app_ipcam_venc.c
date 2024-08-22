@@ -1,18 +1,13 @@
 
-#include <pthread.h>
 #include <sys/prctl.h>
-#include <sys/time.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 
-#include "cvi_vpss.h"
-#include "errno.h"
-#include "app_ipcam_venc.h"
-#include "cvi_type.h"
-#include "cvi_ae.h"
+#include <cvi_type.h>
+#include <cvi_vpss.h>
+#include <cvi_ae.h>
+
 #include "app_ipcam_paramparse.h"
-
-#include "video.h"
 
 #define P_MAX_SIZE (2048 * 1024) //P oversize 512K lost it
 /**************************************************************************

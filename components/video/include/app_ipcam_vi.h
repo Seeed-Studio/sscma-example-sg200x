@@ -1,14 +1,11 @@
 #ifndef __APP_IPCAM_VI_H__
 #define __APP_IPCAM_VI_H__
 
-#include "cvi_sns_ctrl.h"
-#include "cvi_comm_isp.h"
-#include "cvi_comm_3a.h"
-#include "cvi_comm_sns.h"
-#include "cvi_mipi.h"
-#include "cvi_isp.h"
-#include "cvi_vi.h"
-#include "cvi_sys.h"
+#include <cvi_isp.h>
+#include <cvi_mipi.h>
+#include <cvi_sns_ctrl.h>
+#include <cvi_sys.h>
+#include <cvi_vi.h>
 
 #include "app_ipcam_isp.h"
 #include "app_ipcam_sensors.h"

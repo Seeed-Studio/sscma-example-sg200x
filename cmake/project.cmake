@@ -8,9 +8,6 @@ message(STATUS "SG200X_SDK_PATH: ${SG200X_SDK_PATH}")
 include_directories("${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot/usr/include")
 link_directories("${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot/usr/lib")
 
-include_directories("${SG200X_SDK_PATH}/middleware/v2/include")
-link_directories("${SG200X_SDK_PATH}/v2/lib")
-
 include_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_tpu_sdk/include")
 link_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_tpu_sdk/lib")
 

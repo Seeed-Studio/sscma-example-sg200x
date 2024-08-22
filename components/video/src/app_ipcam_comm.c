@@ -1,5 +1,6 @@
-#include "app_ipcam_comm.h"
 #include <sys/time.h>
+
+#include "app_ipcam_comm.h"
 
 unsigned int GetCurTimeInMsec(void)
 {

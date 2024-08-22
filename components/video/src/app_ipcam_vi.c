@@ -1,17 +1,6 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <pthread.h>
-#include <sys/prctl.h>
-#include <sys/time.h>
-#include <unistd.h>
+#include <linux/cvi_comm_sys.h>
+#include <cvi_awb.h>
 
-#include "linux/cvi_comm_sys.h"
-#include "cvi_bin.h"
-#include "cvi_ae.h"
-#include "cvi_awb.h"
-
-#include "app_ipcam_vi.h"
 #include "app_ipcam_paramparse.h"
 
 /**************************************************************************

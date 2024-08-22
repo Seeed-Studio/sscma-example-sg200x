@@ -1,5 +1,6 @@
 #ifndef __APP_IPCAM_LL_H__
 #define __APP_IPCAM_LL_H__
+
 #include <stdbool.h>
 
 #ifdef __cplusplus

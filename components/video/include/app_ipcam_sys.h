@@ -1,9 +1,6 @@
 #ifndef __APP_IPCAM_SYS_H__
 #define __APP_IPCAM_SYS_H__
 
-#include "linux/cvi_comm_video.h"
-#include "linux/cvi_comm_sys.h"
-
 #ifdef __cplusplus
 extern "C"
 {

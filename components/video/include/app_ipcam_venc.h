@@ -1,12 +1,8 @@
 #ifndef __APP_IPCAM_VENC_H__
 #define __APP_IPCAM_VENC_H__
 
-#include "stdint.h"
-#include "stdbool.h"
-#include "stddef.h"
-#include "linux/cvi_comm_video.h"
-#include "linux/cvi_comm_sys.h"
-#include "cvi_venc.h"
+#include <cvi_venc.h>
+
 #include "app_ipcam_ll.h"
 
 #ifdef __cplusplus

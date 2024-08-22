@@ -1,10 +1,6 @@
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include "cvi_type.h"
 #include "cvi_vb.h"
 #include "cvi_buffer.h"
-#include "app_ipcam_sys.h"
+
 #include "app_ipcam_paramparse.h"
 
 /**************************************************************************

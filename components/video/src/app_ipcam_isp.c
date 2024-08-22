@@ -1,28 +1,21 @@
 #include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <pthread.h>
 #include <sys/prctl.h>
-#include <sys/time.h>
 #include <unistd.h>
 
-#include "linux/cvi_comm_sys.h"
-#include "cvi_bin.h"
-#include "cvi_ae.h"
-#include "cvi_awb.h"
-#include "app_ipcam_vi.h"
-#include "cvi_ispd2.h"
+#include <linux/cvi_comm_sys.h>
+#include <cvi_ae.h>
+#include <cvi_awb.h>
+#include <cvi_bin.h>
 
 #include "app_ipcam_paramparse.h"
-
-#ifdef SUPPORT_ISP_PQTOOL
-#include <dlfcn.h>
-#endif
 
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
 #ifdef SUPPORT_ISP_PQTOOL
+#include <dlfcn.h>
+#include "cvi_ispd2.h"
+
 #define ISPD_LIBNAME "libcvi_ispd2.so"
 #define ISPD_CONNECT_PORT 5566
 /* 183x not support continuous RAW dump */

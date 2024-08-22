@@ -1,10 +1,3 @@
-#include <getopt.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "app_ipcam_paramparse.h"
 
 // SYS - vb_pool

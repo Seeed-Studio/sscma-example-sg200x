@@ -1,18 +1,3 @@
-#include <math.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/prctl.h>
-#include <sys/time.h>
-#include <unistd.h>
-
-#include "app_ipcam_vi.h"
-#include "cvi_ae.h"
-#include "cvi_awb.h"
-#include "cvi_bin.h"
-#include "cvi_ispd2.h"
-#include "linux/cvi_comm_sys.h"
-
 #include "app_ipcam_paramparse.h"
 
 static const VI_DEV_ATTR_S vi_dev_attr_base = {

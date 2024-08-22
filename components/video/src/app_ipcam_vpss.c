@@ -1,4 +1,3 @@
-#include "app_ipcam_vpss.h"
 #include "app_ipcam_paramparse.h"
 
 /**************************************************************************
