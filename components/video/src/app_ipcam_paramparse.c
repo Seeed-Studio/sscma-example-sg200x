@@ -63,7 +63,9 @@ static const VPSS_CHN_ATTR_S chn_attr = {
     .bFlip = 0,
     .u32Depth = 0,
     .stAspectRatio = {
-        .enMode = ASPECT_RATIO_NONE,
+        .enMode = ASPECT_RATIO_AUTO,
+        .bEnableBgColor = 1,
+        .u32BgColor = 0x727272,
     },
 };
 
