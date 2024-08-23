@@ -35,7 +35,7 @@ static const APP_PARAM_DEV_CFG_T dev_cfg = {
 
 static const APP_PARAM_PIPE_CFG_T pipe_cfg = {
     .aPipe = { 0, -1, -1, -1 },
-    .enMastPipeMode = VI_ONLINE_VPSS_ONLINE,
+    .enMastPipeMode = VI_OFFLINE_VPSS_OFFLINE,
 };
 
 static const APP_PARAM_CHN_CFG_T chn_cfg = {
@@ -281,7 +281,7 @@ int app_ipcam_Param_Load(void)
     for (uint32_t i = 0; i < sys->vb_pool_num; i++) {
         sys->vb_pool[i] = vbpool;
     }
-    sys->stVIVPSSMode.aenMode[0] = VI_ONLINE_VPSS_ONLINE;
+    sys->stVIVPSSMode.aenMode[0] = VI_OFFLINE_VPSS_ONLINE;
     sys->stVPSSMode.enMode = VPSS_MODE_DUAL;
     sys->stVPSSMode.aenInput[0] = VPSS_INPUT_MEM;
     sys->stVPSSMode.aenInput[1] = VPSS_INPUT_ISP;
@@ -309,7 +309,7 @@ int app_ipcam_Param_Load(void)
     pgrp->VpssGrp = 0;
     pgrp->stVpssGrpAttr = grp_attr;
     pgrp->stVpssGrpAttr.u8VpssDev = 1;
-    pgrp->bBindMode = 1;
+    pgrp->bBindMode = 0;
     pgrp->astChn[0].enModId = CVI_ID_VI; // src
     pgrp->astChn[0].s32DevId = 0;
     pgrp->astChn[0].s32ChnId = 0;
