@@ -1,15 +1,19 @@
-set(SG200X_PLATFORM ON)
+set(SOPHGO_PLATFORM ON)
 
 include(${ROOT_DIR}/cmake/macro.cmake)
+
+set(CMAKE_CXX_STANDARD 17)
 
 if( NOT "${SG200X_SDK_PATH}" STREQUAL "" )
 message(STATUS "SG200X_SDK_PATH: ${SG200X_SDK_PATH}")
 
-include_directories("${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot/usr/include")
-link_directories("${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot/usr/lib")
+set(SYSROOT ${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot)
+include_directories("${SYSROOT}/usr/include")
+link_directories("${SYSROOT}/usr/lib")
 
 include_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_tpu_sdk/include")
 link_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_tpu_sdk/lib")
+link_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/rootfs/mnt/system/lib")
 
 else()
 message(WARNING "SG200X_SDK_PATH is not set")
