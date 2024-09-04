@@ -4,6 +4,7 @@
 #include <numeric>
 #include <stdio.h>
 #include <string>
+#include <cv2/opencv.hpp>
 
 #include <sscma.h>
 
@@ -20,7 +21,7 @@ int main(int argc, char** argv) {
         MA_LOGE(TAG, "engine init failed");
         return 1;
     }
-    ret = engine->loadModel(argv[1]);
+    ret = engine->load(argv[1]);
 
     MA_LOGI(TAG, "engine load model %s", argv[1]);
     if (ret != MA_OK) {

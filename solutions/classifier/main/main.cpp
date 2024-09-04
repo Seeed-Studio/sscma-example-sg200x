@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
         MA_LOGE(TAG, "engine init failed");
         return 1;
     }
-    ret = engine->loadModel(argv[1]);
+    ret = engine->load(argv[1]);
     if (ret != MA_OK) {
         MA_LOGE(TAG, "engine load model failed");
         return 1;
