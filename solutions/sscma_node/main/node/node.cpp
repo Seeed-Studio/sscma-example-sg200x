@@ -9,7 +9,10 @@ Node::Node(std::string type, std::string id)
       id_(std::move(id)),
       server_(nullptr),
       started_(false),
-      dependencies_() {}
+      mutex_(),
+      dependencies_() {
+    MA_LOGD(TAG, "create node: %s(%s) %p", type_.c_str(), id_.c_str(), &mutex_);
+}
 
 Node::~Node() = default;
 
@@ -108,7 +111,6 @@ void NodeFactory::destroy(const std::string id) {
 }
 
 Node* NodeFactory::find(const std::string id) {
-    Guard guard(m_mutex);
     auto node = m_nodes.find(id);
     if (node == m_nodes.end()) {
         return nullptr;

@@ -30,33 +30,37 @@ StreamNode::~StreamNode() {
 }
 
 void StreamNode::threadEntry() {
+    videoFrame* frame = nullptr;
 
     // wait for dependencies ready
     while (true) {
         for (auto dep : dependencies_) {
             auto n = NodeFactory::find(dep);
             if (n == nullptr) {
-                Thread::sleep(Tick::fromMilliseconds(10));
                 break;
             }
             if (camera_ == nullptr && n->type() == "camera") {
+                Thread::enterCritical();
                 camera_ = reinterpret_cast<CameraNode*>(n);
                 camera_->config(CHN_H264);
                 camera_->attach(CHN_H264, &frame_);
                 camera_->onStart();
+                Thread::exitCritical();
                 break;
             }
         }
         if (camera_ != nullptr) {
             break;
         }
+        Thread::sleep(Tick::fromMilliseconds(10));
     }
 
     while (true) {
-        videoFrame* frame = nullptr;
         if (frame_.fetch(reinterpret_cast<void**>(&frame))) {
+            Thread::enterCritical();
             transport_->send((char*)frame->img.data, frame->img.size);
             frame->release();
+            Thread::exitCritical();
         }
     }
 }

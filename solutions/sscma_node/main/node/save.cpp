@@ -62,7 +62,7 @@ bool SaveNode::recycle() {
         for (const auto& file : files) {
             uint64_t file_size = file.file_size();
             if (std::filesystem::remove(file)) {
-                MA_LOGI(TAG, "exceed max size, remove %s", file.path().c_str());
+                MA_LOGI(TAG, "exceed max size %d KB, remove %s", max_size_, file.path().c_str());
                 total_size -= file_size;
                 if (total_size <= max_size_) {
                     break;
@@ -74,28 +74,29 @@ bool SaveNode::recycle() {
 }
 
 void SaveNode::threadEntry() {
-    ma_tick_t start_ = 0;
-
-
+    ma_tick_t start_  = 0;
+    videoFrame* frame = nullptr;
     // wait for dependencies ready
     while (true) {
         for (auto dep : dependencies_) {
             auto n = NodeFactory::find(dep);
             if (n == nullptr) {
-                Thread::sleep(Tick::fromMilliseconds(10));
                 break;
             }
             if (camera_ == nullptr && n->type() == "camera") {
+                Thread::enterCritical();
                 camera_ = reinterpret_cast<CameraNode*>(n);
                 camera_->config(CHN_H264);
                 camera_->attach(CHN_H264, &frame_);
                 camera_->onStart();
+                Thread::exitCritical();
                 break;
             }
         }
         if (camera_ != nullptr) {
             break;
         }
+        Thread::sleep(Tick::fromMilliseconds(10));
     }
 
     if (slice_ <= 0) {
@@ -104,26 +105,22 @@ void SaveNode::threadEntry() {
     }
 
     while (true) {
-        videoFrame* frame = nullptr;
-        try {
-            if (frame_.fetch(reinterpret_cast<void**>(&frame))) {
-                if (slice_ > 0 && frame->timestamp >= start_ + Tick::fromSeconds(slice_)) {
-                    start_ = frame->timestamp;
-                    file_.flush();
-                    file_.close();
-                    file_.open(generateFileName(), std::ios::binary | std::ios::out);
-                    recycle();
-                    if (frame->count < 2) {
-                        MA_LOGV(TAG, "skip first I-frame: %d", frame->count);
-                        frame->release();
-                        continue;
-                    }
+        if (frame_.fetch(reinterpret_cast<void**>(&frame))) {
+            Thread::enterCritical();
+            if (slice_ > 0 && frame->timestamp >= start_ + Tick::fromSeconds(slice_)) {
+                start_ = frame->timestamp;
+                file_.flush();
+                file_.close();
+                file_.open(generateFileName(), std::ios::binary | std::ios::out);
+                recycle();
+                if (frame->count < 2) {
+                    frame->release();
+                    continue;
                 }
-                file_.write(reinterpret_cast<char*>(frame->img.data), frame->img.size);
-                frame->release();
             }
-        } catch (std::exception& e) {
-            MA_LOGE(TAG, "exception: %s", e.what());
+            file_.write(reinterpret_cast<char*>(frame->img.data), frame->img.size);
+            frame->release();
+            Thread::exitCritical();
         }
     }
 }

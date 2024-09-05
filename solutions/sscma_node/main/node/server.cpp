@@ -6,7 +6,6 @@ namespace ma::node {
 static constexpr char TAG[] = "ma::node::server";
 
 void NodeServer::onConnect(struct mosquitto* mosq, int rc) {
-    MA_LOGD(TAG, "connect");
     std::string topic = m_topic_in_prefix + "/+";
     mosquitto_subscribe(mosq, NULL, m_topic_in_prefix.c_str(), 0);
     mosquitto_subscribe(mosq, NULL, topic.c_str(), 0);
@@ -17,7 +16,6 @@ void NodeServer::onConnect(struct mosquitto* mosq, int rc) {
 }
 
 void NodeServer::onDisconnect(struct mosquitto* mosq, int rc) {
-    MA_LOGD(TAG, "disconnect");
     m_connected.store(false);
 }
 
@@ -114,19 +112,25 @@ void NodeServer::onMessageStub(struct mosquitto* mosq,
 }
 
 void NodeServer::response(const std::string& id, const json& msg) {
-    Guard guard(m_mutex);
+
     if (!m_connected) {
         MA_LOGW(TAG, "not connected, skip response:%s ==> %s", id.c_str(), msg.dump().c_str());
         return;
     }
+    Guard guard(m_mutex);
     std::string topic = m_topic_out_prefix + '/' + id;
-    MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().c_str());
-    int mid = mosquitto_publish(
+    int mid           = mosquitto_publish(
         m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);
+    if (msg.dump().size() < 256) {
+        MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().c_str());
+    } else {
+        MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().substr(0, 256).c_str());
+    }
+    return;
 }
 
 NodeServer::NodeServer(std::string client_id)
-    : m_client(nullptr), m_connected(false), m_client_id(std::move(client_id)) {
+    : m_client(nullptr), m_connected(false), m_client_id(std::move(client_id)), m_mutex() {
     mosquitto_lib_init();
 
     m_client = mosquitto_new(m_client_id.c_str(), true, this);

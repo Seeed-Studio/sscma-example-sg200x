@@ -37,9 +37,11 @@ public:
             delete this;
         }
     }
+    Semaphore sem;
     ma_tick_t timestamp;
     std::atomic<int> ref_cnt;
     bool own;
+    bool physical;
     uint32_t index;
     uint32_t count;
     ma_img_t img;
@@ -68,8 +70,10 @@ public:
 
 
 protected:
-    int callback(void* pData, void* pArgs);
-    static int callbackStub(void* pData, void* pArgs, void* pUserData);
+    int vencCallback(void* pData, void* pArgs);
+    int vpssCallback(void* pData, void* pArgs);
+    static int vencCallbackStub(void* pData, void* pArgs, void* pUserData);
+    static int vpssCallbackStub(void* pData, void* pArgs, void* pUserData);
     std::vector<channel> channels_;
     std::atomic<bool> started_;
 };

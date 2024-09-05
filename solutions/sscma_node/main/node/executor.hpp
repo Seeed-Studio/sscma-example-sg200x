@@ -34,6 +34,7 @@ public:
 
         _worker_handler = new Thread(_worker_name.c_str(), &Executor::c_run, priority, stack_size);
         MA_ASSERT(_worker_handler);
+
         if (!_worker_handler->start(this)) {
             delete _worker_handler;
             MA_ASSERT(false);
