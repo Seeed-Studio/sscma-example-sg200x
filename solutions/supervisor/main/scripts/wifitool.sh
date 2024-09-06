@@ -117,4 +117,13 @@ remove)
     wpa_cli -i wlan0 remove_network $2
     wpa_cli -i wlan0 save_config
     ;;
+
+passwd)
+    if [ "$2" ]; then
+        sed -i "s/wpa_passphrase=.*$/wpa_passphrase=$2/g" /etc/hostapd_2g4.conf
+    else
+        echo ""
+    fi
+    ;;
+
 esac
