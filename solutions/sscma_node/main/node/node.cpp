@@ -53,7 +53,7 @@ Node* NodeFactory::create(const std::string id,
     //         }
     //     }
     // }
-
+    
 
     Node* n    = it->second.create(id);
     n->server_ = server;
@@ -78,7 +78,6 @@ Node* NodeFactory::create(const std::string id,
     //         m_nodes[dep]->onStart();
     //     }
     // }
-
 
     n->onStart();
 
@@ -121,7 +120,9 @@ Node* NodeFactory::find(const std::string id) {
 void NodeFactory::clear() {
     Guard guard(m_mutex);
     for (auto node : m_nodes) {
-        destroy(node.first);
+        node.second->onStop();
+        node.second->onDestroy();
+        delete node.second;
     }
     m_nodes.clear();
 }

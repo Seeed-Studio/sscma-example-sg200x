@@ -117,7 +117,7 @@ void NodeServer::response(const std::string& id, const json& msg) {
         MA_LOGW(TAG, "not connected, skip response:%s ==> %s", id.c_str(), msg.dump().c_str());
         return;
     }
-    Guard guard(m_mutex);
+   // Guard guard(m_mutex);
     std::string topic = m_topic_out_prefix + '/' + id;
     int mid           = mosquitto_publish(
         m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);

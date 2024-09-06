@@ -21,18 +21,14 @@ NodeServer server("recamera");
 
 static void sigHandler(int sig) {
     MA_LOGW("sscma", "Caught signal %d", sig);
-    NodeFactory::clear();
-    server.response("",
-                    json::object({{"type", MA_MSG_TYPE_RESP},
-                                  {"name", "node"},
-                                  {"code", MA_FAILED},
-                                  {"data", "terminated"}}));
+    deinitVideo();
     exit(0);
 }
 
 int main(int argc, char* argv[]) {
 
     signal(SIGINT, sigHandler);
+    signal(SIGSEGV, sigHandler);
     signal(SIGTERM, sigHandler);
     signal(SIGHUP, sigHandler);
     signal(SIGQUIT, sigHandler);
