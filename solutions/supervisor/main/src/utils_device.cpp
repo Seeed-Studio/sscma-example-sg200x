@@ -61,6 +61,18 @@ static std::string getGateWay(std::string ip)
     return res;
 }
 
+static void clearNewline(char* value, int len) {
+    if (value[len - 1] == '\n') {
+        value[len - 1] = '\0';
+    }
+}
+
+static void clearNewline(std::string& value) {
+    if (value.back() == '\n') {
+        value.erase(value.size() - 1);
+    }
+}
+
 int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
 {
     syslog(LOG_INFO, "start to get SystemUpdateVersinInfo...\n");
@@ -361,6 +373,81 @@ int cancelUpdate(HttpRequest* req, HttpResponse* resp)
     response["code"] = 0;
     response["msg"] = "";
     response["data"] = hv::Json({});
+
+    return resp->Json(response);
+}
+
+int getDeviceList(HttpRequest* req, HttpResponse* resp) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
+    char info[128] = "";
+    std::string deviceName = readFile(PATH_DEVICE_NAME);
+    hv::Json response, data;
+
+    strcat(cmd, req->client_addr.ip.c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    data.push_back({
+        {"deviceName", deviceName},
+        {"ip", info}
+    });
+
+    if (strlen(info) == 0) {
+        response["code"] = 1;
+        response["mgs"] = "";
+    } else {
+        response["code"] = 0;
+        response["mgs"] = "";
+    }
+    response["data"]["deviceList"] = data;
+
+    return resp->Json(response);
+}
+
+int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
+    std::string os_version = readFile(PATH_ISSUE);
+    std::string os = "Null", version = "Null";
+    size_t pos;
+
+    clearNewline(os_version);
+    pos = os_version.find(' ');
+    if (pos != std::string::npos) {
+        os = os_version.substr(0, pos);
+        version = os_version.substr(pos + 1);
+    }
+
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
+    char info[128] = "";
+
+    strcat(cmd, req->client_addr.ip.c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    hv::Json response, data;
+
+    data["deviceName"] = os;
+    data["ip"] = info;
+    data["status"] = 1;
+    data["osVersion"] = version;
+    data["sn"] = "-";
+
+    response["code"] = 0;
+    response["mgs"] = "";
+    response["data"] = data;
 
     return resp->Json(response);
 }

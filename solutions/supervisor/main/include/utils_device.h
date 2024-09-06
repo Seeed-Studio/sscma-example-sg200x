@@ -15,4 +15,6 @@ int updateSystem(HttpRequest* req, HttpResponse* resp);
 int getUpdateProgress(HttpRequest* req, HttpResponse* resp);
 int cancelUpdate(HttpRequest* req, HttpResponse* resp);
 
+int getDeviceList(HttpRequest* req, HttpResponse* resp);
+int getDeviceInfo(HttpRequest* req, HttpResponse* resp);
 #endif

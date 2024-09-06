@@ -50,4 +50,9 @@
 #define SCRIPT_UPGRADE_QUERY SCRIPT_UPGRADE(query)
 #define SCRIPT_UPGRADE_STOP SCRIPT_UPGRADE(stop)
 
+/* devicetool.sh */
+#define SCRIPT_DEVICE(action) ("/mnt/system/usr/scripts/devicetool.sh" \
+                                " " #action " ")
+#define SCRIPT_DEVICE_GETADDRESSS SCRIPT_DEVICE(getAddress)
+
 #endif
