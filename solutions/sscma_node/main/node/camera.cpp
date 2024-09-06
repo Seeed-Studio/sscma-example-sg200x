@@ -6,8 +6,6 @@ static constexpr char TAG[] = "ma::node::camera";
 
 const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
 
-static uint8_t test_buf[32 * 32 * 3] = {0};
-
 CameraNode::CameraNode(std::string id)
     : Node("camera", std::move(id)), started_(false), channels_(CHN_MAX) {
     for (int i = 0; i < CHN_MAX; i++) {
@@ -19,8 +17,10 @@ CameraNode::CameraNode(std::string id)
 
 CameraNode::~CameraNode() {
     if (started_) {
+        Thread::enterCritical();
         deinitVideo();
         Thread::sleep(Tick::fromSeconds(3));
+        Thread::exitCritical();
     }
 };
 
@@ -79,16 +79,18 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     frame->img.width  = channels_[pstVencChnCfg->VencChn].width;
     frame->img.height = channels_[pstVencChnCfg->VencChn].height;
     frame->img.format = channels_[pstVencChnCfg->VencChn].format;
-    frame->img.data   = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[0], frame->img.size);
-    frame->count      = 1;
-    frame->index      = 1;
-    frame->timestamp  = Tick::current();
-
+    // frame->img.data                   = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[0], frame->img.size);
+    frame->count     = 1;
+    frame->index     = 1;
+    frame->timestamp = Tick::current();
+    frame->phy_addr  = f->u64PhyAddr[0];
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
         if (!msgbox->post(frame, Tick::fromMilliseconds(30))) {
             frame->release();
         }
     }
+    frame->wait();
+    delete frame;
 
     return CVI_SUCCESS;
 }
@@ -157,8 +159,10 @@ ma_err_t CameraNode::onDestroy() {
     Guard guard(mutex_);
     if (started_) {
         started_ = false;
+        Thread::enterCritical();
         deinitVideo();
         Thread::sleep(Tick::fromSeconds(3));
+        Thread::exitCritical();
     }
 
     server_->response(
@@ -187,7 +191,6 @@ ma_err_t CameraNode::onStart() {
         }
     }
 
-
     // check configured
     for (int i = 0; i < CHN_MAX; i++) {
         if (channels_[i].enabled && !channels_[i].configured) {
@@ -196,9 +199,10 @@ ma_err_t CameraNode::onStart() {
         }
     }
 
+    Thread::enterCritical();
     startVideo();
-
     Thread::sleep(Tick::fromSeconds(1));
+    Thread::exitCritical();
 
     started_ = true;
     return MA_OK;
@@ -210,8 +214,10 @@ ma_err_t CameraNode::onStop() {
         return MA_OK;
     }
     started_ = false;
+    Thread::enterCritical();
     deinitVideo();
     Thread::sleep(Tick::fromSeconds(3));
+    Thread::exitCritical();
     return MA_OK;
 }
 
