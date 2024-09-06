@@ -10,4 +10,6 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp);
 int autoConnectWiFi(HttpRequest* req, HttpResponse* resp);
 int forgetWiFi(HttpRequest* req, HttpResponse* resp);
 
+std::string getWiFiName(const char* ifrName);
+
 #endif

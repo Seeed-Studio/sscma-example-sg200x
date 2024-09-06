@@ -122,4 +122,14 @@ int deinitHttpd()
     return 0;
 }
 
+int initWiFi() {
+    char cmd[128] = SCRIPT_WIFI_START;
+    std::string wifiName = getWiFiName("wlan0");
+
+    strcat(cmd, wifiName.c_str());
+    system(cmd);
+
+    return 0;
+}
+
 } // extern "C" {

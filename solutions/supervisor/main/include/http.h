@@ -8,6 +8,8 @@ extern "C" {
 int initHttpd();
 int deinitHttpd();
 
+int initWiFi();
+
 } // extern "C" {
 
 #endif

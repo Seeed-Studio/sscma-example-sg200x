@@ -201,7 +201,37 @@ static int getLocalNetInfo(const char *name, std::string &ip, std::string &mask,
     syslog(LOG_INFO, "mask: %s\n", mask.c_str());
     syslog(LOG_INFO, "mac: %s\n", mac.c_str());
 
-	return 0;
+    return 0;
+}
+
+std::string getWiFiName(const char* ifrName) {
+    std::string wifiName = "reCamera_xxxxxx";
+    int fd;
+
+    struct ifreq ifr;
+
+    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        syslog(LOG_ERR, "socket");
+        return wifiName;
+    }
+
+    strncpy(ifr.ifr_name, ifrName, IFNAMSIZ);
+
+    if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
+        syslog(LOG_ERR, "ioctl");
+        close(fd);
+        return wifiName;
+    }
+
+    const char* data = ifr.ifr_hwaddr.sa_data;
+
+    sprintf(&wifiName[0], "reCamera_%02x%02x%02x", (uint8_t) data[3], (uint8_t) data[4], (uint8_t) data[5]);
+
+    syslog(LOG_INFO, "wifiName: %s\n", wifiName.c_str());
+
+    close(fd);
+
+    return wifiName;
 }
 
 int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)

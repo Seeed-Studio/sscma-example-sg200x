@@ -15,7 +15,7 @@ static void exitHandle(int signo) {
 }
 
 static void initSupervisor() {
-    system(SCRIPT_WIFI_START);
+    initWiFi();
     initHttpd();
 
     signal(SIGINT, &exitHandle);
