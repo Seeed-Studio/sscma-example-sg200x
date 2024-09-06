@@ -114,8 +114,15 @@ void ModelNode::threadEntry() {
 
         reply["data"]["resolution"] = json::array({raw->img.width, raw->img.height});
 
+        ma_tensor_t tensor = {
+            .is_physical = true,
+            .is_variable = false,
+        };
+        tensor.data.addr = raw->phy_addr;
+        engine_->setInput(0, tensor);
+
         if (detector != nullptr) {
-            err           = detector->run(&raw->img);
+            err           = detector->run(nullptr);
             auto _perf    = detector->getPerf();
             auto _results = detector->getResults();
             reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
@@ -128,9 +135,8 @@ void ModelNode::threadEntry() {
                                                   static_cast<int8_t>(result.score * 100),
                                                   result.target});
             }
-
         } else if (classifier != nullptr) {
-            err           = classifier->run(&raw->img);
+            err           = classifier->run(nullptr);
             auto _perf    = classifier->getPerf();
             auto _results = classifier->getResults();
             reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
