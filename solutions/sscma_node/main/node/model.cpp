@@ -13,6 +13,7 @@ ModelNode::ModelNode(std::string id)
     : Node("model", id),
       uri_(""),
       debug_(true),
+      count_(0),
       engine_(nullptr),
       model_(nullptr),
       thread_(nullptr),
@@ -120,7 +121,7 @@ void ModelNode::threadEntry() {
         };
         tensor.data.addr = raw->phy_addr;
         engine_->setInput(0, tensor);
-
+        model_->setRunDone([this, raw](void* ctx) { raw->release(); });
         if (detector != nullptr) {
             err           = detector->run(nullptr);
             auto _perf    = detector->getPerf();
@@ -147,7 +148,6 @@ void ModelNode::threadEntry() {
             }
         }
 
-        raw->release();
 
         if (debug_) {
             int base64_len = 4 * ((jpeg->img.size + 2) / 3 + 2);
@@ -297,6 +297,7 @@ ma_err_t ModelNode::onStart() {
         return MA_OK;
     }
     started_ = true;
+    count_   = 0;
     thread_->start(this);
     return MA_OK;
 }
