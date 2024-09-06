@@ -29,7 +29,7 @@ public:
         ref_cnt.fetch_add(n, std::memory_order_relaxed);
     }
     inline void wait() {
-        sem.wait();
+        sem.wait(Tick::fromSeconds(1));
     }
     inline void release() {
         if (ref_cnt.load(std::memory_order_relaxed) == 0 ||
@@ -38,6 +38,7 @@ public:
                 delete[] img.data;
                 delete this;
             } else {
+                MA_LOGV("1","release frame %p", this);
                 sem.signal();
             }
         }
