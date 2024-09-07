@@ -318,7 +318,6 @@ CVI_S32 app_ipcam_Vi_DevAttr_Get(SENSOR_TYPE_E enSnsType, VI_DEV_ATTR_S* pstViDe
     case SENSOR_GCORE_GC2093:
     case SENSOR_GCORE_GC4023:
     case SENSOR_GCORE_GC2093_SLAVE:
-    case SENSOR_OV_OV5647:
         pstViDevAttr->enBayerFormat = BAYER_FORMAT_RG;
         break;
     case SENSOR_GCORE_GC4653:
@@ -336,6 +335,7 @@ CVI_S32 app_ipcam_Vi_DevAttr_Get(SENSOR_TYPE_E enSnsType, VI_DEV_ATTR_S* pstViDe
         break;
     case SENSOR_OV_OS08A20:
     case SENSOR_OV_OS08A20_SLAVE:
+    case SENSOR_OV_OV5647:
         pstViDevAttr->enBayerFormat = BAYER_FORMAT_BG;
         break;
     case SENSOR_PICO_384:
