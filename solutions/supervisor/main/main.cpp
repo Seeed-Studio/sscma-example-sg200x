@@ -5,8 +5,10 @@
 #include <syslog.h>
 
 #include "http.h"
+#include "daemon.h"
 
 static void exitHandle(int signo) {
+    stopDaemon();
     system(SCRIPT_WIFI_STOP);
     deinitHttpd();
     closelog();
@@ -17,6 +19,7 @@ static void exitHandle(int signo) {
 static void initSupervisor() {
     initWiFi();
     initHttpd();
+    initDaemon();
 
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);

@@ -54,5 +54,6 @@
 #define SCRIPT_DEVICE(action) ("/mnt/system/usr/scripts/devicetool.sh" \
                                 " " #action " ")
 #define SCRIPT_DEVICE_GETADDRESSS SCRIPT_DEVICE(getAddress)
+#define SCRIPT_DEVICE_RESTARTAPP SCRIPT_DEVICE(restartApp)
 
 #endif
