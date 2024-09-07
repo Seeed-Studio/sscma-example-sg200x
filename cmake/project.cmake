@@ -31,3 +31,4 @@ include(${PROJECT_DIR}/main/CMakeLists.txt)
 
 include(${ROOT_DIR}/cmake/build.cmake)
 
+include(${ROOT_DIR}/cmake/package.cmake)
