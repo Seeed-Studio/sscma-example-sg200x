@@ -63,7 +63,7 @@ bool SaveNode::recycle() {
         for (const auto& file : files) {
             uint64_t file_size = file.file_size();
             if (std::filesystem::remove(file)) {
-                MA_LOGI(TAG, "exceed max size %d B, remove %s", max_size_, file.path().c_str());
+                MA_LOGI(TAG, "exceed max size %lu Bytes, remove %s", max_size_, file.path().c_str());
                 total_size -= file_size;
                 if (total_size <= max_size_) {
                     break;
