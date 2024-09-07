@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <sys/statvfs.h>  // 用于 statvfs 函数
 
 #include "save.h"
 
@@ -62,7 +63,7 @@ bool SaveNode::recycle() {
         for (const auto& file : files) {
             uint64_t file_size = file.file_size();
             if (std::filesystem::remove(file)) {
-                MA_LOGI(TAG, "exceed max size %d KB, remove %s", max_size_, file.path().c_str());
+                MA_LOGI(TAG, "exceed max size %d B, remove %s", max_size_, file.path().c_str());
                 total_size -= file_size;
                 if (total_size <= max_size_) {
                     break;
@@ -143,6 +144,7 @@ ma_err_t SaveNode::onCreate(const json& config) {
                        : (storageType == "external")   ? NODE_SAVE_PATH_EXTERNAL
                                                        : "";
 
+
     if (storage_.empty()) {
         throw NodeException(MA_EINVAL, "invalid storage type");
     }
@@ -158,9 +160,16 @@ ma_err_t SaveNode::onCreate(const json& config) {
         throw NodeException(MA_ENOMEM, "thread create failed");
     }
 
-    // TODO: max size should dynamic
+    std::filesystem::space_info si = std::filesystem::space(storage_);
 
-    MA_LOGI(TAG, "storage: %s, slice: %d max_size: %ld", storage_.c_str(), slice_, max_size_);
+    if (storageType == "local") {
+        max_size_ = si.available / 10 * 6;
+    } else {
+        max_size_ = si.available / 10 * 8;
+    }
+
+
+    MA_LOGI(TAG, "storage: %s, slice: %d max_size: %ldB", storage_.c_str(), slice_, max_size_);
 
     server_->response(
         id_,
