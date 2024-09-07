@@ -6,26 +6,26 @@ static constexpr char TAG[] = "ma::node::camera";
 
 const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
 
-#define CAMERA_INIT()                              \
-    {                                              \
-        Thread::enterCritical();                   \
-        Thread::sleep(Tick::fromMilliseconds(50)); \
-        MA_LOGD(TAG, "start video");               \
-        startVideo();                              \
-        started_ = true;                           \
-        Thread::sleep(Tick::fromSeconds(1));       \
-        Thread::exitCritical();                    \
+#define CAMERA_INIT()                               \
+    {                                               \
+        Thread::enterCritical();                    \
+        Thread::sleep(Tick::fromMilliseconds(100)); \
+        MA_LOGD(TAG, "start video");                \
+        startVideo();                               \
+        started_ = true;                            \
+        Thread::sleep(Tick::fromSeconds(1));        \
+        Thread::exitCritical();                     \
     }
 
-#define CAMERA_DEINIT()                            \
-    {                                              \
-        Thread::enterCritical();                   \
-        MA_LOGD(TAG, "deinit video");              \
-        started_ = false;                          \
-        Thread::sleep(Tick::fromMilliseconds(50)); \
-        deinitVideo();                             \
-        Thread::sleep(Tick::fromSeconds(1));       \
-        Thread::exitCritical();                    \
+#define CAMERA_DEINIT()                             \
+    {                                               \
+        Thread::enterCritical();                    \
+        MA_LOGD(TAG, "deinit video");               \
+        started_ = false;                           \
+        Thread::sleep(Tick::fromMilliseconds(100)); \
+        deinitVideo();                              \
+        Thread::sleep(Tick::fromSeconds(1));        \
+        Thread::exitCritical();                     \
     }
 
 CameraNode::CameraNode(std::string id)
@@ -53,7 +53,6 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
     if (!started_) {
         return CVI_SUCCESS;
     }
-
 
     VENC_STREAM_S* pstStream = (VENC_STREAM_S*)pData;
     VENC_PACK_S* ppack;
@@ -206,7 +205,6 @@ ma_err_t CameraNode::onStart() {
     // check configured
     for (int i = 0; i < CHN_MAX; i++) {
         if (channels_[i].enabled && !channels_[i].configured) {
-            MA_LOGW(TAG, "channel %d not configured, try again", i);
             return MA_AGAIN;
         }
     }
@@ -288,7 +286,7 @@ ma_err_t CameraNode::config(
 ma_err_t CameraNode::attach(int chn, MessageBox* msgbox) {
     Guard guard(mutex_);
     if (channels_[chn].enabled) {
-        MA_LOGV(TAG, "attach %p to %d", msgbox, chn);
+        MA_LOGI(TAG, "attach %p to %d", msgbox, chn);
         channels_[chn].msgboxes.push_back(msgbox);
     }
     return MA_OK;
@@ -298,8 +296,11 @@ ma_err_t CameraNode::detach(int chn, MessageBox* msgbox) {
     Guard guard(mutex_);
     auto it = std::find(channels_[chn].msgboxes.begin(), channels_[chn].msgboxes.end(), msgbox);
     if (it != channels_[chn].msgboxes.end()) {
-        MA_LOGV(TAG, "detach %p from %d", msgbox, chn);
+        MA_LOGI(TAG, "detach %p from %d", msgbox, chn);
+        started_ = false;
+        Thread::sleep(Tick::fromMilliseconds(100));
         channels_[chn].msgboxes.erase(it);
+        started_ = true;
     }
     return MA_OK;
 }
