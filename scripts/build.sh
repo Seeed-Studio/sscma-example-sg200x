@@ -31,7 +31,7 @@ function install() {
     cp -r $SG200X_SUPERVISOR_PATH/main/scripts/ mnt/system/usr/
     cp -r $SG200X_SUPERVISOR_PATH/main/dist/ mnt/system/usr/
     cp -r $SG200X_BUILD_PATH/supervisor mnt/system/usr/bin/
-    ln -s ./usr/bin/supervisor mnt/system/default_app
+    # ln -s ./usr/bin/supervisor mnt/system/default_app
 
     tar zcf $SG200X_BUILD_PATH/supervisor.tar.gz ./*
     echo "finished"
