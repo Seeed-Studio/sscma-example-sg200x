@@ -138,7 +138,6 @@ static int app_ipcam_Vi_Sensor_Start(void)
             APP_IPCAM_CHECK_RET(s32Ret, "pfnExpSensorCb(%d) failed!\n", ViPipe);
 
             isp_sensor_exp_func.pfn_cmos_sensor_global_init(ViPipe);
-            //APP_IPCAM_CHECK_RET(s32Ret, "pfn_cmos_sensor_global_init(%d) failed!\n", ViPipe);
 
             s32Ret = isp_sensor_exp_func.pfn_cmos_set_image_mode(ViPipe, &isp_cmos_sensor_image_mode);
             APP_IPCAM_CHECK_RET(s32Ret, "pfn_cmos_set_image_mode(%d) failed!\n", ViPipe);
