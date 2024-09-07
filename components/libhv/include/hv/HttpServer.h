@@ -3,9 +3,11 @@
 
 #include "hexport.h"
 #include "hssl.h"
+// #include "EventLoop.h"
 #include "HttpService.h"
 // #include "WebSocketServer.h"
 namespace hv {
+class EventLoop;
 struct WebSocketService;
 }
 using hv::HttpService;
@@ -81,7 +83,7 @@ int main() {
 
 namespace hv {
 
-class HttpServer : public http_server_t {
+class HV_EXPORT HttpServer : public http_server_t {
 public:
     HttpServer(HttpService* service = NULL)
         : http_server_t()
@@ -93,6 +95,8 @@ public:
     void registerHttpService(HttpService* service) {
         this->service = service;
     }
+
+    std::shared_ptr<hv::EventLoop> loop(int idx = -1);
 
     void setHost(const char* host = "0.0.0.0") {
         if (host) strcpy(this->host, host);
@@ -114,6 +118,11 @@ public:
     void setThreadNum(int num) {
         this->worker_threads = num;
     }
+
+    void setMaxWorkerConnectionNum(uint32_t num) {
+        this->worker_connections = num;
+    }
+    size_t connectionNum();
 
     // SSL/TLS
     int setSslCtx(hssl_ctx_t ssl_ctx) {
