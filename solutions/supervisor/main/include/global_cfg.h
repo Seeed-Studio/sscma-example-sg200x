@@ -56,4 +56,8 @@
 #define SCRIPT_DEVICE_GETADDRESSS SCRIPT_DEVICE(getAddress)
 #define SCRIPT_DEVICE_RESTARTAPP SCRIPT_DEVICE(restartApp)
 
+#define SCRIPT_APP_SSCMA(action) ("/app/etc/init.d/S50sscma_node" \
+                                  " " #action " ")
+#define SCRIPT_APP_SSCMA_RESTART SCRIPT_APP_SSCMA(restart)
+
 #endif
