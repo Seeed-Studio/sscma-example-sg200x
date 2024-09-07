@@ -59,8 +59,6 @@
     #define ARCH_MIPS64
 #elif defined(__mips__)
     #define ARCH_MIPS
-#elif defined(__riscv) && __riscv_xlen == 64
-    #define ARCH_RISCV64
 #else
     #warning "Untested hardware architecture!"
 #endif
