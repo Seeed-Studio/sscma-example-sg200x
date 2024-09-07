@@ -33,6 +33,7 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
         MA_LOGV(TAG, "request: %s <== %s", topic.c_str(), payload.dump().c_str());
         m_executor.submit([this, id = std::move(id), payload = std::move(payload)]() -> bool {
             std::string name = payload["name"].get<std::string>();
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
             const json& data = payload["data"];
             try {
                 if (name == "create") {
@@ -44,6 +45,12 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
                     NodeFactory::create(id, type, data, this);
                 } else if (name == "destroy") {
                     NodeFactory::destroy(id);
+                } else if (name == "health") {
+                    this->response(id,
+                                   json::object({{"type", MA_MSG_TYPE_RESP},
+                                                 {"name", name},
+                                                 {"code", MA_OK},
+                                                 {"data", ""}}));
                 } else {
                     Node* node = NodeFactory::find(id);
                     if (node) {
@@ -117,15 +124,15 @@ void NodeServer::response(const std::string& id, const json& msg) {
         MA_LOGW(TAG, "not connected, skip response:%s ==> %s", id.c_str(), msg.dump().c_str());
         return;
     }
-   // Guard guard(m_mutex);
+    // Guard guard(m_mutex);
     std::string topic = m_topic_out_prefix + '/' + id;
     int mid           = mosquitto_publish(
         m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);
-    if (msg.dump().size() < 256) {
-        MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().c_str());
-    } else {
-        MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().substr(0, 256).c_str());
-    }
+    // if (msg.dump().size() < 256) {
+    //     MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().c_str());
+    // } else {
+    //     MA_LOGV(TAG, "response:%s ==> %s", topic.c_str(), msg.dump().substr(0, 256).c_str());
+    // }
     return;
 }
 
