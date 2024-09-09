@@ -59,7 +59,7 @@
 #define SCRIPT_DEVICE_GETAPPINFO SCRIPT_DEVICE(getAppInfo)
 #define SCRIPT_DEVICE_RESTARTAPP SCRIPT_DEVICE(restartApp)
 
-#define SCRIPT_APP_SSCMA(action) ("/app/etc/init.d/S50sscma_node" \
+#define SCRIPT_APP_SSCMA(action) ("/etc/init.d/S91sscma-node" \
                                   " " #action " ")
 #define SCRIPT_APP_SSCMA_RESTART SCRIPT_APP_SSCMA(restart)
 
