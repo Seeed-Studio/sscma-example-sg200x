@@ -408,6 +408,8 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
     }
     response["data"]["deviceList"] = data;
 
+    pclose(fp);
+
     return resp->Json(response);
 }
 
@@ -449,5 +451,83 @@ int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
     response["mgs"] = "";
     response["data"] = data;
 
+    pclose(fp);
+
     return resp->Json(response);
+}
+
+int getAppInfo(HttpRequest* req, HttpResponse* resp) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETAPPINFO;
+    char appName[20] = "", appVersion[10] = "";
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        return -1;
+    }
+
+    fgets(appName, sizeof(appName) - 1, fp);
+    clearNewline(appName, strlen(appName));
+
+    fgets(appVersion, sizeof(appVersion) - 1, fp);
+    clearNewline(appVersion, strlen(appVersion));
+
+    hv::Json response;
+    response["code"] = 0;
+    response["msg"] = "";
+    response["data"]["appName"] = appName;
+    response["data"]["appVersion"] = appVersion;
+
+    pclose(fp);
+
+    return resp->Json(response);
+}
+
+int uploadApp(const HttpContextPtr& ctx) {
+    int ret = 0;
+    std::string appPath = PATH_APP_DOWNLOAD_DIR;
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_INSTALLAPP;
+    char info[128] = "";
+
+    if (ctx->param("filename").empty()) {
+        syslog(LOG_ERR, "Missing filename parameter value\n");
+    }
+
+    if (ctx->is(MULTIPART_FORM_DATA)) {
+        ret = ctx->request->SaveFormFile("file", appPath.c_str());
+    } else {
+        std::string fileName = ctx->param("filename", "unnamed.txt");
+        std::string filePath = appPath + fileName;
+        ret = ctx->request->SaveFile(filePath.c_str());
+    }
+
+    strcat(cmd, std::string(appPath + ctx->param("filename")).c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    syslog(LOG_INFO, "info: %s\n", info);
+
+    hv::Json response;
+    if (strcmp(info, "Finished") == 0) {
+        response["code"] = 0;
+        response["msg"] = "";
+    } else {
+        response["code"] = -1;
+        response["msg"] = info;
+    }
+    response["data"] = hv::Json({});
+
+    pclose(fp);
+
+    ctx->response.get()->Set("code", 200);
+    ctx->response.get()->Set("message", response.dump(2));
+    return 200;
 }

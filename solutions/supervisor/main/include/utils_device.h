@@ -17,4 +17,7 @@ int cancelUpdate(HttpRequest* req, HttpResponse* resp);
 
 int getDeviceList(HttpRequest* req, HttpResponse* resp);
 int getDeviceInfo(HttpRequest* req, HttpResponse* resp);
+
+int getAppInfo(HttpRequest* req, HttpResponse* resp);
+int uploadApp(const HttpContextPtr& ctx);
 #endif

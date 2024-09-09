@@ -19,6 +19,7 @@
 #define PATH_SSH_KEY_FILE "/root/.ssh/authorized_keys"
 #define PATH_UPGRADE_PROGRESS_FILE "/tmp/upgrade.percentage"
 #define PATH_UPGRADE_VERSION_FILE "/tmp/upgrade.version"
+#define PATH_APP_DOWNLOAD_DIR "/tmp/opkg/"
 
 /* usertool.sh*/
 #define SCRIPT_USER(action) ("/mnt/system/usr/scripts/usertool.sh" \
@@ -54,6 +55,8 @@
 #define SCRIPT_DEVICE(action) ("/mnt/system/usr/scripts/devicetool.sh" \
                                 " " #action " ")
 #define SCRIPT_DEVICE_GETADDRESSS SCRIPT_DEVICE(getAddress)
+#define SCRIPT_DEVICE_INSTALLAPP SCRIPT_DEVICE(installApp)
+#define SCRIPT_DEVICE_GETAPPINFO SCRIPT_DEVICE(getAppInfo)
 #define SCRIPT_DEVICE_RESTARTAPP SCRIPT_DEVICE(restartApp)
 
 #define SCRIPT_APP_SSCMA(action) ("/app/etc/init.d/S50sscma_node" \

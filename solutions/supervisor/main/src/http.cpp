@@ -76,6 +76,9 @@ static void registerDeviceApi(HttpService& router)
 
     router.GET("/api/deviceMgr/getDeviceList", getDeviceList);
     router.GET("/api/deviceMgr/getDeviceInfo", getDeviceInfo);
+
+    router.GET("/api/deviceMgr/getAppInfo", getAppInfo);
+    router.POST("/api/deviceMgr/uploadApp", uploadApp);
 }
 
 static void registerWebSocket(HttpService& router)
