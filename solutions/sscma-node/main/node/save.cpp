@@ -4,11 +4,11 @@
 #include "save.h"
 
 #ifndef NODE_SAVE_PATH_LOCAL
-#define NODE_SAVE_PATH_LOCAL "/userdata/local/"
+#define NODE_SAVE_PATH_LOCAL "/userdata/VIDEO/"
 #endif
 
 #ifndef NODE_SAVE_PATH_EXTERNAL
-#define NODE_SAVE_PATH_EXTERNAL "/mnt/sd/"
+#define NODE_SAVE_PATH_EXTERNAL "/mnt/sd/VIDEO/"
 #endif
 
 #ifndef NODE_SAVE_MAX_SIZE
@@ -63,7 +63,8 @@ bool SaveNode::recycle() {
         for (const auto& file : files) {
             uint64_t file_size = file.file_size();
             if (std::filesystem::remove(file)) {
-                MA_LOGI(TAG, "exceed max size %lu Bytes, remove %s", max_size_, file.path().c_str());
+                MA_LOGI(
+                    TAG, "exceed max size %lu Bytes, remove %s", max_size_, file.path().c_str());
                 total_size -= file_size;
                 if (total_size <= max_size_) {
                     break;
@@ -150,7 +151,9 @@ ma_err_t SaveNode::onCreate(const json& config) {
     }
 
     if (!std::filesystem::exists(storage_) || !std::filesystem::is_directory(storage_)) {
-        throw NodeException(MA_EINVAL, "invalid storage path");
+        if (!std::filesystem::create_directory(storage_)) {
+            throw NodeException(MA_EINVAL, "invalid storage path");
+        }
     }
 
     slice_ = config["slice"].get<int>();

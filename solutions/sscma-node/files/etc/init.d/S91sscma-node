@@ -18,6 +18,18 @@ PIDFILE=/var/run/$NAME.pid
 LOGFILE=/var/log/$NAME.log
 USER=root 
 
+if [[ ":$LD_LIBRARY_PATH:" != *":/mnt/system/lib:"* ]]; then
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/system/lib
+fi
+
+if [[ ":$LD_LIBRARY_PATH:" != *":/mnt/system/usr/lib:"* ]]; then
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/system/usr/lib
+fi
+
+if [[ ":$LD_LIBRARY_PATH:" != *":/mnt/system/usr/lib/3rd:"* ]]; then
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/system/usr/lib/3rd
+fi
+
 start() {
     echo "Starting $DESC: $NAME"
     if [ -f $PIDFILE ]; then
