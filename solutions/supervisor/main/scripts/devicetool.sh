@@ -10,7 +10,7 @@ installApp)
         opkg info $2 >/dev/null 2>&1
         [ $? != 0 ] && echo "File format error" && exit 1
 
-        opkg install $2 >/dev/null 2>$1
+        opkg install $2 >/dev/null 2>&1
         if [ $? == 0 ]; then
             echo "Finished"
         else
@@ -34,4 +34,20 @@ restartApp)
 
     $2 >/dev/null 2>&1 &
     ;;
+
+restartSscma)
+    sscma="/etc/init.d/S91sscma-node"
+
+    if [ -f "$sscma" ]; then
+        $sscma restart >/dev/null 2>&1
+        if [ $? == 0 ]; then
+            echo "Finished"
+        else
+            echo "Restart failed"
+        fi
+    else
+        echo "File does not exist"
+    fi
+    ;;
+
 esac

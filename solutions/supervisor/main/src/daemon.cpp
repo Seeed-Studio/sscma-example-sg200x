@@ -59,7 +59,20 @@ int startNodered() {
 }
 
 int startSscma() {
-    system(SCRIPT_APP_SSCMA_RESTART);
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_RESTARTSSCMA;
+    char info[128] = "";
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    syslog(LOG_INFO, "%s status: %s\n", __func__, info);
+
+    pclose(fp);
 
     return 0;
 }
