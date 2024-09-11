@@ -26,8 +26,10 @@ function install() {
 
     mkdir $SG200X_INSTALL_PATH && cd $SG200X_INSTALL_PATH
 
+    mkdir -p etc/init.d/
     mkdir -p mnt/system/usr/bin/
 
+    cp $SG200X_PATH/scripts/S93sscma-supervisor etc/init.d/
     cp -r $SG200X_SUPERVISOR_PATH/main/scripts/ mnt/system/usr/
     cp -r $SG200X_SUPERVISOR_PATH/main/dist/ mnt/system/usr/
     cp -r $SG200X_BUILD_PATH/supervisor mnt/system/usr/bin/
