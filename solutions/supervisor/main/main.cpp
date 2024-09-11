@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <syslog.h>
 
+#include "hv/hlog.h"
 #include "http.h"
 #include "daemon.h"
 
@@ -17,6 +18,7 @@ static void exitHandle(int signo) {
 }
 
 static void initSupervisor() {
+    hlog_disable();
     initWiFi();
     initHttpd();
     initDaemon();
