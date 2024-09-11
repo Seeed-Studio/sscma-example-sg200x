@@ -17,7 +17,9 @@
 const int threadTimeout = 3;
 const int retryTimes = 3;
 int daemonStatus = 0;
+int noderedStatus = 0;
 int noderedStarting = 0;
+int sscmaStatus = 0;
 sem_t semSscma;
 
 hv::MqttClient cli;
@@ -31,6 +33,7 @@ void initMqtt() {
 
     cli.onConnect = [](hv::MqttClient* cli) {
         cli->subscribe(MQTT_TOPIC_OUT);
+        cli->publish(MQTT_TOPIC_IN, MQTT_PAYLOAD);
     };
 
     cli.onMessage = [](hv::MqttClient* cli, mqtt_message_t* msg) {
@@ -54,6 +57,7 @@ int startNodered() {
     noderedStarting = 1;
     strcat(cmd, "node-red");
     system(cmd);
+    syslog(LOG_INFO, "%s restart node-red\n", __func__);
 
     return 0;
 }
@@ -83,6 +87,7 @@ int getNoderedStatus() {
 
         if (NULL != resp) {
             noderedStarting = 0;
+            noderedStatus = 1;
             return 0;
         }
     }
@@ -99,6 +104,7 @@ int getSscmaStatus() {
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_nsec += 500 * 1000;
         if (0 == sem_timedwait(&semSscma, &ts)) {
+            sscmaStatus = 1;
             return 0;
         }
     }
@@ -114,14 +120,22 @@ void runDaemon() {
             if (noderedStarting) {
                 syslog(LOG_INFO, "Nodered is starting");
             } else {
-                syslog(LOG_ERR, "Nodered is not responding");
-                startNodered();
+                if (noderedStatus) {
+                    syslog(LOG_ERR, "Nodered is not responding");
+                    startNodered();
+                } else {
+                    syslog(LOG_INFO, "Nodered has not yet fully started");
+                }
             }
         }
 
         if (0 != getSscmaStatus()) {
-            syslog(LOG_ERR, "Sscma is not responding");
-            startSscma();
+            if (sscmaStatus) {
+                syslog(LOG_ERR, "Sscma is not responding");
+                startSscma();
+            } else {
+                syslog(LOG_INFO, "Sscma has not yet fully started");
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
