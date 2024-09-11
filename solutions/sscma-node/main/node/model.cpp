@@ -13,6 +13,7 @@ ModelNode::ModelNode(std::string id)
     : Node("model", id),
       uri_(""),
       debug_(true),
+      trace_(false),
       count_(0),
       engine_(nullptr),
       model_(nullptr),
@@ -53,6 +54,9 @@ void ModelNode::threadEntry() {
     Classifier* classifier = nullptr;
     videoFrame* raw        = nullptr;
     videoFrame* jpeg       = nullptr;
+    int32_t width          = 0;
+    int32_t height         = 0;
+    ma_tick_t take         = 0;
 
     switch (model_->getType()) {
         case MA_MODEL_TYPE_FOMO:
@@ -113,7 +117,10 @@ void ModelNode::threadEntry() {
                                    {"code", MA_OK},
                                    {"data", {{"count", ++count_}}}});
 
-        reply["data"]["resolution"] = json::array({raw->img.width, raw->img.height});
+        width  = raw->img.width;
+        height = raw->img.height;
+
+        reply["data"]["resolution"] = json::array({width, height});
 
         ma_tensor_t tensor = {
             .is_physical = true,
@@ -123,19 +130,43 @@ void ModelNode::threadEntry() {
         engine_->setInput(0, tensor);
         model_->setRunDone([this, raw](void* ctx) { raw->release(); });
         if (detector != nullptr) {
-            err           = detector->run(nullptr);
-            auto _perf    = detector->getPerf();
-            auto _results = detector->getResults();
-            reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
+            err                    = detector->run(nullptr);
+            auto _perf             = detector->getPerf();
+            auto _results          = detector->getResults();
             reply["data"]["boxes"] = json::array();
-            for (auto& result : _results) {
-                reply["data"]["boxes"].push_back({static_cast<int16_t>(result.x * raw->img.width),
-                                                  static_cast<int16_t>(result.y * raw->img.height),
-                                                  static_cast<int16_t>(result.w * raw->img.width),
-                                                  static_cast<int16_t>(result.h * raw->img.height),
-                                                  static_cast<int8_t>(result.score * 100),
-                                                  result.target});
+            if (trace_) {
+                std::vector<ma_bbox_t> _bboxes;
+                _bboxes.assign(_results.begin(), _results.end());
+                MA_LOGD(TAG, "bboxes: %zu", _bboxes.size());
+                take        = Tick::current();
+                auto tracks = tracker_->inplace_update(_bboxes);
+                take        = Tick::current() - take;
+                for (auto& result : _bboxes) {
+                    reply["data"]["boxes"].push_back({static_cast<int16_t>(result.x * width),
+                                                      static_cast<int16_t>(result.y * height),
+                                                      static_cast<int16_t>(result.w * width),
+                                                      static_cast<int16_t>(result.h * height),
+                                                      static_cast<int8_t>(result.score * 100),
+                                                      result.target});
+                }
+                reply["data"]["tracks"] = tracks;
+
+            } else {
+                for (auto& result : _results) {
+                    reply["data"]["boxes"].push_back({static_cast<int16_t>(result.x * width),
+                                                      static_cast<int16_t>(result.y * height),
+                                                      static_cast<int16_t>(result.w * width),
+                                                      static_cast<int16_t>(result.h * height),
+                                                      static_cast<int8_t>(result.score * 100),
+                                                      result.target});
+                }
             }
+
+            reply["data"]["perf"].push_back({_perf.preprocess,
+                                             _perf.inference,
+                                             _perf.postprocess + Tick::toMilliseconds(take)});
+
+
         } else if (classifier != nullptr) {
             err           = classifier->run(nullptr);
             auto _perf    = classifier->getPerf();
@@ -226,6 +257,12 @@ ma_err_t ModelNode::onCreate(const json& config) {
             }
             if (config.contains("trace")) {
                 trace_ = config["trace"].get<bool>();
+            }
+        }
+        if (trace_) {
+            tracker_ = new BYTETracker(10, 30, 0.25, 0.35, 0.8);
+            if (tracker_ == nullptr) {
+                throw NodeException(MA_ENOMEM, "tracker create failed");
             }
         }
         thread_ = new Thread((type_ + "#" + id_).c_str(), &ModelNode::threadEntryStub);

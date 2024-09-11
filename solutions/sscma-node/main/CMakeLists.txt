@@ -4,6 +4,12 @@ set(incs ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/node
 )
 
+# set(CMAKE_BUILD_TYPE Debug)
+
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+# set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
+
+
 message(STATUS "SOURCES: ${SOURCES}")
 
 component_register(

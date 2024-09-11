@@ -1,9 +1,10 @@
 #pragma once
 
+#include "extension/bytetrack/byte_tracker.h"
+
 #include "camera.h"
 #include "node.h"
 #include "server.h"
-
 
 namespace ma::node {
 
@@ -33,6 +34,7 @@ protected:
     Engine* engine_;
     Model* model_;
     CameraNode* camera_;
+    BYTETracker* tracker_;
     Thread* thread_;
     MessageBox raw_frame_;
     MessageBox jpeg_frame_;

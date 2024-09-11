@@ -38,7 +38,6 @@ public:
                 delete[] img.data;
                 delete this;
             } else {
-                MA_LOGV("1","release frame %p", this);
                 sem.signal();
             }
         }
