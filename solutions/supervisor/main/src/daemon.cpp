@@ -45,6 +45,7 @@ void initMqtt() {
     };
 
     cli.setPingInterval(10);
+    cli.setID("supervisor");
     cli.connect("localhost", 1883, 0);
 
     std::thread th(runMqtt);
@@ -86,6 +87,9 @@ int getNoderedStatus() {
         auto resp = requests::get("localhost:1880");
 
         if (NULL != resp) {
+            if (noderedStarting) {
+                syslog(LOG_INFO, "node-red status: Finished\n");
+            }
             noderedStarting = 0;
             noderedStatus = 1;
             return 0;
@@ -97,6 +101,12 @@ int getNoderedStatus() {
 
 int getSscmaStatus() {
     struct timespec ts;
+
+    if (!cli.isConnected()) {
+        syslog(LOG_ERR, "mqtt is not connected\n");
+        cli.reconnect();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 
     for (int i = 0; i < retryTimes; i++) {
         cli.publish(MQTT_TOPIC_IN, MQTT_PAYLOAD);
@@ -116,6 +126,8 @@ void runDaemon() {
     initMqtt();
 
     while (daemonStatus) {
+        std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
+
         if (0 != getNoderedStatus()) {
             if (noderedStarting) {
                 syslog(LOG_INFO, "Nodered is starting");
@@ -137,8 +149,6 @@ void runDaemon() {
                 syslog(LOG_INFO, "Sscma has not yet fully started");
             }
         }
-
-        std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
     }
 }
 
