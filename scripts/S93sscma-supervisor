@@ -1,16 +1,16 @@
 #!/bin/sh
 
-NAME=supervisor
-DAEMON=/mnt/system/usr/bin/supervisor
+DAEMON=supervisor
+DAEMON_PATH=/mnt/system/usr/bin
 
 start() {
     printf 'Starting Supervisor Service: '
     PID="`pidof $DAEMON`"
 
     if [ "$PID" ]; then
-        echo "$NAME is already running."
+        echo "$DAEMON is already running."
     else
-        $DAEMON >/dev/null 2>&1 &
+        $DAEMON_PATH/$DAEMON >/dev/null 2>&1 &
         [ $? = 0 ] && echo "OK" || echo "FAIL"
     fi
 }
@@ -23,7 +23,7 @@ stop() {
         kill $PID
         [ $? = 0 ] && echo "OK" || echo "FAIL"
     else
-        echo "$NAME is not running."
+        echo "$DAEMON is not running."
     fi
 }
 
