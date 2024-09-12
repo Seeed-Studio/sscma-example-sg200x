@@ -137,6 +137,8 @@ int initWiFi() {
     strcat(cmd, std::to_string(TTYD_PORT).c_str());
     system(cmd);
 
+    initUserInfo();
+
     return 0;
 }
 

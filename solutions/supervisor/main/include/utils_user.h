@@ -1,6 +1,8 @@
 #ifndef _UTILS_USER_H_
 #define _UTILS_USER_H_
 
+int initUserInfo();
+
 int queryUserInfo(HttpRequest* req, HttpResponse* resp);
 int updateUserName(HttpRequest* req, HttpResponse* resp);
 int updatePassword(HttpRequest* req, HttpResponse* resp);

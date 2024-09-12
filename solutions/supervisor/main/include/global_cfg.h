@@ -24,6 +24,7 @@
 /* usertool.sh*/
 #define SCRIPT_USER(action) ("/mnt/system/usr/scripts/usertool.sh" \
                              " " #action " ")
+#define SCRIPT_USER_ID SCRIPT_USER(id)
 #define SCRIPT_USER_NAME SCRIPT_USER(name)
 #define SCRIPT_USER_PWD SCRIPT_USER(passwd)
 #define SCRIPT_USER_SSH SCRIPT_USER(query_key)

@@ -15,11 +15,31 @@
 static std::string g_sUserName;
 static std::string g_sPassword;
 static int g_keyId = 0;
+int g_userId = 0;
+
+int initUserInfo() {
+    FILE* fp;
+    char info[128];
+    char cmd[128] = SCRIPT_USER_ID;
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s list\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    g_userId = std::stoi(info);
+
+    pclose(fp);
+
+    return 0;
+}
 
 static int getUserName()
 {
     char username[16];
-    struct passwd* pw = getpwuid(getuid());
+    struct passwd* pw = getpwuid(g_userId);
 
     if (pw) {
         strncpy(username, pw->pw_name, sizeof(username));
