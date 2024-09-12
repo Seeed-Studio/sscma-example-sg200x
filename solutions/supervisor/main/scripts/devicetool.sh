@@ -25,14 +25,19 @@ getAppInfo)
     opkg list-installed | awk -F' - ' '{print $1 "\n" $2}'
     ;;
 
-restartApp)
-    pid=`pidof $2`
+restartNodered)
+    nodered="/etc/init.d/S92node-red"
 
-    if [ "$pid" ]; then
-        kill $pid
+    if [ -f "$nodered" ]; then
+        $nodered restart >/dev/null 2>&1
+        if [ $? == 0 ]; then
+            echo "Finished"
+        else
+            echo "Restart failed"
+        fi
+    else
+        echo "File does not exist"
     fi
-
-    $2 >/dev/null 2>&1 &
     ;;
 
 restartSscma)

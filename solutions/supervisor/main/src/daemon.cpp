@@ -53,12 +53,21 @@ void initMqtt() {
 }
 
 int startNodered() {
-    char cmd[128] = SCRIPT_DEVICE_RESTARTAPP;
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_RESTARTNODERED;
+    char info[128] = "";
 
     noderedStarting = 1;
-    strcat(cmd, "node-red");
-    system(cmd);
-    syslog(LOG_INFO, "%s restart node-red\n", __func__);
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    syslog(LOG_INFO, "%s status: %s\n", __func__, info);
+
+    pclose(fp);
 
     return 0;
 }
