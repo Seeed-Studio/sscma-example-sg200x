@@ -161,6 +161,8 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
         return resp->Json(User);
     }
 
+    strcat(cmd, g_sUserName.c_str());
+    strcat(cmd, " ");
     strcat(cmd, req->GetString("oldPassword").c_str());
     strcat(cmd, " ");
     strcat(cmd, req->GetString("newPassword").c_str());

@@ -11,9 +11,9 @@ change_name() {
 change_passwd() {
     TEMP_FILE=$(mktemp)
     TEMP_ERR_FILE=$(mktemp)
-    passwd > $TEMP_FILE 2> $TEMP_ERR_FILE << EOF
-$2
-$2
+    passwd $1 > $TEMP_FILE 2> $TEMP_ERR_FILE << EOF
+$3
+$3
 EOF
 
     res=`cat $TEMP_ERR_FILE | grep "unchanged"`
@@ -58,7 +58,7 @@ name)
     ;;
 
 passwd)
-    change_passwd $2 $3
+    change_passwd $2 $3 $4
     ;;
 
 query_key)
