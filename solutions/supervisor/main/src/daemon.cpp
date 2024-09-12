@@ -52,12 +52,10 @@ void initMqtt() {
     th.detach();
 }
 
-int startNodered() {
+int startApp(const char* cmd, const char* appName) {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_RESTARTNODERED;
     char info[128] = "";
 
-    noderedStarting = 1;
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run %s\n", cmd);
@@ -65,28 +63,22 @@ int startNodered() {
     }
 
     fgets(info, sizeof(info) - 1, fp);
-    syslog(LOG_INFO, "%s status: %s\n", __func__, info);
+    syslog(LOG_INFO, "%s status: %s\n", appName, info);
 
     pclose(fp);
 
     return 0;
 }
 
+int startNodered() {
+    noderedStarting = 1;
+    startApp(SCRIPT_DEVICE_RESTARTNODERED, "node-red");
+
+    return 0;
+}
+
 int startSscma() {
-    FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_RESTARTSSCMA;
-    char info[128] = "";
-
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
-        return -1;
-    }
-
-    fgets(info, sizeof(info) - 1, fp);
-    syslog(LOG_INFO, "%s status: %s\n", __func__, info);
-
-    pclose(fp);
+    startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node");
 
     return 0;
 }

@@ -1,5 +1,20 @@
 #!/bin/sh
 
+function restartApp() {
+    app="$1"
+
+    if [ -f "$app" ]; then
+        $app restart >/dev/null 2>&1
+        if [ $? == 0 ]; then
+            echo "Finished"
+        else
+            echo "Restart failed"
+        fi
+    else
+        echo "File does not exist"
+    fi
+}
+
 case $1 in
 getAddress)
     ip route get $2 | awk '{print $NF}'
@@ -28,31 +43,13 @@ getAppInfo)
 restartNodered)
     nodered="/etc/init.d/S92node-red"
 
-    if [ -f "$nodered" ]; then
-        $nodered restart >/dev/null 2>&1
-        if [ $? == 0 ]; then
-            echo "Finished"
-        else
-            echo "Restart failed"
-        fi
-    else
-        echo "File does not exist"
-    fi
+    restartApp $nodered
     ;;
 
 restartSscma)
     sscma="/etc/init.d/S91sscma-node"
 
-    if [ -f "$sscma" ]; then
-        $sscma restart >/dev/null 2>&1
-        if [ $? == 0 ]; then
-            echo "Finished"
-        else
-            echo "Restart failed"
-        fi
-    else
-        echo "File does not exist"
-    fi
+    restartApp $sscma
     ;;
 
 esac
