@@ -8,6 +8,17 @@ change_name() {
     rm $TEMP_FILE
 }
 
+verify_passwd() {
+    old_passwd="`cat /etc/secret`"
+    input_passwd="`echo $1 | sha256sum`"
+
+    if [ "$old_passwd" == "$input_passwd" ]; then
+        echo "OK"
+    else
+        echo "ERROR"
+    fi
+}
+
 change_passwd() {
     TEMP_FILE=$(mktemp)
     TEMP_ERR_FILE=$(mktemp)
@@ -53,12 +64,21 @@ case $1 in
 id)
     cat /etc/passwd | grep -e "/home.*/bin/.*sh" | awk -F':' '{ print $3 }'
     ;;
+
 name)
     change_name $2 $3
     ;;
 
+verify)
+    verify_passwd $2
+    ;;
+
 passwd)
     change_passwd $2 $3 $4
+    ;;
+
+save)
+    echo $2 | sha256sum > /etc/secret
     ;;
 
 query_key)

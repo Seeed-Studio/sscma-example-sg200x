@@ -17,6 +17,12 @@ static std::string g_sPassword;
 static int g_keyId = 0;
 int g_userId = 0;
 
+static void clearNewline(char* value, int len) {
+    if (value[len - 1] == '\n') {
+        value[len - 1] = '\0';
+    }
+}
+
 int initUserInfo() {
     FILE* fp;
     char info[128];
@@ -50,6 +56,35 @@ static int getUserName()
 
     g_sUserName.assign(username);
     return 0;
+}
+
+static int verifyPasswd(const std::string& passwd) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_USER_VERIFY;
+    char info[128] = "";
+
+    strcat(cmd, passwd.c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    if (strcmp(info, "ERROR") == 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static void savePasswd(const std::string& passwd) {
+    char cmd[128] = SCRIPT_USER_SAVE;
+
+    strcat(cmd, passwd.c_str());
+    system(cmd);
 }
 
 int queryUserInfo(HttpRequest* req, HttpResponse* resp)
@@ -148,7 +183,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     char info[128];
     char cmd[128] = SCRIPT_USER_PWD;
 
-    if (req->GetString("oldPassword").compare(g_sPassword) != 0) {
+    if (verifyPasswd(req->GetString("oldPassword")) != 0) {
         hv::Json User;
         User["code"] = 1109;
         User["msg"] = "Incorrect password";
@@ -184,14 +219,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
                 User["msg"] = std::string(info);
             }
         } else {
-            char cmd[128] = "";
-
-            strcat(cmd, "echo ");
-            strcat(cmd, req->GetString("newPassword").c_str());
-            strcat(cmd, " > ");
-            strcat(cmd, PATH_SECRET);
-
-            system(cmd);
+            savePasswd(req->GetString("newPassword"));
         }
     }
     pclose(fp);

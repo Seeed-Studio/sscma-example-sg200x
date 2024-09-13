@@ -26,7 +26,9 @@
                              " " #action " ")
 #define SCRIPT_USER_ID SCRIPT_USER(id)
 #define SCRIPT_USER_NAME SCRIPT_USER(name)
+#define SCRIPT_USER_VERIFY SCRIPT_USER(verify)
 #define SCRIPT_USER_PWD SCRIPT_USER(passwd)
+#define SCRIPT_USER_SAVE SCRIPT_USER(save)
 #define SCRIPT_USER_SSH SCRIPT_USER(query_key)
 
 /* wifitool.sh*/
