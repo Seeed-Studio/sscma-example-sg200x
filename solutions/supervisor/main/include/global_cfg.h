@@ -16,7 +16,7 @@
 #define PATH_SECRET "/etc/secret"
 #define PATH_DEVICE_NAME "/etc/device-name"
 #define PATH_UPGRADE_URL "/etc/upgrade"
-#define PATH_SSH_KEY_FILE "/root/.ssh/authorized_keys"
+#define PATH_SSH_KEY_FILE "/home/recamera/.ssh/authorized_keys"
 #define PATH_UPGRADE_PROGRESS_FILE "/tmp/upgrade.percentage"
 #define PATH_UPGRADE_VERSION_FILE "/tmp/upgrade.version"
 #define PATH_APP_DOWNLOAD_DIR "/tmp/opkg/"

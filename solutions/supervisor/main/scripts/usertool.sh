@@ -49,9 +49,9 @@ cal_key() {
 }
 
 query_key() {
-    filename="/root/.ssh/authorized_keys"
+    filename="/home/recamera/.ssh/authorized_keys"
     if [ ! -f "$filename" ]; then
-        mkdir -p /root/.ssh
+        mkdir -p /home/recamera/.ssh
         touch $filename
     fi
 

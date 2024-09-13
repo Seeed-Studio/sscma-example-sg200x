@@ -259,7 +259,7 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "delete ssh key operation...\n");
     syslog(LOG_INFO, "id: %s\n", req->GetString("id").c_str());
 
-    char cmd[128];
+    char cmd[128] = "";
 
     strcat(cmd, "sed -i \'/#");
     strcat(cmd, req->GetString("id").c_str());
