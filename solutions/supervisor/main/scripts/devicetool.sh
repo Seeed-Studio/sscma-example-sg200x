@@ -16,6 +16,10 @@ function restartApp() {
 }
 
 case $1 in
+getSystemStatus)
+    fw_printenv boot_rollback | awk -F'=' '{print $NF}'
+    ;;
+
 getAddress)
     ip route get $2 | awk '{print $NF}'
     ;;

@@ -65,6 +65,7 @@ static void registerWiFiApi(HttpService& router)
 
 static void registerDeviceApi(HttpService& router)
 {
+    router.GET("/api/deviceMgr/getSystemStatus", getSystemStatus);
     router.POST("/api/deviceMgr/getSystemUpdateVesionInfo", getSystemUpdateVesionInfo);
     router.GET("/api/deviceMgr/queryDeviceInfo", queryDeviceInfo);
     router.POST("/api/deviceMgr/updateDeviceName", updateDeviceName);

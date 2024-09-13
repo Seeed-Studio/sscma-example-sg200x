@@ -73,6 +73,37 @@ static void clearNewline(std::string& value) {
     }
 }
 
+int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
+    char info[128] = "";
+    hv::Json response;
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        response["code"] = -1;
+        response["msg"] = "Failed to run " + std::string(cmd);
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    if (strlen(info) == 0) {
+        response["code"] = 0;
+        response["msg"] = "";
+    } else {
+        response["code"] = -1;
+        response["msg"] = "System damage";
+    }
+
+    response["data"] = hv::Json({});
+
+    return resp->Json(response);
+}
+
 int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
 {
     syslog(LOG_INFO, "start to get SystemUpdateVersinInfo...\n");
