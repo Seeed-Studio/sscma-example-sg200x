@@ -59,15 +59,10 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
     User["msg"] = "";
 
     getUserName();
-    g_sPassword = readFile(PATH_SECRET);
-    if (g_sPassword.back() == '\n') {
-        g_sPassword.erase(g_sPassword.size() - 1);
-    }
-    syslog(LOG_DEBUG, "%s, %s\n", g_sUserName.c_str(), g_sPassword.c_str());
+    syslog(LOG_DEBUG, "%s, %s\n", g_sUserName.c_str());
 
     hv::Json data;
     data["userName"] = g_sUserName;
-    data["password"] = g_sPassword;
 
     FILE* fp;
     char info[128];
