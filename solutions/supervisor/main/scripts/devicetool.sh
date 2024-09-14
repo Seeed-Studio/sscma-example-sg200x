@@ -1,5 +1,7 @@
 #!/bin/sh
 
+APP_TOOL="/mnt/system/usr/scripts/apptool.sh"
+
 function restartApp() {
     app="$1"
 
@@ -26,11 +28,19 @@ getAddress)
 
 installApp)
     if [ -f "$2" ]; then
-        opkg info $2 >/dev/null 2>&1
+        currentVersion="`opkg list-installed | awk -F' - ' '{print $2}' | head -1`"
+        ipkFile=$(dirname $2)/output/app.ipk
+        status="`$APP_TOOL $2 $3 $4`" # appFile appName appVersion
+
+        if [ "$status" == "ERROR" ]; then
+            echo "File conversion failed" && exit 1
+        fi
+
+        opkg info $ipkFile >/dev/null 2>&1
         [ $? != 0 ] && echo "File format error" && exit 1
 
-        opkg install $2 >/dev/null 2>&1
-        if [ $? == 0 ]; then
+        status="`opkg install $ipkFile 2>/dev/null | grep "install completed"`"
+        if [ "$status" ]; then
             echo "Finished"
         else
             echo "Install failed"

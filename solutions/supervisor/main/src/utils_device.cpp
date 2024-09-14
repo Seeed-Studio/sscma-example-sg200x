@@ -529,12 +529,16 @@ int uploadApp(const HttpContextPtr& ctx) {
     if (ctx->is(MULTIPART_FORM_DATA)) {
         ret = ctx->request->SaveFormFile("file", appPath.c_str());
     } else {
-        std::string fileName = ctx->param("filename", "unnamed.txt");
+        std::string fileName = ctx->param("filename", "app.zip");
         std::string filePath = appPath + fileName;
         ret = ctx->request->SaveFile(filePath.c_str());
     }
 
     strcat(cmd, std::string(appPath + ctx->param("filename")).c_str());
+    strcat(cmd, " ");
+    strcat(cmd, ctx->param("appName").c_str());
+    strcat(cmd, " ");
+    strcat(cmd, ctx->param("appVersion").c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run %s\n", cmd);
