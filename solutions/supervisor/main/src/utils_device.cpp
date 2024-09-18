@@ -649,14 +649,12 @@ int uploadModel(const HttpContextPtr& ctx) {
     hv::Json response;
     if (ret == 200) {
         response["code"] = 0;
-        response["msg"] = "";
+        response["msg"] = "upload model successfully";
     } else {
         response["code"] = -1;
         response["msg"] = "upload model failed";
     }
     response["data"] = hv::Json({});
 
-    ctx->response.get()->Set("code", 200);
-    ctx->response.get()->Set("message", response.dump(2));
-    return 200;
+    return ctx->send(response.dump(2));
 }
