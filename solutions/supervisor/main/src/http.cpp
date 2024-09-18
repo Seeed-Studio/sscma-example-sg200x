@@ -80,6 +80,9 @@ static void registerDeviceApi(HttpService& router)
 
     router.GET("/api/deviceMgr/getAppInfo", getAppInfo);
     router.POST("/api/deviceMgr/uploadApp", uploadApp);
+
+    router.GET("/api/deviceMgr/getModelInfo", getModelInfo);
+    router.POST("/api/deviceMgr/uploadModel", uploadModel);
 }
 
 static void registerWebSocket(HttpService& router)

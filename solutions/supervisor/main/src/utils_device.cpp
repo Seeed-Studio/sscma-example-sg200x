@@ -36,6 +36,50 @@ static int writeFile(const std::string& path, const std::string& strWrite)
     return -1;
 }
 
+static int saveModelFile(const HttpContextPtr& ctx, std::string filePath) {
+    const char* modelKey = "model_file";
+    auto form = ctx->request->GetForm();
+    HFile file;
+
+    if (form.empty()) {
+        return HTTP_STATUS_BAD_REQUEST;
+    }
+
+    auto iter = form.find(modelKey);
+    if (iter == form.end()) {
+        return HTTP_STATUS_BAD_REQUEST;
+    }
+
+    const auto& formdata = iter->second;
+    if (formdata.content.empty()) {
+        return HTTP_STATUS_BAD_REQUEST;
+    }
+
+    filePath += "model.cvimodel";
+    if (file.open(filePath.c_str(), "wb") != 0) {
+        return HTTP_STATUS_INTERNAL_SERVER_ERROR;
+    }
+    file.write(formdata.content.data(), formdata.content.size());
+
+    return 200;
+}
+
+static int saveModelInfoFile(const HttpContextPtr& ctx, std::string filePath) {
+    const char* modelKey = "model_info";
+    std::string modelInfo = ctx->request->GetFormData(modelKey);
+    HFile file;
+
+    filePath += "model.json";
+    if (file.open(filePath.c_str(), "wb") != 0) {
+        syslog(LOG_DEBUG, "open %s file failed\n", filePath.c_str());
+        return HTTP_STATUS_INTERNAL_SERVER_ERROR;
+    } else {
+        file.write(modelInfo.c_str(), modelInfo.size());
+    }
+
+    return 200;
+}
+
 static std::string getGateWay(std::string ip)
 {
     FILE* fp;
@@ -561,6 +605,56 @@ int uploadApp(const HttpContextPtr& ctx) {
     response["data"] = hv::Json({});
 
     pclose(fp);
+
+    ctx->response.get()->Set("code", 200);
+    ctx->response.get()->Set("message", response.dump(2));
+    return 200;
+}
+
+int getModelInfo(HttpRequest* req, HttpResponse* resp) {
+    std::string modelInfo;
+    std::string filePath = PATH_MODEL_DOWNLOAD_DIR + std::string("model.json");
+    hv::Json response;
+
+    modelInfo = readFile(filePath, "NULL");
+
+    if (modelInfo == "NULL") {
+        response["code"] = -1;
+        response["msg"] = "File does not exist";
+        response["data"] = hv::Json({});
+    } else {
+        response["code"] = 0;
+        response["msg"] = "";
+        response["data"] = modelInfo;
+    }
+
+    return resp->Json(response);
+}
+
+int uploadModel(const HttpContextPtr& ctx) {
+    int ret = 0;
+    std::string modelPath = PATH_MODEL_DOWNLOAD_DIR;
+
+    if (ctx->is(MULTIPART_FORM_DATA)) {
+        ret = saveModelFile(ctx, modelPath);
+        if (ret == 200) {
+            ret = saveModelInfoFile(ctx, modelPath);
+        }
+    } else {
+        std::string fileName = ctx->param("model_file", "model.cvimodel");
+        std::string filePath = modelPath + fileName;
+        ret = ctx->request->SaveFile(filePath.c_str());
+    }
+
+    hv::Json response;
+    if (ret == 200) {
+        response["code"] = 0;
+        response["msg"] = "";
+    } else {
+        response["code"] = -1;
+        response["msg"] = "upload model failed";
+    }
+    response["data"] = hv::Json({});
 
     ctx->response.get()->Set("code", 200);
     ctx->response.get()->Set("message", response.dump(2));
