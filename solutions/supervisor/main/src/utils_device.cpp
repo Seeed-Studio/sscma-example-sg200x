@@ -625,7 +625,7 @@ int getModelInfo(HttpRequest* req, HttpResponse* resp) {
     } else {
         response["code"] = 0;
         response["msg"] = "";
-        response["data"] = modelInfo;
+        response["data"]["model_info"] = modelInfo;
     }
 
     return resp->Json(response);
