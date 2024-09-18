@@ -28,6 +28,8 @@ protected:
     std::string session_;
     std::string host_;
     std::string url_;
+    std::string username_;
+    std::string password_;
     TransportRTSP* transport_;
     CameraNode* camera_;
     MessageBox frame_;

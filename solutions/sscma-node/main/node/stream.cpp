@@ -14,6 +14,8 @@ StreamNode::StreamNode(std::string id)
       port_(0),
       host_(""),
       url_(""),
+      username_(""),
+      password_(""),
       thread_(nullptr),
       camera_(nullptr),
       frame_(30) {
@@ -76,21 +78,31 @@ ma_err_t StreamNode::onCreate(const json& config) {
 
     if (!config.contains("port")) {
         port_ = 554;
+    } else {
+        port_ = config["port"].get<int>();
     }
-
     if (!config.contains("session")) {
         session_ = "live";
+    } else {
+        session_ = config["session"].get<std::string>();
     }
-
-
-    port_    = config["port"].get<int>();
-    session_ = config["session"].get<std::string>();
+    if (!config.contains("username")) {
+        username_ = "admin";
+    } else {
+        username_ = config["username"].get<std::string>();
+    }
+    if (!config.contains("password")) {
+        password_ = "admin";
+    } else {
+        password_ = config["password"].get<std::string>();
+    }
 
     if (session_.empty()) {
         throw NodeException(MA_EINVAL, "session is empty");
     }
 
-    url_ = "rtsp://" + host_ + ":" + std::to_string(port_) + "/" + session_;
+    url_ = "rtsp://" + username_ + ":" + password_ + "@" + host_ + ":" + std::to_string(port_) +
+        "/" + session_;
 
     thread_ = new Thread((type_ + "#" + id_).c_str(), threadEntryStub);
 
@@ -99,7 +111,7 @@ ma_err_t StreamNode::onCreate(const json& config) {
     }
 
     // show url
-    MA_LOGD(TAG, "%s", url_.c_str());
+    MA_LOGI(TAG, "%s", url_.c_str());
 
     transport_ = new TransportRTSP();
 
@@ -107,10 +119,9 @@ ma_err_t StreamNode::onCreate(const json& config) {
         throw NodeException(MA_ENOMEM, "transport create failed");
     }
 
-    if (transport_->open(port_, session_, MA_PIXEL_FORMAT_H264) != MA_OK) {
+    if (transport_->open(port_, session_, username_, password_) != MA_OK) {
         throw NodeException(MA_EINVAL, "stream open failed");
     }
-
 
     server_->response(id_,
                       json::object({{"type", MA_MSG_TYPE_RESP},

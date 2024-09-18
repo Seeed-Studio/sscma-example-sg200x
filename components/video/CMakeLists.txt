@@ -8,10 +8,6 @@ include_directories("${SG200X_SDK_PATH}/cvi_mpi/modules/isp/include/cv181x/")
 
 link_directories("${SG200X_SDK_PATH}/cvi_mpi/lib/")
 
-# rtsp
-include_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_ai_sdk/sample/3rd/rtsp/include/cvi_rtsp")
-link_directories("${SG200X_SDK_PATH}/install/soc_sg2002_recamera_emmc/tpu_musl_riscv64/cvitek_ai_sdk/sample/3rd/rtsp/lib")
-
 set(SENSOR_INC 
     "${CMAKE_CURRENT_LIST_DIR}/include/"
 )
