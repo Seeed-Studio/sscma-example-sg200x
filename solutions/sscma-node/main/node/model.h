@@ -1,6 +1,7 @@
 #pragma once
 
 #include "extension/bytetrack/byte_tracker.h"
+#include "extension/counter/counter.h"
 
 #include "camera.h"
 #include "node.h"
@@ -34,10 +35,12 @@ protected:
     Engine* engine_;
     Model* model_;
     CameraNode* camera_;
-    BYTETracker* tracker_;
     Thread* thread_;
+    BYTETracker tracker_;
+    Counter counter_;
     MessageBox raw_frame_;
     MessageBox jpeg_frame_;
+    ma_img_t *img_;
 };
 
 }  // namespace ma::node

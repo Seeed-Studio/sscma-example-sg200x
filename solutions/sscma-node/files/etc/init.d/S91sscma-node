@@ -16,37 +16,40 @@ NAME=sscma-node
 DESC="SSCMA Node Service"
 PIDFILE=/var/run/$NAME.pid
 LOGFILE=/var/log/$NAME.log
-USER=root 
+USER=root
 
-if [[ ":$LD_LIBRARY_PATH:" != *":/mnt/system/lib:"* ]]; then
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/system/lib
-fi
-
-if [[ ":$LD_LIBRARY_PATH:" != *":/mnt/system/usr/lib:"* ]]; then
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/system/usr/lib
-fi
-
-if [[ ":$LD_LIBRARY_PATH:" != *":/mnt/system/usr/lib/3rd:"* ]]; then
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/system/usr/lib/3rd
-fi
+# Set up the library path if necessary
+LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib:/mnt/system/usr/lib/3rd:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
 
 start() {
     echo "Starting $DESC: $NAME"
     if [ -f $PIDFILE ]; then
-        echo "$NAME is already running."
-    else
-        start-stop-daemon -S -q -m -b -p $PIDFILE \
-                --exec $DAEMON -- $DAEMON_OPTS
-        [ $? = 0 ] && echo "OK" || echo "FAIL"
+        PID=$(cat $PIDFILE)
+        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            echo "$NAME is already running (PID: $PID)."
+            return 1
+        else
+            echo "Removing stale PID file."
+            rm -f $PIDFILE
+        fi
     fi
+    start-stop-daemon -S -q -m -b -p $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+    [ $? = 0 ] && echo "OK" || echo "FAIL"
 }
 
 stop() {
     echo "Stopping $DESC: $NAME"
     if [ -f $PIDFILE ]; then
-        start-stop-daemon -K -q -p $PIDFILE
-        rm -f $PIDFILE
-        [ $? = 0 ] && echo "OK" || echo "FAIL"
+        PID=$(cat $PIDFILE)
+        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            start-stop-daemon -K -q -p $PIDFILE
+            rm -f $PIDFILE
+            [ $? = 0 ] && echo "OK" || echo "FAIL"
+        else
+            echo "Process not running but PID file exists, cleaning up."
+            rm -f $PIDFILE
+        fi
     else
         echo "$NAME is not running."
     fi
@@ -59,7 +62,12 @@ restart() {
 
 status() {
     if [ -f $PIDFILE ]; then
-        echo "$NAME is running."
+        PID=$(cat $PIDFILE)
+        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            echo "$NAME is running (PID: $PID)."
+        else
+            echo "$NAME PID file exists but process is not running."
+        fi
     else
         echo "$NAME is not running."
     fi

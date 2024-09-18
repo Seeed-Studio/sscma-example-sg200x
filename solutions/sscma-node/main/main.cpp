@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
 
     signal(SIGINT, sigHandler);
     signal(SIGSEGV, sigHandler);
+    signal(SIGABRT, sigHandler);
     signal(SIGTERM, sigHandler);
     signal(SIGHUP, sigHandler);
     signal(SIGQUIT, sigHandler);

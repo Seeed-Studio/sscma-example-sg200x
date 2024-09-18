@@ -14,11 +14,12 @@ ModelNode::ModelNode(std::string id)
       uri_(""),
       debug_(true),
       trace_(false),
+      counting_(false),
       count_(0),
       engine_(nullptr),
       model_(nullptr),
-      thread_(nullptr),
       camera_(nullptr),
+      thread_(nullptr),
       raw_frame_(1),
       jpeg_frame_(1) {}
 
@@ -134,39 +135,41 @@ void ModelNode::threadEntry() {
             auto _perf             = detector->getPerf();
             auto _results          = detector->getResults();
             reply["data"]["boxes"] = json::array();
+            std::vector<ma_bbox_t> _bboxes;
+            _bboxes.assign(_results.begin(), _results.end());
             if (trace_) {
-                std::vector<ma_bbox_t> _bboxes;
-                _bboxes.assign(_results.begin(), _results.end());
-                MA_LOGD(TAG, "bboxes: %zu", _bboxes.size());
-                take        = Tick::current();
-                auto tracks = tracker_->inplace_update(_bboxes);
-                take        = Tick::current() - take;
-                for (auto& result : _bboxes) {
-                    reply["data"]["boxes"].push_back({static_cast<int16_t>(result.x * width),
-                                                      static_cast<int16_t>(result.y * height),
-                                                      static_cast<int16_t>(result.w * width),
-                                                      static_cast<int16_t>(result.h * height),
-                                                      static_cast<int8_t>(result.score * 100),
-                                                      result.target});
-                }
+                auto tracks             = tracker_.inplace_update(_bboxes);
                 reply["data"]["tracks"] = tracks;
-
+                for (int i = 0; i < _bboxes.size(); i++) {
+                    reply["data"]["boxes"].push_back({static_cast<int16_t>(_bboxes[i].x * width),
+                                                      static_cast<int16_t>(_bboxes[i].y * height),
+                                                      static_cast<int16_t>(_bboxes[i].w * width),
+                                                      static_cast<int16_t>(_bboxes[i].h * height),
+                                                      static_cast<int8_t>(_bboxes[i].score * 100),
+                                                      _bboxes[i].target});
+                    if (counting_) {
+                        counter_.update(tracks[i], _bboxes[i].x * 100, _bboxes[i].y * 100);
+                    }
+                }
+                if (counting_ && _bboxes.size() == 0) {
+                    counter_.update(-1, 0, 0);
+                }
             } else {
-                for (auto& result : _results) {
-                    reply["data"]["boxes"].push_back({static_cast<int16_t>(result.x * width),
-                                                      static_cast<int16_t>(result.y * height),
-                                                      static_cast<int16_t>(result.w * width),
-                                                      static_cast<int16_t>(result.h * height),
-                                                      static_cast<int8_t>(result.score * 100),
-                                                      result.target});
+                for (int i = 0; i < _bboxes.size(); i++) {
+                    reply["data"]["boxes"].push_back({static_cast<int16_t>(_bboxes[i].x * width),
+                                                      static_cast<int16_t>(_bboxes[i].y * height),
+                                                      static_cast<int16_t>(_bboxes[i].w * width),
+                                                      static_cast<int16_t>(_bboxes[i].h * height),
+                                                      static_cast<int8_t>(_bboxes[i].score * 100),
+                                                      _bboxes[i].target});
                 }
             }
+            if (counting_) {
+                reply["data"]["counts"] = counter_.get();
+                reply["data"]["lines"]  = counter_.getSplitter();
+            }
 
-            reply["data"]["perf"].push_back({_perf.preprocess,
-                                             _perf.inference,
-                                             _perf.postprocess + Tick::toMilliseconds(take)});
-
-
+            reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
         } else if (classifier != nullptr) {
             err           = classifier->run(nullptr);
             auto _perf    = classifier->getPerf();
@@ -258,11 +261,11 @@ ma_err_t ModelNode::onCreate(const json& config) {
             if (config.contains("trace")) {
                 trace_ = config["trace"].get<bool>();
             }
-        }
-        if (trace_) {
-            tracker_ = new BYTETracker(10, 30, 0.25, 0.35, 0.8);
-            if (tracker_ == nullptr) {
-                throw NodeException(MA_ENOMEM, "tracker create failed");
+            if (config.contains("counting")) {
+                counting_ = config["counting"].get<bool>();
+            }
+            if (config.contains("splitter") && config["splitter"].is_array()) {
+                counter_.setSplitter(config["splitter"].get<std::vector<int16_t>>());
             }
         }
         thread_ = new Thread((type_ + "#" + id_).c_str(), &ModelNode::threadEntryStub);
@@ -302,20 +305,28 @@ ma_err_t ModelNode::onMessage(const json& msg) {
     std::string cmd = msg["name"].get<std::string>();
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
     if (cmd == "config") {
-        if (msg["data"].contains("tscore")) {
+        if (msg["data"].contains("tscore") && msg["data"]["tscore"].is_number_float()) {
             model_->setConfig(MA_MODEL_CFG_OPT_THRESHOLD, msg["data"]["tscore"].get<float>());
         }
-        if (msg["data"].contains("tiou")) {
+        if (msg["data"].contains("tiou") && msg["data"]["tiou"].is_number_float()) {
             model_->setConfig(MA_MODEL_CFG_OPT_NMS, msg["data"]["tiou"].get<float>());
         }
-        if (msg["data"].contains("topk")) {
-            model_->setConfig(MA_MODEL_CFG_OPT_TOPK, msg["data"]["tiou"].get<float>());
+        if (msg["data"].contains("topk") && msg["data"]["topk"].is_number_integer()) {
+            model_->setConfig(MA_MODEL_CFG_OPT_TOPK, msg["data"]["tiou"].get<int32_t>());
         }
-        if (msg["data"].contains("debug")) {
+        if (msg["data"].contains("debug") && msg["data"]["debug"].is_boolean()) {
             debug_ = msg["data"]["debug"].get<bool>();
         }
-        if (msg["data"].contains("trace")) {
+        if (msg["data"].contains("trace") && msg["data"]["trace"].is_boolean()) {
             trace_ = msg["data"]["trace"].get<bool>();
+            tracker_.clear();
+        }
+        if (msg["data"].contains("counting") && msg["data"]["counting"].is_boolean()) {
+            counting_ = msg["data"]["counting"].get<bool>();
+            counter_.clear();
+        }
+        if (msg["data"].contains("splitter") && msg["data"]["splitter"].is_array()) {
+            counter_.setSplitter(msg["data"]["splitter"].get<std::vector<int16_t>>());
         }
         server_->response(id_,
                           json::object({{"type", MA_MSG_TYPE_RESP},
