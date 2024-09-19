@@ -47,8 +47,9 @@ public:
     std::atomic<int> ref_cnt;
     bool own;
     bool physical;
-    uint32_t index;
-    uint32_t count;
+    bool isKey;
+    uint8_t index;
+    uint8_t count;
     uint64_t phy_addr;
     ma_img_t img;
 };

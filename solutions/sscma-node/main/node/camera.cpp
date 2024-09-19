@@ -70,8 +70,22 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
         frame->img.format = channels_[VencChn].format;
         frame->count      = pstStream->u32PackCount;
         frame->index      = i;
+        if (channels_[VencChn].format == MA_PIXEL_FORMAT_H264) {
+            switch (ppack->DataType.enH264EType) {
+                case H264E_NALU_ISLICE:
+                case H264E_NALU_SPS:
+                case H264E_NALU_IDRSLICE:
+                case H264E_NALU_SEI:
+                case H264E_NALU_PPS:
+                    frame->isKey = true;
+                    break;
+                default:
+                    frame->isKey = false;
+                    break;
+            }
+        }
         frame->ref(channels_[VencChn].msgboxes.size());
-
+        //MA_LOGI(TAG, "post frame %d/%d type:%d", frame->index + 1, frame->count, frame->isKey);
         for (auto& msgbox : channels_[VencChn].msgboxes) {
             if (!msgbox->post(frame, Tick::fromMilliseconds(5))) {
                 frame->release();

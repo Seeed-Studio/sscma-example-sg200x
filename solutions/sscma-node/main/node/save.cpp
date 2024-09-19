@@ -115,7 +115,7 @@ void SaveNode::threadEntry() {
                 file_.close();
                 file_.open(generateFileName(), std::ios::binary | std::ios::out);
                 recycle();
-                if (frame->count < 2) {
+                if (frame->index != 0 || !frame->isKey) {
                     frame->release();
                     continue;
                 }
