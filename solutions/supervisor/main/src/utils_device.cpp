@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string>
 #include <syslog.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
@@ -34,6 +36,19 @@ static int writeFile(const std::string& path, const std::string& strWrite)
     }
 
     return -1;
+}
+
+static int createFolder(const char* dirName) {
+    struct stat dirStat;
+    mode_t mode = 0755;
+
+    if (stat(dirName, &dirStat) != 0) {
+        if (mkdir(dirName, mode) != 0) {
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 static int saveModelFile(const HttpContextPtr& ctx, std::string filePath) {
@@ -636,7 +651,10 @@ int uploadModel(const HttpContextPtr& ctx) {
     std::string modelPath = PATH_MODEL_DOWNLOAD_DIR;
 
     if (ctx->is(MULTIPART_FORM_DATA)) {
-        ret = saveModelFile(ctx, modelPath);
+        ret = createFolder(PATH_MODEL_DOWNLOAD_DIR);
+        if (ret == 0) {
+            ret = saveModelFile(ctx, modelPath);
+        }
         if (ret == 200) {
             ret = saveModelInfoFile(ctx, modelPath);
         }
