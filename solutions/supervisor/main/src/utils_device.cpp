@@ -267,6 +267,7 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     }
 
     hv::Json data;
+    data["appName"] = "supervisor";
     data["deviceName"] = readFile(PATH_DEVICE_NAME);
     data["ip"] = req->host;
     data["mask"] = "255.255.255.0";
