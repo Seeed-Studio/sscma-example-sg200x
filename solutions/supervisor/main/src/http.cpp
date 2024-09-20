@@ -110,6 +110,7 @@ int initHttpd()
 {
     static HttpService router;
 
+    router.AllowCORS();
     router.Static("/", WWW(""));
 
     registerHttpRedirect(router);
