@@ -19,7 +19,7 @@ const int retryTimes = 3;
 int daemonStatus = 0;
 int noderedStatus = 0;
 int noderedStarting = 0;
-int sscmaStatus = 0;
+APP_STATUS sscmaStatus = APP_STATUS_UNKNOWN;
 sem_t semSscma;
 
 hv::MqttClient cli;
@@ -132,7 +132,7 @@ int getNoderedStatus() {
     return -1;
 }
 
-int getSscmaStatus() {
+APP_STATUS getSscmaStatus() {
     struct timespec ts;
 
     if (!cli.isConnected()) {
@@ -147,12 +147,11 @@ int getSscmaStatus() {
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_nsec += 500 * 1000;
         if (0 == sem_timedwait(&semSscma, &ts)) {
-            sscmaStatus = 1;
-            return 0;
+            return APP_STATUS_NORMAL;
         }
     }
 
-    return -1;
+    return APP_STATUS_NORESPONSE;
 }
 
 void runDaemon() {
@@ -160,6 +159,7 @@ void runDaemon() {
 
     while (daemonStatus) {
         std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
+        APP_STATUS appStatus;
 
         if (0 != getNoderedStatus()) {
             if (noderedStarting) {
@@ -174,14 +174,18 @@ void runDaemon() {
             }
         }
 
-        if (0 != getSscmaStatus()) {
-            if (sscmaStatus) {
-                syslog(LOG_ERR, "Sscma is not responding");
-                startSscma();
-            } else {
-                syslog(LOG_INFO, "Sscma has not yet fully started");
+        appStatus = getSscmaStatus();
+        if (APP_STATUS_NORMAL == appStatus) {
+            if (APP_STATUS_NORESPONSE == sscmaStatus) {
+                syslog(LOG_INFO, "Restart Flow");
+                startFlow();
             }
+        } else {
+            syslog(LOG_ERR, "sscma-node is not responding");
+            stopFlow();
+            startSscma();
         }
+        sscmaStatus = appStatus;
     }
 }
 
