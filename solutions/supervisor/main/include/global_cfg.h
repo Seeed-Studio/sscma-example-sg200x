@@ -6,7 +6,7 @@
 #define TTYD_PORT 9090
 #define WWW(file) ("/mnt/system/usr/dist/" file)
 #define REDIRECT_URL "http://192.168.16.1/index.html"
-#define DEFAULT_UPGRADE_URL "https://github.com/Seeed-Studio/reCamera/releases/latest"
+#define DEFAULT_UPGRADE_URL "https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
 
 /* WebSocket */
 #define WS_PORT 8000
