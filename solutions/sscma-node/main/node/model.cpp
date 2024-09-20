@@ -182,6 +182,10 @@ void ModelNode::threadEntry() {
             }
         }
 
+        if (classes_.size() > 0) {
+            reply["data"]["labels"] = classes_;
+        }
+
 
         if (debug_) {
             int base64_len = 4 * ((jpeg->img.size + 2) / 3 + 2);
@@ -218,13 +222,19 @@ ma_err_t ModelNode::onCreate(const json& config) {
 
     uri_ = config["uri"].get<std::string>();
 
+    classes_.clear();
+
 
     if (uri_.empty()) {
-        throw NodeException(MA_EINVAL, "uri is empty");
+        uri_ = "/userdata/MODEL/model.cvimodel";
     }
 
     if (access(uri_.c_str(), R_OK) != 0) {
         throw NodeException(MA_EINVAL, "model not found: " + uri_);
+    }
+
+    if (config.contains("classes") && config["classes"].is_array()) {
+        classes_ = config["classes"].get<std::vector<std::string>>();
     }
 
     try {

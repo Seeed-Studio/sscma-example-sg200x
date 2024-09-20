@@ -41,6 +41,7 @@ protected:
     MessageBox raw_frame_;
     MessageBox jpeg_frame_;
     ma_img_t *img_;
+    std::vector<std::string> classes_;
 };
 
 }  // namespace ma::node
