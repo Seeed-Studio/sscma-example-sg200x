@@ -17,8 +17,8 @@
 const int threadTimeout = 3;
 const int retryTimes = 3;
 int daemonStatus = 0;
-int noderedStatus = 0;
-int noderedStarting = 0;
+int noderedStarting = 1;
+APP_STATUS noderedStatus = APP_STATUS_UNKNOWN;
 APP_STATUS sscmaStatus = APP_STATUS_UNKNOWN;
 sem_t semSscma;
 
@@ -103,7 +103,6 @@ int startApp(const char* cmd, const char* appName) {
 }
 
 int startNodered() {
-    noderedStarting = 1;
     startApp(SCRIPT_DEVICE_RESTARTNODERED, "node-red");
 
     return 0;
@@ -115,21 +114,16 @@ int startSscma() {
     return 0;
 }
 
-int getNoderedStatus() {
+APP_STATUS getNoderedStatus() {
     for (int i = 0; i < retryTimes; i++) {
         auto resp = requests::get("localhost:1880");
 
         if (NULL != resp) {
-            if (noderedStarting) {
-                syslog(LOG_INFO, "node-red status: Finished\n");
-            }
-            noderedStarting = 0;
-            noderedStatus = 1;
-            return 0;
+            return APP_STATUS_NORMAL;
         }
     }
 
-    return -1;
+    return APP_STATUS_NORESPONSE;
 }
 
 APP_STATUS getSscmaStatus() {
@@ -161,17 +155,29 @@ void runDaemon() {
         std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
         APP_STATUS appStatus;
 
-        if (0 != getNoderedStatus()) {
+        appStatus = getNoderedStatus();
+        if (APP_STATUS_NORMAL == appStatus) {
+            if (noderedStarting) {
+                noderedStarting = 0;
+                syslog(LOG_INFO, "node-red startup status: Finished\n");
+            }
+
+            if (APP_STATUS_NORESPONSE == noderedStatus) {
+                syslog(LOG_INFO, "Stop Flow");
+                stopFlow();
+                noderedStatus = APP_STATUS_STOP;
+            } else {
+                noderedStatus = APP_STATUS_NORMAL;
+            }
+        } else {
             if (noderedStarting) {
                 syslog(LOG_INFO, "Nodered is starting");
             } else {
-                if (noderedStatus) {
-                    syslog(LOG_ERR, "Nodered is not responding");
-                    startNodered();
-                } else {
-                    syslog(LOG_INFO, "Nodered has not yet fully started");
-                }
+                noderedStarting = 1;
+                syslog(LOG_ERR, "node-red is not responding");
+                startNodered();
             }
+            noderedStatus = APP_STATUS_NORESPONSE;
         }
 
         appStatus = getSscmaStatus();
