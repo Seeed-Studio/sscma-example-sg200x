@@ -52,6 +52,38 @@ void initMqtt() {
     th.detach();
 }
 
+int startFlow() {
+    hv::Json data;
+    http_headers headers;
+
+    data["state"] = "start";
+    headers["Content-Type"] = "application/json";
+
+    auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
+    if (resp == NULL) {
+        syslog(LOG_ERR, "stop flow failed");
+        return -1;
+    }
+
+    return 0;
+}
+
+int stopFlow() {
+    hv::Json data;
+    http_headers headers;
+
+    data["state"] = "stop";
+    headers["Content-Type"] = "application/json";
+
+    auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
+    if (resp == NULL) {
+        syslog(LOG_ERR, "stop flow failed");
+        return -1;
+    }
+
+    return 0;
+}
+
 int startApp(const char* cmd, const char* appName) {
     FILE* fp;
     char info[128] = "";
