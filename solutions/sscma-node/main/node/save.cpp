@@ -23,7 +23,9 @@ SaveNode::SaveNode(std::string id)
     : Node("save", id),
       storage_(NODE_SAVE_PATH_LOCAL),
       max_size_(NODE_SAVE_MAX_SIZE),
+      enabled_(true),
       slice_(300),
+      duration_(-1),
       camera_(nullptr),
       frame_(30),
       thread_(nullptr) {}
@@ -33,6 +35,7 @@ SaveNode::~SaveNode() {
         delete thread_;
     }
     if (file_.is_open()) {
+        file_.flush();
         file_.close();
     }
 }
@@ -108,8 +111,19 @@ void SaveNode::threadEntry() {
 
     while (true) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame))) {
+            if (!enabled_) {
+                frame->release();
+                if (begin_ == 0) {
+                    if (file_.is_open()) {
+                        file_.flush();
+                        file_.close();
+                    }
+                    begin_ = Tick::current();
+                }
+                continue;
+            }
             Thread::enterCritical();
-            if (slice_ > 0 && frame->timestamp >= start_ + Tick::fromSeconds(slice_)) {
+            if ((slice_ > 0 && frame->timestamp >= start_ + Tick::fromSeconds(slice_))) {
                 start_ = frame->timestamp;
                 file_.flush();
                 file_.close();
@@ -122,6 +136,12 @@ void SaveNode::threadEntry() {
             }
             file_.write(reinterpret_cast<char*>(frame->img.data), frame->img.size);
             frame->release();
+            if (duration_ > 0 && frame->timestamp >= begin_ + Tick::fromSeconds(duration_)) {
+                file_.flush();
+                file_.close();
+                start_   = 0;
+                enabled_ = false;
+            }
             Thread::exitCritical();
         }
     }
@@ -139,6 +159,17 @@ ma_err_t SaveNode::onCreate(const json& config) {
         throw NodeException(MA_EINVAL, "invalid config");
     }
 
+    if (!config["storage"].is_string() || !config["slice"].is_number()) {
+        throw NodeException(MA_EINVAL, "invalid config");
+    }
+
+    if (config.contains("duration") && config["duration"].is_number()) {
+        duration_ = config["duration"].get<int>();
+    }
+
+    if (config.contains("enabled") && config["enabled"].is_boolean()) {
+        enabled_ = config["enabled"].get<bool>();
+    }
 
     std::string storageType = config["storage"].get<std::string>();
     storage_                = (storageType == "local") ? NODE_SAVE_PATH_LOCAL
@@ -172,7 +203,12 @@ ma_err_t SaveNode::onCreate(const json& config) {
     }
 
 
-    MA_LOGI(TAG, "storage: %s, slice: %d max_size: %ldB", storage_.c_str(), slice_, max_size_);
+    MA_LOGI(TAG,
+            "storage: %s, slice: %d duration: %d max_size: %ldB",
+            storage_.c_str(),
+            slice_,
+            duration_,
+            max_size_);
 
     server_->response(
         id_,
@@ -184,11 +220,32 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
 ma_err_t SaveNode::onMessage(const json& message) {
     Guard guard(mutex_);
-    server_->response(id_,
-                      json::object({{"type", MA_MSG_TYPE_RESP},
-                                    {"name", message["name"]},
-                                    {"code", MA_ENOTSUP},
-                                    {"data", ""}}));
+
+    if (message["name"] == "enable") {
+        if (!enabled_) {
+            enabled_ = true;
+        }
+        begin_ = Tick::current(); // increase the duration
+        server_->response(id_,
+                          json::object({{"type", MA_MSG_TYPE_RESP},
+                                        {"name", message["name"]},
+                                        {"code", MA_OK},
+                                        {"data", ""}}));
+    } else if (message["name"] == "disable") {
+        begin_   = 0;
+        enabled_ = false;
+        server_->response(id_,
+                          json::object({{"type", MA_MSG_TYPE_RESP},
+                                        {"name", message["name"]},
+                                        {"code", MA_OK},
+                                        {"data", ""}}));
+    } else {
+        server_->response(id_,
+                          json::object({{"type", MA_MSG_TYPE_RESP},
+                                        {"name", message["name"]},
+                                        {"code", MA_ENOTSUP},
+                                        {"data", ""}}));
+    }
     return MA_OK;
 }
 

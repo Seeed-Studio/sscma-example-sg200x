@@ -34,6 +34,9 @@ protected:
     std::string storage_;
     uint64_t max_size_;
     int slice_;
+    int duration_;
+    bool enabled_;
+    ma_tick_t begin_;
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
