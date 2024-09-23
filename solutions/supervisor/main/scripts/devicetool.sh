@@ -55,13 +55,13 @@ getAppInfo)
     ;;
 
 restartNodered)
-    nodered="/etc/init.d/S92node-red"
+    nodered="/etc/init.d/S*node-red"
 
     restartApp $nodered
     ;;
 
 restartSscma)
-    sscma="/etc/init.d/S91sscma-node"
+    sscma="/etc/init.d/S*sscma-node"
 
     restartApp $sscma
     ;;
