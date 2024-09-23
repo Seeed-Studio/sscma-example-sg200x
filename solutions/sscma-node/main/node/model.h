@@ -34,13 +34,14 @@ protected:
     uint32_t count_;
     Engine* engine_;
     Model* model_;
+    json info_;
     CameraNode* camera_;
     Thread* thread_;
     BYTETracker tracker_;
     Counter counter_;
     MessageBox raw_frame_;
     MessageBox jpeg_frame_;
-    ma_img_t *img_;
+    ma_img_t* img_;
     std::vector<std::string> classes_;
 };
 

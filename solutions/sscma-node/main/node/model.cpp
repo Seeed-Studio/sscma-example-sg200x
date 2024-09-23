@@ -7,6 +7,8 @@ namespace ma::node {
 using namespace ma::engine;
 using namespace ma::model;
 
+#define DEFAULT_MODEL_PATH "/userdata/MODEL/model.cvimodel"
+
 static constexpr char TAG[] = "ma::node::model";
 
 ModelNode::ModelNode(std::string id)
@@ -226,16 +228,35 @@ ma_err_t ModelNode::onCreate(const json& config) {
 
 
     if (uri_.empty()) {
-        uri_ = "/userdata/MODEL/model.cvimodel";
+        uri_ = DEFAULT_MODEL_PATH;
     }
 
     if (access(uri_.c_str(), R_OK) != 0) {
         throw NodeException(MA_EINVAL, "model not found: " + uri_);
     }
 
-    if (config.contains("classes") && config["classes"].is_array()) {
+    // find model.json
+    size_t pos = uri_.find_last_of(".");
+    if (pos != std::string::npos) {
+        std::string path = uri_.substr(0, pos) + ".json";
+        if (access(path.c_str(), R_OK) == 0) {
+            std::ifstream ifs(path);
+            if (!ifs.is_open()) {
+                throw NodeException(MA_EINVAL, "model.json not found: " + path);
+            }
+            ifs >> info_;
+            if (info_.is_object()) {
+                if (info_.contains("classes") && info_["classes"].is_array()) {
+                    classes_ = info_["classes"].get<std::vector<std::string>>();
+                }
+            }
+        }
+    }
+
+    if (classes_.size() == 0 && config.contains("classes") && config["classes"].is_array()) {
         classes_ = config["classes"].get<std::vector<std::string>>();
     }
+
 
     try {
         engine_ = new EngineDefault();
@@ -278,6 +299,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
                 counter_.setSplitter(config["splitter"].get<std::vector<int16_t>>());
             }
         }
+
         thread_ = new Thread((type_ + "#" + id_).c_str(), &ModelNode::threadEntryStub);
         if (thread_ == nullptr) {
             throw NodeException(MA_ENOMEM, "thread create failed");
@@ -302,7 +324,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
     server_->response(
         id_,
         json::object(
-            {{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", MA_OK}, {"data", ""}}));
+            {{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", MA_OK}, {"data", info_}}));
     return MA_OK;
 
     return MA_OK;
