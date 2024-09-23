@@ -377,27 +377,10 @@ int updateSystem(HttpRequest* req, HttpResponse* resp)
 {
     syslog(LOG_INFO, "start to update System now...\n");
 
-    std::string ch_url = readFile(PATH_UPGRADE_URL), url = "";
-    std::string cmd = SCRIPT_UPGRADE_START;
-    int channel = 0;
-    size_t pos = ch_url.find(',');
-    if (pos != std::string::npos) {
-        channel = stoi(ch_url.substr(0, pos));
-        url = ch_url.substr(pos + 1);
-        if (url.back() == '\n') {
-            url.erase(url.size() - 1);
-        }
-    }
+    char cmd[128] = SCRIPT_UPGRADE_START;
 
-    if (channel == 0) {
-        cmd += " ";
-        cmd += DEFAULT_UPGRADE_URL;
-        cmd += " &";
-    } else {
-        cmd += " " + url + " &";
-    }
-
-    system(cmd.c_str());
+    strcat(cmd, "&");
+    system(cmd);
 
     hv::Json response;
 
