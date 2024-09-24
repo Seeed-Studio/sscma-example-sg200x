@@ -12,7 +12,7 @@ ROOTFS_FILE=rootfs_ext4.emmc
 PERCENTAGE=0
 PERCENTAGE_FILE=/tmp/upgrade.percentage
 CTRL_FILE=/tmp/upgrade.ctrl
-VERSION_FILE=version.txt
+VERSION_FILE=/tmp/upgrade.version
 
 function clean_up() {
     if [ ! -z $MOUNTPATH ]; then
@@ -55,7 +55,7 @@ function get_upgrade_url() {
     if [[ $url =~ .*\.txt$ ]]; then
         full_url=$url
     else
-        url=$(curl -skLi $url | grep -i '^location:' | awk '{print $2}' | sed 's/^"//;s/"$//')
+        url=$(curl -skLi $url --connect-timeout 3 | grep -i '^location:' | awk '{print $2}' | sed 's/^"//;s/"$//')
         if [ -z "$url" ]; then
             echo ""
             return 1
@@ -192,7 +192,7 @@ latest)
         exit_upgrade 1
     fi
 
-    echo "$os_name $os_version" > $MOUNTPATH/$VERSION_FILE
+    echo "$os_name $os_version" > $VERSION_FILE
     result=$(check_version $os_name $os_version)
     PERCENTAGE=$result
     echo "check_version: $result"
