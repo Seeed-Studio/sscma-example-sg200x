@@ -137,12 +137,14 @@ int initWiFi() {
     char cmd[128] = SCRIPT_WIFI_START;
     std::string wifiName = getWiFiName("wlan0");
 
+    initUserInfo();
+
     strcat(cmd, wifiName.c_str());
     strcat(cmd, " ");
     strcat(cmd, std::to_string(TTYD_PORT).c_str());
+    strcat(cmd, " ");
+    strcat(cmd, std::to_string(g_userId).c_str());
     system(cmd);
-
-    initUserInfo();
 
     return 0;
 }

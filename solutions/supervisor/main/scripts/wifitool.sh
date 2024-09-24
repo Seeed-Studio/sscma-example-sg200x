@@ -66,7 +66,9 @@ start)
     ifconfig wlan1 up
     wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
     hostapd -B /etc/hostapd_2g4.conf
-    ttyd -p $3 sh > /dev/null 2>&1 &
+
+    export PS1='[\u@\h]\w\$ '
+    ttyd -p $3 -u $4 sh > /dev/null 2>&1 &
     ;;
 
 stop)
