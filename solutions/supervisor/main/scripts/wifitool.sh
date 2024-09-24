@@ -5,6 +5,7 @@ IFS=""
 
 scan_wifi() {
     wpa_cli -i wlan0 scan 1> /dev/null
+    sleep $1
     wpa_cli -i wlan0 scan_results | tail -n +2 | while read -r line
     do
         printf "%b\n" $line | awk '$5 != "" {print $5, $3, $4, $1}'
@@ -87,7 +88,7 @@ get_gateway)
     ;;
 
 scan)
-    scan_wifi
+    scan_wifi $2
     ;;
 
 list)

@@ -76,15 +76,17 @@ static int deduplicate(std::vector<std::vector<std::string>> &wifiList) {
     return l;
 }
 
-static int getWifiList()
+static int getWifiList(const std::string& scanTime)
 {
     FILE* fp;
     char info[128];
+    char cmd[128] = SCRIPT_WIFI_SCAN;
     std::vector<std::vector<std::string>> wifiList;
 
-    fp = popen(SCRIPT_WIFI_SCAN, "r");
+    strcat(cmd, scanTime.c_str());
+    fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_SCAN);
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
         return -1;
     }
 
@@ -283,7 +285,7 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
         return -1;
     }
 
-    if (getWifiList() != 0) {
+    if (getWifiList(req->GetString("scanTime")) != 0) {
         return -1;
     }
 
