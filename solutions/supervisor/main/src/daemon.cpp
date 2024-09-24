@@ -114,12 +114,28 @@ int startSscma() {
     return 0;
 }
 
+APP_STATUS getFlowStatus() {
+    auto resp = requests::get("localhost:1880/flows/state");
+
+    if (resp == NULL) {
+        return APP_STATUS_NORESPONSE;
+    } else {
+        hv::Json data = hv::Json::parse(resp->body.begin(), resp->body.end());
+
+        if (data["state"] == "stop") {
+            return APP_STATUS_STOP;
+        }
+    }
+
+    return APP_STATUS_NORMAL;
+}
+
 APP_STATUS getNoderedStatus() {
     for (int i = 0; i < retryTimes; i++) {
         auto resp = requests::get("localhost:1880");
 
         if (NULL != resp) {
-            return APP_STATUS_NORMAL;
+            return getFlowStatus();
         }
     }
 
@@ -169,7 +185,7 @@ void runDaemon() {
             } else {
                 noderedStatus = APP_STATUS_NORMAL;
             }
-        } else {
+        } else if (APP_STATUS_NORESPONSE == appStatus) {
             if (noderedStarting) {
                 syslog(LOG_INFO, "Nodered is starting");
             } else {
@@ -178,6 +194,8 @@ void runDaemon() {
                 startNodered();
             }
             noderedStatus = APP_STATUS_NORESPONSE;
+        } else {
+            noderedStatus = appStatus;
         }
 
         appStatus = getSscmaStatus();
