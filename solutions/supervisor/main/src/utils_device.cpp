@@ -10,9 +10,26 @@
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
 #include "utils_device.h"
+#include "daemon.h"
 
+SERVICE_STATUS systemStatus = SERVICE_STATUS_STARTING;
 int g_progress = 0;
 int g_restart = 0;
+
+SERVICE_STATUS convertStatus(APP_STATUS appStatus) {
+    switch (appStatus) {
+        case APP_STATUS_NORMAL:
+            return SERVICE_STATUS_NORMAL;
+
+        case APP_STATUS_STOP:
+            return SERVICE_STATUS_ERROR;
+
+        case APP_STATUS_NORESPONSE:
+            return SERVICE_STATUS_ERROR;
+    }
+
+    return SERVICE_STATUS_ERROR;
+}
 
 std::string readFile(const std::string& path, const std::string& defaultname)
 {
@@ -132,6 +149,30 @@ static void clearNewline(std::string& value) {
     }
 }
 
+void initSystemStatus() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
+    char info[128] = "";
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        systemStatus = SERVICE_STATUS_ERROR;
+        return ;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    if (strlen(info) == 0) {
+        systemStatus = SERVICE_STATUS_NORMAL;
+    } else {
+        systemStatus = SERVICE_STATUS_ERROR;
+    }
+
+    pclose(fp);
+}
+
 int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
     FILE* fp;
     char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
@@ -158,7 +199,21 @@ int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
         response["msg"] = "System damage";
     }
 
+    pclose(fp);
+
     response["data"] = hv::Json({});
+
+    return resp->Json(response);
+}
+
+int queryServiceStatus(HttpRequest* req, HttpResponse* resp) {
+    hv::Json response;
+
+    response["code"] = 0;
+    response["msg"] = "";
+    response["data"]["sscma-node"] = convertStatus(sscmaStatus);
+    response["data"]["node-node"] = noderedStarting ? SERVICE_STATUS_STARTING : convertStatus(noderedStatus);
+    response["data"]["upgrade"] = systemStatus;
 
     return resp->Json(response);
 }

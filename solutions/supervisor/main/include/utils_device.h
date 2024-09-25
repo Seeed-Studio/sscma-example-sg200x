@@ -1,9 +1,19 @@
 #ifndef _UTILS_DEVICE_H_
 #define _UTILS_DEVICE_H_
 
+enum SERVICE_STATUS {
+    SERVICE_STATUS_NORMAL = 0,
+    SERVICE_STATUS_STARTING = 1,
+    SERVICE_STATUS_STARTFAILED = 2,
+    SERVICE_STATUS_ERROR = 4,
+};
+
 std::string readFile(const std::string& path, const std::string& defaultname = "EmptyContent");
 
+void initSystemStatus();
+
 int getSystemStatus(HttpRequest* req, HttpResponse* resp);
+int queryServiceStatus(HttpRequest* req, HttpResponse* resp);
 int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp);
 
 int queryDeviceInfo(HttpRequest* req, HttpResponse* resp);
