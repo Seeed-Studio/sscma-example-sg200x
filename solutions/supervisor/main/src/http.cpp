@@ -10,6 +10,7 @@
 #include "utils_device.h"
 #include "utils_user.h"
 #include "utils_wifi.h"
+#include "utils_file.h"
 
 using namespace hv;
 
@@ -86,6 +87,13 @@ static void registerDeviceApi(HttpService& router)
     router.POST("/api/deviceMgr/uploadModel", uploadModel);
 }
 
+static void registerFileApi(HttpService& router)
+{
+    router.GET("/api/fileMgr/queryFileList", queryFileList);
+    router.POST("/api/fileMgr/uploadFile", uploadFile);
+    router.POST("/api/fileMgr/deleteFile", deleteFile);
+}
+
 static void registerWebSocket(HttpService& router)
 {
     router.GET("/api/deviceMgr/getCameraWebsocketUrl", [](HttpRequest* req, HttpResponse* resp) {
@@ -118,6 +126,7 @@ int initHttpd()
     registerUserApi(router);
     registerWiFiApi(router);
     registerDeviceApi(router);
+    registerFileApi(router);
     registerWebSocket(router);
 
     server.service = &router;
