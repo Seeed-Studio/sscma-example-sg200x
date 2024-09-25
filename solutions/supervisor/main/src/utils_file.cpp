@@ -49,16 +49,21 @@ int queryFileList(HttpRequest* req, HttpResponse* resp) {
 
 int uploadFile(HttpRequest* req, HttpResponse* resp) {
     std::string filePath = req->GetString("filePath");
+    hv::Json response;
+    int ret = 0;
 
     if (filePath.empty()) {
         filePath = req->GetParam("filePath");
     }
 
-    // TODO
-
-    hv::Json response;
-    response["code"] = 0;
-    response["msg"] = "";
+    ret = req->SaveFile(filePath.c_str());
+    if (200 == ret) {
+        response["code"] = 0;
+        response["msg"] = "Upload file successfully";
+    } else {
+        response["code"] = -1;
+        response["msg"] = "Upload file failed";
+    }
     response["data"] = hv::Json({});
 
     return resp->Json(response);
