@@ -22,10 +22,13 @@ SERVICE_STATUS convertStatus(APP_STATUS appStatus) {
             return SERVICE_STATUS_NORMAL;
 
         case APP_STATUS_STOP:
-            return SERVICE_STATUS_ERROR;
+            return SERVICE_STATUS_NORMAL;
 
         case APP_STATUS_NORESPONSE:
             return SERVICE_STATUS_ERROR;
+
+        case APP_STATUS_STARTFAILED:
+            return SERVICE_STATUS_STARTFAILED;
     }
 
     return SERVICE_STATUS_ERROR;

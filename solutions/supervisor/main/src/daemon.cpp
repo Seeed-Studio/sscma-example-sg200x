@@ -97,19 +97,11 @@ int startApp(const char* cmd, const char* appName) {
     fgets(info, sizeof(info) - 1, fp);
     syslog(LOG_INFO, "%s status: %s\n", appName, info);
 
+    if (0 != strcmp(info, "Finished")) {
+        return -1;
+    }
+
     pclose(fp);
-
-    return 0;
-}
-
-int startNodered() {
-    startApp(SCRIPT_DEVICE_RESTARTNODERED, "node-red");
-
-    return 0;
-}
-
-int startSscma() {
-    startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node");
 
     return 0;
 }
@@ -189,11 +181,14 @@ void runDaemon() {
             if (noderedStarting) {
                 syslog(LOG_INFO, "Nodered is starting");
             } else {
-                noderedStarting = 1;
                 syslog(LOG_ERR, "node-red is not responding");
-                startNodered();
+                if (0 != startApp(SCRIPT_DEVICE_RESTARTNODERED, "node-red")) {
+                    noderedStatus = APP_STATUS_STARTFAILED;
+                    noderedStarting = 0;
+                } else {
+                    noderedStarting = 1;
+                }
             }
-            noderedStatus = APP_STATUS_NORESPONSE;
         } else {
             noderedStatus = appStatus;
         }
@@ -204,12 +199,15 @@ void runDaemon() {
                 syslog(LOG_INFO, "Restart Flow");
                 startFlow();
             }
+            sscmaStatus = appStatus;
         } else {
+            sscmaStatus = appStatus;
             syslog(LOG_ERR, "sscma-node is not responding");
             stopFlow();
-            startSscma();
+            if (0 != startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node")) {
+                sscmaStatus = APP_STATUS_STARTFAILED;
+            }
         }
-        sscmaStatus = appStatus;
     }
 }
 
