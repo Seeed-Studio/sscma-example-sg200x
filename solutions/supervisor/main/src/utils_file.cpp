@@ -9,6 +9,22 @@
 #include "utils_file.h"
 #include "utils_device.h"
 
+static bool isLegalPath(const std::string& filePath) {
+    std::string str[] = {
+        "..",
+        ".*",
+        "/"
+    };
+
+    for (auto s: str) {
+        if (filePath.find(s) != std::string::npos) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int queryFileList(HttpRequest* req, HttpResponse* resp) {
     DIR* dir;
     struct dirent* ent;
@@ -53,6 +69,13 @@ int uploadFile(HttpRequest* req, HttpResponse* resp) {
         filePath = req->GetParam("filePath");
     }
 
+    if (!isLegalPath(filePath)) {
+        response["code"] = -1;
+        response["msg"] = "Invalid file name";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
     filePath = PATH_APP_DOWNLOAD_DIR + filePath;
     createFolder(PATH_APP_DOWNLOAD_DIR);
     ret = req->SaveFile(filePath.c_str());
@@ -75,6 +98,13 @@ int deleteFile(HttpRequest* req, HttpResponse* resp) {
 
     if (filePath.empty()) {
         filePath = req->GetParam("filePath");
+    }
+
+    if (!isLegalPath(filePath)) {
+        response["code"] = -1;
+        response["msg"] = "Invalid file name";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
     }
 
     filePath = PATH_APP_DOWNLOAD_DIR + filePath;
