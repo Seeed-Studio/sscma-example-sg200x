@@ -190,6 +190,9 @@ void runDaemon() {
                 }
             }
         } else {
+            if (noderedStarting) {
+                noderedStarting = 0;
+            }
             noderedStatus = appStatus;
         }
 
