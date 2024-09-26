@@ -9,6 +9,7 @@ enum SERVICE_STATUS {
 };
 
 std::string readFile(const std::string& path, const std::string& defaultname = "EmptyContent");
+int createFolder(const char* dirName);
 
 void initSystemStatus();
 

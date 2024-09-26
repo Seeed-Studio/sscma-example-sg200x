@@ -7,25 +7,22 @@
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
 #include "utils_file.h"
+#include "utils_device.h"
 
 int queryFileList(HttpRequest* req, HttpResponse* resp) {
     DIR* dir;
     struct dirent* ent;
     char fullpath[128];
     hv::Json response;
-    std::string folderPath = req->GetString("folderPath");
     std::vector<std::string> fileList;
 
-    if (folderPath.empty()) {
-        folderPath = req->GetParam("folderPath");
-    }
-
-    dir = opendir(folderPath.c_str());
+    createFolder(PATH_APP_DOWNLOAD_DIR);
+    dir = opendir(PATH_APP_DOWNLOAD_DIR);
     if (dir == NULL) {
         response["code"] = -1;
         response["msg"] = "open folder failed";
         response["data"] = hv::Json({});
-        syslog(LOG_ERR, "open %s folder failed here\n", folderPath.c_str());
+        syslog(LOG_ERR, "open %s folder failed here\n", PATH_APP_DOWNLOAD_DIR);
 
         return resp->Json(response);
     }
@@ -35,7 +32,7 @@ int queryFileList(HttpRequest* req, HttpResponse* resp) {
             continue;
         }
 
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", folderPath.c_str(), ent->d_name);
+        snprintf(fullpath, sizeof(fullpath), "%s%s", PATH_APP_DOWNLOAD_DIR, ent->d_name);
         fileList.push_back(std::string(ent->d_name));
     }
     closedir(dir);
@@ -56,6 +53,8 @@ int uploadFile(HttpRequest* req, HttpResponse* resp) {
         filePath = req->GetParam("filePath");
     }
 
+    filePath = PATH_APP_DOWNLOAD_DIR + filePath;
+    createFolder(PATH_APP_DOWNLOAD_DIR);
     ret = req->SaveFile(filePath.c_str());
     if (200 == ret) {
         response["code"] = 0;
@@ -78,6 +77,7 @@ int deleteFile(HttpRequest* req, HttpResponse* resp) {
         filePath = req->GetParam("filePath");
     }
 
+    filePath = PATH_APP_DOWNLOAD_DIR + filePath;
     ret = remove(filePath.c_str());
 
     if (0 == ret) {

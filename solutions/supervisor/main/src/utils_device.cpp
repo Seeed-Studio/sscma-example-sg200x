@@ -55,12 +55,13 @@ static int writeFile(const std::string& path, const std::string& strWrite)
     return -1;
 }
 
-static int createFolder(const char* dirName) {
+int createFolder(const char* dirName) {
     struct stat dirStat;
     mode_t mode = 0755;
 
     if (stat(dirName, &dirStat) != 0) {
         if (mkdir(dirName, mode) != 0) {
+            syslog(LOG_DEBUG, "Failed to create %s folder\n", dirName);
             return -1;
         }
     }

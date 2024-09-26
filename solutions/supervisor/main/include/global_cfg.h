@@ -21,6 +21,7 @@
 #define PATH_UPGRADE_VERSION_FILE "/tmp/upgrade.version"
 #define PATH_APP_DOWNLOAD_DIR "/tmp/opkg/"
 #define PATH_MODEL_DOWNLOAD_DIR "/userdata/MODEL/"
+#define PATH_APP_DOWNLOAD_DIR "/userdata/app/"
 
 /* usertool.sh*/
 #define SCRIPT_USER(action) ("/mnt/system/usr/scripts/usertool.sh" \
