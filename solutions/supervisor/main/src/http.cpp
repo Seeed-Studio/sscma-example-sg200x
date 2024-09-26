@@ -129,6 +129,19 @@ int initHttpd()
     registerFileApi(router);
     registerWebSocket(router);
 
+#if HTTPS_SUPPORT
+    server.https_port = HTTPS_PORT;
+    hssl_ctx_opt_t param;
+    memset(&param, 0, sizeof(param));
+    param.crt_file = PATH_SERVER_CRT;
+    param.key_file = PATH_SERVER_KEY;
+    param.endpoint = HSSL_SERVER;
+    if (server.newSslCtx(&param) != 0) {
+        fprintf(stderr, "new SSL_CTX failed!\n");
+        return -1;
+    }
+#endif
+
     server.service = &router;
     server.port = HTTPD_PORT;
     server.start();

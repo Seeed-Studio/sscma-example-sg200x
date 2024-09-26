@@ -3,6 +3,7 @@
 
 /* HTTPD */
 #define HTTPD_PORT 80
+#define HTTPS_PORT 443
 #define TTYD_PORT 9090
 #define WWW(file) ("/mnt/system/usr/dist/" file)
 #define REDIRECT_URL "http://192.168.16.1/index.html"
@@ -22,6 +23,9 @@
 #define PATH_APP_DOWNLOAD_DIR "/tmp/opkg/"
 #define PATH_MODEL_DOWNLOAD_DIR "/userdata/MODEL/"
 #define PATH_APP_DOWNLOAD_DIR "/userdata/app/"
+
+#define PATH_SERVER_CRT "/etc/cert/server.crt"
+#define PATH_SERVER_KEY "/etc/cert/server.key"
 
 /* usertool.sh*/
 #define SCRIPT_USER(action) ("/mnt/system/usr/scripts/usertool.sh" \

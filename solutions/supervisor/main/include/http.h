@@ -5,6 +5,8 @@
 
 extern "C" {
 
+#define HTTPS_SUPPORT 0
+
 int initHttpd();
 int deinitHttpd();
 
