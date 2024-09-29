@@ -115,6 +115,33 @@ static void registerWebSocket(HttpService& router)
     });
 }
 
+static void initHttpsService() {
+    if (0 != access(PATH_SERVER_CRT, F_OK)) {
+        syslog(LOG_ERR, "The crt file does not exist\n");
+        return;
+    }
+
+    if (0 != access(PATH_SERVER_KEY, F_OK)) {
+        syslog(LOG_ERR, "The key file does not exist\n");
+        return;
+    }
+
+    server.https_port = HTTPS_PORT;
+    hssl_ctx_opt_t param;
+
+    memset(&param, 0, sizeof(param));
+    param.crt_file = PATH_SERVER_CRT;
+    param.key_file = PATH_SERVER_KEY;
+    param.endpoint = HSSL_SERVER;
+
+    if (server.newSslCtx(&param) != 0) {
+        syslog(LOG_ERR, "new SSL_CTX failed!\n");
+        return;
+    }
+
+    syslog(LOG_INFO, "https service open successful!\n");
+}
+
 int initHttpd()
 {
     static HttpService router;
@@ -130,16 +157,7 @@ int initHttpd()
     registerWebSocket(router);
 
 #if HTTPS_SUPPORT
-    server.https_port = HTTPS_PORT;
-    hssl_ctx_opt_t param;
-    memset(&param, 0, sizeof(param));
-    param.crt_file = PATH_SERVER_CRT;
-    param.key_file = PATH_SERVER_KEY;
-    param.endpoint = HSSL_SERVER;
-    if (server.newSslCtx(&param) != 0) {
-        fprintf(stderr, "new SSL_CTX failed!\n");
-        return -1;
-    }
+    initHttpsService();
 #endif
 
     server.service = &router;
