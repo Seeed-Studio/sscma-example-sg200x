@@ -26,7 +26,7 @@ set(SENSOR_SRC
 
 component_register(
     COMPONENT_NAME video
-    PRIVATE_REQUIREDS ae af atomic awb cvi_bin cvi_bin_isp gdc isp isp_algo sns_full sys venc vpss vi vo 
+    PRIVATE_REQUIREDS ae af atomic awb cvi_bin cvi_bin_isp gdc isp isp_algo sys venc vpss vi vo sns_ov5647 sns_sc530ai_2l
     PRIVATE_REQUIREDS cvi_ispd2 json-c
 
     INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/"

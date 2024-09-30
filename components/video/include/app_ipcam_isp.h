@@ -12,10 +12,13 @@ extern "C"
 #define PQ_BIN_NIGHT_COLOR  "/mnt/data/cvi_night_color_bin"
 #define PQ_BIN_WDR          "/mnt/data/cvi_wdr_bin"
 #else
-#define PQ_BIN_SDR          "/mnt/cfg/param/cvi_sdr_bin"
+#define PQ_BIN_SDR_PREFIX   "/mnt/cfg/param/cvi_sdr_bin"
 #define PQ_BIN_IR           "/mnt/cfg/param/cvi_sdr_ir_bin"
 #define PQ_BIN_NIGHT_COLOR  "/mnt/cfg/param/cvi_night_color_bin"
 #define PQ_BIN_WDR          "/mnt/cfg/param/cvi_wdr_bin"
+
+extern char* app_ipcam_Isp_pq_bin(void);
+#define PQ_BIN_SDR   app_ipcam_Isp_pq_bin()
 #endif
 
 int app_ipcam_Vi_Isp_Init(void);

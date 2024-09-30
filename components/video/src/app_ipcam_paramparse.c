@@ -28,6 +28,22 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_ov5647 = {
     .u8UseDualSns = 0,
 };
 
+static const APP_PARAM_SNS_CFG_T sns_cfg_sc530ai = {
+    .s32SnsId = 0,
+    .enSnsType = SENSOR_SMS_SC530AI_2L,
+    .s32Framerate = 30,
+    .s32BusId = 2,
+    .s32I2cAddr = 30,
+    .MipiDev = 0,
+    .as16LaneId = { 2, 0, 3, -1, -1 },
+    .as8PNSwap = { 0, 0, 0, 0, 0 },
+    .bMclkEn = 1,
+    .u8Mclk = 0,
+    .u8Orien = ISP_SNS_MIRROR_FLIP,
+    .bHwSync = 0,
+    .u8UseDualSns = 0,
+};
+
 static const APP_PARAM_DEV_CFG_T dev_cfg = {
     .ViDev = 0,
     .enWDRMode = WDR_MODE_NONE,
@@ -270,7 +286,76 @@ int app_ipcam_Param_setVencChnType(int ch, PAYLOAD_TYPE_E enType)
     pvchn->astChn[1].s32DevId = 0; // dst
     pvchn->astChn[1].s32ChnId = ch;
 
-    return 0;
+    return CVI_SUCCESS;
+}
+
+static const APP_PARAM_SNS_CFG_T* supported_sensors[] = { &sns_cfg_ov5647, &sns_cfg_sc530ai };
+static const APP_PARAM_SNS_CFG_T* vi_sensor_identify(void)
+{
+    VI_PIPE ViPipe = 0;
+    CVI_S32 s32Ret = CVI_SUCCESS;
+    const APP_PARAM_SNS_CFG_T* pstSnsCfg;
+    ISP_SNS_OBJ_S* pfnSnsObj = CVI_NULL;
+
+    for (int i = 0; i < sizeof(supported_sensors) / sizeof(supported_sensors[0]); i++) {
+        pstSnsCfg = supported_sensors[i];
+        pfnSnsObj = app_ipcam_SnsObj_Get(pstSnsCfg->enSnsType);
+        if (CVI_NULL == pfnSnsObj) {
+            continue;
+        }
+
+        ISP_SNS_COMMBUS_U sns_bus_info;
+        memset(&sns_bus_info, 0, sizeof(ISP_SNS_COMMBUS_U));
+        sns_bus_info.s8I2cDev = (pstSnsCfg->s32BusId >= 0) ? (CVI_S8)pstSnsCfg->s32BusId : 0x3;
+        if (pfnSnsObj->pfnSetBusInfo) {
+            s32Ret = pfnSnsObj->pfnSetBusInfo(ViPipe, sns_bus_info);
+            if (CVI_SUCCESS != s32Ret) {
+                return CVI_NULL;
+            }
+        }
+
+        if (pfnSnsObj->pfnPatchI2cAddr) {
+            pfnSnsObj->pfnPatchI2cAddr(pstSnsCfg->s32I2cAddr);
+        }
+
+        if (pfnSnsObj->pfnSnsProbe) {
+            s32Ret = pfnSnsObj->pfnSnsProbe(ViPipe);
+            if (s32Ret == CVI_SUCCESS) {
+                return pstSnsCfg;
+            }
+        }
+    }
+
+    return CVI_NULL;
+}
+
+char* app_ipcam_Isp_pq_bin(void)
+{
+    static char pq_bin[64] = PQ_BIN_SDR_PREFIX;
+
+    APP_PARAM_VI_CTX_S* vi = app_ipcam_Vi_Param_Get();
+
+    if (vi->astSensorCfg[0].enSnsType == SENSOR_SMS_SC530AI_2L) {
+        sprintf(pq_bin, PQ_BIN_SDR_PREFIX"_sc530ai_2l");
+    }
+
+    return pq_bin;
+}
+
+static void fix_vi_chn_cfg(const APP_PARAM_SNS_CFG_T* pstSnsCfg, APP_PARAM_CHN_CFG_T* chn_cfg)
+{
+    if (SENSOR_SMS_SC530AI_2L == pstSnsCfg->enSnsType) {
+        chn_cfg->u32Width = 2880;
+        chn_cfg->u32Height = 1620;
+    }
+}
+
+static void fix_vi_grp_attr(const APP_PARAM_SNS_CFG_T* pstSnsCfg, VPSS_GRP_ATTR_S* grp_attr)
+{
+    if (SENSOR_SMS_SC530AI_2L == pstSnsCfg->enSnsType) {
+        grp_attr->u32MaxW = 2880;
+        grp_attr->u32MaxH = 1620;
+    }
 }
 
 #define APP_IPCAM_CHN_NUM 3
@@ -284,17 +369,22 @@ int app_ipcam_Param_Load(void)
         sys->vb_pool[i] = vbpool;
     }
     sys->stVIVPSSMode.aenMode[0] = VI_OFFLINE_VPSS_ONLINE;
-    sys->stVPSSMode.enMode = VPSS_MODE_DUAL;
-    sys->stVPSSMode.aenInput[0] = VPSS_INPUT_MEM;
+    sys->stVPSSMode.enMode = VPSS_MODE_SINGLE;
+    sys->stVPSSMode.aenInput[0] = VPSS_INPUT_ISP;//VPSS_INPUT_MEM;
     sys->stVPSSMode.aenInput[1] = VPSS_INPUT_ISP;
     sys->stVPSSMode.ViPipe[0] = 0;
     sys->stVPSSMode.ViPipe[1] = 0;
     sys->bSBMEnable = 0;
 
     // vi
+    const APP_PARAM_SNS_CFG_T* pstSnsCfg = vi_sensor_identify();
+    if (CVI_NULL == pstSnsCfg) {
+        APP_PROF_LOG_PRINT(LEVEL_ERROR, "vi sensor not found\n");
+        return CVI_ERR_VI_INVALID_DEVID;
+    }
     APP_PARAM_VI_CTX_S* vi = app_ipcam_Vi_Param_Get();
     vi->u32WorkSnsCnt = 1;
-    vi->astSensorCfg[0] = sns_cfg_ov5647;
+    vi->astSensorCfg[0] = *pstSnsCfg;
     vi->astSensorCfg[0].s32SnsId = 0;
     vi->astDevInfo[0] = dev_cfg;
     vi->astDevInfo[0].ViDev = 0;
@@ -302,6 +392,7 @@ int app_ipcam_Param_Load(void)
     vi->astChnInfo[0] = chn_cfg;
     vi->astChnInfo[0].s32ChnId = 0;
     vi->astIspCfg[0].bAfFliter = 0;
+    fix_vi_chn_cfg(pstSnsCfg, &vi->astChnInfo[0]);
 
     // vpss
     APP_PARAM_VPSS_CFG_T* vpss = app_ipcam_Vpss_Param_Get();
@@ -310,7 +401,8 @@ int app_ipcam_Param_Load(void)
     APP_VPSS_GRP_CFG_T* pgrp = &vpss->astVpssGrpCfg[0];
     pgrp->VpssGrp = 0;
     pgrp->stVpssGrpAttr = grp_attr;
-    pgrp->stVpssGrpAttr.u8VpssDev = 1;
+    fix_vi_grp_attr(pstSnsCfg, &pgrp->stVpssGrpAttr);
+    pgrp->stVpssGrpAttr.u8VpssDev = 0;
     pgrp->bBindMode = 0;
     pgrp->astChn[0].enModId = CVI_ID_VI; // src
     pgrp->astChn[0].s32DevId = 0;
