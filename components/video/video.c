@@ -18,7 +18,7 @@ static int setVbPool(video_ch_index_t ch, const video_ch_param_t* param) {
     vb->bEnable            = 1;
     vb->width              = param->width;
     vb->height             = param->height;
-    vb->fmt = (param->format == VIDEO_FORMAT_RGB888) ? PIXEL_FORMAT_RGB_888 : PIXEL_FORMAT_NV21;
+    vb->fmt                = (param->format == VIDEO_FORMAT_RGB888) ? PIXEL_FORMAT_RGB_888 : PIXEL_FORMAT_NV21;
 
     return 0;
 }
@@ -45,8 +45,7 @@ static int setGrpChn(int grp, video_ch_index_t ch, const video_ch_param_t* param
     VPSS_CHN_ATTR_S* vpss_chn = &pgrp->astVpssChnAttr[ch];
     vpss_chn->u32Width        = param->width;
     vpss_chn->u32Height       = param->height;
-    vpss_chn->enPixelFormat =
-        (param->format == VIDEO_FORMAT_RGB888) ? PIXEL_FORMAT_RGB_888 : PIXEL_FORMAT_NV21;
+    vpss_chn->enPixelFormat   = (param->format == VIDEO_FORMAT_RGB888) ? PIXEL_FORMAT_RGB_888 : PIXEL_FORMAT_NV21;
 
     return 0;
 }
@@ -123,8 +122,7 @@ int setupVideo(video_ch_index_t ch, const video_ch_param_t* param) {
         return -1;
     }
     if (param->format >= VIDEO_FORMAT_COUNT) {
-        APP_PROF_LOG_PRINT(
-            LEVEL_ERROR, "video ch(%d) format(%d) is not support\n", ch, param->format);
+        APP_PROF_LOG_PRINT(LEVEL_ERROR, "video ch(%d) format(%d) is not support\n", ch, param->format);
         return -1;
     }
 
@@ -135,10 +133,7 @@ int setupVideo(video_ch_index_t ch, const video_ch_param_t* param) {
     return 0;
 }
 
-int registerVideoFrameHandler(video_ch_index_t ch,
-                              int index,
-                              pfpDataConsumes handler,
-                              void* pUserData) {
+int registerVideoFrameHandler(video_ch_index_t ch, int index, pfpDataConsumes handler, void* pUserData) {
     app_ipcam_Venc_Consumes_Set(ch, index, handler, pUserData);
     return 0;
 }

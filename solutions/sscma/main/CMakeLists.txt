@@ -4,16 +4,11 @@ set(incs ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/node
 )
 
-# set(CMAKE_BUILD_TYPE Debug)
-
-# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
-# set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
-
-
 set(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 message(STATUS "SOURCES: ${SOURCES}")
 
@@ -21,7 +16,7 @@ component_register(
     COMPONENT_NAME main
     SRCS ${srcs}
     INCLUDE_DIRS ${incs}
-    PRIVATE_REQUIREDS sscma cvi_rtsp
+    PRIVATE_REQUIREDS sscma 
 )
 
 

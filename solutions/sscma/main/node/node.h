@@ -17,55 +17,28 @@ namespace ma::node {
 class NodeFactory;
 class NodeServer;
 
-using Response = std::function<void(const json&)>;
-
-class NodeException : public std::exception {
-private:
-    ma_err_t err_;
-    std::string msg_;
-
-public:
-    NodeException(ma_err_t err, const std::string& msg) : err_(err), msg_(msg) {}
-    ma_err_t err() const {
-        return err_;
-    }
-    const char* what() const noexcept override {
-        return msg_.c_str();
-    }
-};
-
 class Node {
 public:
     Node(std::string type, std::string id);
     virtual ~Node();
 
-    virtual ma_err_t onCreate(const json& config)   = 0;
-    virtual ma_err_t onStart()                      = 0;
-    virtual ma_err_t onMessage(const json& message) = 0;
-    virtual ma_err_t onStop()                       = 0;
-    virtual ma_err_t onDestroy()                    = 0;
+    virtual ma_err_t onCreate(const json& config)                            = 0;
+    virtual ma_err_t onStart()                                               = 0;
+    virtual ma_err_t onControl(const std::string& control, const json& data) = 0;
+    virtual ma_err_t onStop()                                                = 0;
+    virtual ma_err_t onDestroy()                                             = 0;
 
-    const std::string& id() const {
-        return id_;
-    }
-    const std::string& type() const {
-        return type_;
-    }
-    const std::vector<std::string>& dependencies() const {
-        return dependencies_;
-    }
-
-    const std::string dump() const {
-        return json({{"id", id_}, {"type", type_}, {"dependencies", dependencies_}}).dump();
-    }
+    const std::string& id() const;
+    const std::string& type() const;
+    const std::string dump() const;
 
 protected:
     Mutex mutex_;
     std::string id_;
     std::string type_;
-    NodeServer* server_;
-    std::atomic_bool started_;
-    std::vector<std::string> dependencies_;
+    std::atomic<bool> started_;
+    std::unordered_map<std::string, Node*> dependencies_; 
+    std::unordered_map<std::string, Node*> dependents_;
 
     friend class NodeServer;
     friend class NodeFactory;
@@ -81,10 +54,7 @@ class NodeFactory {
     };
 
 public:
-    static Node* create(const std::string id,
-                        const std::string type,
-                        const json& data,
-                        NodeServer* server);
+    static Node* create(const std::string id, const std::string type, const json& data);
     static void destroy(const std::string id);
     static Node* find(const std::string id);
     static void clear();
@@ -97,7 +67,7 @@ private:
     static Mutex m_mutex;
 };
 
-#if 0
+#if MA_USE_NODE_REGISTRAR
 #define REGISTER_NODE(type, node)                                                                \
     class node##Registrar {                                                                      \
     public:                                                                                      \
@@ -105,7 +75,7 @@ private:
             NodeFactory::registerNode(type, [](const std::string& id) { return new node(id); }); \
         }                                                                                        \
     };                                                                                           \
-    static node##Registrar g_##node##Registrar;
+    static node##Registrar g_##node##Registrar MA_ATTR_USED;
 
 #define REGISTER_NODE_SINGLETON(type, node)                                      \
     class node##Registrar {                                                      \
@@ -115,10 +85,11 @@ private:
                 type, [](const std::string& id) { return new node(id); }, true); \
         }                                                                        \
     };                                                                           \
-    static node##Registrar g_##node##Registrar;
+    static node##Registrar g_##node##Registrar MA_ATTR_USED;
 #else
 #define REGISTER_NODE(type, node)
 #define REGISTER_NODE_SINGLETON(type, node)
 #endif
+
 
 }  // namespace ma::node
