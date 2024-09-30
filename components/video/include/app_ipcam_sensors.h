@@ -7,6 +7,7 @@ extern "C" {
 
 // Enabled sensors
 #define SNS0_OV_OV5647
+#define SNS0_SMS_SC530AI_2L
 
 typedef enum _SENSOR_TYPE_E {
     SENSOR_NONE,
@@ -41,6 +42,7 @@ typedef enum _SENSOR_TYPE_E {
     SENSOR_SMS_SC401AI,
     SENSOR_SMS_SC4210,
     SENSOR_SMS_SC8238,
+    SENSOR_SMS_SC530AI_2L,
     SENSOR_SMS_SC531AI_2L,
     SENSOR_SMS_SC5336_2L,
     SENSOR_SMS_SC4336P,

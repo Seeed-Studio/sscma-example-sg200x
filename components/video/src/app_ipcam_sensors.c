@@ -191,6 +191,10 @@ ISP_SNS_OBJ_S* app_ipcam_SnsObj_Get(SENSOR_TYPE_E enSnsType)
     case SENSOR_SMS_SC8238:
         return &stSnsSC8238_Obj;
 #endif
+#ifdef SNS0_SMS_SC530AI_2L
+    case SENSOR_SMS_SC530AI_2L:
+        return &stSnsSC530AI_2L_Obj;
+#endif
 #ifdef SNS0_SMS_SC531AI_2L
     case SENSOR_SMS_SC531AI_2L:
         return &stSnsSC531AI_2L_Obj;
@@ -311,6 +315,16 @@ CVI_S32 app_ipcam_Vi_DevAttr_Get(SENSOR_TYPE_E enSnsType, VI_DEV_ATTR_S* pstViDe
     memcpy(pstViDevAttr, &vi_dev_attr_base, sizeof(VI_DEV_ATTR_S));
 
     switch (enSnsType) {
+    case SENSOR_SMS_SC530AI_2L:
+        pstViDevAttr->stSynCfg.stTimingBlank.u32HsyncAct = 2880;
+        pstViDevAttr->stSynCfg.stTimingBlank.u32VsyncVact = 1620;
+        pstViDevAttr->stSize.u32Width = 2880;
+        pstViDevAttr->stSize.u32Height = 1620;
+        pstViDevAttr->stWDRAttr.u32CacheLine = 1620;
+        break;
+    }
+
+    switch (enSnsType) {
     case SENSOR_GCORE_GC1054:
     case SENSOR_GCORE_GC2053:
     case SENSOR_GCORE_GC2053_1L:
@@ -364,6 +378,7 @@ CVI_S32 app_ipcam_Vi_DevAttr_Get(SENSOR_TYPE_E enSnsType, VI_DEV_ATTR_S* pstViDe
     case SENSOR_SMS_SC401AI:
     case SENSOR_SMS_SC4210:
     case SENSOR_SMS_SC8238:
+    case SENSOR_SMS_SC530AI_2L:
     case SENSOR_SMS_SC531AI_2L:
     case SENSOR_SMS_SC5336_2L:
     case SENSOR_SMS_SC4336P:
@@ -432,6 +447,13 @@ CVI_S32 app_ipcam_Vi_PipeAttr_Get(SENSOR_TYPE_E enSnsType, VI_PIPE_ATTR_S* pstVi
     memcpy(pstViPipeAttr, &vi_pipe_attr_base, sizeof(VI_PIPE_ATTR_S));
 
     switch (enSnsType) {
+    case SENSOR_SMS_SC530AI_2L:
+        pstViPipeAttr->u32MaxW = 2880;
+        pstViPipeAttr->u32MaxH = 1620;
+        break;
+    }
+
+    switch (enSnsType) {
     case SENSOR_GCORE_GC1054:
     case SENSOR_GCORE_GC2053:
     case SENSOR_GCORE_GC2053_1L:
@@ -469,6 +491,7 @@ CVI_S32 app_ipcam_Vi_PipeAttr_Get(SENSOR_TYPE_E enSnsType, VI_PIPE_ATTR_S* pstVi
     case SENSOR_SMS_SC401AI:
     case SENSOR_SMS_SC4210:
     case SENSOR_SMS_SC8238:
+    case SENSOR_SMS_SC530AI_2L:
     case SENSOR_SMS_SC531AI_2L:
     case SENSOR_SMS_SC5336_2L:
     case SENSOR_SMS_SC4336P:
@@ -513,6 +536,13 @@ CVI_S32 app_ipcam_Vi_ChnAttr_Get(SENSOR_TYPE_E enSnsType, VI_CHN_ATTR_S* pstViCh
     memcpy(pstViChnAttr, &vi_chn_attr_base, sizeof(VI_CHN_ATTR_S));
 
     switch (enSnsType) {
+    case SENSOR_SMS_SC530AI_2L:
+        pstViChnAttr->stSize.u32Width = 2880;
+        pstViChnAttr->stSize.u32Height = 1620;
+        break;
+    }
+
+    switch (enSnsType) {
     case SENSOR_GCORE_GC1054:
     case SENSOR_OV_OV5647:
     case SENSOR_GCORE_GC2053:
@@ -550,6 +580,7 @@ CVI_S32 app_ipcam_Vi_ChnAttr_Get(SENSOR_TYPE_E enSnsType, VI_CHN_ATTR_S* pstViCh
     case SENSOR_SMS_SC401AI:
     case SENSOR_SMS_SC4210:
     case SENSOR_SMS_SC8238:
+    case SENSOR_SMS_SC530AI_2L:
     case SENSOR_SMS_SC531AI_2L:
     case SENSOR_SMS_SC5336_2L:
     case SENSOR_SMS_SC4336P:
@@ -630,6 +661,7 @@ CVI_S32 app_ipcam_Isp_InitAttr_Get(SENSOR_TYPE_E enSnsType, WDR_MODE_E enWDRMode
     case SENSOR_SMS_SC401AI:
     case SENSOR_SMS_SC4210:
     case SENSOR_SMS_SC8238:
+    case SENSOR_SMS_SC530AI_2L:
     case SENSOR_SMS_SC531AI_2L:
     case SENSOR_SMS_SC5336_2L:
     case SENSOR_SMS_SC4336P:
@@ -675,6 +707,15 @@ CVI_S32 app_ipcam_Isp_PubAttr_Get(SENSOR_TYPE_E enSnsType, ISP_PUB_ATTR_S* pstIs
     CVI_S32 s32Ret = CVI_SUCCESS;
 
     memcpy(pstIspPubAttr, &isp_pub_attr_base, sizeof(ISP_PUB_ATTR_S));
+    switch (enSnsType) {
+    case SENSOR_SMS_SC530AI_2L:
+        pstIspPubAttr->stWndRect.u32Width = 2880;
+        pstIspPubAttr->stWndRect.u32Height = 1620;
+        pstIspPubAttr->stSnsSize.u32Width = 2880;
+        pstIspPubAttr->stSnsSize.u32Height = 1620;
+        break;
+    }
+
     // FPS
     switch (enSnsType) {
     case SENSOR_SMS_SC1346_1L_60:
@@ -726,6 +767,7 @@ CVI_S32 app_ipcam_Isp_PubAttr_Get(SENSOR_TYPE_E enSnsType, ISP_PUB_ATTR_S* pstIs
     case SENSOR_SMS_SC401AI:
     case SENSOR_SMS_SC4210:
     case SENSOR_SMS_SC8238:
+    case SENSOR_SMS_SC530AI_2L:
     case SENSOR_SMS_SC531AI_2L:
     case SENSOR_SMS_SC5336_2L:
     case SENSOR_SMS_SC4336P:
