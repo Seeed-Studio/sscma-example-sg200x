@@ -876,10 +876,10 @@ static CVI_S32 _Data_Free(void **src)
 static void* Thread_Streaming_Proc(void* pArgs)
 {
     CVI_S32 s32Ret = CVI_SUCCESS;
-    APP_VENC_CHN_CFG_S* pastVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
-    VENC_CHN VencChn = pastVencChnCfg->VencChn;
-    CVI_S32 vpssGrp = pastVencChnCfg->VpssGrp;
-    CVI_S32 vpssChn = pastVencChnCfg->VpssChn;
+    APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
+    VENC_CHN VencChn = pstVencChnCfg->VencChn;
+    CVI_S32 vpssGrp = pstVencChnCfg->VpssGrp;
+    CVI_S32 vpssChn = pstVencChnCfg->VpssChn;
     CVI_S32 iTime = GetCurTimeInMsec();
 
     CVI_CHAR TaskName[64] = { '\0' };
@@ -887,21 +887,21 @@ static void* Thread_Streaming_Proc(void* pArgs)
     prctl(PR_SET_NAME, TaskName, 0, 0, 0);
     APP_PROF_LOG_PRINT(LEVEL_INFO, "Venc channel_%d start running\n", VencChn);
 
-    pastVencChnCfg->bStart = CVI_TRUE;
-    while (pastVencChnCfg->bStart) {
+    pstVencChnCfg->bStart = CVI_TRUE;
+    while (pstVencChnCfg->bStart) {
         VIDEO_FRAME_INFO_S stVpssFrame = { 0 };
 
-        if (pastVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
+        if (pstVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
             if (CVI_VPSS_GetChnFrame(vpssGrp, vpssChn, &stVpssFrame, 3000) != CVI_SUCCESS) {
                 continue;
             }
             APP_PROF_LOG_PRINT(LEVEL_DEBUG, "VencChn-%d Get Frame takes %u ms \n", VencChn, (GetCurTimeInMsec() - iTime));
             iTime = GetCurTimeInMsec();
 
-            if (pastVencChnCfg->no_need_venc) {
+            if (pstVencChnCfg->no_need_venc) {
                 for (uint32_t i = 0; i < APP_DATA_COMSUMES_MAX; i++) {
                     if (g_Consumes[VencChn][i]) {
-                        g_Consumes[VencChn][i](&stVpssFrame, &pastVencChnCfg, g_pUserData[VencChn][i]);
+                        g_Consumes[VencChn][i](&stVpssFrame, &pstVencChnCfg, g_pUserData[VencChn][i]);
                     }
                 }
                 // release vpss frame
@@ -957,7 +957,7 @@ static void* Thread_Streaming_Proc(void* pArgs)
         CVI_ISP_QueryExposureInfo(0, &stExpInfo);
         CVI_S32 timeout = (1000 * 2) / (stExpInfo.u32Fps / 100); // u32Fps = fps * 100
         s32Ret = CVI_VENC_GetStream(VencChn, &stStream, timeout);
-        if (pastVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
+        if (pstVencChnCfg->enBindMode == VENC_BIND_DISABLE) {
             CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVpssFrame);
         }
         if (s32Ret != CVI_SUCCESS || (0 == stStream.u32PackCount)) {
