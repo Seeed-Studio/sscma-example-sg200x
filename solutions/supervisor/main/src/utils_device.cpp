@@ -14,6 +14,7 @@
 
 SERVICE_STATUS systemStatus = SERVICE_STATUS_STARTING;
 std::string sn;
+std::string ip;
 int g_progress = 0;
 int g_restart = 0;
 
@@ -57,6 +58,18 @@ static int writeFile(const std::string& path, const std::string& strWrite)
     }
 
     return -1;
+}
+
+static void clearNewline(char* value, int len) {
+    if (value[len - 1] == '\n') {
+        value[len - 1] = '\0';
+    }
+}
+
+static void clearNewline(std::string& value) {
+    if (value.back() == '\n') {
+        value.erase(value.size() - 1);
+    }
 }
 
 int createFolder(const char* dirName) {
@@ -117,6 +130,24 @@ static int saveModelInfoFile(const HttpContextPtr& ctx, std::string filePath) {
     return 200;
 }
 
+static std::string getDeviceIp(std::string clientIp) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
+    char deviceIp[128] = "";
+
+    strcat(cmd, clientIp.c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        return std::string(deviceIp);
+    }
+
+    fgets(deviceIp, sizeof(deviceIp) - 1, fp);
+    clearNewline(deviceIp, strlen(deviceIp));
+
+    return std::string(deviceIp);
+}
+
 static std::string getGateWay(std::string ip)
 {
     FILE* fp;
@@ -140,18 +171,6 @@ static std::string getGateWay(std::string ip)
     pclose(fp);
 
     return res;
-}
-
-static void clearNewline(char* value, int len) {
-    if (value[len - 1] == '\n') {
-        value[len - 1] = '\0';
-    }
-}
-
-static void clearNewline(std::string& value) {
-    if (value.back() == '\n') {
-        value.erase(value.size() - 1);
-    }
 }
 
 void initSystemStatus() {
@@ -349,7 +368,7 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     data["appName"] = "supervisor";
     data["deviceName"] = readFile(PATH_DEVICE_NAME);
     data["sn"] = sn;
-    data["ip"] = req->host;
+    data["ip"] = getDeviceIp(req->client_addr.ip);
     data["mask"] = "255.255.255.0";
     data["gateway"] = getGateWay(req->host);
     data["dns"] = "-";
@@ -568,6 +587,7 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
 }
 
 int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
+    hv::Json response, data;
     std::string os_version = readFile(PATH_ISSUE);
     std::string os = "Null", version = "Null";
     size_t pos;
@@ -579,24 +599,8 @@ int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
         version = os_version.substr(pos + 1);
     }
 
-    FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
-    char info[128] = "";
-
-    strcat(cmd, req->client_addr.ip.c_str());
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
-        return -1;
-    }
-
-    fgets(info, sizeof(info) - 1, fp);
-    clearNewline(info, strlen(info));
-
-    hv::Json response, data;
-
     data["deviceName"] = os;
-    data["ip"] = info;
+    data["ip"] = getDeviceIp(req->client_addr.ip);
     data["status"] = 1;
     data["osVersion"] = version;
     data["sn"] = sn;
@@ -604,8 +608,6 @@ int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
     response["code"] = 0;
     response["mgs"] = "";
     response["data"] = data;
-
-    pclose(fp);
 
     return resp->Json(response);
 }
