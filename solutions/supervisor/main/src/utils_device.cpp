@@ -215,9 +215,9 @@ int queryServiceStatus(HttpRequest* req, HttpResponse* resp) {
 
     response["code"] = 0;
     response["msg"] = "";
-    response["data"]["sscma-node"] = convertStatus(sscmaStatus);
-    response["data"]["node-red"] = noderedStarting ? SERVICE_STATUS_STARTING : convertStatus(noderedStatus);
-    response["data"]["upgrade"] = systemStatus;
+    response["data"]["sscmaNode"] = convertStatus(sscmaStatus);
+    response["data"]["nodeRed"] = noderedStarting ? SERVICE_STATUS_STARTING : convertStatus(noderedStatus);
+    response["data"]["system"] = systemStatus;
 
     return resp->Json(response);
 }
