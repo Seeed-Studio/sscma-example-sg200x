@@ -180,6 +180,7 @@ int initWiFi() {
 
     initUserInfo();
     initSystemStatus();
+    getSnCode();
 
     strcat(cmd, wifiName.c_str());
     strcat(cmd, " ");

@@ -13,6 +13,7 @@
 #include "daemon.h"
 
 SERVICE_STATUS systemStatus = SERVICE_STATUS_STARTING;
+std::string sn;
 int g_progress = 0;
 int g_restart = 0;
 
@@ -177,6 +178,25 @@ void initSystemStatus() {
     pclose(fp);
 }
 
+void getSnCode() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETSNCODE;
+    char info[128] = "";
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        return ;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    sn = std::string(info);
+
+    pclose(fp);
+}
+
 int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
     FILE* fp;
     char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
@@ -328,6 +348,7 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     hv::Json data;
     data["appName"] = "supervisor";
     data["deviceName"] = readFile(PATH_DEVICE_NAME);
+    data["sn"] = sn;
     data["ip"] = req->host;
     data["mask"] = "255.255.255.0";
     data["gateway"] = getGateWay(req->host);
@@ -578,7 +599,7 @@ int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
     data["ip"] = info;
     data["status"] = 1;
     data["osVersion"] = version;
-    data["sn"] = "-";
+    data["sn"] = sn;
 
     response["code"] = 0;
     response["mgs"] = "";

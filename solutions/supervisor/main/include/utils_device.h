@@ -12,6 +12,7 @@ std::string readFile(const std::string& path, const std::string& defaultname = "
 int createFolder(const char* dirName);
 
 void initSystemStatus();
+void getSnCode();
 
 int getSystemStatus(HttpRequest* req, HttpResponse* resp);
 int queryServiceStatus(HttpRequest* req, HttpResponse* resp);

@@ -64,6 +64,7 @@
 #define SCRIPT_DEVICE(action) ("/mnt/system/usr/scripts/devicetool.sh" \
                                 " " #action " ")
 #define SCRIPT_DEVICE_GETSYSTEMSTATUS SCRIPT_DEVICE(getSystemStatus)
+#define SCRIPT_DEVICE_GETSNCODE SCRIPT_DEVICE(getSnCode)
 #define SCRIPT_DEVICE_GETADDRESSS SCRIPT_DEVICE(getAddress)
 #define SCRIPT_DEVICE_INSTALLAPP SCRIPT_DEVICE(installApp)
 #define SCRIPT_DEVICE_GETAPPINFO SCRIPT_DEVICE(getAppInfo)

@@ -22,6 +22,10 @@ getSystemStatus)
     fw_printenv boot_rollback | awk -F'=' '{print $NF}'
     ;;
 
+getSnCode)
+    fw_printenv sn | awk -F'=' '{print $NF}'
+    ;;
+
 getAddress)
     ip route get $2 | awk '{print $NF}'
     ;;
