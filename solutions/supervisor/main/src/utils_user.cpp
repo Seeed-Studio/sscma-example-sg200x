@@ -179,17 +179,25 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "oldPassword: %s\n", req->GetString("oldPassword").c_str());
     syslog(LOG_INFO, "newPassword: %s\n", req->GetString("newPassword").c_str());
 
-    FILE* fp;
-    char info[128];
-    char cmd[128] = SCRIPT_USER_PWD;
-
     if (verifyPasswd(req->GetString("oldPassword")) != 0) {
         hv::Json User;
-        User["code"] = 1109;
+        User["code"] = -1;
         User["msg"] = "Incorrect password";
         User["data"] = hv::Json({});
         return resp->Json(User);
     }
+
+    if (req->GetString("oldPassword") == req->GetString("newPassword")) {
+        hv::Json User;
+        User["code"] = -1;
+        User["msg"] = "Password duplication";
+        User["data"] = hv::Json({});
+        return resp->Json(User);
+    }
+
+    FILE* fp;
+    char info[128];
+    char cmd[128] = SCRIPT_USER_PWD;
 
     strcat(cmd, g_sUserName.c_str());
     strcat(cmd, " ");
