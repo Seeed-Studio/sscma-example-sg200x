@@ -1,6 +1,7 @@
 #!/bin/sh
 
 ifname=wlan0
+hostapdFile=/etc/hostapd_2g4.conf
 IFS=""
 
 scan_wifi() {
@@ -61,12 +62,12 @@ start)
     fi
 
     if [ "$2" ]; then
-        sed -i "s/ssid=.*$/ssid=$2/g" /etc/hostapd_2g4.conf
+        sed -i "s/ssid=.*$/ssid=$2/g" $hostapdFile
     fi
 
     ifconfig wlan1 up
     wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
-    hostapd -B /etc/hostapd_2g4.conf
+    hostapd -B $hostapdFile
 
     export PS1='[\u@\h]\w\$ '
     ttyd -p $3 -u $4 sh > /dev/null 2>&1 &
@@ -123,7 +124,7 @@ remove)
 
 passwd)
     if [ "$2" ]; then
-        sed -i "s/wpa_passphrase=.*$/wpa_passphrase=$2/g" /etc/hostapd_2g4.conf
+        sed -i "s/wpa_passphrase=.*$/wpa_passphrase=$2/g" $hostapdFile
     else
         echo ""
     fi
