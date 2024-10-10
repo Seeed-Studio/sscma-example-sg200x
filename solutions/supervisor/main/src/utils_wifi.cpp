@@ -52,6 +52,50 @@ static int getWifiInfo(std::vector<std::string>& wifiStatus)
     return 0;
 }
 
+static std::string getWifiConnectStatus() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_WIFI_CONNECT_STATUS;
+    char connectStatus[128] = "";
+    int len = 0;
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        return std::string("Failed");
+    }
+
+    fgets(connectStatus, sizeof(connectStatus) - 1, fp);
+    len = strlen(connectStatus);
+    if (connectStatus[len - 1] == '\n') {
+        connectStatus[len - 1] = '\0';
+    }
+
+    return std::string(connectStatus);
+}
+
+static std::string removeWifi(std::string id) {
+    FILE* fp;
+    char info[128] = "";
+    char cmd[128] = SCRIPT_WIFI_REMOVE;
+    int len = 0;
+
+    strcat(cmd, id.c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        return std::string(info);
+    }
+
+    if (fgets(info, sizeof(info) - 1, fp) != NULL) {
+        len = strlen(info);
+        if (info[len - 1] == '\n') {
+            info[len - 1] = '\0';
+        }
+    }
+
+    return std::string(info);
+}
+
 static bool cmp(std::vector<std::string> lhs, std::vector<std::string> rhs) {
     if (lhs[0] == rhs[0]) {
         return std::stoi(lhs[1]) > std::stoi(rhs[1]);
@@ -123,6 +167,8 @@ static int updateConnectedWifiInfo()
     char info[128];
 
     syslog(LOG_INFO, "updateConnectedWifiInfo operation...\n");
+
+    g_wifiInfo.clear();
 
     fp = popen(SCRIPT_WIFI_LIST, "r");
     if (fp == NULL) {
@@ -261,7 +307,7 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)
         wifiInfo["auth"] = 0;
     }
     wifiInfo["signal"] = 0;
-    wifiInfo["connectedStatus"] = 1;
+    wifiInfo["connectedStatus"] = wifiStatus[0] != "-";
     wifiInfo["macAddres"] = wifiStatus[2];
     wifiInfo["ip"] = wifiStatus[3];
     wifiInfo["ipAssignment"] = 0;
@@ -375,6 +421,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
     syslog(LOG_INFO, "password: %s\n", req->GetString("password").c_str());
 
+    hv::Json response;
     std::string msg;
     int id;
     FILE* fp;
@@ -410,17 +457,32 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
         }
     }
 
-    hv::Json response;
-
     if (msg.compare("OK") != 0) {
-        response["code"] = 1112;
+        response["code"] = -1;
         response["msg"] = msg;
-    } else {
-        response["code"] = 0;
-        response["msg"] = "";
-        g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };
+        response["data"] = hv::Json({});
+        return resp->Json(response);
     }
-    response["data"] = hv::Json({});
+
+    while (true) {
+        std::string connectStatus = getWifiConnectStatus();
+        if (connectStatus == "COMPLETED") {
+            response["code"] = 0;
+            response["msg"] = "Connection successful";
+            g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };
+            break;
+        }
+
+        if (connectStatus == "DISCONNECTED" || connectStatus == "Failed") {
+            removeWifi(std::to_string(id));
+            response["code"] = -1;
+            response["msg"] = "Connection failed";
+            response["data"] = hv::Json({});
+            break;
+        }
+
+        usleep(10 * 1000);
+    }
 
     return resp->Json(response);
 }
@@ -549,26 +611,9 @@ int forgetWiFi(HttpRequest* req, HttpResponse* resp)
 
     std::string msg;
     int id;
-    FILE* fp;
-    char info[128];
-    char cmd[128] = SCRIPT_WIFI_REMOVE;
 
     id = g_wifiInfo[req->GetString("ssid")].id;
-    strcat(cmd, std::to_string(id).c_str());
-
-    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
-        return -1;
-    }
-
-    if (fgets(info, sizeof(info) - 1, fp) != NULL) {
-        msg = std::string(info);
-        if (msg.back() == '\n') {
-            msg.erase(msg.size() - 1);
-        }
-    }
+    removeWifi(std::to_string(id));
 
     auto it = g_wifiInfo.find(req->GetString("ssid"));
     if (it != g_wifiInfo.end()) {

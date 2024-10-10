@@ -35,7 +35,7 @@ connect_wifi() {
             wpa_cli -i wlan0 enable_network $id
             wpa_cli -i wlan0 select_network $id
         else
-            echo "incorrect password"
+            echo "Invalid password"
             wpa_cli -i wlan0 remove_network $id 1> /dev/null
         fi
     fi
@@ -99,6 +99,10 @@ list)
 connect)
     connect_wifi $2 $3
     wpa_cli -i wlan0 save_config
+    ;;
+
+connect_status)
+    wpa_cli -i wlan0 status | grep "^wpa_state" | awk -F= '{print $2}'
     ;;
 
 select)
