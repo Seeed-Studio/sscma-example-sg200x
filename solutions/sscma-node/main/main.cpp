@@ -13,6 +13,7 @@
 
 const std::string TAG = "sscma";
 
+using namespace ma;
 using namespace ma::node;
 
 

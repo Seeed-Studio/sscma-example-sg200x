@@ -2,6 +2,8 @@
 
 #include <sscma.h>
 
+using namespace ma;
+
 int main(int argc, char** argv) {
 
     MA_LOGD(MA_TAG, "Initializing Encoder");

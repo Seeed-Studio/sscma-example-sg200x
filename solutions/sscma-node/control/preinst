@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+if [ -f /etc/init.d/S91sscma-node ]; then
+    /etc/init.d/S91sscma-node stop
+fi
+
+exit 0
+

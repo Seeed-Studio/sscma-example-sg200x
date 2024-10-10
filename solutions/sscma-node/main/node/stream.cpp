@@ -150,6 +150,7 @@ ma_err_t StreamNode::onStop() {
     if (!started_) {
         return MA_OK;
     }
+    started_ = false;
     if (camera_ != nullptr) {
         camera_->detach(CHN_H264, &frame_);
     }
@@ -159,7 +160,6 @@ ma_err_t StreamNode::onStop() {
     if (transport_ != nullptr) {
         transport_->deInit();
     }
-    started_ = false;
     return MA_OK;
 }
 

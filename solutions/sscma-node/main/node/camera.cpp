@@ -170,9 +170,9 @@ ma_err_t CameraNode::onControl(const std::string& control, const json& data) {
 
 ma_err_t CameraNode::onDestroy() {
     Guard guard(mutex_);
-    if (started_) {
-        CAMERA_DEINIT();
-    }
+
+    onStop();
+
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "destroy"}, {"code", MA_OK}, {"data", ""}}));
 
     return MA_OK;

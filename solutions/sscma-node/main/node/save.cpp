@@ -240,11 +240,13 @@ ma_err_t SaveNode::onStop() {
     if (!started_) {
         return MA_OK;
     }
+    started_ = false;
     if (camera_ != nullptr) {
         camera_->detach(CHN_H264, &frame_);
     }
-    thread_->stop();
-    started_ = false;
+    if (thread_ != nullptr) {
+        thread_->stop();
+    }
     return MA_OK;
 }
 

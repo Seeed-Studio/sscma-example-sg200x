@@ -4,6 +4,8 @@
 #include <sscma.h>
 #include <video.h>
 
+using namespace ma;
+
 int main(int argc, char** argv) {
 
     Device* device = Device::getInstance();
@@ -19,11 +21,11 @@ int main(int argc, char** argv) {
 
     TransportRTSP rtsp;
     TransportRTSP::RTSPConfig rtsp_config;
-    rtsp_config.port   = 554;
-    rtsp_config.format = MA_PIXEL_FORMAT_H264;
-    rtsp_config.name   = "test";
-    rtsp_config.user   = "admin";
-    rtsp_config.pass   = "admin";
+    rtsp_config.port    = 554;
+    rtsp_config.format  = MA_PIXEL_FORMAT_H264;
+    rtsp_config.session = "test";
+    rtsp_config.user    = "admin";
+    rtsp_config.pass    = "admin";
     rtsp.init(&rtsp_config);
 
 

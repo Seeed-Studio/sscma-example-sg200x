@@ -53,7 +53,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     }
 
     // create node
-    MA_LOGD(TAG, "create node: %s(%s) %s", _type.c_str(), id.c_str(), data.dump().c_str());
+    MA_LOGI(TAG, "create node: %s(%s) %s", _type.c_str(), id.c_str(), data.dump().c_str());
     Node* n = it->second.create(id);
     if (!n) {
         MA_THROW(Exception(MA_ENOMEM, "failed to create node: " + _type));
@@ -87,7 +87,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     }
 
     if (ready) {  // all dependencies are ready
-        MA_LOGD(TAG, "start node: %s(%s)", n->type_.c_str(), n->id_.c_str());
+        MA_LOGI(TAG, "start node: %s(%s)", n->type_.c_str(), n->id_.c_str());
         n->onStart();
     }
 
@@ -119,7 +119,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
                 }
             }
             if (ready) {
-                MA_LOGD(TAG, "start node: %s(%s)", node.second->type_.c_str(), node.second->id_.c_str());
+                MA_LOGI(TAG, "start node: %s(%s)", node.second->type_.c_str(), node.second->id_.c_str());
                 node.second->onStart();
             }
         }
@@ -136,11 +136,9 @@ void NodeFactory::destroy(const std::string id) {
         return;
     }
 
-    // stop all node depends on this node
-    for (auto node : m_nodes) {
-        auto it = node.second->dependencies_.find(id);
-        if (it != node.second->dependencies_.end()) {
-            it->second->onStop();
+    for (auto& dep : node->second->dependents_) {
+        if(find(dep.first)) {
+            dep.second->onStop();
         }
     }
 
