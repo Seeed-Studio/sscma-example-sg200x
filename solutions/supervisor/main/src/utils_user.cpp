@@ -44,7 +44,7 @@ int initUserInfo() {
 
 static int getUserName()
 {
-    char username[16];
+    char username[128];
     struct passwd* pw = getpwuid(g_userId);
 
     if (pw) {
