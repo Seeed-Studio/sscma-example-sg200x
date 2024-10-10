@@ -423,7 +423,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
     hv::Json response;
     std::string msg;
-    int id;
+    int id, connecting = 0;
     FILE* fp;
     char info[128];
     char cmd[128] = "";
@@ -466,6 +466,15 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
     while (true) {
         std::string connectStatus = getWifiConnectStatus();
+
+        if (connectStatus == "ASSOCIATING") {
+            connecting = 1;
+        }
+
+        if (!connecting) {
+            continue;
+        }
+
         if (connectStatus == "COMPLETED") {
             response["code"] = 0;
             response["msg"] = "Connection successful";
