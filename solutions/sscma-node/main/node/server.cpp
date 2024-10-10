@@ -1,6 +1,11 @@
 
 #include "server.h"
 
+#include "camera.h"
+#include "model.h"
+#include "save.h"
+#include "stream.h"
+
 namespace ma::node {
 
 static constexpr char TAG[] = "ma::node::server";
@@ -10,9 +15,8 @@ void NodeServer::onConnect(struct mosquitto* mosq, int rc) {
     mosquitto_subscribe(mosq, NULL, m_topic_in_prefix.c_str(), 0);
     mosquitto_subscribe(mosq, NULL, topic.c_str(), 0);
     m_connected.store(true);
-    response("",
-             json::object(
-                 {{"type", MA_MSG_TYPE_RESP}, {"name", "node"}, {"code", MA_OK}, {"data", ""}}));
+    MA_LOGI(TAG, "node server connected");
+    response("", json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "node"}, {"code", MA_OK}, {"data", ""}}));
 }
 
 void NodeServer::onDisconnect(struct mosquitto* mosq, int rc) {
@@ -31,7 +35,7 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
             e = Exception(MA_EINVAL, "invalid payload");
             MA_THROW(e);
         }
-        MA_LOGV(TAG, "request: %s <== %s", topic.c_str(), payload.dump().c_str());
+        MA_LOGD(TAG, "request: %s <== %s", id.c_str(), payload.dump().c_str());
         m_executor.submit([this, id = std::move(id), payload = std::move(payload)]() -> bool {
             Exception e(MA_OK, "");
             std::string name = payload["name"].get<std::string>();
@@ -43,20 +47,15 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
                         e = Exception(MA_EINVAL, "invalid payload");
                         MA_THROW(e);
                     }
-                    std::string type   = data["type"].get<std::string>();
-                    const json& config = data.contains("config") ? data["config"] : json::object();
-                    if (NodeFactory::create(id, type, data) == nullptr) {
+                    std::string type = data["type"].get<std::string>();
+                    if (NodeFactory::create(id, type, data, this) == nullptr) {
                         e = Exception(MA_EINVAL, "invalid payload");
                         MA_THROW(Exception(MA_EINVAL, "invalid payload"));
                     }
                 } else if (name == "destroy") {
                     NodeFactory::destroy(id);
                 } else if (name == "health") {
-                    this->response(id,
-                                   json::object({{"type", MA_MSG_TYPE_RESP},
-                                                 {"name", name},
-                                                 {"code", MA_OK},
-                                                 {"data", ""}}));
+                    this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", MA_OK}, {"data", ""}}));
                 } else {
                     Node* node = NodeFactory::find(id);
                     if (node) {
@@ -66,40 +65,24 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
             }
             MA_CATCH(const Exception& e) {
                 if (e.err() != MA_AGAIN) {
-                    this->response(id,
-                                   json::object({{"type", MA_MSG_TYPE_RESP},
-                                                 {"name", name},
-                                                 {"code", e.err()},
-                                                 {"data", e.what()}}));
+                    this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", e.err()}, {"data", e.what()}}));
                 }
                 return e.err() == MA_AGAIN;
             }
             MA_CATCH(const std::exception& e) {
                 MA_LOGE(TAG, "onMessage exception: %s", e.what());
-                this->response(id,
-                               json::object({{"type", MA_MSG_TYPE_RESP},
-                                             {"name", name},
-                                             {"code", MA_EINVAL},
-                                             {"data", e.what()}}));
+                this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", MA_EINVAL}, {"data", e.what()}}));
                 return false;
             }
             return false;
         });
     }
     MA_CATCH(const Exception& e) {
-        response(id,
-                 json::object({{"type", MA_MSG_TYPE_RESP},
-                               {"name", "request"},
-                               {"code", e.err()},
-                               {"data", e.what()}}));
+        response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "request"}, {"code", e.err()}, {"data", e.what()}}));
         return;
     }
     MA_CATCH(const std::exception& e) {
-        response(id,
-                 json::object({{"type", MA_MSG_TYPE_RESP},
-                               {"name", "request"},
-                               {"code", MA_EINVAL},
-                               {"data", e.what()}}));
+        response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "request"}, {"code", MA_EINVAL}, {"data", e.what()}}));
         return;
     }
 }
@@ -119,9 +102,7 @@ void NodeServer::onDisconnectStub(struct mosquitto* mosq, void* obj, int rc) {
     }
 }
 
-void NodeServer::onMessageStub(struct mosquitto* mosq,
-                               void* obj,
-                               const struct mosquitto_message* msg) {
+void NodeServer::onMessageStub(struct mosquitto* mosq, void* obj, const struct mosquitto_message* msg) {
 
     NodeServer* server = static_cast<NodeServer*>(obj);
     if (server) {
@@ -132,18 +113,16 @@ void NodeServer::onMessageStub(struct mosquitto* mosq,
 void NodeServer::response(const std::string& id, const json& msg) {
 
     if (!m_connected) {
-        // MA_LOGW(TAG, "not connected, skip response:%s ==> %s", id.c_str(), msg.dump().c_str());
         return;
     }
     // Guard guard(m_mutex);
     std::string topic = m_topic_out_prefix + '/' + id;
-    int mid           = mosquitto_publish(
-        m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);
+    MA_LOGD(TAG, "response: %s ==> %s", id.c_str(), msg.dump().c_str());
+    int mid = mosquitto_publish(m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);
     return;
 }
 
-NodeServer::NodeServer(std::string client_id)
-    : m_client(nullptr), m_connected(false), m_client_id(std::move(client_id)), m_mutex() {
+NodeServer::NodeServer(std::string client_id) : m_client(nullptr), m_connected(false), m_client_id(std::move(client_id)), m_mutex() {
     mosquitto_lib_init();
 
     m_client = mosquitto_new(m_client_id.c_str(), true, this);
@@ -155,6 +134,13 @@ NodeServer::NodeServer(std::string client_id)
 
     m_topic_in_prefix  = std::string("sscma/v0/" + m_client_id + "/node/in");
     m_topic_out_prefix = std::string("sscma/v0/" + m_client_id + "/node/out");
+
+#if MA_USE_NODE_REGISTRAR == 0
+    NodeFactory::registerNode("camera", [](const std::string& id) { return new CameraNode(id); });
+    NodeFactory::registerNode("model", [](const std::string& id) { return new ModelNode(id); });
+    NodeFactory::registerNode("save", [](const std::string& id) { return new SaveNode(id); });
+    NodeFactory::registerNode("stream", [](const std::string& id) { return new StreamNode(id); });
+#endif
 }
 NodeServer::~NodeServer() {
     stop();

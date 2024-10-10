@@ -37,8 +37,10 @@ protected:
     std::string id_;
     std::string type_;
     std::atomic<bool> started_;
-    std::unordered_map<std::string, Node*> dependencies_; 
+    std::unordered_map<std::string, Node*> dependencies_;
     std::unordered_map<std::string, Node*> dependents_;
+
+    NodeServer* server_;
 
     friend class NodeServer;
     friend class NodeFactory;
@@ -54,7 +56,7 @@ class NodeFactory {
     };
 
 public:
-    static Node* create(const std::string id, const std::string type, const json& data);
+    static Node* create(const std::string id, const std::string type, const json& data, NodeServer* server = nullptr);
     static void destroy(const std::string id);
     static Node* find(const std::string id);
     static void clear();
@@ -77,14 +79,13 @@ private:
     };                                                                                           \
     static node##Registrar g_##node##Registrar MA_ATTR_USED;
 
-#define REGISTER_NODE_SINGLETON(type, node)                                      \
-    class node##Registrar {                                                      \
-    public:                                                                      \
-        node##Registrar() {                                                      \
-            NodeFactory::registerNode(                                           \
-                type, [](const std::string& id) { return new node(id); }, true); \
-        }                                                                        \
-    };                                                                           \
+#define REGISTER_NODE_SINGLETON(type, node)                                                            \
+    class node##Registrar {                                                                            \
+    public:                                                                                            \
+        node##Registrar() {                                                                            \
+            NodeFactory::registerNode(type, [](const std::string& id) { return new node(id); }, true); \
+        }                                                                                              \
+    };                                                                                                 \
     static node##Registrar g_##node##Registrar MA_ATTR_USED;
 #else
 #define REGISTER_NODE(type, node)

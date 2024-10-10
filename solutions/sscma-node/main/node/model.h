@@ -5,6 +5,9 @@
 #include "extension/counter/counter.h"
 
 #include "node.h"
+#include "server.h"
+
+#include "camera.h"
 
 namespace ma::node {
 
@@ -20,6 +23,11 @@ public:
     ma_err_t onStop() override;
     ma_err_t onDestroy() override;
 
+
+protected:
+    void threadEntry();
+    static void threadEntryStub(void* obj);
+
 protected:
     std::string uri_;
     int32_t times_;
@@ -28,11 +36,15 @@ protected:
     bool trace_;
     bool counting_;
     json info_;
-    std::vector<std::string> classes_;
     Model* model_;
     Engine* engine_;
     BYTETracker tracker_;
     Counter counter_;
+    std::vector<std::string> classes_;
+    Thread* thread_;
+    CameraNode* camera_;
+    MessageBox raw_frame_;
+    MessageBox jpeg_frame_;
 };
 
 

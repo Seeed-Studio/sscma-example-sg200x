@@ -1,8 +1,8 @@
 #include <iostream>
 
+#include "ma_transport_rtsp.h"
 #include <sscma.h>
 #include <video.h>
-#include "ma_transport_rtsp.h"
 
 int main(int argc, char** argv) {
 
@@ -19,11 +19,11 @@ int main(int argc, char** argv) {
 
     TransportRTSP rtsp;
     TransportRTSP::RTSPConfig rtsp_config;
-    rtsp_config.port = 554;
+    rtsp_config.port   = 554;
     rtsp_config.format = MA_PIXEL_FORMAT_H264;
-    rtsp_config.name = "test";
-    rtsp_config.user = "admin";
-    rtsp_config.pass = "admin";
+    rtsp_config.name   = "test";
+    rtsp_config.user   = "admin";
+    rtsp_config.pass   = "admin";
     rtsp.init(&rtsp_config);
 
 
@@ -52,18 +52,24 @@ int main(int argc, char** argv) {
     camera->startStream(Camera::StreamMode::kRefreshOnReturn);
     static char buf[4 * 1024];
     while (true) {
-        for(auto & transport : device->getTransports()) {
-            if(*transport && transport->available() > 0) {
-                memset(buf, 0, sizeof(buf));
-                int len = transport->receive(buf, sizeof(buf));
-                transport->send(buf, len);
-            }
-        }
+        // for(auto & transport : device->getTransports()) {
+        //     if(*transport && transport->available() > 0) {
+        //         memset(buf, 0, sizeof(buf));
+        //         int len = transport->receive(buf, sizeof(buf));
+        //         transport->send(buf, len);
+        //     }
+        // }
         ma_img_t frame;
+        static bool first = true;
         if (camera->retrieveFrame(frame, MA_PIXEL_FORMAT_H264) == MA_OK) {
             MA_LOGI(MA_TAG, "frame size: %d", frame.size);
-            rtsp.send(reinterpret_cast<char*>(frame.data), frame.size);
-            camera->returnFrame(frame);
+            if (first && !frame.key) {
+                camera->returnFrame(frame);
+            } else {
+                first = false;
+                rtsp.send(reinterpret_cast<char*>(frame.data), frame.size);
+                camera->returnFrame(frame);
+            }
         }
         // ma_img_t jpeg;
         // if (camera->retrieveFrame(jpeg, MA_PIXEL_FORMAT_JPEG) == MA_OK) {
@@ -75,7 +81,7 @@ int main(int argc, char** argv) {
         //     MA_LOGI(MA_TAG, "raw size: %d", raw.size);
         //     camera->returnFrame(raw);
     }
-        // }
+    // }
 
     camera->stopStream();
 

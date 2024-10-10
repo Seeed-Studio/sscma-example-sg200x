@@ -16,10 +16,7 @@ public:
     NodeServer(std::string client_id);
     ~NodeServer();
 
-    ma_err_t start(std::string host     = "localhost",
-                   int port             = 1883,
-                   std::string username = "",
-                   std::string password = "");
+    ma_err_t start(std::string host = "localhost", int port = 1883, std::string username = "", std::string password = "");
     ma_err_t stop();
 
     // void dispatch(const std::string& id, const json& msg);
@@ -33,9 +30,7 @@ protected:
 private:
     static void onConnectStub(struct mosquitto* mosq, void* obj, int rc);
     static void onDisconnectStub(struct mosquitto* mosq, void* obj, int rc);
-    static void onMessageStub(struct mosquitto* mosq,
-                              void* obj,
-                              const struct mosquitto_message* msg);
+    static void onMessageStub(struct mosquitto* mosq, void* obj, const struct mosquitto_message* msg);
 
     struct mosquitto* m_client;
     std::string m_client_id;

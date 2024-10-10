@@ -25,8 +25,7 @@ void show_help() {
               << "Options:\n"
               << "  -v, --version        Show version\n"
               << "  -h, --help           Show this help message\n"
-              << "  -c, --config <file>  Configuration file, default is " << MA_NODE_CONFIG_FILE
-              << "\n"
+              << "  -c, --config <file>  Configuration file, default is " << MA_NODE_CONFIG_FILE << "\n"
               << "  --start              Start the service" << std::endl;
 }
 
@@ -36,13 +35,12 @@ int main(int argc, char** argv) {
 
     MA_LOGD("main", "version: %s", PROJECT_VERSION);
 
-    Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE},
-                    [](int sig) {
-                        MA_LOGE(TAG, "received signal %d", sig);
-                        NodeFactory::clear();
-                        closelog();
-                        exit(1);
-                    });
+    Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE}, [](int sig) {
+        MA_LOGE(TAG, "received signal %d", sig);
+        NodeFactory::clear();
+        closelog();
+        exit(1);
+    });
 
 
     std::string config_file = MA_NODE_CONFIG_FILE;
@@ -72,9 +70,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    StorageFile config(config_file);
-
-    config.set("version", PROJECT_VERSION);
+    StorageFile* config = new StorageFile();
+    config->init(config_file.c_str());
 
     if (start_service) {
 
@@ -88,11 +85,12 @@ int main(int argc, char** argv) {
         std::string user;
         std::string password;
 
-        config.get(MA_STORAGE_KEY_MQTT_CLIENTID, client, "recamera");
-        config.get(MA_STORAGE_KEY_MQTT_HOST, host, "127.0.0.1");
-        config.get(MA_STORAGE_KEY_MQTT_PORT, port, 1883);
-        config.get(MA_STORAGE_KEY_MQTT_USER, user, "");
-        config.get(MA_STORAGE_KEY_MQTT_PWD, password, "");
+        MA_STORAGE_GET_STR(config, MA_STORAGE_KEY_MQTT_HOST, host, "localhost");
+        MA_STORAGE_GET_STR(config, MA_STORAGE_KEY_MQTT_CLIENTID, client, "recamera");
+        MA_STORAGE_GET_STR(config, MA_STORAGE_KEY_MQTT_USER, user, "");
+        MA_STORAGE_GET_STR(config, MA_STORAGE_KEY_MQTT_PWD, password, "");
+        MA_STORAGE_GET_POD(config, MA_STORAGE_KEY_MQTT_PORT, port, 1883);
+
 
         NodeServer server(client);
 

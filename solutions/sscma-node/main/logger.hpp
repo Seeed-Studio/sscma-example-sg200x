@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdarg>
-#include <iostream>
 #include <syslog.h>
 #include <unistd.h>
 
@@ -33,12 +31,12 @@
     } while (0)
 
 
-#define MA_ASSERT(expr)                                                \
-    do {                                                               \
-        if (!(expr)) {                                                 \
-            syslog(LOG_ERR, "ASSERT", "Failed assertion '%s'", #expr); \
-            while (1) {                                                \
-                ma_abort();                                            \
-            }                                                          \
-        }                                                              \
+#define MA_ASSERT(expr)                                      \
+    do {                                                     \
+        if (!(expr)) {                                       \
+            syslog(LOG_ERR, "Failed assertion '%s'", #expr); \
+            while (1) {                                      \
+                ma_abort();                                  \
+            }                                                \
+        }                                                    \
     } while (0)

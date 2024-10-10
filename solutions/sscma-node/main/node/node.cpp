@@ -4,10 +4,7 @@ namespace ma::node {
 
 static constexpr char TAG[] = "ma::node";
 
-Node::Node(std::string type, std::string id)
-    : mutex_(), id_(std::move(id)), type_(std::move(type)), started_(false), dependencies_() {
-    MA_LOGD(TAG, "create node: %s(%s) %p", type_.c_str(), id_.c_str(), &mutex_);
-}
+Node::Node(std::string type, std::string id) : mutex_(), id_(std::move(id)), type_(std::move(type)), started_(false), dependencies_(), dependents_(), server_(nullptr) {}
 
 Node::~Node() = default;
 
@@ -27,7 +24,7 @@ Mutex NodeFactory::m_mutex;
 std::unordered_map<std::string, Node*> NodeFactory::m_nodes;
 
 
-Node* NodeFactory::create(const std::string id, const std::string type, const json& data) {
+Node* NodeFactory::create(const std::string id, const std::string type, const json& data, NodeServer* server) {
 
     Guard guard(m_mutex);
     std::string _type = type;
@@ -56,13 +53,14 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     }
 
     // create node
+    MA_LOGD(TAG, "create node: %s(%s) %s", _type.c_str(), id.c_str(), data.dump().c_str());
     Node* n = it->second.create(id);
     if (!n) {
         MA_THROW(Exception(MA_ENOMEM, "failed to create node: " + _type));
         return nullptr;
     }
-
-    if (MA_OK != n->onCreate(data)) {
+    n->server_ = server;
+    if (MA_OK != n->onCreate(data["config"])) {
         return nullptr;
     }
     m_nodes[id] = n;
@@ -78,6 +76,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
         }
     }
 
+    // set dependents
     if (data.contains("dependents")) {
         for (auto dep : data["dependents"].get<std::vector<std::string>>()) {
             n->dependents_[dep] = find(dep);
@@ -88,6 +87,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     }
 
     if (ready) {  // all dependencies are ready
+        MA_LOGD(TAG, "start node: %s(%s)", n->type_.c_str(), n->id_.c_str());
         n->onStart();
     }
 
@@ -95,28 +95,35 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     for (auto node : m_nodes) {
         if (!node.second->started_) {  // not started yet
             ready = true;
-            for (auto dep : node.second->dependencies_) {
+            MA_LOGD(TAG, "check node: %s(%s) %s", node.second->type_.c_str(), node.second->id_.c_str(), id.c_str());
+            for (auto& dep : node.second->dependencies_) {
+                MA_LOGD(TAG, "dependencies: %s %p", dep.first.c_str(), dep.second);
                 if (dep.second == nullptr && dep.first == id) {
-                    dep.second = n;
+                    MA_LOGD(TAG, "dependencies %s ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
+                    node.second = n;
                 }
                 if (dep.second == nullptr) {
+                    MA_LOGW(TAG, "dependencies %s not ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
                     ready = false;
                 }
             }
-            for (auto dep : node.second->dependents_) {
+            for (auto& dep : node.second->dependents_) {
+                MA_LOGD(TAG, "dependents: %s %p", dep.first.c_str(), dep.second);
                 if (dep.second == nullptr && dep.first == id) {
-                    dep.second = n;
+                    MA_LOGD(TAG, "dependents %s ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
+                    node.second->dependents_[dep.first] = n;
                 }
                 if (dep.second == nullptr) {
+                    MA_LOGW(TAG, "dependents %s not ready: %s(%s) ", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
                     ready = false;
                 }
             }
             if (ready) {
+                MA_LOGD(TAG, "start node: %s(%s)", node.second->type_.c_str(), node.second->id_.c_str());
                 node.second->onStart();
             }
         }
     }
-
     return n;
 }
 

@@ -32,7 +32,7 @@ public:
         _worker_name += hex_literals[worker_id >> 4];
         _worker_name += hex_literals[worker_id & 0x0f];
 
-        _worker_handler = new Thread(_worker_name.c_str(), &Executor::c_run, priority, stack_size);
+        _worker_handler = new Thread(_worker_name.c_str(), &Executor::c_run, this, priority, stack_size);
         MA_ASSERT(_worker_handler);
 
         if (!_worker_handler->start(this)) {
