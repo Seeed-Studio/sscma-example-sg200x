@@ -1,0 +1,41 @@
+#!/bin/sh
+
+DAEMON=supervisor
+DAEMON_PATH=/mnt/system/usr/bin
+
+start() {
+    printf 'Starting Supervisor Service: '
+    PID="`pidof $DAEMON`"
+
+    if [ "$PID" ]; then
+        echo "$DAEMON is already running."
+    else
+        $DAEMON_PATH/$DAEMON >/dev/null 2>&1 &
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+    fi
+}
+
+stop() {
+    printf 'Stopping Supervisor Service: '
+    PID="`pidof $DAEMON`"
+
+    if [ "$PID" ]; then
+        kill $PID
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+    else
+        echo "$DAEMON is not running."
+    fi
+}
+
+restart() {
+    stop
+    start
+}
+
+case "$1" in
+    start|stop|restart)
+        "$1";;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
