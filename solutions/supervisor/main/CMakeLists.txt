@@ -8,5 +8,5 @@ component_register(
     SRCS ${CMAKE_CURRENT_LIST_DIR}/src/utils_user.cpp
     SRCS ${CMAKE_CURRENT_LIST_DIR}/src/utils_wifi.cpp
     INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
-    PRIVATE_REQUIREDS hv
+    PRIVATE_REQUIREDS ssl crypto hv
 )
