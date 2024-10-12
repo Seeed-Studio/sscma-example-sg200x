@@ -144,6 +144,7 @@ static std::string getDeviceIp(std::string clientIp) {
 
     fgets(deviceIp, sizeof(deviceIp) - 1, fp);
     clearNewline(deviceIp, strlen(deviceIp));
+    pclose(fp);
 
     return std::string(deviceIp);
 }

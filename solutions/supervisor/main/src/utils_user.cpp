@@ -72,6 +72,7 @@ static int verifyPasswd(const std::string& passwd) {
 
     fgets(info, sizeof(info) - 1, fp);
     clearNewline(info, strlen(info));
+    pclose(fp);
 
     if (strcmp(info, "ERROR") == 0) {
         return -1;

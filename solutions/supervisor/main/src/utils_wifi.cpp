@@ -48,7 +48,6 @@ static int getWifiInfo(std::vector<std::string>& wifiStatus)
     }
 
     pclose(fp);
-
     return 0;
 }
 
@@ -70,6 +69,7 @@ static std::string getWifiConnectStatus() {
         connectStatus[len - 1] = '\0';
     }
 
+    pclose(fp);
     return std::string(connectStatus);
 }
 
@@ -93,6 +93,7 @@ static std::string removeWifi(std::string id) {
         }
     }
 
+    pclose(fp);
     return std::string(info);
 }
 
@@ -457,6 +458,8 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
         }
     }
 
+    pclose(fp);
+
     if (msg.compare("OK") != 0) {
         response["code"] = -1;
         response["msg"] = msg;
@@ -524,6 +527,7 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
             msg.erase(msg.size() - 1);
         }
     }
+    pclose(fp);
 
     hv::Json response;
 
