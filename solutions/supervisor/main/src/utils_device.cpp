@@ -138,7 +138,7 @@ static std::string getDeviceIp(std::string clientIp) {
     strcat(cmd, clientIp.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return std::string(deviceIp);
     }
 
@@ -159,7 +159,7 @@ static std::string getGateWay(std::string ip)
     strcat(cmd, ip.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return res;
     }
 
@@ -181,7 +181,7 @@ void initSystemStatus() {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         systemStatus = SERVICE_STATUS_ERROR;
         return ;
     }
@@ -205,7 +205,7 @@ void getSnCode() {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return ;
     }
 
@@ -225,7 +225,7 @@ int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         response["code"] = -1;
         response["msg"] = "Failed to run " + std::string(cmd);
         response["data"] = hv::Json({});
@@ -501,7 +501,7 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(SCRIPT_UPGRADE_QUERY, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_UPGRADE_QUERY);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", SCRIPT_UPGRADE_QUERY, strerror(errno));
         return -1;
     }
 
@@ -561,7 +561,7 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
     strcat(cmd, req->client_addr.ip.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -620,7 +620,7 @@ int getAppInfo(HttpRequest* req, HttpResponse* resp) {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -667,7 +667,7 @@ int uploadApp(const HttpContextPtr& ctx) {
     strcat(cmd, ctx->param("appVersion").c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 

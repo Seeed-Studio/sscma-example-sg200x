@@ -90,7 +90,7 @@ int startApp(const char* cmd, const char* appName) {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 

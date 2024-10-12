@@ -30,7 +30,7 @@ int initUserInfo() {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s list\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -66,7 +66,7 @@ static int verifyPasswd(const std::string& passwd) {
     strcat(cmd, passwd.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -106,7 +106,7 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(SCRIPT_USER_SSH, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", SCRIPT_USER_SSH);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", SCRIPT_USER_SSH, strerror(errno));
     }
 
     while (fgets(info, sizeof(info) - 1, fp) != NULL) {
@@ -161,7 +161,7 @@ int updateUserName(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s list\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
     pclose(fp);
@@ -209,7 +209,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s list\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 

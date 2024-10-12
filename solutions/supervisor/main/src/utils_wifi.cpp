@@ -34,7 +34,7 @@ static int getWifiInfo(std::vector<std::string>& wifiStatus)
 
     fp = popen(SCRIPT_WIFI_STATUS, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_STATUS);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", SCRIPT_WIFI_STATUS, strerror(errno));
         return -1;
     }
 
@@ -59,7 +59,7 @@ static std::string getWifiConnectStatus() {
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return std::string("Failed");
     }
 
@@ -82,7 +82,7 @@ static std::string removeWifi(std::string id) {
     strcat(cmd, id.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return std::string(info);
     }
 
@@ -131,7 +131,7 @@ static int getWifiList(const std::string& scanTime)
     strcat(cmd, scanTime.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -173,7 +173,7 @@ static int updateConnectedWifiInfo()
 
     fp = popen(SCRIPT_WIFI_LIST, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_LIST);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", SCRIPT_WIFI_LIST, strerror(errno));
         return -1;
     }
 
@@ -443,7 +443,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_DEBUG, "cmd: %s\n", cmd);
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -517,7 +517,7 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run %s\n", cmd);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
@@ -571,7 +571,7 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp)
 
     fp = popen(SCRIPT_WIFI_STATE, "r");
     if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`\n", SCRIPT_WIFI_STATE);
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", SCRIPT_WIFI_STATE, strerror(errno));
         return -1;
     }
 
