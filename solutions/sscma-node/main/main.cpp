@@ -71,10 +71,12 @@ int main(int argc, char** argv) {
         }
     }
 
-    StorageFile* config = new StorageFile();
-    config->init(config_file.c_str());
 
     if (start_service) {
+
+
+        StorageFile* config = new StorageFile();
+        config->init(config_file.c_str());
 
         MA_LOGI(TAG, "starting the service...");
         MA_LOGI(TAG, "version: %s", PROJECT_VERSION);

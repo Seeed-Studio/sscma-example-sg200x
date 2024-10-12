@@ -1,4 +1,5 @@
 .vscode
 build/
+install/
 *.a
 *.so

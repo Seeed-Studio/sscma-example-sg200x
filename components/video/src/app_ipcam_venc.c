@@ -27,13 +27,13 @@
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-static APP_PARAM_VENC_CTX_S g_stVencCtx, *g_pstVencCtx = &g_stVencCtx;
+static APP_PARAM_VENC_CTX_S g_stVencCtx = { 0 }, *g_pstVencCtx = &g_stVencCtx;
 
-static pthread_t g_Venc_pthread[VENC_CHN_MAX];
+static pthread_t g_Venc_pthread[VENC_CHN_MAX] = { 0 };
 
-static void *g_pDataCtx[VENC_CHN_MAX];
-static void *g_pUserData[VENC_CHN_MAX][APP_DATA_COMSUMES_MAX];
-static pfpDataConsumes g_Consumes[VENC_CHN_MAX][APP_DATA_COMSUMES_MAX];
+static void *g_pDataCtx[VENC_CHN_MAX] = { NULL };
+static void *g_pUserData[VENC_CHN_MAX][APP_DATA_COMSUMES_MAX] = { NULL };
+static pfpDataConsumes g_Consumes[VENC_CHN_MAX][APP_DATA_COMSUMES_MAX] = { NULL };
 
 /**************************************************************************
  *                 E X T E R N A L    R E F E R E N C E S                 *
@@ -901,7 +901,7 @@ static void* Thread_Streaming_Proc(void* pArgs)
             if (pastVencChnCfg->no_need_venc) {
                 for (uint32_t i = 0; i < APP_DATA_COMSUMES_MAX; i++) {
                     if (g_Consumes[VencChn][i]) {
-                        g_Consumes[VencChn][i](&stVpssFrame, &pastVencChnCfg, g_pUserData[VencChn][i]);
+                        g_Consumes[VencChn][i](&stVpssFrame, pastVencChnCfg, g_pUserData[VencChn][i]);
                     }
                 }
                 // release vpss frame

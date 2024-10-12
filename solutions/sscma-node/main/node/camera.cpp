@@ -34,6 +34,7 @@ CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels
         channels_[i].enabled    = false;
         channels_[i].format     = MA_PIXEL_FORMAT_H264;
     }
+    channels_.shrink_to_fit();
 }
 
 CameraNode::~CameraNode() {
@@ -50,6 +51,10 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
     VENC_CHN VencChn                  = pstVencChnCfg->VencChn;
 
     if (!started_) {
+        return CVI_SUCCESS;
+    }
+    if (pstVencChnCfg->VencChn >= CHN_MAX) {
+        MA_LOGW(TAG, "invalid chn %d", pstVencChnCfg->VencChn);
         return CVI_SUCCESS;
     }
 
@@ -103,7 +108,10 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     if (!started_) {
         return CVI_SUCCESS;
     }
-
+    if (pstVencChnCfg->VencChn >= CHN_MAX) {
+        MA_LOGW(TAG, "invalid chn %d", pstVencChnCfg->VencChn);
+        return CVI_SUCCESS;
+    }
     videoFrame* frame = new videoFrame(false);
     frame->img.size   = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
     frame->img.width  = channels_[pstVencChnCfg->VencChn].width;
@@ -129,6 +137,7 @@ int CameraNode::vencCallbackStub(void* pData, void* pArgs, void* pUserData) {
 }
 
 int CameraNode::vpssCallbackStub(void* pData, void* pArgs, void* pUserData) {
+    APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
     return reinterpret_cast<CameraNode*>(pUserData)->vpssCallback(pData, pArgs);
 }
 
