@@ -73,6 +73,37 @@ static std::string getWifiConnectStatus() {
     return std::string(connectStatus);
 }
 
+static std::string getWifiId() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_WIFI_GET_WIFI_ID;
+    char info[128] = "";
+    int len = 0;
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return std::string("-1");
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    len = strlen(info);
+    if (info[len - 1] == '\n') {
+        info[len - 1] = '\0';
+    }
+    pclose(fp);
+
+    return std::string(info);
+}
+
+static int selectWifi(std::string id) {
+    char cmd[128] = SCRIPT_WIFI_SELECT;
+
+    strcat(cmd, id.c_str());
+    system(cmd);
+
+    return 0;
+}
+
 static std::string removeWifi(std::string id) {
     FILE* fp;
     char info[128] = "";
@@ -429,12 +460,13 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "password: %s\n", req->GetString("password").c_str());
 
     hv::Json response;
-    std::string msg;
+    std::string msg, currentWifiId;
     int id = 0, connecting = 0;
     FILE* fp;
     char info[128];
     char cmd[128] = "";
 
+    currentWifiId = getWifiId();
     if (req->GetString("password").empty()) {
         strcpy(cmd, SCRIPT_WIFI_SELECT);
         updateConnectedWifiInfo();
@@ -494,6 +526,9 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
         if (connectStatus == "DISCONNECTED" || connectStatus == "Failed") {
             removeWifi(std::to_string(id));
+            if (currentWifiId != "-1") {
+                selectWifi(currentWifiId);
+            }
             response["code"] = -1;
             response["msg"] = "Connection failed";
             response["data"] = hv::Json({});

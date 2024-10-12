@@ -105,6 +105,14 @@ connect_status)
     wpa_cli -i wlan0 status | grep "^wpa_state" | awk -F= '{print $2}'
     ;;
 
+get_wifi_id)
+    id="`wpa_cli -i wlan0 status | grep "^id" | awk -F= '{print $2}'`"
+    if [ ! "$id" ]; then
+        id="-1"
+    fi
+    echo $id
+    ;;
+
 select)
     echo $2
     wpa_cli -i wlan0 select_network $2
