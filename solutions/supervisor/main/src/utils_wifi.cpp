@@ -327,16 +327,22 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "scanTime: %s\n", req->GetString("scanTime").c_str());
 
     std::string ip, mask, mac;
+    hv::Json response;
 
     if (updateConnectedWifiInfo() != 0) {
-        return -1;
+        response["code"] = -1;
+        response["msg"] = "Failed to update connected wifi information";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
     }
 
     if (getWifiList(req->GetString("scanTime")) != 0) {
-        return -1;
+        response["code"] = -1;
+        response["msg"] = "Failed to get wifi list";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
     }
 
-    hv::Json response;
     response["code"] = 0;
     response["msg"] = "";
 
@@ -424,13 +430,14 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
     hv::Json response;
     std::string msg;
-    int id, connecting = 0;
+    int id = 0, connecting = 0;
     FILE* fp;
     char info[128];
     char cmd[128] = "";
 
     if (req->GetString("password").empty()) {
         strcpy(cmd, SCRIPT_WIFI_SELECT);
+        updateConnectedWifiInfo();
         id = g_wifiInfo[req->GetString("ssid")].id;
         strcat(cmd, std::to_string(id).c_str());
     } else {
@@ -505,11 +512,13 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
     std::string msg;
-    int id = g_wifiInfo[req->GetString("ssid")].id;
+    int id = 0;
     FILE* fp;
     char info[128];
     char cmd[128] = SCRIPT_WIFI_DISCONNECT;
 
+    updateConnectedWifiInfo();
+    id = g_wifiInfo[req->GetString("ssid")].id;
     strcat(cmd, std::to_string(id).c_str());
 
     syslog(LOG_DEBUG, "id: %d\n", id);
@@ -625,6 +634,7 @@ int forgetWiFi(HttpRequest* req, HttpResponse* resp)
     std::string msg;
     int id;
 
+    updateConnectedWifiInfo();
     id = g_wifiInfo[req->GetString("ssid")].id;
     removeWifi(std::to_string(id));
 
