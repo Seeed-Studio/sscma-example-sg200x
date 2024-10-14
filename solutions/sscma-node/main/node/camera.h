@@ -16,6 +16,7 @@ typedef struct {
     ma_pixel_format_t format;
     bool configured;
     bool enabled;
+    bool dropped;
     std::vector<MessageBox*> msgboxes;
 } channel;
 
@@ -44,6 +45,7 @@ public:
     Semaphore sem;
     ma_tick_t timestamp;
     std::atomic<int> ref_cnt;
+    int8_t fps;
     bool own;
     bool physical;
     bool isKey;
