@@ -1,5 +1,13 @@
 #pragma once
 
+extern "C" {
+#include <libavcodec/codec_id.h>
+#include <libavformat/avformat.h>
+#include <libavutil/avassert.h>
+#include <libavutil/opt.h>
+#include <libavutil/log.h>
+}
+
 #include "camera.h"
 #include "node.h"
 
@@ -30,16 +38,19 @@ private:
     bool recycle();
 
 protected:
-    std::ofstream file_;
     std::string storage_;
     uint64_t max_size_;
     int slice_;
     int duration_;
     bool enabled_;
     ma_tick_t begin_;
+    int count_;
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
+    AVFormatContext* avFmtCtx_;
+    AVCodec* avCodec_;
+    AVStream* avStream_;
 };
 
 }  // namespace ma::node
