@@ -54,6 +54,8 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
                     }
                 } else if (name == "destroy") {
                     NodeFactory::destroy(id);
+                } else if (name == "clear") {
+                    NodeFactory::clear();
                 } else if (name == "health") {
                     this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", MA_OK}, {"data", ""}}));
                 } else {
