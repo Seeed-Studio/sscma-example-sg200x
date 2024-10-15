@@ -104,11 +104,9 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             frame->img.height          = channels_[VencChn].height;
             frame->img.format          = channels_[VencChn].format;
             frame->img.size            = size;
-            frame->count               = 1;
-            frame->index               = 1;
-            frame->isKey               = true;
-            frame->fps                 = channels_[VencChn].fps;
+            frame->img.key             = true;
             frame->img.data            = new uint8_t[size];
+            frame->fps                 = channels_[VencChn].fps;
             channels_[VencChn].dropped = false;
             for (int j = i; j < i + cnt; j++) {
                 memcpy(frame->img.data + offset, pstStream->pstPack[j].pu8Addr + pstStream->pstPack[j].u32Offset, pstStream->pstPack[j].u32Len - pstStream->pstPack[j].u32Offset);
@@ -125,11 +123,9 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             frame->img.height = channels_[VencChn].height;
             frame->img.format = channels_[VencChn].format;
             frame->img.size   = ppack->u32Len - ppack->u32Offset;
-            frame->fps        = channels_[VencChn].fps;
-            frame->count      = 1;
-            frame->index      = 1;
-            frame->isKey      = false;
+            frame->img.key    = false;
             frame->img.data   = new uint8_t[ppack->u32Len - ppack->u32Offset];
+            frame->fps        = channels_[VencChn].fps;
             memcpy(frame->img.data, ppack->pu8Addr + ppack->u32Offset, ppack->u32Len - ppack->u32Offset);
         }
         if (frame != nullptr) {
@@ -165,11 +161,9 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     frame->img.width  = channels_[pstVencChnCfg->VencChn].width;
     frame->img.height = channels_[pstVencChnCfg->VencChn].height;
     frame->img.format = channels_[pstVencChnCfg->VencChn].format;
-    frame->fps        = channels_[pstVencChnCfg->VencChn].fps;
-    frame->count      = 1;
-    frame->index      = 1;
+    frame->img.data   = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
     frame->timestamp  = Tick::current();
-    frame->phy_addr   = f->u64PhyAddr[0];
+    frame->fps        = channels_[pstVencChnCfg->VencChn].fps;
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
         if (!msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[pstVencChnCfg->VencChn].fps)))) {
             frame->release();
