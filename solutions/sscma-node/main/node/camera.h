@@ -78,6 +78,7 @@ protected:
     static int vencCallbackStub(void* pData, void* pArgs, void* pUserData);
     static int vpssCallbackStub(void* pData, void* pArgs, void* pUserData);
     std::vector<channel> channels_;
+    int option_;
 };
 
 }  // namespace ma::node
