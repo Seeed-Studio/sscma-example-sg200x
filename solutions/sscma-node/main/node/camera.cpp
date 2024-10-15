@@ -195,27 +195,48 @@ ma_err_t CameraNode::onCreate(const json& config) {
 
     initVideo();
 
+    option_ = 0;
+
     if (config.contains("option") && config["option"].is_string()) {
         std::string option = config["option"].get<std::string>();
-        if (option == "1080p") {
+        if (option.find("1080p") != std::string::npos) {
+            option_ = 0;
+        } else if (option.find("720p") != std::string::npos) {
+            option_ = 1;
+        } else if (option.find("480p") != std::string::npos) {
+            option_ = 2;
+        }
+    }
+
+    if (config.contains("option") && config["option"].is_number()) {
+        int option = config["option"].get<int>();
+    }
+
+    switch (option_) {
+        case 1:
+            channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
+            channels_[CHN_H264].width  = 1280;
+            channels_[CHN_H264].height = 1080;
+            channels_[CHN_H264].fps    = 30;
+            break;
+        case 2:
+            channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
+            channels_[CHN_H264].width  = 640;
+            channels_[CHN_H264].height = 480;
+            channels_[CHN_H264].fps    = 30;
+            break;
+        default:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1920;
             channels_[CHN_H264].height = 1080;
             channels_[CHN_H264].fps    = 30;
-        } else if (option == "720p") {
-            channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
-            channels_[CHN_H264].width  = 1280;
-            channels_[CHN_H264].height = 720;
-            channels_[CHN_H264].fps    = 30;
-        }
-    } else {
-        channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
-        channels_[CHN_H264].width  = 1920;
-        channels_[CHN_H264].height = 1080;
-        channels_[CHN_H264].fps    = 30;
+            break;
     }
 
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", MA_OK}, {"data", ""}}));
+    server_->response(
+        id_,
+        json::object(
+            {{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", MA_OK}, {"data", {"width", channels_[CHN_H264].width, "height", channels_[CHN_H264].height, "fps", channels_[CHN_H264].fps}}}));
 
     return MA_OK;
 }
