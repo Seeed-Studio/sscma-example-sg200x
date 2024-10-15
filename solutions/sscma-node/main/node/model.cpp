@@ -57,7 +57,7 @@ void ModelNode::threadEntry() {
             .is_physical = true,
             .is_variable = false,
         };
-        tensor.data.data = reinterpret_cast<void*>(raw->phy_addr);
+        tensor.data.data = reinterpret_cast<void*>(raw->img.data);
         engine_->setInput(0, tensor);
         model_->setRunDone([this, raw](void* ctx) { raw->release(); });
         if (detector != nullptr) {
