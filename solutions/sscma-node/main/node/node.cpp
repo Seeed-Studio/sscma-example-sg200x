@@ -137,7 +137,7 @@ void NodeFactory::destroy(const std::string id) {
     }
 
     for (auto& dep : node->second->dependents_) {
-        if(find(dep.first)) {
+        if (find(dep.first)) {
             dep.second->onStop();
         }
     }
