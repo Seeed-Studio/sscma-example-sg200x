@@ -48,6 +48,11 @@ bool SaveNode::recycle() {
     uint64_t total_size = 0;
     std::vector<std::filesystem::directory_entry> files;
 
+    std::filesystem::space_info si = std::filesystem::space(storage_);
+
+    // max_size_ = 0.8 * space.total;
+    max_size_ = si.available * 0.8;
+
     for (auto& p : std::filesystem::directory_iterator(storage_)) {
         if (p.is_regular_file()) {
             files.push_back(p);
@@ -68,6 +73,7 @@ bool SaveNode::recycle() {
             }
         }
     }
+    cur_size_ = total_size;
     return false;
 }
 
@@ -90,14 +96,14 @@ void SaveNode::threadEntry() {
 
             Thread::enterCritical();
 
-            if (count_ == 0 && !frame->isKey) {
+            if (count_ == 0 && !frame->img.key) {
                 MA_LOGD(TAG, "the first frame is not key frame, skip it");
                 frame->release();
                 Thread::exitCritical();
                 continue;
             }
 
-            if ((frame->isKey) && ((slice_ <= 0 && avFmtCtx_ == nullptr) || (slice_ > 0 && frame->timestamp > start_ + Tick::fromSeconds(slice_)))) {
+            if ((frame->img.key) && ((slice_ <= 0 && avFmtCtx_ == nullptr) || (slice_ > 0 && frame->timestamp > start_ + Tick::fromSeconds(slice_)))) {
                 start_           = frame->timestamp;
                 std::string file = generateFileName();
                 if (avFmtCtx_ != nullptr && avFmtCtx_->pb != nullptr) {
@@ -169,20 +175,26 @@ void SaveNode::threadEntry() {
                     Thread::exitCritical();
                     continue;
                 }
+            }
+
+            if (frame->img.key && (cur_size_ + frame->img.size > max_size_)) {
                 recycle();
             }
+
             av_init_packet(&packet);
             packet.pts   = count_++;
             packet.dts   = packet.pts;
             packet.data  = frame->img.data;
             packet.size  = frame->img.size;
-            packet.flags = frame->isKey ? AV_PKT_FLAG_KEY : 0;
+            packet.flags = frame->img.key ? AV_PKT_FLAG_KEY : 0;
             AVRational r = av_d2q(1.0 / frame->fps, INT_MAX);
             av_packet_rescale_ts(&packet, r, avStream_->time_base);
             if (av_write_frame(avFmtCtx_, &packet) != 0) {
                 MA_LOGW(TAG, "write frame failed");
             }
-            if (frame->isKey && (duration_ > 0 && frame->timestamp > begin_ + Tick::fromSeconds(duration_))) {
+            cur_size_ += frame->img.size;
+
+            if (frame->img.key && (duration_ > 0 && frame->timestamp > begin_ + Tick::fromSeconds(duration_))) {
                 if (avFmtCtx_ != nullptr && avFmtCtx_->pb != nullptr) {
                     av_write_trailer(avFmtCtx_);
                     avio_closep(&avFmtCtx_->pb);
@@ -247,14 +259,10 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
     std::filesystem::space_info si = std::filesystem::space(storage_);
 
-    if (storageType == "local") {
-        max_size_ = si.available / 10 * 6;
-    } else {
-        max_size_ = si.available / 10 * 8;
-    }
+    // max_size_ = 0.8 * space.total;
+    max_size_ = si.available * 0.8;
 
-
-    MA_LOGI(TAG, "storage: %s, slice: %d duration: %d max_size: %ldB", storage_.c_str(), slice_, duration_, max_size_);
+    MA_LOGI(TAG, "storage: %s, slice: %d duration: %d max_size: %ldMB", storage_.c_str(), slice_, duration_, max_size_ / (1024 * 1024));
 
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", "23"}}));
 
@@ -309,6 +317,8 @@ ma_err_t SaveNode::onStart() {
     }
     camera_->config(CHN_H264);
     camera_->attach(CHN_H264, &frame_);
+
+    recycle();
 
     thread_->start(this);
     started_ = true;
