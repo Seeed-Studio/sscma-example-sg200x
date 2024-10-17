@@ -12,9 +12,11 @@ static constexpr char TAG[] = "ma::node::model";
 #define DEFAULT_MODEL "/userdata/MODEL/model.cvimodel"
 
 ModelNode::ModelNode(std::string id)
-    : Node("model", id), uri_(""), debug_(true), trace_(false), counting_(false), count_(0), engine_(nullptr), model_(nullptr), thread_(nullptr), raw_frame_(1), jpeg_frame_(1) {}
+    : Node("model", id), uri_(""), debug_(true), trace_(false), counting_(false), count_(0), engine_(nullptr), model_(nullptr), thread_(nullptr), raw_frame_(1), jpeg_frame_(1), camera_(nullptr) {}
 
-ModelNode::~ModelNode() {}
+ModelNode::~ModelNode() {
+    onDestroy();
+}
 
 
 void ModelNode::threadEntry() {
@@ -26,7 +28,6 @@ void ModelNode::threadEntry() {
     videoFrame* jpeg       = nullptr;
     int32_t width          = 0;
     int32_t height         = 0;
-    ma_tick_t take         = 0;
 
     switch (model_->getType()) {
         case MA_MODEL_TYPE_IMCLS:
@@ -111,8 +112,8 @@ void ModelNode::threadEntry() {
             }
         }
 
-        if (classes_.size() > 0) {
-            reply["data"]["labels"] = classes_;
+        if (labels_.size() > 0) {
+            reply["data"]["labels"] = labels_;
         }
 
         if (debug_) {
@@ -143,7 +144,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
     ma_err_t err = MA_OK;
     Guard guard(mutex_);
 
-    classes_.clear();
+    labels_.clear();
 
     if (config.contains("uri") && config["uri"].is_string()) {
         uri_ = config["uri"].get<std::string>();
@@ -169,15 +170,15 @@ ma_err_t ModelNode::onCreate(const json& config) {
             ifs >> info_;
             if (info_.is_object()) {
                 if (info_.contains("classes") && info_["classes"].is_array()) {
-                    classes_ = info_["classes"].get<std::vector<std::string>>();
+                    labels_ = info_["classes"].get<std::vector<std::string>>();
                 }
             }
         }
     }
 
     // override classes
-    if (classes_.size() == 0 && config.contains("classes") && config["classes"].is_array()) {
-        classes_ = config["classes"].get<std::vector<std::string>>();
+    if (labels_.size() == 0 && config.contains("labels") && config["labels"].is_array() && config["labels"].size() > 0) {
+        labels_ = config["labels"].get<std::vector<std::string>>();
     }
 
     MA_TRY {
@@ -258,6 +259,8 @@ ma_err_t ModelNode::onCreate(const json& config) {
         MA_THROW(Exception(MA_EINVAL, e.what()));
     }
 
+    created_ = true;
+
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", MA_OK}, {"data", info_}}));
 
     return MA_OK;
@@ -299,7 +302,13 @@ ma_err_t ModelNode::onControl(const std::string& control, const json& data) {
 
 ma_err_t ModelNode::onDestroy() {
     Guard guard(mutex_);
-    this->onStop();
+
+    if (!created_) {
+        return MA_OK;
+    }
+
+    onStop();
+
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
@@ -318,7 +327,9 @@ ma_err_t ModelNode::onDestroy() {
             camera_->detach(CHN_JPEG, &jpeg_frame_);
         }
     }
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "destroy"}, {"code", MA_OK}, {"data", ""}}));
+
+    created_ = false;
+
     return MA_OK;
 }
 
@@ -337,6 +348,11 @@ ma_err_t ModelNode::onStart() {
         }
     }
 
+    if (camera_ == nullptr) {
+        MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
+        return MA_ENOTSUP;
+    }
+
     switch (model_->getType()) {
         case MA_MODEL_TYPE_IMCLS:
             img = static_cast<Classifier*>(model_)->getInputImg();
@@ -350,7 +366,6 @@ ma_err_t ModelNode::onStart() {
         camera_->config(CHN_JPEG, img->width, img->height, 30, MA_PIXEL_FORMAT_JPEG);
         camera_->attach(CHN_JPEG, &jpeg_frame_);
     }
-
 
     MA_LOGI(TAG, "start model: %s(%s)", type_.c_str(), id_.c_str());
     thread_->start(this);

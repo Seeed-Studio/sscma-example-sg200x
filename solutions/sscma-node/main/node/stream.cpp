@@ -9,7 +9,7 @@ namespace ma::node {
 
 static constexpr char TAG[] = "ma::node::stream";
 
-StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), thread_(nullptr), camera_(nullptr), frame_(30) {
+StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), thread_(nullptr), camera_(nullptr), frame_(30), transport_(nullptr) {
     char hostname[1024];
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
@@ -17,9 +17,7 @@ StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_("")
 }
 
 StreamNode::~StreamNode() {
-    if (thread_ != nullptr) {
-        delete thread_;
-    }
+    onDestroy();
 }
 
 void StreamNode::threadEntry() {
@@ -42,7 +40,6 @@ void StreamNode::threadEntryStub(void* obj) {
 ma_err_t StreamNode::onCreate(const json& config) {
     Guard guard(mutex_);
     ma_err_t err = MA_OK;
-
 
     if (!config.contains("port")) {
         port_ = 554;
@@ -91,9 +88,8 @@ ma_err_t StreamNode::onCreate(const json& config) {
     if (err != MA_OK) {
         MA_THROW(Exception(err, "transport init failed"));
     }
-
-
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", {"url", url_}}}));
+    created_ = true;
     return err;
 }
 
@@ -106,7 +102,13 @@ ma_err_t StreamNode::onControl(const std::string& control, const json& data) {
 ma_err_t StreamNode::onDestroy() {
 
     Guard guard(mutex_);
-    ma_err_t err = MA_OK;
+
+    if (!created_) {
+        return MA_OK;
+    }
+
+    onStop();
+
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
@@ -118,7 +120,7 @@ ma_err_t StreamNode::onDestroy() {
         transport_ = nullptr;
     }
 
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", ""}}));
+    created_ = false;
 
     return MA_OK;
 }
@@ -136,6 +138,12 @@ ma_err_t StreamNode::onStart() {
             break;
         }
     }
+
+    if (camera_ == nullptr) {
+        MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
+        return MA_ENOTSUP;
+    }
+
     camera_->config(CHN_H264);
     camera_->attach(CHN_H264, &frame_);
 

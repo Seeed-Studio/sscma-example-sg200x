@@ -5,6 +5,8 @@
 
 #include <sscma.h>
 
+#include <video.h>
+
 #include "version.h"
 
 #include "signal.h"
@@ -38,7 +40,11 @@ int main(int argc, char** argv) {
 
     Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE}, [](int sig) {
         MA_LOGE(TAG, "received signal %d", sig);
-        NodeFactory::clear();
+        if (sig == SIGSEGV) {
+            NodeFactory::clear();
+        } else {
+            deinitVideo();
+        }
         closelog();
         exit(1);
     });
@@ -46,6 +52,11 @@ int main(int argc, char** argv) {
 
     std::string config_file = MA_NODE_CONFIG_FILE;
     bool start_service      = false;
+
+    if (argc < 2) {
+        show_help();
+        return 1;
+    }
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];

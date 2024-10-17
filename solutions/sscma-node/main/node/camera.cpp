@@ -10,7 +10,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
     {                                               \
         Thread::enterCritical();                    \
         Thread::sleep(Tick::fromMilliseconds(100)); \
-        MA_LOGD(TAG, "start video");                \
+        MA_LOGI(TAG, "start video");                \
         startVideo();                               \
         started_ = true;                            \
         Thread::sleep(Tick::fromSeconds(1));        \
@@ -20,15 +20,16 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
 #define CAMERA_DEINIT()                             \
     {                                               \
         Thread::enterCritical();                    \
-        MA_LOGD(TAG, "deinit video");               \
+        MA_LOGI(TAG, "stop video");                 \
         started_ = false;                           \
         Thread::sleep(Tick::fromMilliseconds(100)); \
         deinitVideo();                              \
+        MA_LOGI(TAG, "stop video done");            \
         Thread::sleep(Tick::fromSeconds(1));        \
         Thread::exitCritical();                     \
     }
 
-CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX) {
+CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), option_(0) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -38,9 +39,7 @@ CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels
 }
 
 CameraNode::~CameraNode() {
-    if (started_) {
-        CAMERA_DEINIT();
-    }
+    onDestroy();
 };
 
 static inline bool isKeyFrame(int format) {
@@ -64,7 +63,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pstDataParam->pParam;
     VENC_CHN VencChn                  = pstVencChnCfg->VencChn;
 
-    if (!started_) {
+    if (!started_ || channels_[VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
     }
     if (pstVencChnCfg->VencChn >= CHN_MAX) {
@@ -75,11 +74,10 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
     VENC_STREAM_S* pstStream = (VENC_STREAM_S*)pData;
     VENC_PACK_S* ppack;
 
-
     for (int i = 0; i < pstStream->u32PackCount; i++) {
         videoFrame* frame = nullptr;
         ppack             = &pstStream->pstPack[i];
-        if (isKeyFrame(ppack->DataType.enH264EType)) {
+        if (VencChn == CHN_H264 && isKeyFrame(ppack->DataType.enH264EType)) {
             int cnt    = 0;
             int offset = 0;
             int size   = 0;
@@ -114,7 +112,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             }
             i += (cnt - 1);
         } else {
-            if (channels_[VencChn].dropped) {
+            if (VencChn == CHN_H264 && channels_[VencChn].dropped) {
                 continue;
             }
             frame             = new videoFrame();
@@ -133,7 +131,6 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             for (auto& msgbox : channels_[VencChn].msgboxes) {
                 if (!msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[VencChn].fps)))) {
                     frame->release();
-                    MA_LOGW(TAG, "post frame failed");
                     channels_[VencChn].dropped = true;
                 }
             }
@@ -149,13 +146,14 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     VIDEO_FRAME_INFO_S* VpssFrame     = (VIDEO_FRAME_INFO_S*)pData;
     VIDEO_FRAME_S* f                  = &VpssFrame->stVFrame;
 
-    if (!started_) {
+    if (!started_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
     }
     if (pstVencChnCfg->VencChn >= CHN_MAX) {
         MA_LOGW(TAG, "invalid chn %d", pstVencChnCfg->VencChn);
         return CVI_SUCCESS;
     }
+
     videoFrame* frame = new videoFrame(false);
     frame->img.size   = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
     frame->img.width  = channels_[pstVencChnCfg->VencChn].width;
@@ -170,6 +168,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
         }
     }
     frame->wait();
+
     delete frame;
 
     return CVI_SUCCESS;
@@ -232,6 +231,8 @@ ma_err_t CameraNode::onCreate(const json& config) {
         json::object(
             {{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", MA_OK}, {"data", {"width", channels_[CHN_H264].width, "height", channels_[CHN_H264].height, "fps", channels_[CHN_H264].fps}}}));
 
+    created_ = true;
+
     return MA_OK;
 }
 
@@ -244,9 +245,13 @@ ma_err_t CameraNode::onControl(const std::string& control, const json& data) {
 ma_err_t CameraNode::onDestroy() {
     Guard guard(mutex_);
 
+    if (!created_) {
+        return MA_OK;
+    }
+
     onStop();
 
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "destroy"}, {"code", MA_OK}, {"data", ""}}));
+    created_ = false;
 
     return MA_OK;
 }
@@ -355,7 +360,7 @@ ma_err_t CameraNode::detach(int chn, MessageBox* msgbox) {
     if (it != channels_[chn].msgboxes.end()) {
         MA_LOGI(TAG, "detach %p from %d", msgbox, chn);
         started_ = false;
-        Thread::sleep(Tick::fromMilliseconds(100));
+        Thread::sleep(Tick::fromMilliseconds(2000 / channels_[chn].fps));  // skip 3frames
         channels_[chn].msgboxes.erase(it);
         started_ = true;
     }

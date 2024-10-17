@@ -24,33 +24,38 @@ namespace ma::node {
 static constexpr char TAG[] = "ma::node::save";
 
 SaveNode::SaveNode(std::string id)
-    : Node("save", id), storage_(NODE_SAVE_PATH_LOCAL), max_size_(NODE_SAVE_MAX_SIZE), enabled_(true), slice_(300), duration_(-1), count_(0), camera_(nullptr), frame_(30), thread_(nullptr) {
-    av_log_set_level(MA_DEBUG_LEVEL * 8);
+    : Node("save", id),
+      storage_(NODE_SAVE_PATH_LOCAL),
+      max_size_(NODE_SAVE_MAX_SIZE),
+      enabled_(true),
+      slice_(300),
+      duration_(-1),
+      count_(0),
+      camera_(nullptr),
+      frame_(30),
+      thread_(nullptr),
+      avFmtCtx_(nullptr),
+      avStream_(nullptr) {
+    av_log_set_level(AV_LOG_LEVEL);
 }
 
 SaveNode::~SaveNode() {
-    onStop();
-    if (thread_ != nullptr) {
-        delete thread_;
-        thread_ = nullptr;
-    }
+    onDestroy();
 }
 
 std::string SaveNode::generateFileName() {
     auto now = std::time(nullptr);
     std::ostringstream oss;
     oss << storage_ << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S") << ".mp4";
-    MA_LOGI(TAG, "save to %s", oss.str().c_str());
     return oss.str();
 }
 
-bool SaveNode::recycle() {
+bool SaveNode::recycle(std::string filename, uint64_t size) {
     uint64_t total_size = 0;
     std::vector<std::filesystem::directory_entry> files;
 
     std::filesystem::space_info si = std::filesystem::space(storage_);
 
-    // max_size_ = 0.8 * space.total;
     max_size_ = si.available * 0.8;
 
     for (auto& p : std::filesystem::directory_iterator(storage_)) {
@@ -63,6 +68,10 @@ bool SaveNode::recycle() {
     if (total_size > max_size_) {
         std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return std::filesystem::last_write_time(a) < std::filesystem::last_write_time(b); });
         for (const auto& file : files) {
+            if (file.path() == filename) {
+                // skip the current file
+                continue;
+            }
             uint64_t file_size = file.file_size();
             if (std::filesystem::remove(file)) {
                 MA_LOGI(TAG, "exceed max size %lu Bytes, remove %s", max_size_, file.path().c_str());
@@ -74,60 +83,62 @@ bool SaveNode::recycle() {
         }
     }
     cur_size_ = total_size;
-    return false;
+    return cur_size_ + size <= max_size_;
 }
 
 void SaveNode::threadEntry() {
     ma_tick_t start_  = 0;
     videoFrame* frame = nullptr;
     AVPacket packet   = {0};
-    // wait for dependencies ready
+    begin_            = Tick::current();
 
     while (true) {
+        Thread::exitCritical();
         if (frame_.fetch(reinterpret_cast<void**>(&frame))) {
-
-            if (!enabled_) {
-                frame->release();
-                if (begin_ == 0) {
-                    begin_ = Tick::current();
-                }
-                continue;
-            }
-
             Thread::enterCritical();
 
-            if (count_ == 0 && !frame->img.key) {
-                MA_LOGD(TAG, "the first frame is not key frame, skip it");
+            if (enabled_ == false) {
                 frame->release();
-                Thread::exitCritical();
                 continue;
             }
 
-            if ((frame->img.key) && ((slice_ <= 0 && avFmtCtx_ == nullptr) || (slice_ > 0 && frame->timestamp > start_ + Tick::fromSeconds(slice_)))) {
-                start_           = frame->timestamp;
-                std::string file = generateFileName();
-                if (avFmtCtx_ != nullptr && avFmtCtx_->pb != nullptr) {
-                    av_write_trailer(avFmtCtx_);
-                    avio_closep(&avFmtCtx_->pb);
-                    avformat_free_context(avFmtCtx_);
-                    avFmtCtx_ = nullptr;
+            if (cur_size_ + frame->img.size > max_size_) {
+                if (recycle(filename_, frame->img.size) == false) {
+                    frame->release();
+                    MA_LOGE(TAG, "not enough space, stop recording");
+                    if (avFmtCtx_ != nullptr && avFmtCtx_->pb != nullptr) {
+                        av_write_trailer(avFmtCtx_);
+                        avio_closep(&avFmtCtx_->pb);
+                        avformat_free_context(avFmtCtx_);
+                        avFmtCtx_ = nullptr;
+                        avStream_ = nullptr;
+                    }
+                    enabled_ = false;
+                    continue;
                 }
+            }
 
-                int ret = avformat_alloc_output_context2(&avFmtCtx_, nullptr, nullptr, file.c_str());
-
+            // slice video
+            if (frame->img.key && (avFmtCtx_ == nullptr || (slice_ > 0 && Tick::current() - start_ > Tick::fromSeconds(slice_)))) {
+                if (avFmtCtx_ == nullptr) {
+                    MA_LOGI(TAG, "start recording slice: %d duration: %d", slice_, duration_);
+                    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "start"}, {"code", MA_OK}, {"data", ""}}));
+                    begin_ = Tick::current();
+                }
+                filename_ = generateFileName();
+                start_    = Tick::current();
+                MA_LOGI(TAG, "save to %s", filename_.c_str());
+                int ret = avformat_alloc_output_context2(&avFmtCtx_, nullptr, nullptr, filename_.c_str());
                 if (ret < 0) {
                     MA_LOGW(TAG, "avformat_alloc_output_context2 failed: %d", ret);
                     frame->release();
-                    Thread::exitCritical();
                     continue;
                 }
 
                 avStream_ = avformat_new_stream(avFmtCtx_, nullptr);
-
                 if (avStream_ == nullptr) {
                     MA_LOGE(TAG, "avformat_new_stream failed");
                     frame->release();
-                    Thread::exitCritical();
                     continue;
                 }
 
@@ -149,18 +160,18 @@ void SaveNode::threadEntry() {
                 lt = localtime(&curtime);
                 memset(value, 0, sizeof(value));
                 strftime(value, sizeof(value), "%Y-%m-%d %H:%M:%S", lt);
-                /* Enable defragment funciton in ffmpeg */
+
                 AVDictionary* dict = NULL;
                 av_dict_set(&dict, "truncate", "false", 0);
                 av_dict_set(&dict, "fsync", "false", 0);
                 av_dict_set(&avFmtCtx_->metadata, "creation_time", value, 0);
-                if (avio_open2(&avFmtCtx_->pb, file.c_str(), AVIO_FLAG_WRITE, nullptr, &dict) < 0) {
-                    MA_LOGE(TAG, "open file failed");
+                if (avio_open2(&avFmtCtx_->pb, filename_.c_str(), AVIO_FLAG_WRITE, nullptr, &dict) < 0) {
+                    MA_LOGE(TAG, "open filename_ failed");
                     av_dict_free(&dict);
                     avformat_free_context(avFmtCtx_);
                     avFmtCtx_ = nullptr;
+                    avStream_ = nullptr;
                     frame->release();
-                    Thread::exitCritical();
                     continue;
                 }
                 av_dict_free(&dict);
@@ -171,16 +182,15 @@ void SaveNode::threadEntry() {
                     av_dict_free(&opt);
                     avformat_free_context(avFmtCtx_);
                     avFmtCtx_ = nullptr;
+                    avStream_ = nullptr;
                     frame->release();
-                    Thread::exitCritical();
                     continue;
                 }
             }
-
-            if (frame->img.key && (cur_size_ + frame->img.size > max_size_)) {
-                recycle();
+            if (avFmtCtx_ == nullptr) {
+                frame->release();
+                continue;
             }
-
             av_init_packet(&packet);
             packet.pts   = count_++;
             packet.dts   = packet.pts;
@@ -193,19 +203,20 @@ void SaveNode::threadEntry() {
                 MA_LOGW(TAG, "write frame failed");
             }
             cur_size_ += frame->img.size;
-
-            if (frame->img.key && (duration_ > 0 && frame->timestamp > begin_ + Tick::fromSeconds(duration_))) {
+            if (duration_ > 0 && frame->timestamp > begin_ + Tick::fromSeconds(duration_)) {
+                MA_LOGI(TAG, "stop recording");
+                server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "stop"}, {"code", MA_OK}, {"data", ""}}));
                 if (avFmtCtx_ != nullptr && avFmtCtx_->pb != nullptr) {
                     av_write_trailer(avFmtCtx_);
                     avio_closep(&avFmtCtx_->pb);
                     avformat_free_context(avFmtCtx_);
                     avFmtCtx_ = nullptr;
+                    avStream_ = nullptr;
                 }
                 start_   = 0;
                 enabled_ = false;
             }
             frame->release();
-            Thread::exitCritical();
         }
     }
 }
@@ -266,6 +277,9 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", "23"}}));
 
+
+    created_ = true;
+
     return err;
 }
 
@@ -275,11 +289,9 @@ ma_err_t SaveNode::onControl(const std::string& control, const json& data) {
         if (!enabled_) {
             enabled_ = true;
         }
-        begin_ = Tick::current();  // increase the duration
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", ""}}));
     } else if (control == "disable") {
-        begin_   = 0;
-        enabled_ = false;
+        begin_ = 0;
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", ""}}));
     } else {
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
@@ -287,9 +299,13 @@ ma_err_t SaveNode::onControl(const std::string& control, const json& data) {
     return MA_OK;
 }
 
+
 ma_err_t SaveNode::onDestroy() {
     Guard guard(mutex_);
-    ma_err_t err = MA_OK;
+
+    if (!created_) {
+        return MA_OK;
+    }
 
     onStop();
 
@@ -298,7 +314,7 @@ ma_err_t SaveNode::onDestroy() {
         thread_ = nullptr;
     }
 
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "destroy"}, {"code", err}, {"data", ""}}));
+    created_ = false;
 
     return MA_OK;
 }
@@ -315,10 +331,16 @@ ma_err_t SaveNode::onStart() {
             break;
         }
     }
+
+    if (camera_ == nullptr) {
+        MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
+        return MA_ENOTSUP;
+    }
+
     camera_->config(CHN_H264);
     camera_->attach(CHN_H264, &frame_);
 
-    recycle();
+    recycle("", 0);
 
     thread_->start(this);
     started_ = true;
@@ -331,20 +353,24 @@ ma_err_t SaveNode::onStop() {
         return MA_OK;
     }
     started_ = false;
+
     if (camera_ != nullptr) {
         camera_->detach(CHN_H264, &frame_);
     }
+
     if (thread_ != nullptr) {
         thread_->stop();
     }
+
     if (avFmtCtx_ != nullptr) {
+        av_write_trailer(avFmtCtx_);
         if (avFmtCtx_->pb != nullptr) {
-            av_write_trailer(avFmtCtx_);
             avio_closep(&avFmtCtx_->pb);
             avFmtCtx_->pb = nullptr;
         }
         avformat_free_context(avFmtCtx_);
         avFmtCtx_ = nullptr;
+        avStream_ = nullptr;
     }
     return MA_OK;
 }
