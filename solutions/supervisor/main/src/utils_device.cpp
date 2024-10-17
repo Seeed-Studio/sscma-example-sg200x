@@ -713,6 +713,19 @@ int getModelInfo(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
+int getModelFile(HttpRequest* req, HttpResponse* resp) {
+    const char* filePath = PATH_MODEL_DOWNLOAD_DIR "model.cvimodel";
+
+    if (resp->File(filePath) != 200) {
+        return HTTP_STATUS_INTERNAL_SERVER_ERROR;
+    }
+
+    resp->SetHeader("Content-Type", "application/cvimodel");
+    resp->SetHeader("Content-Disposition", "attachment; filename=\"model.cvimodel\"");
+
+    return 200;
+}
+
 int uploadModel(const HttpContextPtr& ctx) {
     int ret = 0;
     std::string modelPath = PATH_MODEL_DOWNLOAD_DIR;

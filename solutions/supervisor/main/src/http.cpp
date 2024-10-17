@@ -84,6 +84,7 @@ static void registerDeviceApi(HttpService& router)
     router.POST("/api/deviceMgr/uploadApp", uploadApp);
 
     router.GET("/api/deviceMgr/getModelInfo", getModelInfo);
+    router.GET("/api/deviceMgr/getModelFile", getModelFile);
     router.POST("/api/deviceMgr/uploadModel", uploadModel);
 }
 
