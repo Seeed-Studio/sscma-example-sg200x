@@ -37,6 +37,7 @@ protected:
     std::string id_;
     std::string type_;
     std::atomic<bool> started_;
+    std::atomic<bool> created_;
     std::unordered_map<std::string, Node*> dependencies_;
     std::unordered_map<std::string, Node*> dependents_;
 

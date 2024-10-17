@@ -4,8 +4,8 @@ extern "C" {
 #include <libavcodec/codec_id.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avassert.h>
-#include <libavutil/opt.h>
 #include <libavutil/log.h>
+#include <libavutil/opt.h>
 }
 
 #include "camera.h"
@@ -35,7 +35,7 @@ protected:
 
 private:
     std::string generateFileName();
-    bool recycle();
+    bool recycle(std::string filename, uint64_t size);
 
 protected:
     std::string storage_;
@@ -49,8 +49,8 @@ protected:
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
+    std::string filename_;
     AVFormatContext* avFmtCtx_;
-    AVCodec* avCodec_;
     AVStream* avStream_;
 };
 

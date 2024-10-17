@@ -15,11 +15,7 @@ typedef std::function<bool(void)> task_t;
 
 class Executor {
 public:
-    Executor(std::size_t stack_size = 0, std::size_t priority = 0)
-        : _task_queue_lock(),
-          _task_queue_signal(0),
-          _worker_name(MA_EXECUTOR_WORKER_NAME_PREFIX),
-          _worker_handler() {
+    Executor(std::size_t stack_size = 0, std::size_t priority = 0) : _task_queue_lock(), _task_queue_signal(0), _worker_name(MA_EXECUTOR_WORKER_NAME_PREFIX), _worker_handler() {
         static uint8_t worker_id        = 0u;
         static const char* hex_literals = "0123456789ABCDEF";
 
@@ -69,6 +65,7 @@ protected:
         while (true) {
             task_t task{};
             {
+                Thread::sleep(Tick::fromMilliseconds(20)); // advoid race condition
                 _task_queue_signal.wait();
                 {
                     Guard guard(_task_queue_lock);

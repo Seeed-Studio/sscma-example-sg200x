@@ -40,7 +40,7 @@ protected:
     Engine* engine_;
     BYTETracker tracker_;
     Counter counter_;
-    std::vector<std::string> classes_;
+    std::vector<std::string> labels_;
     Thread* thread_;
     CameraNode* camera_;
     MessageBox raw_frame_;

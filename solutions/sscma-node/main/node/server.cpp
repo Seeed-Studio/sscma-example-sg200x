@@ -35,7 +35,7 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
             e = Exception(MA_EINVAL, "invalid payload");
             MA_THROW(e);
         }
-        MA_LOGD(TAG, "request: %s <== %s", id.c_str(), payload.dump().c_str());
+        MA_LOGV(TAG, "request: %s <== %s", id.c_str(), payload.dump().c_str());
         m_executor.submit([this, id = std::move(id), payload = std::move(payload)]() -> bool {
             Exception e(MA_OK, "");
             std::string name = payload["name"].get<std::string>();
@@ -54,8 +54,11 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
                     }
                 } else if (name == "destroy") {
                     NodeFactory::destroy(id);
+                    this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", MA_OK}, {"data", ""}}));
                 } else if (name == "clear") {
+                    MA_LOGD(TAG, "clear all nodes");
                     NodeFactory::clear();
+                    this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", MA_OK}, {"data", ""}}));
                 } else if (name == "health") {
                     this->response(id, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", name}, {"code", MA_OK}, {"data", ""}}));
                 } else {
@@ -119,7 +122,7 @@ void NodeServer::response(const std::string& id, const json& msg) {
     }
     // Guard guard(m_mutex);
     std::string topic = m_topic_out_prefix + '/' + id;
-    MA_LOGD(TAG, "response: %s ==> %s", id.c_str(), msg.dump().c_str());
+    MA_LOGV(TAG, "response: %s ==> %s", id.c_str(), msg.dump().c_str());
     int mid = mosquitto_publish(m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);
     return;
 }

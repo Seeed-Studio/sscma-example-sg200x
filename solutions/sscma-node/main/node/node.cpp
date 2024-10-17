@@ -1,4 +1,5 @@
 #include "node.h"
+#include "server.h"
 
 namespace ma::node {
 
@@ -63,16 +64,11 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     if (MA_OK != n->onCreate(data["config"])) {
         return nullptr;
     }
-    m_nodes[id] = n;
 
     // set dependencies
-    bool ready = true;
     if (data.contains("dependencies")) {
         for (auto dep : data["dependencies"].get<std::vector<std::string>>()) {
             n->dependencies_[dep] = find(dep);
-            if (n->dependencies_[dep] == nullptr) {
-                ready = false;
-            }
         }
     }
 
@@ -80,55 +76,97 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     if (data.contains("dependents")) {
         for (auto dep : data["dependents"].get<std::vector<std::string>>()) {
             n->dependents_[dep] = find(dep);
-            if (n->dependents_[dep] == nullptr) {
+        }
+    }
+
+    m_nodes[id] = n;
+
+    // check dependencies
+    for (auto node : m_nodes) {
+        if (node.second->started_) {  // not started yet
+            MA_LOGV(TAG, "skip check node: %s(%s) %s", node.second->type_.c_str(), node.second->id_.c_str(), id.c_str());
+            continue;
+        }
+        bool ready = true;
+        MA_LOGV(TAG, "check node: %s(%s) %s", node.second->type_.c_str(), node.second->id_.c_str(), id.c_str());
+        for (auto& dep : node.second->dependencies_) {
+            MA_LOGV(TAG, "dependencies: %s %p", dep.first.c_str(), dep.second);
+            if (dep.second == nullptr && dep.first == id) {
+                MA_LOGV(TAG, "dependencies %s ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
+                dep.second = n;
+            }
+            if (dep.second == nullptr) {
+                MA_LOGV(TAG, "dependencies %s not ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
                 ready = false;
             }
         }
-    }
-
-    if (ready) {  // all dependencies are ready
-        MA_LOGI(TAG, "start node: %s(%s)", n->type_.c_str(), n->id_.c_str());
-        n->onStart();
-    }
-
-    // set dependencies for other nodes
-    for (auto node : m_nodes) {
-        if (!node.second->started_) {  // not started yet
-            ready = true;
-            MA_LOGD(TAG, "check node: %s(%s) %s", node.second->type_.c_str(), node.second->id_.c_str(), id.c_str());
-            for (auto& dep : node.second->dependencies_) {
-                MA_LOGD(TAG, "dependencies: %s %p", dep.first.c_str(), dep.second);
-                if (dep.second == nullptr && dep.first == id) {
-                    MA_LOGD(TAG, "dependencies %s ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
-                    node.second = n;
-                }
-                if (dep.second == nullptr) {
-                    MA_LOGW(TAG, "dependencies %s not ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
-                    ready = false;
-                }
+        for (auto& dep : node.second->dependents_) {
+            MA_LOGV(TAG, "dependents: %s %p", dep.first.c_str(), dep.second);
+            if (dep.second == nullptr && dep.first == id) {
+                MA_LOGV(TAG, "dependents %s ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
+                dep.second = n;
             }
-            for (auto& dep : node.second->dependents_) {
-                MA_LOGD(TAG, "dependents: %s %p", dep.first.c_str(), dep.second);
-                if (dep.second == nullptr && dep.first == id) {
-                    MA_LOGD(TAG, "dependents %s ready: %s(%s)", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
-                    node.second->dependents_[dep.first] = n;
-                }
-                if (dep.second == nullptr) {
-                    MA_LOGW(TAG, "dependents %s not ready: %s(%s) ", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
-                    ready = false;
-                }
+            if (dep.second == nullptr || !dep.second->started_) {
+                MA_LOGV(TAG, "dependents %s not ready: %s(%s) ", dep.first.c_str(), node.second->type_.c_str(), node.second->id_.c_str());
+                ready = false;
             }
-            if (ready) {
-                MA_LOGI(TAG, "start node: %s(%s)", node.second->type_.c_str(), node.second->id_.c_str());
+        }
+        if (ready) {
+            MA_LOGI(TAG, "start node: %s(%s)", node.second->type_.c_str(), node.second->id_.c_str());
+            MA_TRY {
                 node.second->onStart();
+            }
+            MA_CATCH(Exception & e) {
+                MA_LOGE(TAG, "failed to start node: %s(%s) %s", node.second->type_.c_str(), node.second->id_.c_str(), e.what());
+                Thread::sleep(Tick::fromMilliseconds(20));
+                server->response(node.first, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "start"}, {"code", e.err()}, {"data", e.what()}}));
+                continue;
+            }
+            // if dependency is not ready, check it
+            for (auto& dep : node.second->dependencies_) {
+                if (!dep.second->started_) {
+                    ready = true;
+                    MA_LOGV(TAG, "check node: %s(%s) %s", dep.second->type_.c_str(), dep.second->id_.c_str(), node.first.c_str());
+                    for (auto& d : dep.second->dependents_) {
+                        if (d.second == nullptr && d.first == node.second->id_) {
+                            MA_LOGV(TAG, "dependencies %s ready: %s(%s)", d.first.c_str(), dep.second->type_.c_str(), dep.second->id_.c_str());
+                            d.second = node.second;
+                        }
+                        if (d.second == nullptr || !d.second->started_) {
+                            MA_LOGV(TAG, "dependencies %s not ready: %s(%s)", d.first.c_str(), dep.second->type_.c_str(), dep.second->id_.c_str());
+                            ready = false;
+                        }
+                    }
+                    for (auto& d : dep.second->dependencies_) {
+                        if (d.second == nullptr) {
+                            MA_LOGV(TAG, "dependencies %s not ready: %s(%s)", d.first.c_str(), dep.second->type_.c_str(), dep.second->id_.c_str());
+                            ready = false;
+                        }
+                    }
+                    if (ready) {
+                        MA_LOGI(TAG, "start node: %s(%s)", dep.second->type_.c_str(), dep.second->id_.c_str());
+                        MA_TRY {
+                            dep.second->onStart();
+                        }
+                        MA_CATCH(Exception & e) {
+                            MA_LOGE(TAG, "start node: %s(%s) failed: %s", dep.second->type_.c_str(), dep.second->id_.c_str(), e.what());
+                            Thread::sleep(Tick::fromMilliseconds(20));
+                            server->response(dep.first, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "start"}, {"code", e.err()}, {"data", e.what()}}));
+                            continue;
+                        }
+                    }
+                }
             }
         }
     }
+
     return n;
 }
 
 void NodeFactory::destroy(const std::string id) {
     Guard guard(m_mutex);
+
+    MA_LOGD(TAG, "destroy node: %s", id.c_str());
 
     // find node
     auto node = m_nodes.find(id);
@@ -138,18 +176,24 @@ void NodeFactory::destroy(const std::string id) {
 
     for (auto& dep : node->second->dependents_) {
         if (find(dep.first)) {
+            MA_LOGD(TAG, "stop node: %s(%s)", dep.first.c_str(), dep.second->type_.c_str());
             dep.second->onStop();
+            MA_LOGD(TAG, "stop node: %s(%s) done", dep.first.c_str(), dep.second->type_.c_str());
         }
     }
 
     // stop this node
+    MA_LOGD(TAG, "stop node: %s(%s)", node->first.c_str(), node->second->type_.c_str());
     node->second->onStop();
+    MA_LOGD(TAG, "stop node: %s(%s) done", node->first.c_str(), node->second->type_.c_str());
 
     // call onDestroy
     node->second->onDestroy();
 
     delete node->second;
     m_nodes.erase(id);
+
+    MA_LOGD(TAG, "destroy node: %s done", id.c_str());
 
     return;
 }
@@ -163,8 +207,10 @@ Node* NodeFactory::find(const std::string id) {
 }
 
 void NodeFactory::clear() {
+    MA_LOGI(TAG, "clear nodes");
     Guard guard(m_mutex);
     for (auto node : m_nodes) {
+        MA_LOGI(TAG, "destroy node: %s(%s)", node.first.c_str(), node.second->type_.c_str());
         destroy(node.first);
     }
     m_nodes.clear();
