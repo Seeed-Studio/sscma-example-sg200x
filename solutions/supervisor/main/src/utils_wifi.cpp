@@ -524,7 +524,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
             break;
         }
 
-        if (connectStatus == "DISCONNECTED" || connectStatus == "Failed") {
+        if (connectStatus == "DISCONNECTED" || connectStatus == "INACTIVE" || connectStatus == "Failed") {
             removeWifi(std::to_string(id));
             if (currentWifiId != "-1") {
                 selectWifi(currentWifiId);
