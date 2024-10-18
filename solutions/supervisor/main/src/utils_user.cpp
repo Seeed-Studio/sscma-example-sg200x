@@ -88,6 +88,40 @@ static void savePasswd(const std::string& passwd) {
     system(cmd);
 }
 
+static int verifyKey(const std::string& keyValue) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_USER_VERIFY_SSH;
+    char result[128] = "";
+    std::ofstream file;
+
+    file.open(PATH_TMP_KEY_FILE);
+    if (!file) {
+        syslog(LOG_ERR, "Failed to open %s file(%s)\n", PATH_TMP_KEY_FILE, strerror(errno));
+        return -1;
+    }
+
+    file << keyValue;
+    file.close();
+
+    strcat(cmd, PATH_TMP_KEY_FILE);
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return -2;
+    }
+
+    fgets(result, sizeof(result) - 1, fp);
+    clearNewline(result, strlen(result));
+    pclose(fp);
+    remove(PATH_TMP_KEY_FILE);
+
+    if (strcmp(result, "OK") != 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int queryUserInfo(HttpRequest* req, HttpResponse* resp)
 {
     hv::Json User;
@@ -242,23 +276,32 @@ int addSShkey(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "name: %s\n", req->GetString("name").c_str());
     syslog(LOG_INFO, "value: %s\n", req->GetString("value").c_str());
 
-    std::ofstream file(PATH_SSH_KEY_FILE, std::ios_base::app);
+    hv::Json response;
+    std::ofstream file;
+    std::string keyValue = req->GetString("value");
 
-    if (!file.is_open()) {
-        syslog(LOG_ERR, "open %s file failed here!\n", PATH_SSH_KEY_FILE);
-        return 1;
+    if(0 != verifyKey(keyValue)) {
+        response["code"] = -1;
+        response["msg"] = "Invalid key";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
     }
 
-    file << req->GetString("value") << "#" << ++g_keyId << " " << req->GetString("name") << "\n";
+    file.open(PATH_SSH_KEY_FILE, std::ios_base::app);
+    if (!file.is_open()) {
+        syslog(LOG_ERR, "open %s file failed here!\n", PATH_SSH_KEY_FILE);
+        response["code"] = -1;
+        response["msg"] = "Secret key file does not exist";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
+    file << keyValue << "#" << " " << req->GetString("name") << " " << req->GetString("time") << "\n";
     file.close();
 
-    hv::Json response;
     response["code"] = 0;
     response["msg"] = "";
-
-    hv::Json data;
-    data["id"] = g_keyId;
-    response["data"] = data;
+    response["data"] = hv::Json({});
 
     return resp->Json(response);
 }

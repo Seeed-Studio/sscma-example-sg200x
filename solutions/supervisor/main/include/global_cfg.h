@@ -18,6 +18,7 @@
 #define PATH_DEVICE_NAME "/etc/device-name"
 #define PATH_UPGRADE_URL "/etc/upgrade"
 #define PATH_SSH_KEY_FILE "/home/recamera/.ssh/authorized_keys"
+#define PATH_TMP_KEY_FILE "/tmp/sshkey.tmp"
 #define PATH_UPGRADE_PROGRESS_FILE "/tmp/upgrade.percentage"
 #define PATH_UPGRADE_VERSION_FILE "/tmp/upgrade.version"
 #define PATH_APP_DOWNLOAD_DIR "/tmp/opkg/"
@@ -36,6 +37,7 @@
 #define SCRIPT_USER_PWD SCRIPT_USER(passwd)
 #define SCRIPT_USER_SAVE SCRIPT_USER(save)
 #define SCRIPT_USER_SSH SCRIPT_USER(query_key)
+#define SCRIPT_USER_VERIFY_SSH SCRIPT_USER(verify_key)
 
 /* wifitool.sh*/
 #define SCRIPT_WIFI(action) ("/mnt/system/usr/scripts/wifitool.sh" \

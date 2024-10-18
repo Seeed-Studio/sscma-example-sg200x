@@ -84,4 +84,13 @@ save)
 query_key)
     query_key
     ;;
+
+verify_key)
+    ssh-keygen -lf $2 >/dev/null 2>&1
+    if [ 0 -eq $? ]; then
+        echo "OK"
+    else
+        echo "Failed"
+    fi
+    ;;
 esac
