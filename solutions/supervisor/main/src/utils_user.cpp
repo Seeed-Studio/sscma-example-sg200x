@@ -306,9 +306,9 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp)
 
     char cmd[128] = "";
 
-    strcat(cmd, "sed -i \'/#");
+    strcat(cmd, "sed -i \'");
     strcat(cmd, req->GetString("id").c_str());
-    strcat(cmd, "/d\' ");
+    strcat(cmd, "d\' ");
     strcat(cmd, PATH_SSH_KEY_FILE);
     system(cmd);
 
