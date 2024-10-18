@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
     openlog("sscma", LOG_CONS | LOG_PERROR, LOG_DAEMON);
 
-    MA_LOGD("main", "version: %s", PROJECT_VERSION);
+    MA_LOGD("main", "version: %s build: %s", PROJECT_VERSION, __DATE__ " " __TIME__);
 
     Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE}, [](int sig) {
         MA_LOGE(TAG, "received signal %d", sig);
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
         config->init(config_file.c_str());
 
         MA_LOGI(TAG, "starting the service...");
-        MA_LOGI(TAG, "version: %s", PROJECT_VERSION);
+        MA_LOGI(TAG, "version: %s build: %s", PROJECT_VERSION, __DATE__ " " __TIME__);
         MA_LOGI(TAG, "config: %s", config_file.c_str());
 
         std::string client;

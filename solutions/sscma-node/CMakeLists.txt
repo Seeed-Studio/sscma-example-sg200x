@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5.0)
 
 project(
     sscma-node
-    VERSION 0.0.6
+    VERSION 0.0.7
     LANGUAGES C CXX
 )
 
