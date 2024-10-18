@@ -23,8 +23,8 @@ StreamNode::~StreamNode() {
 void StreamNode::threadEntry() {
     videoFrame* frame = nullptr;
 
-    while (true) {
-        if (frame_.fetch(reinterpret_cast<void**>(&frame))) {
+    while (started_) {
+        if (frame_.fetch(reinterpret_cast<void**>(&frame)), Tick::fromSeconds(2)) {
             Thread::enterCritical();
             transport_->send((char*)frame->img.data, frame->img.size);
             frame->release();
@@ -147,9 +147,10 @@ ma_err_t StreamNode::onStart() {
     camera_->config(CHN_H264);
     camera_->attach(CHN_H264, &frame_);
 
+    started_ = true;
+
     thread_->start(this);
 
-    started_ = true;
     return MA_OK;
 }
 
@@ -158,13 +159,17 @@ ma_err_t StreamNode::onStop() {
     if (!started_) {
         return MA_OK;
     }
+
     started_ = false;
+
+    if (thread_ != nullptr) {
+        thread_->join();
+    }
+
     if (camera_ != nullptr) {
         camera_->detach(CHN_H264, &frame_);
     }
-    if (thread_ != nullptr) {
-        thread_->stop();
-    }
+
     if (transport_ != nullptr) {
         transport_->deInit();
     }
