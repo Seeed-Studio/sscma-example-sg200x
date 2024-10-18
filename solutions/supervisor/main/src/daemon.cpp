@@ -129,6 +129,8 @@ APP_STATUS getNoderedStatus() {
         if (NULL != resp) {
             return getFlowStatus();
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
     }
 
     return APP_STATUS_NORESPONSE;
@@ -151,6 +153,8 @@ APP_STATUS getSscmaStatus() {
         if (0 == sem_timedwait(&semSscma, &ts)) {
             return APP_STATUS_NORMAL;
         }
+
+        std::this_thread::sleep_for(std::chrono::seconds(threadTimeout));
     }
 
     return APP_STATUS_NORESPONSE;
