@@ -19,23 +19,14 @@
 #define AV_LOG_LEVEL AV_LOG_QUIET
 #endif
 
+#define NODE_MAX_AVILABLE_CAPACITY 0.9f
+
 namespace ma::node {
 
 static constexpr char TAG[] = "ma::node::save";
 
 SaveNode::SaveNode(std::string id)
-    : Node("save", id),
-      storage_(NODE_SAVE_PATH_LOCAL),
-      max_size_(NODE_SAVE_MAX_SIZE),
-      enabled_(true),
-      slice_(300),
-      duration_(-1),
-      count_(0),
-      camera_(nullptr),
-      frame_(30),
-      thread_(nullptr),
-      avFmtCtx_(nullptr),
-      avStream_(nullptr) {
+    : Node("save", id), storage_(NODE_SAVE_PATH_LOCAL), enabled_(true), slice_(300), duration_(-1), count_(0), camera_(nullptr), frame_(30), thread_(nullptr), avFmtCtx_(nullptr), avStream_(nullptr) {
     av_log_set_level(AV_LOG_LEVEL);
 }
 
@@ -51,40 +42,37 @@ std::string SaveNode::generateFileName() {
 }
 
 bool SaveNode::recycle(uint32_t req_size) {
-    uint64_t total_size = 0;
-    std::vector<std::filesystem::directory_entry> files;
-
-    std::filesystem::space_info si = std::filesystem::space(storage_);
-
-    max_size_ = si.available * 0.8;
-
-    for (auto& p : std::filesystem::directory_iterator(storage_)) {
-        if (p.is_regular_file()) {
-            files.push_back(p);
-            total_size += p.file_size();
+    uint64_t avail = std::filesystem::space(storage_).available * NODE_MAX_AVILABLE_CAPACITY;
+    if (avail < req_size) {
+        std::vector<std::filesystem::directory_entry> files;
+        for (const auto& p : std::filesystem::directory_iterator(storage_)) {
+            if (p.is_regular_file()) {
+                files.push_back(p);
+            }
         }
-    }
-
-    if (total_size + req_size > max_size_) {
         std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) { return std::filesystem::last_write_time(a) < std::filesystem::last_write_time(b); });
         for (const auto& file : files) {
             if (file.path() == filename_) {
                 // skip the current file
                 continue;
             }
-            uint64_t file_size = file.file_size();
-            if (std::filesystem::remove(file)) {
-                MA_LOGI(TAG, "exceed max size %lu Bytes, remove %s", max_size_, file.path().c_str());
-                total_size -= file_size;
-                if (total_size <= max_size_) {
-                    break;
+            uint64_t size = std::filesystem::file_size(file);
+            MA_TRY {
+                if (std::filesystem::remove(file)) {
+                    MA_LOGI(TAG, "recycle %s", file.path().c_str());
+                    avail += size;
+                    if (avail >= req_size) {
+                        break;
+                    }
                 }
+            }
+            MA_CATCH(Exception & e) {
+                MA_LOGW(TAG, "recycle %s failed: %s", file.path().c_str(), e.what());
+                continue;
             }
         }
     }
-    cur_size_ = total_size;
-
-    return cur_size_ + req_size <= max_size_;
+    return avail >= req_size;
 }
 
 
@@ -194,7 +182,7 @@ void SaveNode::threadEntry() {
             }
 
             if (frame->img.key) {
-                if (filename_.empty() || (slice_ > 0 && Tick::current() - start_ > Tick::fromSeconds(slice_) + Tick::toMilliseconds(500))) {  // 500ms for video length
+                if (filename_.empty() || (slice_ > 0 && Tick::current() - start_ > Tick::fromSeconds(slice_ + 1))) {
                     start_ = Tick::current();
                     count_ = 0;
                     if (filename_.empty()) {
@@ -223,7 +211,7 @@ void SaveNode::threadEntry() {
                 if (av_write_frame(avFmtCtx_, &packet) != 0) {
                     MA_LOGW(TAG, "write frame failed");
                 }
-                if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_) + Tick::toMilliseconds(500)) {
+                if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_ + 1)) {
                     closeFile();
                     enabled_ = false;
                     MA_LOGI(TAG, "stop recording");
@@ -285,12 +273,13 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
     std::filesystem::space_info si = std::filesystem::space(storage_);
 
-    // max_size_ = 0.8 * space.total;
-    max_size_ = si.available * 0.8;
+    uint64_t available = si.available * NODE_MAX_AVILABLE_CAPACITY / 1024;
 
-    MA_LOGI(TAG, "storage: %s, slice: %d duration: %d max_size: %ldMB", storage_.c_str(), slice_, duration_, max_size_ / (1024 * 1024));
 
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", "23"}}));
+    MA_LOGI(TAG, "storage: %s, slice: %d duration: %d available: %ldKB", storage_.c_str(), slice_, duration_, available);
+
+    server_->response(id_,
+                      json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", {"storage", storage_, "slice", slice_, "duration", duration_, "available", available}}}));
 
     created_ = true;
 

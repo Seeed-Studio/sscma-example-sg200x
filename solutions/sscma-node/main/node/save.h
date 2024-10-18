@@ -41,8 +41,6 @@ private:
 
 protected:
     std::string storage_;
-    uint64_t max_size_;
-    uint64_t cur_size_;
     int slice_;
     int duration_;
     bool enabled_;
