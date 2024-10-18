@@ -103,6 +103,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             frame->img.format          = channels_[VencChn].format;
             frame->img.size            = size;
             frame->img.key             = true;
+            frame->img.physical        = false;
             frame->img.data            = new uint8_t[size];
             frame->fps                 = channels_[VencChn].fps;
             channels_[VencChn].dropped = false;
@@ -115,15 +116,16 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             if (VencChn == CHN_H264 && channels_[VencChn].dropped) {
                 continue;
             }
-            frame             = new videoFrame();
-            frame->timestamp  = Tick::current();
-            frame->img.width  = channels_[VencChn].width;
-            frame->img.height = channels_[VencChn].height;
-            frame->img.format = channels_[VencChn].format;
-            frame->img.size   = ppack->u32Len - ppack->u32Offset;
-            frame->img.key    = false;
-            frame->img.data   = new uint8_t[ppack->u32Len - ppack->u32Offset];
-            frame->fps        = channels_[VencChn].fps;
+            frame               = new videoFrame();
+            frame->timestamp    = Tick::current();
+            frame->img.width    = channels_[VencChn].width;
+            frame->img.height   = channels_[VencChn].height;
+            frame->img.format   = channels_[VencChn].format;
+            frame->img.size     = ppack->u32Len - ppack->u32Offset;
+            frame->img.key      = false;
+            frame->img.physical = false;
+            frame->img.data     = new uint8_t[ppack->u32Len - ppack->u32Offset];
+            frame->fps          = channels_[VencChn].fps;
             memcpy(frame->img.data, ppack->pu8Addr + ppack->u32Offset, ppack->u32Len - ppack->u32Offset);
         }
         if (frame != nullptr) {
@@ -154,23 +156,21 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
         return CVI_SUCCESS;
     }
 
-    videoFrame* frame = new videoFrame(false);
-    frame->img.size   = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
-    frame->img.width  = channels_[pstVencChnCfg->VencChn].width;
-    frame->img.height = channels_[pstVencChnCfg->VencChn].height;
-    frame->img.format = channels_[pstVencChnCfg->VencChn].format;
-    frame->img.data   = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
-    frame->timestamp  = Tick::current();
-    frame->fps        = channels_[pstVencChnCfg->VencChn].fps;
+    videoFrame* frame   = new videoFrame();
+    frame->img.size     = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
+    frame->img.width    = channels_[pstVencChnCfg->VencChn].width;
+    frame->img.height   = channels_[pstVencChnCfg->VencChn].height;
+    frame->img.format   = channels_[pstVencChnCfg->VencChn].format;
+    frame->img.key      = true;
+    frame->img.physical = true;
+    frame->img.data     = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
+    frame->timestamp    = Tick::current();
+    frame->fps          = channels_[pstVencChnCfg->VencChn].fps;
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
-        if (!msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[pstVencChnCfg->VencChn].fps)))) {
+        if (!msgbox->post(frame, Tick::fromMilliseconds(5))) {
             frame->release();
         }
     }
-    frame->wait();
-
-    delete frame;
-
     return CVI_SUCCESS;
 }
 

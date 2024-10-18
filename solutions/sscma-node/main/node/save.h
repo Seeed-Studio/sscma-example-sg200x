@@ -35,7 +35,9 @@ protected:
 
 private:
     std::string generateFileName();
-    bool recycle(std::string filename, uint64_t size);
+    bool recycle(uint32_t req_size = 0);
+    bool openFile(videoFrame* frame);
+    void closeFile();
 
 protected:
     std::string storage_;

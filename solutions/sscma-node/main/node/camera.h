@@ -22,31 +22,24 @@ typedef struct {
 
 class videoFrame {
 public:
-    videoFrame(bool own = true) : ref_cnt(0), sem(0), own(own) {
+    videoFrame() {
         memset(&img, 0, sizeof(ma_img_t));
     }
     ~videoFrame() = default;
     inline void ref(int n = 1) {
         ref_cnt.fetch_add(n, std::memory_order_relaxed);
     }
-    inline void wait() {
-        sem.wait(Tick::fromSeconds(1));
-    }
     inline void release() {
         if (ref_cnt.load(std::memory_order_relaxed) == 0 || ref_cnt.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            if (own) {
+            if (!img.physical) {
                 delete[] img.data;
-                delete this;
-            } else {
-                sem.signal();
             }
+            delete this;
         }
     }
-    Semaphore sem;
     ma_tick_t timestamp;
     std::atomic<int> ref_cnt;
     int8_t fps;
-    bool own;
     ma_img_t img;
 };
 
