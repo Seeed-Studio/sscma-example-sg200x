@@ -87,6 +87,7 @@ int stopFlow() {
 int startApp(const char* cmd, const char* appName) {
     FILE* fp;
     char info[128] = "";
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -95,6 +96,10 @@ int startApp(const char* cmd, const char* appName) {
     }
 
     fgets(info, sizeof(info) - 1, fp);
+    len = strlen(info);
+    if (info[len - 1] == '\n') {
+        info[len - 1] = '\0';
+    }
     pclose(fp);
     syslog(LOG_INFO, "%s status: %s\n", appName, info);
 
