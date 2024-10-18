@@ -58,6 +58,10 @@ getAppInfo)
     opkg list-installed | awk -F' - ' '{print $1 "\n" $2}'
     ;;
 
+getFileMd5)
+    md5sum $2 | awk '{print $1}'
+    ;;
+
 restartNodered)
     nodered="/etc/init.d/S*node-red"
 

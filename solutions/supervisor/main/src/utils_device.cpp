@@ -130,6 +130,25 @@ static int saveModelInfoFile(const HttpContextPtr& ctx, std::string filePath) {
     return 200;
 }
 
+static std::string getFileMd5(std::string filePath) {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETFILEMD5;
+    char md5Value[128] = "";
+
+    strcat(cmd, filePath.c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return std::string(md5Value);
+    }
+
+    fgets(md5Value, sizeof(md5Value) - 1, fp);
+    clearNewline(md5Value, strlen(md5Value));
+    pclose(fp);
+
+    return std::string(md5Value);
+}
+
 static std::string getDeviceIp(std::string clientIp) {
     FILE* fp;
     char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
@@ -696,6 +715,7 @@ int uploadApp(const HttpContextPtr& ctx) {
 int getModelInfo(HttpRequest* req, HttpResponse* resp) {
     std::string modelInfo;
     std::string filePath = PATH_MODEL_DOWNLOAD_DIR + std::string("model.json");
+    std::string modelFilePath = PATH_MODEL_DOWNLOAD_DIR + std::string("model.cvimodel");
     hv::Json response;
 
     modelInfo = readFile(filePath, "NULL");
@@ -708,6 +728,7 @@ int getModelInfo(HttpRequest* req, HttpResponse* resp) {
         response["code"] = 0;
         response["msg"] = "";
         response["data"]["model_info"] = modelInfo;
+        response["data"]["model_md5"] = getFileMd5(modelFilePath);
     }
 
     return resp->Json(response);
