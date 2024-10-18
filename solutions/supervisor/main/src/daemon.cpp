@@ -95,13 +95,12 @@ int startApp(const char* cmd, const char* appName) {
     }
 
     fgets(info, sizeof(info) - 1, fp);
+    pclose(fp);
     syslog(LOG_INFO, "%s status: %s\n", appName, info);
 
     if (0 != strcmp(info, "Finished")) {
         return -1;
     }
-
-    pclose(fp);
 
     return 0;
 }
