@@ -38,11 +38,11 @@ void ModelNode::threadEntry() {
             break;
     }
 
-    while (true) {
-        if (!raw_frame_.fetch(reinterpret_cast<void**>(&raw))) {
+    while (started_) {
+        if (!raw_frame_.fetch(reinterpret_cast<void**>(&raw), Tick::fromSeconds(2))) {
             continue;
         }
-        if (debug_ && !jpeg_frame_.fetch(reinterpret_cast<void**>(&jpeg))) {
+        if (debug_ && !jpeg_frame_.fetch(reinterpret_cast<void**>(&jpeg), Tick::fromSeconds(2))) {
             raw->release();
             continue;
         }
@@ -122,8 +122,8 @@ void ModelNode::threadEntry() {
             if (base64 != nullptr) {
                 memset(base64, 0, base64_len);
                 ma::utils::base64_encode(jpeg->img.data, jpeg->img.size, base64, &base64_len);
-                reply["data"]["image"] = std::string(base64, base64_len);
                 jpeg->release();
+                reply["data"]["image"] = std::string(base64, base64_len);
                 delete[] base64;
             }
         } else {
@@ -368,9 +368,10 @@ ma_err_t ModelNode::onStart() {
     }
 
     MA_LOGI(TAG, "start model: %s(%s)", type_.c_str(), id_.c_str());
+    started_ = true;
+
     thread_->start(this);
 
-    started_ = true;
     return MA_OK;
 }
 
@@ -380,9 +381,11 @@ ma_err_t ModelNode::onStop() {
         return MA_OK;
     }
     started_ = false;
+
     if (thread_ != nullptr) {
-        thread_->stop();
+        thread_->join();
     }
+
     if (camera_ != nullptr) {
         camera_->detach(CHN_RAW, &raw_frame_);
         if (debug_) {

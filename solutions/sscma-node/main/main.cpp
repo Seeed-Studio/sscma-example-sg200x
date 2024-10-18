@@ -41,9 +41,9 @@ int main(int argc, char** argv) {
     Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE}, [](int sig) {
         MA_LOGE(TAG, "received signal %d", sig);
         if (sig == SIGSEGV) {
-            NodeFactory::clear();
-        } else {
             deinitVideo();
+        } else {
+            NodeFactory::clear();
         }
         closelog();
         exit(1);

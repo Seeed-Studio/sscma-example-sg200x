@@ -166,13 +166,13 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
 void NodeFactory::destroy(const std::string id) {
     Guard guard(m_mutex);
 
-    MA_LOGD(TAG, "destroy node: %s", id.c_str());
-
     // find node
     auto node = m_nodes.find(id);
     if (node == m_nodes.end()) {
         return;
     }
+
+    MA_LOGI(TAG, "destroy node: %s(%s)", id.c_str(), m_nodes[id]->type_.c_str());
 
     for (auto& dep : node->second->dependents_) {
         if (find(dep.first)) {
@@ -210,7 +210,6 @@ void NodeFactory::clear() {
     MA_LOGI(TAG, "clear nodes");
     Guard guard(m_mutex);
     for (auto node : m_nodes) {
-        MA_LOGI(TAG, "destroy node: %s(%s)", node.first.c_str(), node.second->type_.c_str());
         destroy(node.first);
     }
     m_nodes.clear();

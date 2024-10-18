@@ -22,7 +22,7 @@ typedef struct {
 
 class videoFrame {
 public:
-    videoFrame() {
+    videoFrame() : ref_cnt(0) {
         memset(&img, 0, sizeof(ma_img_t));
     }
     ~videoFrame() = default;
