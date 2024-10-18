@@ -44,6 +44,7 @@ cal_key() {
     TEMP_FILE=$(mktemp)
     echo "$1" > $TEMP_FILE
     ssh-keygen -lf $TEMP_FILE 2>/dev/null | awk '{printf $2 " "}'
+    echo -n "$2"
     cat $TEMP_FILE | awk -F# '{print $2 " " }'
     rm $TEMP_FILE
 }
@@ -55,8 +56,10 @@ query_key() {
         touch $filename
     fi
 
+    num=1
     while IFS= read -r line; do
-        cal_key "$line"
+        cal_key "$line" $num
+        num=$((num + 1))
     done < "$filename"
 }
 

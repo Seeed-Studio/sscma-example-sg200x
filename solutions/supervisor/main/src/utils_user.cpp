@@ -14,7 +14,6 @@
 
 static std::string g_sUserName;
 static std::string g_sPassword;
-static int g_keyId = 0;
 int g_userId = 0;
 
 static void clearNewline(char* value, int len) {
@@ -144,32 +143,26 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
     }
 
     while (fgets(info, sizeof(info) - 1, fp) != NULL) {
-        std::vector<std::string> keyInfo;
+        std::vector<std::string> keyInfo(4, "-");
         std::string s(info);
+        hv::Json sshkey;
+        int cnt = 0;
+
         if (s.back() == '\n') {
             s.erase(s.size() - 1);
         }
 
         size_t pos = s.find(' ');
         while (pos < std::string::npos) {
-            keyInfo.push_back(s.substr(0, pos));
+            keyInfo[cnt++] = s.substr(0, pos);
             s = s.substr(pos + 1);
             pos = s.find(' ');
         }
 
-        hv::Json sshkey;
-        if (keyInfo.size() == 3) {
-            sshkey["id"] = keyInfo[1];
-            g_keyId = std::max(g_keyId, stoi(keyInfo[1]));
-            sshkey["name"] = keyInfo[2];
-            sshkey["value"] = keyInfo[0];
-        } else {
-            sshkey["id"] = "-";
-            sshkey["name"] = "-";
-            sshkey["value"] = "-";
-        }
-        sshkey["addTime"] = "20240101";
-        sshkey["latestUsedTime"] = "20240101";
+        sshkey["id"] = keyInfo[1];
+        sshkey["name"] = keyInfo[2];
+        sshkey["value"] = keyInfo[0];
+        sshkey["addTime"] = keyInfo[3];
         sshkeyList.push_back(sshkey);
     }
     pclose(fp);
