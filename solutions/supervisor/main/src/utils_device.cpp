@@ -7,6 +7,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
 #include "utils_device.h"
@@ -191,6 +196,54 @@ static std::string getGateWay(std::string ip)
     pclose(fp);
 
     return res;
+}
+
+std::string getIpAddress(const char* ifrName) {
+    char info[INET_ADDRSTRLEN];
+    int fd;
+    struct ifreq ifr;
+
+    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        syslog(LOG_ERR, "socket init failed");
+        return std::string("-");
+    }
+
+    strncpy(ifr.ifr_name, ifrName, IFNAMSIZ);
+
+    if (ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
+        syslog(LOG_ERR, "ioctl SIOCGIFADDR failed");
+        close(fd);
+        return std::string("-");
+    }
+    inet_ntop(AF_INET, &((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr, info, INET_ADDRSTRLEN);
+
+    close(fd);
+
+    return std::string(info);
+}
+
+std::string getNetmaskAddress(const char* ifrName) {
+    char netmask[INET_ADDRSTRLEN];
+    int fd;
+    struct ifreq ifr;
+
+    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        syslog(LOG_ERR, "socket init failed");
+        return std::string("-");
+    }
+
+    strncpy(ifr.ifr_name, ifrName, IFNAMSIZ);
+
+    if (ioctl(fd, SIOCGIFNETMASK, &ifr) < 0) {
+        syslog(LOG_ERR, "ioctl SIOCGIFNETMASK failed");
+        close(fd);
+        return std::string("-");
+    }
+    inet_ntop(AF_INET, &((struct sockaddr_in *)&ifr.ifr_netmask)->sin_addr, netmask, INET_ADDRSTRLEN);
+
+    close(fd);
+
+    return std::string(netmask);
 }
 
 void initSystemStatus() {
@@ -389,8 +442,9 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     data["deviceName"] = readFile(PATH_DEVICE_NAME);
     data["sn"] = sn;
     data["ip"] = getDeviceIp(req->client_addr.ip);
-    data["mask"] = "255.255.255.0";
-    data["gateway"] = getGateWay(req->host);
+    data["wifiIp"] = getIpAddress("wlan0");
+    data["mask"] = getNetmaskAddress("wlan0");
+    data["gateway"] = getGateWay(data["wifiIp"]);
     data["dns"] = "-";
     data["channel"] = std::stoi(ch);
     data["serverUrl"] = url;

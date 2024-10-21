@@ -95,6 +95,28 @@ static std::string getWifiId() {
     return std::string(info);
 }
 
+std::string getWifiIp() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_WIFI_GET_WIFI_IP;
+    char info[128] = "";
+    int len = 0;
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return std::string("");
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    len = strlen(info);
+    if (info[len - 1] == '\n') {
+        info[len - 1] = '\0';
+    }
+    pclose(fp);
+
+    return std::string(info);
+}
+
 static int selectWifi(std::string id) {
     char cmd[128] = SCRIPT_WIFI_SELECT;
 
@@ -517,7 +539,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
             continue;
         }
 
-        if (connectStatus == "COMPLETED") {
+        if (connectStatus == "COMPLETED" && !getWifiIp().empty()) {
             response["code"] = 0;
             response["msg"] = "Connection successful";
             g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };

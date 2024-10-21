@@ -113,6 +113,10 @@ get_wifi_id)
     echo $id
     ;;
 
+get_wifi_ip)
+    wpa_cli -i wlan0 status | grep "^ip_address" | awk -F= '{print $2}'
+    ;;
+
 select)
     echo $2
     wpa_cli -i wlan0 select_network $2
