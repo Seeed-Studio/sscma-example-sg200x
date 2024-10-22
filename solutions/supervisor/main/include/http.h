@@ -7,10 +7,13 @@ extern "C" {
 
 #define HTTPS_SUPPORT 1
 
+extern bool g_wifiStatus;
+
 int initHttpd();
 int deinitHttpd();
 
 int initWiFi();
+int stopWifi();
 
 } // extern "C" {
 

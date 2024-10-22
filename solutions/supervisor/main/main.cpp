@@ -10,8 +10,8 @@
 
 static void exitHandle(int signo) {
     stopDaemon();
-    system(SCRIPT_WIFI_STOP);
     deinitHttpd();
+    stopWifi();
     closelog();
 
     exit(0);

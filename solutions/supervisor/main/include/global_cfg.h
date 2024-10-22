@@ -44,6 +44,8 @@
                              " " #action " ")
 #define SCRIPT_WIFI_START SCRIPT_WIFI(start)
 #define SCRIPT_WIFI_STOP SCRIPT_WIFI(stop)
+#define SCRIPT_WIFI_START_AP SCRIPT_WIFI(start_ap)
+#define SCRIPT_WIFI_STOP_AP SCRIPT_WIFI(stop_ap)
 #define SCRIPT_WIFI_SCAN SCRIPT_WIFI(scan)
 #define SCRIPT_WIFI_LIST SCRIPT_WIFI(list)
 #define SCRIPT_WIFI_CONNECT SCRIPT_WIFI(connect)

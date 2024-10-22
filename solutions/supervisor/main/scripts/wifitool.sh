@@ -80,6 +80,18 @@ stop)
     ifconfig wlan1 down
     ;;
 
+start_ap)
+    if [ ! "`pidof hostapd`" ]; then
+        ifconfig wlan1 up
+        hostapd -B $hostapdFile
+    fi
+    ;;
+
+stop_ap)
+    kill -9 `pidof hostapd`
+    ifconfig wlan1 down
+    ;;
+
 state)
     wpa_cli -i wlan0 status | grep "^wpa_state" | awk -F= '{print $2}'
     ;;

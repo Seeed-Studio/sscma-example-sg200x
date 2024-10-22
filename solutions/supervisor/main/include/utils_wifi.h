@@ -11,5 +11,6 @@ int autoConnectWiFi(HttpRequest* req, HttpResponse* resp);
 int forgetWiFi(HttpRequest* req, HttpResponse* resp);
 
 std::string getWiFiName(const char* ifrName);
+void monitorWifiStatusThread();
 
 #endif

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <syslog.h>
+#include <thread>
 
 #include "hv/HttpServer.h"
 #include "hv/hthread.h"    // import hv_gettid
@@ -178,6 +179,7 @@ int deinitHttpd()
 int initWiFi() {
     char cmd[128] = SCRIPT_WIFI_START;
     std::string wifiName = getWiFiName("wlan0");
+    std::thread th;
 
     initUserInfo();
     initSystemStatus();
@@ -190,7 +192,15 @@ int initWiFi() {
     strcat(cmd, std::to_string(g_userId).c_str());
     system(cmd);
 
+    th = std::thread(monitorWifiStatusThread);
+    th.detach();
+
     return 0;
+}
+
+int stopWifi() {
+    g_wifiStatus = false;
+    system(SCRIPT_WIFI_STOP);
 }
 
 } // extern "C" {

@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <algorithm>
 #include <syslog.h>
+#include <thread>
 
 #include "hv/HttpServer.h"
 #include "global_cfg.h"
@@ -23,6 +24,7 @@ typedef struct _WIFI_INFO_S {
 std::vector<std::vector<std::string>> g_wifiList;
 std::map<std::string, WIFI_INFO_S> g_wifiInfo;
 std::string g_currentWifi;
+bool g_wifiStatus = true;
 int g_wifiMode = 1;
 int g_etherConnected = 0;
 
@@ -148,6 +150,14 @@ static std::string removeWifi(std::string id) {
 
     pclose(fp);
     return std::string(info);
+}
+
+static void startAp() {
+    system(SCRIPT_WIFI_START_AP);
+}
+
+static void stopAp() {
+    system(SCRIPT_WIFI_STOP_AP);
 }
 
 static bool cmp(std::vector<std::string> lhs, std::vector<std::string> rhs) {
@@ -334,6 +344,37 @@ std::string getWiFiName(const char* ifrName) {
     close(fd);
 
     return wifiName;
+}
+
+void monitorWifiStatusThread() {
+    std::string wifiStatus;
+    bool apStatus = true;
+    unsigned int cnt = 0;
+
+    while (g_wifiStatus) {
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        wifiStatus = getWifiConnectStatus();
+
+        if (wifiStatus == "COMPLETED" && !getWifiIp().empty()) {
+            if (apStatus) {
+                if (++cnt >= 12) {
+                    apStatus = false;
+                    stopAp();
+                }
+            }
+
+            continue;
+        }
+
+        cnt = 0;
+
+        if (wifiStatus == "DISCONNECTED" || wifiStatus == "INACTIVE" || wifiStatus == "Failed") {
+            if (!apStatus) {
+                apStatus = true;
+                startAp();
+            }
+        }
+    }
 }
 
 int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)
