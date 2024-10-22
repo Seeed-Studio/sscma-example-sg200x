@@ -18,6 +18,7 @@ const int threadTimeout = 3;
 const int retryTimes = 3;
 int daemonStatus = 0;
 int noderedStarting = 1;
+int sscmaStarting = 1;
 APP_STATUS noderedStatus = APP_STATUS_UNKNOWN;
 APP_STATUS sscmaStatus = APP_STATUS_UNKNOWN;
 sem_t semSscma;
@@ -206,17 +207,26 @@ void runDaemon() {
 
         appStatus = getSscmaStatus();
         if (APP_STATUS_NORMAL == appStatus) {
+            if (sscmaStarting) {
+                sscmaStarting = 0;
+            }
             if (APP_STATUS_NORESPONSE == sscmaStatus) {
                 syslog(LOG_INFO, "Restart Flow");
                 startFlow();
             }
             sscmaStatus = appStatus;
         } else {
+            if (sscmaStarting) {
+                continue;
+            }
             sscmaStatus = appStatus;
             syslog(LOG_ERR, "sscma-node is not responding");
             stopFlow();
             if (0 != startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node")) {
                 sscmaStatus = APP_STATUS_STARTFAILED;
+                sscmaStarting = 0;
+            } else {
+                sscmaStarting = 1;
             }
         }
     }

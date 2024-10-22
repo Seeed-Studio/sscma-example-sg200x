@@ -12,6 +12,7 @@ enum APP_STATUS {
 };
 
 extern int noderedStarting;
+extern int sscmaStarting;
 extern APP_STATUS noderedStatus;
 extern APP_STATUS sscmaStatus;
 
