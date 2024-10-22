@@ -3,6 +3,7 @@
 
 int queryWiFiInfo(HttpRequest* req, HttpResponse* resp);
 int scanWiFi(HttpRequest* req, HttpResponse* resp);
+int getWiFiScanResults(HttpRequest* req, HttpResponse* resp);
 int connectWiFi(HttpRequest* req, HttpResponse* resp);
 int disconnectWiFi(HttpRequest* req, HttpResponse* resp);
 int switchWiFi(HttpRequest* req, HttpResponse* resp);

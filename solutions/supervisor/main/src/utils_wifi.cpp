@@ -184,14 +184,13 @@ static int deduplicate(std::vector<std::vector<std::string>> &wifiList) {
     return l;
 }
 
-static int getWifiList(const std::string& scanTime)
+static int getWifiList()
 {
     FILE* fp;
     char info[128];
-    char cmd[128] = SCRIPT_WIFI_SCAN;
+    char cmd[128] = SCRIPT_WIFI_SCAN_RESULTS;
     std::vector<std::vector<std::string>> wifiList;
 
-    strcat(cmd, scanTime.c_str());
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
@@ -418,7 +417,43 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)
 int scanWiFi(HttpRequest* req, HttpResponse* resp)
 {
     syslog(LOG_INFO, "scan WiFi operation...\n");
-    syslog(LOG_INFO, "scanTime: %s\n", req->GetString("scanTime").c_str());
+    hv::Json response;
+    FILE* fp;
+    char cmd[128] = SCRIPT_WIFI_SCAN;
+    char info[128] = "";
+    int len = 0;
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        response["code"] = -1;
+        response["msg"] = "Failed to scan WiFi";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    len = strlen(info);
+    if (info[len - 1] == '\n') {
+        info[len - 1] = '\0';
+    }
+    pclose(fp);
+
+    if (strcmp(info, "OK") == 0) {
+        response["code"] = 0;
+        response["msg"] = "Scan wifi successfully";
+    } else {
+        response["code"] = -1;
+        response["msg"] = "Scanning WiFi too frequently";
+    }
+    response["data"] = hv::Json({});
+
+    return resp->Json(response);
+}
+
+int getWiFiScanResults(HttpRequest* req, HttpResponse* resp)
+{
+    syslog(LOG_INFO, "get WiFi scan results operation...\n");
 
     std::string ip, mask, mac;
     hv::Json response;
@@ -430,7 +465,7 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
         return resp->Json(response);
     }
 
-    if (getWifiList(req->GetString("scanTime")) != 0) {
+    if (getWifiList() != 0) {
         response["code"] = -1;
         response["msg"] = "Failed to get wifi list";
         response["data"] = hv::Json({});

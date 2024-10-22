@@ -57,6 +57,7 @@ static void registerWiFiApi(HttpService& router)
 {
     router.GET("/api/wifiMgr/queryWiFiInfo", queryWiFiInfo);
     router.POST("/api/wifiMgr/scanWiFi", scanWiFi);
+    router.GET("/api/wifiMgr/getWiFiScanResults", getWiFiScanResults);
     router.POST("/api/wifiMgr/connectWiFi", connectWiFi);
     router.POST("/api/wifiMgr/disconnectWiFi", disconnectWiFi);
     router.POST("/api/wifiMgr/switchWiFi", switchWiFi);
@@ -201,6 +202,8 @@ int initWiFi() {
 int stopWifi() {
     g_wifiStatus = false;
     system(SCRIPT_WIFI_STOP);
+
+    return 0;
 }
 
 } // extern "C" {
