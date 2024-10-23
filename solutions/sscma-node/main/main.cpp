@@ -85,7 +85,6 @@ int main(int argc, char** argv) {
 
     if (start_service) {
 
-
         StorageFile* config = new StorageFile();
         config->init(config_file.c_str());
 

@@ -97,7 +97,8 @@ void ModelNode::threadEntry() {
             }
             if (counting_) {
                 reply["data"]["counts"] = counter_.get();
-                reply["data"]["lines"]  = counter_.getSplitter();
+                reply["data"]["lines"] =json::array();
+                reply["data"]["lines"].push_back(counter_.getSplitter());
             }
 
             reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
@@ -129,7 +130,7 @@ void ModelNode::threadEntry() {
         } else {
             reply["data"]["image"] = "";
         }
-
+        
         server_->response(id_, reply);
 
         Thread::exitCritical();

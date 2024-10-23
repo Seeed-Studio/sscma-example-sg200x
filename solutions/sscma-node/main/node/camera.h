@@ -59,14 +59,21 @@ public:
     ma_err_t attach(int chn, MessageBox* msgbox);
     ma_err_t detach(int chn, MessageBox* msgbox);
 
-
 protected:
+    void threadEntry();
+    static void threadEntryStub(void* obj);
     int vencCallback(void* pData, void* pArgs);
     int vpssCallback(void* pData, void* pArgs);
     static int vencCallbackStub(void* pData, void* pArgs, void* pUserData);
     static int vpssCallbackStub(void* pData, void* pArgs, void* pUserData);
+
+private:
     std::vector<channel> channels_;
+    uint32_t count_;
+    bool preview_;
     int option_;
+    Thread* thread_;
+    MessageBox frame_;
 };
 
 }  // namespace ma::node

@@ -24,7 +24,7 @@ void StreamNode::threadEntry() {
     videoFrame* frame = nullptr;
 
     while (started_) {
-        if (frame_.fetch(reinterpret_cast<void**>(&frame)), Tick::fromSeconds(2)) {
+        if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
             Thread::enterCritical();
             transport_->send((char*)frame->img.data, frame->img.size);
             frame->release();

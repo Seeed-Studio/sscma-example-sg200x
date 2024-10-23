@@ -182,7 +182,7 @@ void SaveNode::threadEntry() {
             }
 
             if (frame->img.key) {
-                if (filename_.empty() || (slice_ > 0 && Tick::current() - start_ > Tick::fromSeconds(slice_ + 1))) {
+                if (filename_.empty() || (slice_ > 0 && Tick::current() - start_ > Tick::fromSeconds(slice_))) {
                     start_ = Tick::current();
                     count_ = 0;
                     if (filename_.empty()) {
@@ -211,7 +211,7 @@ void SaveNode::threadEntry() {
                 if (av_write_frame(avFmtCtx_, &packet) != 0) {
                     MA_LOGW(TAG, "write frame failed");
                 }
-                if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_ + 1)) {
+                if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_)) {
                     closeFile();
                     enabled_ = false;
                     MA_LOGI(TAG, "stop recording");

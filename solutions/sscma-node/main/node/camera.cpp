@@ -12,7 +12,6 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::sleep(Tick::fromMilliseconds(100)); \
         MA_LOGI(TAG, "start video");                \
         startVideo();                               \
-        started_ = true;                            \
         Thread::sleep(Tick::fromSeconds(1));        \
         Thread::exitCritical();                     \
     }
@@ -21,7 +20,6 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
     {                                               \
         Thread::enterCritical();                    \
         MA_LOGI(TAG, "stop video");                 \
-        started_ = false;                           \
         Thread::sleep(Tick::fromMilliseconds(100)); \
         deinitVideo();                              \
         MA_LOGI(TAG, "stop video done");            \
@@ -29,7 +27,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::exitCritical();                     \
     }
 
-CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), option_(0) {
+CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), preview_(false), option_(0), frame_(30), thread_(nullptr) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -174,6 +172,29 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     return CVI_SUCCESS;
 }
 
+
+void CameraNode::threadEntry() {
+    videoFrame* frame = nullptr;
+
+    while (started_) {
+        if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
+            Thread::enterCritical();
+            json reply     = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
+            int base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
+            char* base64   = new char[base64_len];
+            if (base64 != nullptr) {
+                memset(base64, 0, base64_len);
+                ma::utils::base64_encode(frame->img.data, frame->img.size, base64, &base64_len);
+                frame->release();
+                reply["data"]["image"] = std::string(base64, base64_len);
+                delete[] base64;
+            }
+            server_->response(id_, reply);
+            Thread::exitCritical();
+        }
+    }
+}
+
 int CameraNode::vencCallbackStub(void* pData, void* pArgs, void* pUserData) {
     return reinterpret_cast<CameraNode*>(pUserData)->vencCallback(pData, pArgs);
 }
@@ -181,6 +202,10 @@ int CameraNode::vencCallbackStub(void* pData, void* pArgs, void* pUserData) {
 int CameraNode::vpssCallbackStub(void* pData, void* pArgs, void* pUserData) {
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
     return reinterpret_cast<CameraNode*>(pUserData)->vpssCallback(pData, pArgs);
+}
+
+void CameraNode::threadEntryStub(void* obj) {
+    reinterpret_cast<CameraNode*>(obj)->threadEntry();
 }
 
 ma_err_t CameraNode::onCreate(const json& config) {
@@ -205,25 +230,51 @@ ma_err_t CameraNode::onCreate(const json& config) {
         int option = config["option"].get<int>();
     }
 
+    if (config.contains("preview") && config["preview"].is_boolean()) {
+        preview_ = config["preview"].get<bool>();
+    }
+
     switch (option_) {
         case 1:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1280;
             channels_[CHN_H264].height = 1080;
             channels_[CHN_H264].fps    = 30;
+            channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
+            channels_[CHN_JPEG].width  = 640;
+            channels_[CHN_JPEG].height = 480;
+            channels_[CHN_JPEG].fps    = 30;
             break;
         case 2:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 640;
             channels_[CHN_H264].height = 480;
             channels_[CHN_H264].fps    = 30;
+            channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
+            channels_[CHN_JPEG].width  = 640;
+            channels_[CHN_JPEG].height = 480;
+            channels_[CHN_JPEG].fps    = 30;
             break;
         default:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1920;
             channels_[CHN_H264].height = 1080;
             channels_[CHN_H264].fps    = 30;
+            channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
+            channels_[CHN_JPEG].width  = 640;
+            channels_[CHN_JPEG].height = 480;
+            channels_[CHN_JPEG].fps    = 30;
             break;
+    }
+
+    if (preview_) {
+        this->config(CHN_JPEG);
+        this->attach(CHN_JPEG, &frame_);
+    }
+
+    thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
+    if (thread_ == nullptr) {
+        MA_THROW(Exception(MA_ENOMEM, "Thread create failed"));
     }
 
     server_->response(
@@ -238,7 +289,20 @@ ma_err_t CameraNode::onCreate(const json& config) {
 
 ma_err_t CameraNode::onControl(const std::string& control, const json& data) {
     Guard guard(mutex_);
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
+    if (control == "preview" && data.is_boolean()) {
+        if (data.get<bool>() != preview_) {
+            preview_ = data.get<bool>();
+            if (preview_) {
+                config(CHN_JPEG);
+                attach(CHN_JPEG, &frame_);
+            } else {
+                detach(CHN_JPEG, &frame_);
+            }
+        }
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", {"preview", preview_}}}));
+    } else {
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
+    }
     return MA_OK;
 }
 
@@ -250,6 +314,11 @@ ma_err_t CameraNode::onDestroy() {
     }
 
     onStop();
+
+    if (thread_ != nullptr) {
+        delete thread_;
+        thread_ = nullptr;
+    }
 
     created_ = false;
 
@@ -280,6 +349,47 @@ ma_err_t CameraNode::onStart() {
         }
     }
 
+    for (int i = 0; i < CHN_MAX; i++) {
+        video_ch_param_t param;
+        switch (channels_[i].format) {
+            case MA_PIXEL_FORMAT_JPEG:
+                param.format = VIDEO_FORMAT_JPEG;
+                break;
+            case MA_PIXEL_FORMAT_H264:
+                param.format = VIDEO_FORMAT_H264;
+                break;
+            case MA_PIXEL_FORMAT_H265:
+                param.format = VIDEO_FORMAT_H265;
+                break;
+            case MA_PIXEL_FORMAT_RGB888:
+                param.format = VIDEO_FORMAT_RGB888;
+                break;
+            case MA_PIXEL_FORMAT_YUV422:
+                param.format = VIDEO_FORMAT_NV21;
+                break;
+            default:
+                break;
+        }
+        param.width  = channels_[i].width;
+        param.height = channels_[i].height;
+        param.fps    = channels_[i].fps;
+        MA_LOGI(TAG, "start channel %d format %d width %d height %d fps %d", i, param.format, param.width, param.height, param.fps);
+        if (channels_[i].enabled) {
+            setupVideo(static_cast<video_ch_index_t>(i), &param);
+            if (i == CHN_RAW) {
+                registerVideoFrameHandler(static_cast<video_ch_index_t>(i), 0, vpssCallbackStub, this);
+            } else {
+                registerVideoFrameHandler(static_cast<video_ch_index_t>(i), 0, vencCallbackStub, this);
+            }
+        }
+    }
+
+    started_ = true;
+
+    if (thread_ != nullptr) {
+        thread_->start(this);
+    }
+
     CAMERA_INIT();
     return MA_OK;
 }
@@ -288,6 +398,14 @@ ma_err_t CameraNode::onStop() {
     Guard guard(mutex_);
     if (!started_) {
         return MA_OK;
+    }
+    if (preview_) {
+        detach(CHN_JPEG, &frame_);
+    }
+    started_ = false;
+
+    if (thread_ != nullptr) {
+        thread_->join();
     }
     CAMERA_DEINIT();
     return MA_OK;
@@ -298,9 +416,9 @@ ma_err_t CameraNode::config(int chn, int32_t width, int32_t height, int32_t fps,
     if (chn < 0 || chn >= CHN_MAX) {
         return MA_EINVAL;
     }
-    if (channels_[chn].configured) {
-        return MA_EBUSY;
-    }
+    // if (channels_[chn].configured) {
+    //     return MA_EBUSY;
+    // }
     channels_[chn].width      = width > 0 ? width : channels_[chn].width;
     channels_[chn].height     = height > 0 ? height : channels_[chn].height;
     channels_[chn].fps        = fps > 0 ? fps : channels_[chn].fps;
@@ -308,40 +426,9 @@ ma_err_t CameraNode::config(int chn, int32_t width, int32_t height, int32_t fps,
     channels_[chn].enabled    = enabled;
     channels_[chn].configured = true;
 
-    video_ch_param_t param;
-
     MA_LOGI(TAG, "config channel %d width %d height %d fps %d format %d", chn, channels_[chn].width, channels_[chn].height, channels_[chn].fps, channels_[chn].format);
 
-    switch (channels_[chn].format) {
-        case MA_PIXEL_FORMAT_JPEG:
-            param.format = VIDEO_FORMAT_JPEG;
-            break;
-        case MA_PIXEL_FORMAT_H264:
-            param.format = VIDEO_FORMAT_H264;
-            break;
-        case MA_PIXEL_FORMAT_H265:
-            param.format = VIDEO_FORMAT_H265;
-            break;
-        case MA_PIXEL_FORMAT_RGB888:
-            param.format = VIDEO_FORMAT_RGB888;
-            break;
-        case MA_PIXEL_FORMAT_YUV422:
-            param.format = VIDEO_FORMAT_NV21;
-            break;
-        default:
-            break;
-    }
-    param.width  = channels_[chn].width;
-    param.height = channels_[chn].height;
-    param.fps    = channels_[chn].fps;
-    if (channels_[chn].enabled) {
-        setupVideo(static_cast<video_ch_index_t>(chn), &param);
-        if (chn == CHN_RAW) {
-            registerVideoFrameHandler(static_cast<video_ch_index_t>(chn), 0, vpssCallbackStub, this);
-        } else {
-            registerVideoFrameHandler(static_cast<video_ch_index_t>(chn), 0, vencCallbackStub, this);
-        }
-    }
+
     return MA_OK;
 }
 
@@ -360,7 +447,7 @@ ma_err_t CameraNode::detach(int chn, MessageBox* msgbox) {
     if (it != channels_[chn].msgboxes.end()) {
         MA_LOGI(TAG, "detach %p from %d", msgbox, chn);
         started_ = false;
-        Thread::sleep(Tick::fromMilliseconds(2000 / channels_[chn].fps));  // skip 3frames
+        Thread::sleep(Tick::fromMilliseconds(2000 / channels_[chn].fps));  // skip last frame
         channels_[chn].msgboxes.erase(it);
         started_ = true;
     }
