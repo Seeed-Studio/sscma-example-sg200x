@@ -27,7 +27,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::exitCritical();                     \
     }
 
-CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), preview_(false), option_(0), frame_(30), thread_(nullptr) {
+CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), option_(0), frame_(30), thread_(nullptr) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -234,6 +234,11 @@ ma_err_t CameraNode::onCreate(const json& config) {
         preview_ = config["preview"].get<bool>();
     }
 
+    if (config.contains("light") && config["light"].is_number()) {
+        light_ = config["light"].get<int>();
+    }
+
+
     switch (option_) {
         case 1:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
@@ -300,6 +305,14 @@ ma_err_t CameraNode::onControl(const std::string& control, const json& data) {
             }
         }
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", {"preview", preview_}}}));
+    } else if (control == "light" && data.is_number()) {
+        light_ = data.get<int>();
+        if (light_ == 0) {
+            system("echo 0 > /sys/devices/platform/leds/leds/white/brightness");
+        } else {
+            system("echo 1 > /sys/devices/platform/leds/leds/white/brightness");
+        }
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", {"light", light_}}}));
     } else {
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
     }
@@ -347,6 +360,12 @@ ma_err_t CameraNode::onStart() {
         if (channels_[i].enabled && !channels_[i].configured) {
             return MA_AGAIN;
         }
+    }
+
+    if (light_ == 0) {
+        system("echo 0 > /sys/devices/platform/leds/leds/white/brightness");
+    } else {
+        system("echo 1 > /sys/devices/platform/leds/leds/white/brightness");
     }
 
     for (int i = 0; i < CHN_MAX; i++) {

@@ -72,6 +72,7 @@ private:
     uint32_t count_;
     bool preview_;
     int option_;
+    int light_;
     Thread* thread_;
     MessageBox frame_;
 };
