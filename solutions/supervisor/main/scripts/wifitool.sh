@@ -137,9 +137,7 @@ select)
     ;;
 
 disconnect)
-    id=`wpa_cli -i wlan0 status | grep "^id" | awk -F= '{print $2}'`
-    wpa_cli -i wlan0 disable_network $id
-    wpa_cli -i wlan0 save_config
+    wpa_cli -i wlan0 disconnect
     ;;
 
 status)

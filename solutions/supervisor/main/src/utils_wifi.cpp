@@ -646,41 +646,34 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "disconnect WiFi...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
-    std::string msg;
-    int id = 0;
+    hv::Json response;
     FILE* fp;
-    char info[128];
+    char info[128] = "";
     char cmd[128] = SCRIPT_WIFI_DISCONNECT;
-
-    updateConnectedWifiInfo();
-    id = g_wifiInfo[req->GetString("ssid")].id;
-    strcat(cmd, std::to_string(id).c_str());
-
-    syslog(LOG_DEBUG, "id: %d\n", id);
-    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
-        return -1;
+        response["code"] = -1;
+        response["msg"] = "Failed to disconnect WiFi";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
     }
 
-    if (fgets(info, sizeof(info) - 1, fp) != NULL) {
-        msg = std::string(info);
-        if (msg.back() == '\n') {
-            msg.erase(msg.size() - 1);
-        }
+    fgets(info, sizeof(info) - 1, fp);
+    len = strlen(info);
+    if (info[len - 1] == '\n') {
+        info[len - 1] = '\0';
     }
     pclose(fp);
 
-    hv::Json response;
-
-    if (msg.compare("OK") != 0) {
-        response["code"] = 1112;
-        response["msg"] = msg;
-    } else {
+    if (strcmp(info, "OK") == 0) {
         response["code"] = 0;
-        response["msg"] = "";
+        response["msg"] = "Disconnect wifi successfully";
+    } else {
+        response["code"] = -1;
+        response["msg"] = info;
     }
     response["data"] = hv::Json({});
 
