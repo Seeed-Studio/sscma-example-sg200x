@@ -289,6 +289,28 @@ void getSnCode() {
     pclose(fp);
 }
 
+int getUpdateStatus() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_DEVICE_GETUPDATESTATUS;
+    char info[128] = "";
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return -1;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+    pclose(fp);
+
+    if (strcmp(info, "YES") == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
     FILE* fp;
     char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
@@ -404,6 +426,7 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
     data["osName"] = os;
     data["osVersion"] = version;
     data["downloadUrl"] = "";
+    data["isUpgrading"] = getUpdateStatus();
     response["data"] = data;
 
     return resp->Json(response);

@@ -9,9 +9,11 @@ ROOTFS=/dev/mmcblk0p3
 ROOTFS_B=/dev/mmcblk0p4
 ROOTFS_FILE=rootfs_ext4.emmc
 
+ACTION=$1
 PERCENTAGE=0
 PERCENTAGE_FILE=/tmp/upgrade.percentage
 CTRL_FILE=/tmp/upgrade.ctrl
+START_FILE=/tmp/upgrade.start
 VERSION_FILE=/tmp/upgrade.version
 
 function clean_up() {
@@ -20,6 +22,10 @@ function clean_up() {
         rm -rf $MOUNTPATH
     fi
     rm -rf $CTRL_FILE
+
+    if [ "$ACTION" = "start" ]; then
+        rm -rf $START_FILE
+    fi
 }
 
 function write_percent() {
@@ -133,7 +139,7 @@ function is_use_partition_b() {
     fi
 }
 
-trap `rm -rf $CTRL_FILE` SIGINT
+# trap `rm -rf $CTRL_FILE` SIGINT
 
 case $1 in
 latest)
@@ -204,6 +210,7 @@ latest)
 start)
     if [ -f $CTRL_FILE ]; then echo "Upgrade is running."; exit 1; fi
     echo "" > $CTRL_FILE
+    echo "" > $START_FILE
 
     step=0
     PERCENTAGE=0

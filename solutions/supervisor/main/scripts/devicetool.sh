@@ -1,6 +1,8 @@
 #!/bin/sh
 
 APP_TOOL="/mnt/system/usr/scripts/apptool.sh"
+CTRL_FILE=/tmp/upgrade.ctrl
+START_FILE=/tmp/upgrade.start
 
 function restartApp() {
     app="$1"
@@ -24,6 +26,18 @@ getSystemStatus)
 
 getSnCode)
     fw_printenv sn | awk -F'=' '{print $NF}'
+    ;;
+
+getUpdateStatus)
+    is_stop=""
+    if [ -f "$CTRL_FILE" ]; then
+        is_stop="`cat $CTRL_FILE`"
+    fi
+    if [[ -f $START_FILE && "$is_stop" != "stop" ]]; then
+        echo "YES"
+    else
+        echo "NO"
+    fi
     ;;
 
 getAddress)
