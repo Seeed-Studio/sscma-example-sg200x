@@ -3,6 +3,21 @@
 ifname=wlan0
 hostapdFile=/etc/hostapd_2g4.conf
 IFS=""
+CTRL_FILE=/tmp/upgrade.ctrl
+START_FILE=/tmp/upgrade.start
+
+clean_upgrade_file() {
+    pid="`pidof upgrade.sh`"
+
+    if [ -z "$pid" ]; then
+        if [ -f "$CTRL_FILE" ]; then
+            rm -rf $CTRL_FILE
+        fi
+        if [ -f "$START_FILE" ]; then
+            rm -rf $START_FILE
+        fi
+    fi
+}
 
 get_wifi_scan_results() {
     wpa_cli -i wlan0 scan_results | tail -n +2 | while read -r line
@@ -69,6 +84,8 @@ start)
 
     export PS1='[\u@\h]\w\$ '
     ttyd -p $3 -u $4 sh > /dev/null 2>&1 &
+
+    clean_upgrade_file
     ;;
 
 stop)
@@ -76,6 +93,8 @@ stop)
     kill -9 `pidof hostapd`
     kill -9 `pidof ttyd`
     ifconfig wlan1 down
+
+    clean_upgrade_file
     ;;
 
 start_ap)
