@@ -28,7 +28,7 @@ get_wifi_scan_results() {
 
 list_wifi() {
     # wpa_cli -i wlan0 list_networks | tail -n +2 | awk '{print $1, $2, $4}'
-    wpa_cli -i wlan0 list_networks | tail -n +2 | while read -r line
+    wpa_cli -i wlan0 list_networks | tail -n +3 | while read -r line
     do
         printf "%b\n" $line | awk '{print $1, $2, $4}'
     done
@@ -140,6 +140,15 @@ connect)
 
 connect_status)
     wpa_cli -i wlan0 status | grep "^wpa_state" | awk -F= '{print $2}'
+    ;;
+
+auto_connect)
+    if [ "$3" == "1" ]; then
+        wpa_cli -i wlan0 enable_network $2
+    else
+        wpa_cli -i wlan0 disable_network $2
+    fi
+    wpa_cli -i wlan0 save_config
     ;;
 
 get_wifi_id)

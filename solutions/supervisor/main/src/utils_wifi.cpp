@@ -228,6 +228,7 @@ static int updateConnectedWifiInfo()
 {
     FILE* fp;
     char info[128];
+    int len = 0;
 
     syslog(LOG_INFO, "updateConnectedWifiInfo operation...\n");
 
@@ -242,6 +243,11 @@ static int updateConnectedWifiInfo()
     while (fgets(info, sizeof(info) - 1, fp) != NULL) {
         std::vector<std::string> wifi;
 
+        len = strlen(info);
+        if (info[len - 1] == '\n') {
+            info[len - 1] = '\0';
+        }
+
         char* token = strtok(info, " ");
         while (token != NULL) {
             wifi.push_back(std::string(token));
@@ -250,7 +256,11 @@ static int updateConnectedWifiInfo()
 
         g_wifiInfo[wifi[1]].id = stoi(wifi[0]);
         g_wifiInfo[wifi[1]].connectedStatus = 1;
-        g_wifiInfo[wifi[1]].autoConnect = 1;
+        if (wifi.size() >= 3 && wifi[2] == "[DISABLED]") {
+            g_wifiInfo[wifi[1]].autoConnect = 0;
+        } else {
+            g_wifiInfo[wifi[1]].autoConnect = 1;
+        }
     }
 
     pclose(fp);
@@ -494,8 +504,10 @@ int getWiFiScanResults(HttpRequest* req, HttpResponse* resp)
 
         if (g_wifiInfo.find(wifi[0]) != g_wifiInfo.end()) {
             wifiInfo["connectedStatus"] = g_wifiInfo[wifi[0]].connectedStatus;
+            wifiInfo["autoConnect"] = g_wifiInfo[wifi[0]].autoConnect;
         } else {
             wifiInfo["connectedStatus"] = 0;
+            wifiInfo["autoConnect"] = 0;
         }
 
         wifiInfo["macAddress"] = wifi[3].substr(0, 17);
@@ -506,14 +518,13 @@ int getWiFiScanResults(HttpRequest* req, HttpResponse* resp)
             wifiInfo["subnetMask"] = mask;
             wifiInfo["dns1"] = "-";
             wifiInfo["dns2"] = "-";
-            wifiInfo["autoConnect"] = 0;
+            wifiInfo["autoConnect"] = 1;
         } else {
             wifiInfo["ip"] = "";
             wifiInfo["ipAssignment"] = 0;
             wifiInfo["subnetMask"] = "-";
             wifiInfo["dns1"] = "-";
             wifiInfo["dns2"] = "-";
-            wifiInfo["autoConnect"] = 0;
         }
         wifiInfoList.push_back(wifiInfo);
     }
@@ -745,6 +756,17 @@ int autoConnectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "auto Connect operation...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
+
+    char cmd[128] = SCRIPT_WIFI_AUTO_CONNECT;
+    int id = 0;
+
+    updateConnectedWifiInfo();
+    id = g_wifiInfo[req->GetString("ssid")].id;
+
+    strcat(cmd, std::to_string(id).c_str());
+    strcat(cmd, " ");
+    strcat(cmd, req->GetString("mode").c_str());
+    system(cmd);
 
     hv::Json response;
     response["code"] = 0;
