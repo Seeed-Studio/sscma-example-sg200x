@@ -443,7 +443,7 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp)
         response["code"] = 0;
         response["msg"] = "Scan wifi successfully";
     } else {
-        response["code"] = -1;
+        response["code"] = 0;
         response["msg"] = "Scanning WiFi too frequently";
     }
     response["data"] = hv::Json({});
