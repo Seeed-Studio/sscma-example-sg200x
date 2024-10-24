@@ -27,6 +27,7 @@ static void initSupervisor() {
     signal(SIGTERM, &exitHandle);
 
     openlog("supervisor", LOG_CONS | LOG_PID, 0);
+    setlogmask(LOG_UPTO(LOG_NOTICE));
 }
 
 int main(int argc, char** argv) {
