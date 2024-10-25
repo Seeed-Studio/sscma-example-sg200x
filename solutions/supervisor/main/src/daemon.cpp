@@ -196,6 +196,8 @@ void runDaemon() {
                     noderedStarting = 0;
                 } else {
                     noderedStarting = 1;
+                    startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node");
+                    sscmaStarting = 1;
                 }
             }
         } else {
