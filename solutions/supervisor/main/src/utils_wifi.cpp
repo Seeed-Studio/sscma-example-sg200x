@@ -119,6 +119,20 @@ std::string getWifiIp() {
     return std::string(info);
 }
 
+static bool isLegalWifiIp() {
+    std::string wifiIp = getWifiIp();
+
+    if (wifiIp.empty()) {
+        return false;
+    }
+
+    if (wifiIp.find("169.254") != std::string::npos) {
+        return false;
+    }
+
+    return true;
+}
+
 static int selectWifi(std::string id) {
     char cmd[128] = SCRIPT_WIFI_SELECT;
 
@@ -364,7 +378,7 @@ void monitorWifiStatusThread() {
         std::this_thread::sleep_for(std::chrono::seconds(10));
         wifiStatus = getWifiConnectStatus();
 
-        if (wifiStatus == "COMPLETED" && !getWifiIp().empty()) {
+        if (wifiStatus == "COMPLETED" && isLegalWifiIp()) {
             if (apStatus) {
                 if (++cnt >= 12) {
                     apStatus = false;
@@ -626,7 +640,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
             continue;
         }
 
-        if (connectStatus == "COMPLETED" && !getWifiIp().empty()) {
+        if (connectStatus == "COMPLETED" && isLegalWifiIp()) {
             response["code"] = 0;
             response["msg"] = "Connection successful";
             g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };
