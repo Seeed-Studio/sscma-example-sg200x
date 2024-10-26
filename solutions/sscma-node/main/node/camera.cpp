@@ -125,6 +125,11 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             frame->img.data     = new uint8_t[ppack->u32Len - ppack->u32Offset];
             frame->fps          = channels_[VencChn].fps;
             memcpy(frame->img.data, ppack->pu8Addr + ppack->u32Offset, ppack->u32Len - ppack->u32Offset);
+            if (VencChn == CHN_JPEG) {
+                frame->base64     = new char[4 * ((frame->img.size + 2) / 3 + 2)];
+                frame->base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
+                ma::utils::base64_encode(frame->img.data, frame->img.size, frame->base64, &frame->base64_len);
+            }
         }
         if (frame != nullptr) {
             frame->ref(channels_[VencChn].msgboxes.size());
@@ -179,15 +184,16 @@ void CameraNode::threadEntry() {
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
             Thread::enterCritical();
-            json reply     = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
-            int base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
-            char* base64   = new char[base64_len];
-            if (base64 != nullptr) {
-                memset(base64, 0, base64_len);
-                ma::utils::base64_encode(frame->img.data, frame->img.size, base64, &base64_len);
+            count_++;
+            if (count_ % 3) {  // every 2 frames
                 frame->release();
-                reply["data"]["image"] = std::string(base64, base64_len);
-                delete[] base64;
+                Thread::exitCritical();
+                continue;
+            }
+            json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
+            if (frame->base64 != nullptr) {
+                reply["data"]["image"] = std::string(frame->base64, frame->base64_len);
+                frame->release();
             }
             server_->response(id_, reply);
             Thread::exitCritical();
