@@ -157,9 +157,7 @@ void SaveNode::closeFile() {
         return;
     }
     av_write_trailer(avFmtCtx_);
-    // flush
-    av_write_frame(avFmtCtx_, nullptr);
-    avio_flush(avFmtCtx_->pb);
+
     if (avFmtCtx_->pb) {
         avio_closep(&avFmtCtx_->pb);
     }
