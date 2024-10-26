@@ -289,6 +289,28 @@ void getSnCode() {
     pclose(fp);
 }
 
+std::string getChannelUrl() {
+    std::string info = "";
+    int channel = 0;
+    size_t pos = 0;
+
+    info = readFile(PATH_UPGRADE_URL);
+    clearNewline(info);
+    pos = info.find(',');
+
+    if (pos == std::string::npos) {
+        return info;
+    }
+
+    channel = stoi(info.substr(0, pos));
+
+    if (channel == 0) {
+        return std::string(DEFAULT_UPGRADE_URL);
+    }
+
+    return info.substr(pos + 1);
+}
+
 int getUpdateStatus() {
     FILE* fp;
     char cmd[128] = SCRIPT_DEVICE_GETUPDATESTATUS;
@@ -360,74 +382,52 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
 {
     syslog(LOG_INFO, "start to get SystemUpdateVersinInfo...\n");
 
-    std::string content = readFile(PATH_UPGRADE_URL), url = "";
-    std::string cmd = SCRIPT_UPGRADE_LATEST, msg = "";
+    hv::Json response;
+    char cmd[128] = SCRIPT_UPGRADE_LATEST;
+    std::string content = "";
     std::string os = "Null", version = "Null";
-    int channel = 0, progress = 0;
-    size_t pos = content.find(',');
-    hv::Json response, data;
+    size_t pos = 0;
+    int updateStatus = getUpdateStatus();
 
-    if (pos != std::string::npos) {
-        channel = stoi(content.substr(0, pos));
-        url = content.substr(pos + 1);
-        if (url.back() == '\n') {
-            url.erase(url.size() - 1);
-        }
+    if (updateStatus) {
+        response["code"] = 0;
+        response["msg"] = "The system is being upgraded";
+        response["data"]["osName"] = os;
+        response["data"]["osVersion"] = version;
+        response["data"]["downloadUrl"] = "";
+        response["data"]["isUpgrading"] = updateStatus;
+        return resp->Json(response);
     }
 
-    if (channel == 0) {
-        cmd += DEFAULT_UPGRADE_URL;
-    } else {
-        cmd += url;
-    }
-
-    syslog(LOG_DEBUG, "cmd: %s\n", cmd.c_str());
-    system(cmd.c_str());
-
-    content = readFile(PATH_UPGRADE_PROGRESS_FILE);
-    pos = content.find(',');
-    if (pos != std::string::npos) {
-        progress = stoi(content.substr(0, pos));
-        msg = content.substr(pos + 1);
-        if (msg.back() == '\n') {
-            msg.erase(msg.size() - 1);
-        }
-    }
+    strcat(cmd, getChannelUrl().c_str());
+    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
+    system(cmd);
 
     content = readFile(PATH_UPGRADE_VERSION_FILE);
+    clearNewline(content);
     pos = content.find(' ');
-    if (pos != std::string::npos) {
-        os = content.substr(0, pos);
-        version = content.substr(pos + 1);
-    }
-    if (version.back() == '\n') {
-        version.erase(version.size() - 1);
-    }
-
-    syslog(LOG_INFO, "content: %s\n", content.c_str());
-    syslog(LOG_INFO, "progress: %d\n, msg: %s\n", progress, msg.c_str());
-    syslog(LOG_INFO, "os: %s, version: %s\n", os.c_str(), version.c_str());
-
-    if (progress == 0) {
-        response["code"] = 0;
-        response["msg"] = msg;
-    } else if (progress >= 11) {
-        response["code"] = 0;
-        response["msg"] = "";
-    } else if (progress == 3 || progress == 4) {
-        system(cmd.c_str());
-        response["code"] = 1103;
-        response["msg"] = msg;
-    } else {
-        response["code"] = 1106;
-        response["msg"] = msg;
+    if (pos == std::string::npos) {
+        response["code"] = -1;
+        response["msg"] = "Failed to get system version information";
+        response["data"]["osName"] = os;
+        response["data"]["osVersion"] = version;
+        response["data"]["downloadUrl"] = "";
+        response["data"]["isUpgrading"] = updateStatus;
+        return resp->Json(response);
     }
 
-    data["osName"] = os;
-    data["osVersion"] = version;
-    data["downloadUrl"] = "";
-    data["isUpgrading"] = getUpdateStatus();
-    response["data"] = data;
+    os = content.substr(0, pos);
+    version = content.substr(pos + 1);
+
+    syslog(LOG_DEBUG, "content: %s\n", content.c_str());
+    syslog(LOG_DEBUG, "os: %s, version: %s\n", os.c_str(), version.c_str());
+
+    response["code"] = 0;
+    response["msg"] = "Get system version information successfully";
+    response["data"]["osName"] = os;
+    response["data"]["osVersion"] = version;
+    response["data"]["downloadUrl"] = "";
+    response["data"]["isUpgrading"] = updateStatus;
 
     return resp->Json(response);
 }
