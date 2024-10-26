@@ -8,11 +8,15 @@ enum SERVICE_STATUS {
     SERVICE_STATUS_ERROR = 4,
 };
 
+extern bool g_updateStatus;
+
 std::string readFile(const std::string& path, const std::string& defaultname = "EmptyContent");
 int createFolder(const char* dirName);
 
 void initSystemStatus();
 void getSnCode();
+
+void updateSystemThread();
 
 int getSystemStatus(HttpRequest* req, HttpResponse* resp);
 int queryServiceStatus(HttpRequest* req, HttpResponse* resp);

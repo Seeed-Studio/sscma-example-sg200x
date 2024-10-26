@@ -13,6 +13,8 @@ ACTION=$1
 PERCENTAGE=0
 PERCENTAGE_FILE=/tmp/upgrade.percentage
 CTRL_FILE=/tmp/upgrade.ctrl
+LATEST_FILE=/tmp/upgrade.latest
+RESULT_LATEST_FILE=/tmp/upgrade_result.latest
 START_FILE=/tmp/upgrade.start
 VERSION_FILE=/tmp/upgrade.version
 
@@ -25,6 +27,8 @@ function clean_up() {
 
     if [ "$ACTION" = "start" ]; then
         rm -rf $START_FILE
+    else
+        rm -rf $LATEST_FILE
     fi
 }
 
@@ -45,6 +49,11 @@ function exit_upgrade() {
     write_percent
     clean_up
     exit $1
+}
+
+function exit_latest() {
+    clean_up
+    exit 1
 }
 
 function write_upgrade_flag() {
@@ -81,7 +90,7 @@ function check_version() {
         issue=$(cat /etc/issue)
     fi
     if [ -z "$issue" ]; then
-        echo "10,No issue file."
+        echo "Failed,No issue file."
         return
     fi
 
@@ -89,14 +98,14 @@ function check_version() {
     os_version=$(echo $issue | awk '{print $2}')
 
     if [ $os_name != $1 ]; then
-        echo "11,OS name is not match(current:$os_name != $1)."
+        echo "YES,OS name is not match(current:$os_name != $1)."
         return
     else
         if [ $os_version != $2 ]; then
-            echo "12,OS version is not match(current:$os_version != $2). "
+            echo "YES,OS version is not match(current:$os_version != $2). "
             return
         else
-            echo "0,OS version is match."
+            echo "NO,OS version is match."
         fi
     fi
 }
@@ -125,7 +134,13 @@ function mount_recovery() {
 }
 
 function wget_file() {
-    wget -T 10 -t 3 -q --no-check-certificate $1 -O $2
+    wget -T 10 -t 3 -c -q --no-check-certificate $1 -O $2
+
+    if [ "$?" = "0" ]; then
+        echo "OK"
+    else
+        echo "Failed"
+    fi
 }
 
 function is_use_partition_b() {
@@ -139,41 +154,106 @@ function is_use_partition_b() {
     fi
 }
 
+function download_file() {
+    MOUNTPATH=$(mktemp -d)
+    result=$(mount_recovery)
+
+    if [ $? -ne 0 ]; then
+        echo "mount directory failed"
+        return 1
+    fi
+
+    zip_txt="$MOUNTPATH/$ZIP_FILE"
+    url_txt="$MOUNTPATH/$URL_FILE"
+
+    if [[ ! -f $zip_txt || ! -f $url_txt ]]; then
+        echo "Failed"
+        clean_up
+        return 1
+    fi
+
+    zip=$(cat $zip_txt | awk '{print $2}')
+    md5=$(cat $zip_txt | awk '{print $1}')
+    full_url=$(cat $url_txt)
+    full_path=$MOUNTPATH/$zip
+
+    find "$MOUNTPATH" -name "*.zip" | grep -v $zip | xargs rm -rf
+
+    if [ -f "$full_path" ]; then
+        if [ "$1" = "start" ]; then
+            while true
+            do
+                pid=$(ps | grep wget | grep ota.zip)
+                if [ -z "$pid" ]; then
+                    break
+                fi
+
+                sleep 1
+            done
+        fi
+
+        current_md5="`md5sum $full_path | awk '{print $1}'`"
+        if [ "$current_md5" == "$md5" ]; then
+            echo "OK"
+            clean_up
+            return 0
+        else
+            rm -rf $full_path
+        fi
+    fi
+
+    channel=$(cat /etc/upgrade | awk -F',' '{print $1}')
+    if [ "$channel" = "0" ]; then
+        version=$(cat $VERSION_FILE | awk -F' ' '{print $2}')
+        mirror_url="https://files.seeedstudio.com/reCamera/$version/$zip"
+
+        result=$(wget_file $mirror_url $full_path)
+        if [ "$result" == "OK" ]; then
+            echo $result
+            clean_up
+            return 0
+        fi
+    fi
+
+    wget_file $full_url $full_path
+    clean_up
+}
+
 # trap `rm -rf $CTRL_FILE` SIGINT
 
 case $1 in
 latest)
     if [ -z "$2" ]; then echo "Usage: $0 latest <url>"; exit 1; fi
-    if [ -f $CTRL_FILE ]; then echo "Upgrade is running."; exit 1; fi
-    echo "" > $CTRL_FILE
+    if [ -f $LATEST_FILE ]; then echo "Failed,latest is running."; exit 1; fi
+    echo "" > $LATEST_FILE
 
-    step=0
-    PERCENTAGE=0
-    write_percent
-
-    let step+=1
-    echo "Step$step: Get upgrade url"
-    url_md5=$(get_upgrade_url $2)
-    if [ -z $url_md5 ]; then
-        echo "Step$step: failed."
-        PERCENTAGE="1,Unkown url."
-        exit_upgrade 1
-    fi
-
-    let step+=1
-    echo "Step$step: Mount partition"
     MOUNTPATH=$(mktemp -d)
     result=$(mount_recovery)
     if [ $? -ne 0 ]; then
-        echo "Step$step: failed."
-        PERCENTAGE=2,"$result"
-        exit_upgrade 1
+        echo "Failed, mount recovery"
+        exit_latest
     fi
 
-    let step+=1
-    echo "Step$step: wget: $url_md5"
+    if [ -f "$RESULT_LATEST_FILE" ]; then
+        base_url=$(echo $2 | sed 's/\/latest$//')
+        last_url="`cat $MOUNTPATH/$URL_FILE | cut -c 1-${#base_url}`"
+
+        if [ "$last_url" = "$base_url" ]; then
+            echo "`cat $RESULT_LATEST_FILE`"
+            exit_latest
+        else
+            rm -rf $RESULT_LATEST_FILE
+        fi
+    fi
+
+    url_md5=$(get_upgrade_url $2)
+    if [ -z $url_md5 ]; then
+        echo "Failed, get upgrade url"
+        exit_latest
+    fi
+
     md5_txt=$MOUNTPATH/$MD5_FILE
-    wget_file $url_md5 $md5_txt
+    wget_file $url_md5 $md5_txt >/dev/null 2>&1
 
     zip_txt=$MOUNTPATH/$ZIP_FILE
     echo $(cat $md5_txt | grep ".*ota.*\.zip") > $zip_txt
@@ -181,30 +261,26 @@ latest)
 
     zip=$(cat $zip_txt | awk '{print $2}')
     if [ -z "$zip" ]; then
-        echo "Step$step: failed."
+        echo "Failed, get zip txt"
         rm -rfv $zip_txt
-        PERCENTAGE="3,Get file list failed."
-        exit_upgrade 1
+        exit_latest
     fi
 
     os_name=$(echo "$zip" | awk -F'_' '{print $2}')
     os_version=$(echo "$zip" | awk -F'_' '{print $3}')
-    let step+=1
-    echo "Step$step: the latest $os_name $os_version"
     if [ -z "$os_name" ] || [ -z "$os_version" ]; then
-        echo "Step$step: failed."
+        echo "Failed, get os name and version"
         rm -rfv $zip_txt
-        PERCENTAGE="4,Unknown file name $zip."
-        exit_upgrade 1
+        exit_latest
     fi
 
-    echo "$os_name $os_version" > $VERSION_FILE
     result=$(check_version $os_name $os_version)
-    PERCENTAGE=$result
-    echo "check_version: $result"
+    echo "$result"
 
+    echo "$result" > $RESULT_LATEST_FILE
+    echo "$os_name $os_version" > $VERSION_FILE
     echo "${url_md5%/*}/$zip" > $MOUNTPATH/$URL_FILE
-    exit_upgrade 0
+    exit_latest
     ;;
 
 start)
@@ -221,71 +297,22 @@ start)
     MOUNTPATH=$(mktemp -d)
     result=$(mount_recovery)
     if [ $? -eq 0 ]; then
-        PERCENTAGE=10
+        PERCENTAGE=20
     else
         echo "Step$step: failed."
-        PERCENTAGE=10,"$result"
+        PERCENTAGE=20,"$result"
         exit_upgrade 1
     fi
     write_percent
 
     if [ -z $2 ]; then
         let step+=1
-        echo "Step$step: Get upgrade url"
-        PERCENTAGE=20
-        url_txt=$MOUNTPATH/$URL_FILE
-        if [ ! -f $url_txt ]; then
-            echo "Step$step: failed."
-            PERCENTAGE="20,Url.txt not exist."
-            exit_upgrade 1
-        fi
-        full_url=$(cat $url_txt)
-        if [ -z "$full_url" ]; then
-            echo "Step$step: failed: $URL_FILE is empty."
-            PERCENTAGE="20,Url.txt file is empty."
-            exit_upgrade 1
-        fi
-        echo "url: $full_url"
-
-        let step+=1
-        echo "Step$step: Read $ZIP_FILE"
-        zip_txt=$MOUNTPATH/$ZIP_FILE
-        if [ ! -f $zip_txt ]; then
-            echo "Step$step: $ZIP_FILE file not exist."
-            PERCENTAGE="30,Zip.txt not exist."
-            exit_upgrade 1
-        fi
-        md5=$(cat $zip_txt | awk '{print $1}')
-        zip=$(cat $zip_txt | awk '{print $2}')
-        echo "zip=$zip"
-        echo "md5=$md5"
-        if [ -z "$md5" ] || [ -z "$zip" ]; then
-            echo "Step$step: failed."
-            PERCENTAGE="30,Zip.txt file is empty."
-            exit_upgrade 1
-        fi
-        write_percent
-
-        let step+=1
-        echo "Step$step: Download $zip"
-        full_path=$MOUNTPATH/$zip
-        rm -fv $MOUNTPATH/*.zip
-        wget_file $full_url $full_path
-        if [ -f $full_path ]; then
+        echo "Step$step: download firmware"
+        result=$(download_file start)
+        if [ "$result" = "OK" ]; then
             PERCENTAGE=40
         else
-            echo "Step$step: failed."
-            PERCENTAGE=40,"Download failed."
-            exit_upgrade 1
-        fi
-        write_percent
-
-        zip_md5=$(md5sum $full_path | awk '{print $1}')
-        let step+=1
-        echo "Step$step: Check $zip md5: $zip_md5"
-        if [ "$md5" != "$zip_md5" ]; then
-            echo "Step$step: failed."
-            PERCENTAGE=50,"Package md5 check failed."
+            PERCENTAGE=40,"download firmware failed"
             exit_upgrade 1
         fi
         write_percent
@@ -301,6 +328,17 @@ start)
         let step+=1
         echo "Step$step: Use local: $full_path"
     fi
+
+    MOUNTPATH=$(mktemp -d)
+    result=$(mount_recovery)
+
+    if [ $? -ne 0 ]; then
+        echo "mount directory failed"
+        exit_upgrade 1
+    fi
+
+    zip=$(cat $MOUNTPATH/$ZIP_FILE | awk '{print $2}')
+    full_path=$MOUNTPATH/$zip
 
     read_md5=$(unzip -p $full_path md5sum.txt | grep "$ROOTFS_FILE" | awk '{print $1}')
     let step+=1
@@ -370,8 +408,20 @@ rollback)
     echo "Restart to valid."
     ;;
 
+download)
+    download_file
+    ;;
+
 stop)
     echo "stop" > $CTRL_FILE
+    pid="`pidof unzip`"
+    if [ "$pid" ]; then
+        kill $pid
+    fi
+    pid="`pidof dd`"
+    if [ "$pid" ]; then
+        kill $pid
+    fi
     ;;
 
 query)

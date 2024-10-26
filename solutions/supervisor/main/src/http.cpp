@@ -196,11 +196,15 @@ int initWiFi() {
     th = std::thread(monitorWifiStatusThread);
     th.detach();
 
+    th = std::thread(updateSystemThread);
+    th.detach();
+
     return 0;
 }
 
 int stopWifi() {
     g_wifiStatus = false;
+    g_updateStatus = false;
     system(SCRIPT_WIFI_STOP);
 
     return 0;

@@ -1,6 +1,8 @@
 #ifndef _UTILS_WIFI_H_
 #define _UTILS_WIFI_H_
 
+extern bool g_wifiStatus;
+
 int queryWiFiInfo(HttpRequest* req, HttpResponse* resp);
 int scanWiFi(HttpRequest* req, HttpResponse* resp);
 int getWiFiScanResults(HttpRequest* req, HttpResponse* resp);

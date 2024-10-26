@@ -4,6 +4,7 @@ ifname=wlan0
 hostapdFile=/etc/hostapd_2g4.conf
 IFS=""
 CTRL_FILE=/tmp/upgrade.ctrl
+LATEST_FILE=/tmp/upgrade.latest
 START_FILE=/tmp/upgrade.start
 
 clean_upgrade_file() {
@@ -15,6 +16,9 @@ clean_upgrade_file() {
         fi
         if [ -f "$START_FILE" ]; then
             rm -rf $START_FILE
+        fi
+        if [ -f "$LATEST_FILE" ]; then
+            rm -rf $LATEST_FILE
         fi
     fi
 }

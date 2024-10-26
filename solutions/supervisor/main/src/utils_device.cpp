@@ -20,6 +20,7 @@
 SERVICE_STATUS systemStatus = SERVICE_STATUS_STARTING;
 std::string sn;
 std::string ip;
+bool g_updateStatus = true;
 int g_progress = 0;
 int g_restart = 0;
 
@@ -311,6 +312,53 @@ std::string getChannelUrl() {
     return info.substr(pos + 1);
 }
 
+bool needUpdateSystem() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_UPGRADE_LATEST;
+    char info[128] = "";
+
+    strcat(cmd, getChannelUrl().c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return false;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    pclose(fp);
+
+    if (strstr(info, "YES") != NULL) {
+        return true;
+    }
+
+    return false;
+}
+
+bool downloadFirmware() {
+    FILE* fp;
+    char cmd[128] = SCRIPT_UPGRADE_DOWNLOAD;
+    char info[128] = "";
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return false;
+    }
+
+    fgets(info, sizeof(info) - 1, fp);
+    clearNewline(info, strlen(info));
+
+    pclose(fp);
+
+    if (strstr(info, "OK") != NULL) {
+        return true;
+    }
+
+    return true;
+}
+
 int getUpdateStatus() {
     FILE* fp;
     char cmd[128] = SCRIPT_DEVICE_GETUPDATESTATUS;
@@ -331,6 +379,16 @@ int getUpdateStatus() {
     }
 
     return 0;
+}
+
+void updateSystemThread() {
+    while (g_updateStatus) {
+        if (needUpdateSystem()) {
+            downloadFirmware();
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
 }
 
 int getSystemStatus(HttpRequest* req, HttpResponse* resp) {

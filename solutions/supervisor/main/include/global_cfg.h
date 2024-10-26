@@ -65,6 +65,7 @@
 #define SCRIPT_UPGRADE(action) ("/mnt/system/usr/scripts/upgrade.sh" \
                                 " " #action " ")
 #define SCRIPT_UPGRADE_LATEST SCRIPT_UPGRADE(latest)
+#define SCRIPT_UPGRADE_DOWNLOAD SCRIPT_UPGRADE(download)
 #define SCRIPT_UPGRADE_START SCRIPT_UPGRADE(start)
 #define SCRIPT_UPGRADE_QUERY SCRIPT_UPGRADE(query)
 #define SCRIPT_UPGRADE_STOP SCRIPT_UPGRADE(stop)
