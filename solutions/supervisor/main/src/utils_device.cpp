@@ -102,7 +102,7 @@ static int saveModelFile(const HttpContextPtr& ctx, std::string filePath) {
 
     auto iter = form.find(modelKey);
     if (iter == form.end()) {
-        return HTTP_STATUS_BAD_REQUEST;
+        return 200;
     }
 
     const auto& formdata = iter->second;
