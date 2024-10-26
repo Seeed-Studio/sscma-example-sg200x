@@ -19,7 +19,7 @@
 #define AV_LOG_LEVEL AV_LOG_QUIET
 #endif
 
-#define NODE_MAX_AVILABLE_CAPACITY 0.9f
+#define NODE_MIN_AVILABLE_CAPACITY 128 * 1024 * 1024
 
 namespace ma::node {
 
@@ -27,7 +27,7 @@ static constexpr char TAG[] = "ma::node::save";
 
 SaveNode::SaveNode(std::string id)
     : Node("save", id), storage_(NODE_SAVE_PATH_LOCAL), enabled_(true), slice_(300), duration_(-1), count_(0), camera_(nullptr), frame_(30), thread_(nullptr), avFmtCtx_(nullptr), avStream_(nullptr) {
-    av_log_set_level(AV_LOG_LEVEL);
+    // av_log_set_level(AV_LOG_LEVEL);
 }
 
 SaveNode::~SaveNode() {
@@ -37,12 +37,13 @@ SaveNode::~SaveNode() {
 std::string SaveNode::generateFileName() {
     auto now = std::time(nullptr);
     std::ostringstream oss;
-    oss << storage_ << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S") << ".mp4";
+    oss << storage_ << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S") << ".mov";
     return oss.str();
 }
 
 bool SaveNode::recycle(uint32_t req_size) {
-    uint64_t avail = std::filesystem::space(storage_).available * NODE_MAX_AVILABLE_CAPACITY;
+    uint64_t avail = std::filesystem::space(storage_).available;
+    req_size += NODE_MIN_AVILABLE_CAPACITY;
     if (avail < req_size) {
         std::vector<std::filesystem::directory_entry> files;
         for (const auto& p : std::filesystem::directory_iterator(storage_)) {
@@ -92,18 +93,17 @@ bool SaveNode::openFile(videoFrame* frame) {
     MA_LOGI(TAG, "save to %s", filename_.c_str());
 
     avFmtCtx_ = avformat_alloc_context();
-    avStream_ = avformat_new_stream(avFmtCtx_, nullptr);
 
     int ret = avformat_alloc_output_context2(&avFmtCtx_, nullptr, nullptr, filename_.c_str());
     if (ret < 0) {
-        MA_LOGW(TAG, "avformat_alloc_output_context2 failed: %d", ret);
+        MA_LOGW(TAG, "could not create output context: %d", ret);
         goto err;
     }
 
     avStream_ = avformat_new_stream(avFmtCtx_, nullptr);
 
     if (avStream_ == nullptr) {
-        MA_LOGE(TAG, "avformat_new_stream failed");
+        MA_LOGE(TAG, "could not create new stream");
         goto err;
     }
 
@@ -114,6 +114,7 @@ bool SaveNode::openFile(videoFrame* frame) {
     avStream_->codecpar->height                                = frame->img.height;
     avStream_->codecpar->codec_type                            = AVMEDIA_TYPE_VIDEO;
     avStream_->codecpar->format                                = 0;
+
 
     /* Enable defragment funciton in ffmpeg */
     time(&curtime);
@@ -126,13 +127,13 @@ bool SaveNode::openFile(videoFrame* frame) {
     av_dict_set(&dict, "fsync", "false", 0);
     av_dict_set(&avFmtCtx_->metadata, "creation_time", value, 0);
     if (avio_open2(&avFmtCtx_->pb, filename_.c_str(), AVIO_FLAG_WRITE, nullptr, &dict) < 0) {
-        MA_LOGE(TAG, "avio_open2 failed");
+        MA_LOGE(TAG, "could not open %s", filename_.c_str());
         goto err;
     }
     av_dict_free(&dict);
 
     if (avformat_write_header(avFmtCtx_, &opt) < 0) {
-        MA_LOGE(TAG, "avformat_write_header failed");
+        MA_LOGE(TAG, "write header failed");
         goto err;
     }
     return true;
@@ -142,6 +143,10 @@ err:
         if (avFmtCtx_->pb) {
             avio_closep(&avFmtCtx_->pb);
         }
+        avformat_free_context(avFmtCtx_);
+        avFmtCtx_ = nullptr;
+        avStream_ = nullptr;
+        filename_ = "";
         av_dict_free(&opt);
     }
     return false;
@@ -152,6 +157,7 @@ void SaveNode::closeFile() {
         return;
     }
     av_write_trailer(avFmtCtx_);
+
     if (avFmtCtx_->pb) {
         avio_closep(&avFmtCtx_->pb);
     }
@@ -208,15 +214,20 @@ void SaveNode::threadEntry() {
                 packet.flags = frame->img.key ? AV_PKT_FLAG_KEY : 0;
                 AVRational r = av_d2q(1.0 / frame->fps, INT_MAX);
                 av_packet_rescale_ts(&packet, r, avStream_->time_base);
-                if (av_write_frame(avFmtCtx_, &packet) != 0) {
-                    MA_LOGW(TAG, "write frame failed");
+                int ret = av_write_frame(avFmtCtx_, &packet);
+                if (ret != 0) {
+                    MA_LOGW(TAG, "write frame (%d: size %d) failed %d", ret, count_, frame->img.size);
+                    closeFile();
+                    enabled_ = false;
+                    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "save"}, {"code", MA_ENOMEM}, {"data", "No space left on device"}}));
+                    continue;
                 }
                 if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_)) {
                     closeFile();
                     enabled_ = false;
                     MA_LOGI(TAG, "stop recording");
-                    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "stop"}, {"code", MA_OK}}));
-                    break;
+                    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "stop"}, {"code", MA_OK}, {"data", ""}}));
+                    continue;
                 }
             }
             frame->release();
@@ -273,8 +284,11 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
     std::filesystem::space_info si = std::filesystem::space(storage_);
 
-    uint64_t available = si.available * NODE_MAX_AVILABLE_CAPACITY / 1024;
+    int64_t available = (si.available - NODE_MIN_AVILABLE_CAPACITY) / 1024;
 
+    if (available < 0) {
+        available = 0;
+    }
 
     MA_LOGI(TAG, "storage: %s, slice: %d duration: %d available: %ldKB", storage_.c_str(), slice_, duration_, available);
 

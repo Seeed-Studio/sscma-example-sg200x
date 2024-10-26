@@ -51,6 +51,8 @@ protected:
     Thread* thread_;
     std::string filename_;
     AVFormatContext* avFmtCtx_;
+    AVCodecContext* avCodecCtx_;
+    AVCodec* avCodec_;
     AVStream* avStream_;
 };
 
