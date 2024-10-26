@@ -8,7 +8,7 @@
 #include "app_ipcam_ll.h"
 
 
-#define LL_DATA_CACHE_DEPTH_MAX     10
+#define LL_DATA_CACHE_DEPTH_MAX     30
 
 #define LL_INIT(N) ((N)->next = (N)->prev = (N))
 
