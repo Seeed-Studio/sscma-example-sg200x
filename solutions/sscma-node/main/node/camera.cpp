@@ -180,16 +180,19 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
 
 void CameraNode::threadEntry() {
     videoFrame* frame = nullptr;
+    uint8_t skip      = 3;
 
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
             Thread::enterCritical();
-            count_++;
-            if (count_ % 3) {  // every 2 frames
+            skip--;
+            if (skip) {
                 frame->release();
                 Thread::exitCritical();
                 continue;
             }
+            skip = 3;
+            count_++;
             json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
             if (frame->base64 != nullptr) {
                 reply["data"]["image"] = std::string(frame->base64, frame->base64_len);
