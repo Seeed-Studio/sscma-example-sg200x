@@ -29,7 +29,9 @@ void show_help() {
               << "  -v, --version        Show version\n"
               << "  -h, --help           Show this help message\n"
               << "  -c, --config <file>  Configuration file, default is " << MA_NODE_CONFIG_FILE << "\n"
-              << "  --start              Start the service" << std::endl;
+              << "  --start              Start the service\n"
+              << "  --deamon             Run in deamon mode\n"
+              << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -40,7 +42,7 @@ int main(int argc, char** argv) {
 
     Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE}, [](int sig) {
         MA_LOGE(TAG, "received signal %d", sig);
-        if (sig == SIGSEGV) {
+        if (sig == SIGSEGV || sig == SIGABRT) {
             deinitVideo();
         } else {
             NodeFactory::clear();
@@ -52,6 +54,7 @@ int main(int argc, char** argv) {
 
     std::string config_file = MA_NODE_CONFIG_FILE;
     bool start_service      = false;
+    bool deamon             = false;
 
     if (argc < 2) {
         show_help();
@@ -76,6 +79,8 @@ int main(int argc, char** argv) {
             }
         } else if (arg == "--start") {
             start_service = true;
+        } else if (arg == "--deamon") {
+            deamon = true;
         } else {
             std::cerr << "Error: Unknown option " << arg << std::endl;
             return 1;
@@ -104,6 +109,25 @@ int main(int argc, char** argv) {
         MA_STORAGE_GET_STR(config, MA_STORAGE_KEY_MQTT_PWD, password, "");
         MA_STORAGE_GET_POD(config, MA_STORAGE_KEY_MQTT_PORT, port, 1883);
 
+        if (deamon) {
+            char* err;
+            pid_t pid;
+
+            pid = fork();
+            if (pid < 0) {
+                err = strerror(errno);
+                MA_LOGE(TAG, "Error in fork: %s", err);
+                exit(1);
+            }
+            if (pid > 0) {
+                exit(0);
+            }
+            if (setsid() < 0) {
+                err = strerror(errno);
+                MA_LOGE(TAG, "Error in setsid: %s", err);
+                exit(1);
+            }
+        }
 
         NodeServer server(client);
 
