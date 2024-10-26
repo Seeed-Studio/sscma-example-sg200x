@@ -973,7 +973,7 @@ static void* Thread_Streaming_Proc(void* pArgs)
             /* save streaming to LinkList and proc it in another thread */
             s32Ret = app_ipcam_LList_Data_Push(&stStream, g_pDataCtx[VencChn]);
             if (s32Ret != CVI_SUCCESS) {
-                APP_PROF_LOG_PRINT(LEVEL_ERROR, "Venc streaming push linklist failed!\n");
+                APP_PROF_LOG_PRINT(LEVEL_ERROR, "Venc %d streaming push linklist failed!\n", VencChn);
             }
         }
 
