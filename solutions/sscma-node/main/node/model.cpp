@@ -48,7 +48,7 @@ void ModelNode::threadEntry() {
         }
         Thread::enterCritical();
         json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
-
+    
         width  = raw->img.width;
         height = raw->img.height;
 
@@ -117,16 +117,9 @@ void ModelNode::threadEntry() {
             reply["data"]["labels"] = labels_;
         }
 
-        if (debug_) {
-            int base64_len = 4 * ((jpeg->img.size + 2) / 3 + 2);
-            char* base64   = new char[base64_len];
-            if (base64 != nullptr) {
-                memset(base64, 0, base64_len);
-                ma::utils::base64_encode(jpeg->img.data, jpeg->img.size, base64, &base64_len);
-                jpeg->release();
-                reply["data"]["image"] = std::string(base64, base64_len);
-                delete[] base64;
-            }
+        if (debug_ && jpeg->base64 != nullptr) {
+            reply["data"]["image"] = std::string(jpeg->base64, jpeg->base64_len);
+            jpeg->release();
         } else {
             reply["data"]["image"] = "";
         }
