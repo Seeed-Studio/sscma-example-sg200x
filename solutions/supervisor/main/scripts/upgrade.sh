@@ -205,6 +205,12 @@ function download_file() {
 
                 sleep 1
             done
+        else
+            if [ "`ps | grep wget | grep ota.zip`" ]; then
+                echo "Failed, Firmware is downloading"
+                clean_up
+                return 0
+            fi
         fi
 
         if [ ! -f "$RESULT_MD5_FILE" ]; then
@@ -216,7 +222,7 @@ function download_file() {
             clean_up
             return 0
         else
-            rm -rf $full_path
+            rm -rf $RESULT_MD5_FILE
         fi
     fi
 
@@ -231,6 +237,8 @@ function download_file() {
             md5sum $full_path > $RESULT_MD5_FILE
             clean_up
             return 0
+        else
+            echo "" > $RESULT_MD5_FILE
         fi
     fi
 
@@ -238,6 +246,8 @@ function download_file() {
     echo $result
     if [ "$result" == "OK" ]; then
         md5sum $full_path > $RESULT_MD5_FILE
+    else
+        echo "" > $RESULT_MD5_FILE
     fi
     clean_up
 }
@@ -363,7 +373,7 @@ start)
     read_md5=$(unzip -p $full_path md5sum.txt | grep "$ROOTFS_FILE" | awk '{print $1}')
     let step+=1
     echo "Step$step: Read $ROOTFS_FILE md5: $read_md5"
-    PERCENTAGE=60
+    PERCENTAGE=50
     write_percent
 
     is_use_partition_b
