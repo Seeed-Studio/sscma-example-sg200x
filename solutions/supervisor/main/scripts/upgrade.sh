@@ -17,6 +17,7 @@ PERCENTAGE_FILE=/tmp/upgrade.percentage
 CTRL_FILE=/tmp/upgrade.ctrl
 LATEST_FILE=/tmp/upgrade.latest
 RESULT_LATEST_FILE=/tmp/upgrade_result.latest
+RESULT_MD5_FILE=/tmp/upgrade_md5.latest
 START_FILE=/tmp/upgrade.start
 VERSION_FILE=/tmp/upgrade.version
 
@@ -206,7 +207,10 @@ function download_file() {
             done
         fi
 
-        current_md5="`md5sum $full_path | awk '{print $1}'`"
+        if [ ! -f "$RESULT_MD5_FILE" ]; then
+            md5sum $full_path > $RESULT_MD5_FILE
+        fi
+        current_md5="`cat $RESULT_MD5_FILE | awk '{print $1}'`"
         if [ "$current_md5" == "$md5" ]; then
             echo "OK"
             clean_up
@@ -224,12 +228,17 @@ function download_file() {
         result=$(wget_file $mirror_url $full_path)
         if [ "$result" == "OK" ]; then
             echo $result
+            md5sum $full_path > $RESULT_MD5_FILE
             clean_up
             return 0
         fi
     fi
 
-    wget_file $full_url $full_path
+    result=$(wget_file $full_url $full_path)
+    echo $result
+    if [ "$result" == "OK" ]; then
+        md5sum $full_path > $RESULT_MD5_FILE
+    fi
     clean_up
 }
 
