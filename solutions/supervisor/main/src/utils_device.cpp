@@ -633,6 +633,8 @@ int updateSystem(HttpRequest* req, HttpResponse* resp)
 
     char cmd[128] = SCRIPT_UPGRADE_START;
 
+    stopFlow();
+
     strcat(cmd, "&");
     system(cmd);
 

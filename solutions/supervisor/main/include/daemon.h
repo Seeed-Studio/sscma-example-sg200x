@@ -16,6 +16,8 @@ extern int sscmaStarting;
 extern APP_STATUS noderedStatus;
 extern APP_STATUS sscmaStatus;
 
+int stopFlow();
+
 void initDaemon();
 void stopDaemon();
 
