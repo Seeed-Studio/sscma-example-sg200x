@@ -8,6 +8,8 @@ RECV_PARTITION=/dev/mmcblk0p5
 ROOTFS=/dev/mmcblk0p3
 ROOTFS_B=/dev/mmcblk0p4
 ROOTFS_FILE=rootfs_ext4.emmc
+LATEST_PATH=/tmp/latest.upgrade
+DOWNLOAD_PATH=/tmp/download.upgrade
 
 ACTION=$1
 PERCENTAGE=0
@@ -19,10 +21,10 @@ START_FILE=/tmp/upgrade.start
 VERSION_FILE=/tmp/upgrade.version
 
 function clean_up() {
-    if [ ! -z $MOUNTPATH ]; then
-        umount $MOUNTPATH
-        rm -rf $MOUNTPATH
-    fi
+    # if [ ! -z $MOUNTPATH ]; then
+    #     umount $MOUNTPATH
+    #     rm -rf $MOUNTPATH
+    # fi
     rm -rf $CTRL_FILE
 
     if [ "$ACTION" = "start" ]; then
@@ -123,6 +125,18 @@ function mount_recovery() {
         fi
     fi
 
+    if [ -d "$MOUNTPATH" ]; then
+        mount_result=$(mount | grep "$MOUNTPATH")
+        if [ "$mount_result" ]; then
+            echo "Already mount $RECV_PARTITION on $MOUNTPATH."
+            return 0
+        else
+            rm -rf $MOUNTPATH/*
+        fi
+    else
+        mkdir -p $MOUNTPATH
+    fi
+
     mount $RECV_PARTITION $MOUNTPATH
     if mount | grep -q "$RECV_PARTITION on $MOUNTPATH type"; then
         echo "Mount $RECV_PARTITION on $MOUNTPATH ok."
@@ -155,7 +169,7 @@ function is_use_partition_b() {
 }
 
 function download_file() {
-    MOUNTPATH=$(mktemp -d)
+    MOUNTPATH=$DOWNLOAD_PATH
     result=$(mount_recovery)
 
     if [ $? -ne 0 ]; then
@@ -227,7 +241,7 @@ latest)
     if [ -f $LATEST_FILE ]; then echo "Failed,latest is running."; exit 1; fi
     echo "" > $LATEST_FILE
 
-    MOUNTPATH=$(mktemp -d)
+    MOUNTPATH=$LATEST_PATH
     result=$(mount_recovery)
     if [ $? -ne 0 ]; then
         echo "Failed, mount recovery"
@@ -239,8 +253,13 @@ latest)
         last_url="`cat $MOUNTPATH/$URL_FILE | cut -c 1-${#base_url}`"
 
         if [ "$last_url" = "$base_url" ]; then
-            echo "`cat $RESULT_LATEST_FILE`"
-            exit_latest
+            result="`cat $RESULT_LATEST_FILE`"
+            if [[ "$result" == "NO*" ]]; then
+                rm -rf $RESULT_LATEST_FILE
+            else
+                echo "$result"
+                exit_latest
+            fi
         else
             rm -rf $RESULT_LATEST_FILE
         fi
@@ -327,14 +346,6 @@ start)
 
         let step+=1
         echo "Step$step: Use local: $full_path"
-    fi
-
-    MOUNTPATH=$(mktemp -d)
-    result=$(mount_recovery)
-
-    if [ $? -ne 0 ]; then
-        echo "mount directory failed"
-        exit_upgrade 1
     fi
 
     zip=$(cat $MOUNTPATH/$ZIP_FILE | awk '{print $2}')
