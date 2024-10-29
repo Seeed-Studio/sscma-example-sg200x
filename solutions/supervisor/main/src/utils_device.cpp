@@ -436,6 +436,7 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     device["code"] = 0;
     device["msg"] = "";
 
+    std::string wifiStatus;
     std::string os_version = readFile(PATH_ISSUE);
     std::string os = "Null", version = "Null";
     size_t pos = os_version.find(' ');
@@ -458,14 +459,24 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
         url.erase(url.size() - 1);
     }
 
+    wifiStatus = getWifiConnectStatus();
+
     hv::Json data;
     data["appName"] = "supervisor";
     data["deviceName"] = readFile(PATH_DEVICE_NAME);
     data["sn"] = sn;
     data["ip"] = getDeviceIp(req->client_addr.ip);
-    data["wifiIp"] = getIpAddress("wlan0");
-    data["mask"] = getNetmaskAddress("wlan0");
-    data["gateway"] = getGateWay(data["wifiIp"]);
+
+    if (wifiStatus == "COMPLETED" && isLegalWifiIp()) {
+        data["wifiIp"] = getIpAddress("wlan0");
+        data["mask"] = getNetmaskAddress("wlan0");
+        data["gateway"] = getGateWay(data["wifiIp"]);
+    } else {
+        data["wifiIp"] = "-";
+        data["mask"] = "-";
+        data["gateway"] = "-";
+    }
+
     data["dns"] = "-";
     data["channel"] = std::stoi(ch);
     data["serverUrl"] = url;
