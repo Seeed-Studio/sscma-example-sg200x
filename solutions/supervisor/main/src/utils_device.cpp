@@ -292,21 +292,18 @@ void getSnCode() {
 
 std::string getChannelUrl() {
     std::string info = "";
-    int channel = 0;
     size_t pos = 0;
 
     info = readFile(PATH_UPGRADE_URL);
     clearNewline(info);
-    pos = info.find(',');
 
-    if (pos == std::string::npos) {
-        return info;
+    if (info[0] == '0') {
+        return std::string(DEFAULT_UPGRADE_URL);
     }
 
-    channel = stoi(info.substr(0, pos));
-
-    if (channel == 0) {
-        return std::string(DEFAULT_UPGRADE_URL);
+    pos = info.find(',');
+    if (pos == std::string::npos) {
+        return std::string("");
     }
 
     return info.substr(pos + 1);
