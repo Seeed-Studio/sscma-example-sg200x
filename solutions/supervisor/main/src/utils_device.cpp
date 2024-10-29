@@ -438,11 +438,12 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "start to get SystemUpdateVersinInfo...\n");
 
     hv::Json response;
-    char cmd[128] = SCRIPT_UPGRADE_LATEST;
-    std::string content = "";
-    std::string os = "Null", version = "Null";
+    FILE* fp;
+    char cmd[128] = SCRIPT_UPGRADE_LATEST, info[128] = "";
+    std::string content = "", os = "Null", version = "Null";
     size_t pos = 0;
     int updateStatus = getUpdateStatus();
+    bool error = false;
 
     if (updateStatus) {
         response["code"] = 0;
@@ -455,13 +456,27 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
     }
 
     strcat(cmd, getChannelUrl().c_str());
-    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
-    system(cmd);
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        error = true;
+    }
 
-    content = readFile(PATH_UPGRADE_VERSION_FILE);
-    clearNewline(content);
-    pos = content.find(' ');
-    if (pos == std::string::npos) {
+    if (!error) {
+        fgets(info, sizeof(info) - 1, fp);
+        clearNewline(info, strlen(info));
+        pclose(fp);
+
+        content = readFile(PATH_UPGRADE_VERSION_FILE, "");
+        clearNewline(content);
+        pos = content.find(' ');
+
+        if(strstr(info, "Failed") != NULL || content == "" || pos == std::string::npos) {
+            error = true;
+        }
+    }
+
+    if (error) {
         response["code"] = -1;
         response["msg"] = "Failed to get system version information";
         response["data"]["osName"] = os;
