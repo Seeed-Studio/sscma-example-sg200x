@@ -16,6 +16,7 @@
 #include "global_cfg.h"
 #include "utils_device.h"
 #include "daemon.h"
+#include "common.h"
 
 SERVICE_STATUS systemStatus = SERVICE_STATUS_STARTING;
 std::string sn;
@@ -172,79 +173,6 @@ static std::string getDeviceIp(std::string clientIp) {
     pclose(fp);
 
     return std::string(deviceIp);
-}
-
-static std::string getGateWay(std::string ip)
-{
-    FILE* fp;
-    char info[128];
-    char cmd[128] = SCRIPT_WIFI_GATEWAY;
-    std::string res;
-
-    strcat(cmd, ip.c_str());
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
-        return res;
-    }
-
-    if (fgets(info, sizeof(info) - 1, fp) != NULL) {
-        res = std::string(info);
-        if (res.back() == '\n') {
-            res.erase(res.size() - 1);
-        }
-    }
-    pclose(fp);
-
-    return res;
-}
-
-std::string getIpAddress(const char* ifrName) {
-    char info[INET_ADDRSTRLEN];
-    int fd;
-    struct ifreq ifr;
-
-    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        syslog(LOG_ERR, "socket init failed");
-        return std::string("-");
-    }
-
-    strncpy(ifr.ifr_name, ifrName, IFNAMSIZ);
-
-    if (ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
-        syslog(LOG_ERR, "ioctl SIOCGIFADDR failed");
-        close(fd);
-        return std::string("-");
-    }
-    inet_ntop(AF_INET, &((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr, info, INET_ADDRSTRLEN);
-
-    close(fd);
-
-    return std::string(info);
-}
-
-std::string getNetmaskAddress(const char* ifrName) {
-    char netmask[INET_ADDRSTRLEN];
-    int fd;
-    struct ifreq ifr;
-
-    if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        syslog(LOG_ERR, "socket init failed");
-        return std::string("-");
-    }
-
-    strncpy(ifr.ifr_name, ifrName, IFNAMSIZ);
-
-    if (ioctl(fd, SIOCGIFNETMASK, &ifr) < 0) {
-        syslog(LOG_ERR, "ioctl SIOCGIFNETMASK failed");
-        close(fd);
-        return std::string("-");
-    }
-    inet_ntop(AF_INET, &((struct sockaddr_in *)&ifr.ifr_netmask)->sin_addr, netmask, INET_ADDRSTRLEN);
-
-    close(fd);
-
-    return std::string(netmask);
 }
 
 void initSystemStatus() {
