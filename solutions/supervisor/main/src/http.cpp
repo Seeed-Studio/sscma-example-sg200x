@@ -163,6 +163,7 @@ int initHttpd()
     initHttpsService();
 #endif
 
+    server.worker_threads = 3;
     server.service = &router;
     server.port = HTTPD_PORT;
     server.start();
