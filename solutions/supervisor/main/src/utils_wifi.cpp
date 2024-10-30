@@ -26,6 +26,7 @@ std::vector<std::vector<std::string>> g_wifiList;
 std::map<std::string, WIFI_INFO_S> g_wifiInfo;
 std::string g_currentWifi;
 bool g_wifiStatus = true;
+bool g_wifiConnecting = false;
 int g_wifiMode = 1;
 int g_etherConnected = 0;
 
@@ -663,6 +664,14 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     char info[128];
     char cmd[128] = "";
 
+    if (g_wifiConnecting) {
+        response["code"] = -1;
+        response["msg"] = "There is a WiFi connection, the current operation is prohibited";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
+    g_wifiConnecting = true;
     currentWifiId = getWifiId();
     if (req->GetString("password").empty()) {
         strcpy(cmd, SCRIPT_WIFI_SELECT);
@@ -680,7 +689,11 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
-        return -1;
+        response["code"] = -1;
+        response["msg"] = "Failed to connect WiFi";
+        response["data"] = hv::Json({});
+        g_wifiConnecting = false;
+        return resp->Json(response);
     }
 
     if (fgets(info, sizeof(info) - 1, fp) != NULL) {
@@ -700,6 +713,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
         response["code"] = -1;
         response["msg"] = msg;
         response["data"] = hv::Json({});
+        g_wifiConnecting = false;
         return resp->Json(response);
     }
 
@@ -737,6 +751,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
         usleep(10 * 1000);
     }
 
+    g_wifiConnecting = false;
     return resp->Json(response);
 }
 
