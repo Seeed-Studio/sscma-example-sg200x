@@ -73,7 +73,7 @@ function get_upgrade_url() {
     if [[ $url =~ .*\.txt$ ]]; then
         full_url=$url
     else
-        url=$(curl -skLi $url --connect-timeout 3 | grep -i '^location:' | awk '{print $2}' | sed 's/^"//;s/"$//')
+        url=$(curl -skLi $url --connect-timeout 3 | grep -i '^location:.*tag.*' | awk '{print $2}' | sed 's/^"//;s/"$//')
         if [ -z "$url" ]; then
             echo ""
             return 1

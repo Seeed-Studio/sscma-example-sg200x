@@ -528,6 +528,33 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "channel: %s\n", str_ch.c_str());
     syslog(LOG_INFO, "serverUrl: %s\n", str_url.c_str());
 
+    if (getUpdateStatus()) {
+        response["code"] = -1;
+        response["msg"] = "Upgrading, this operation is prohibited";
+        response["data"] = hv::Json({});
+
+        return resp->Json(response);
+    }
+
+    if (str_ch[0] == '1') {
+        bool error = false;
+        if (str_url.compare(0, 7, "http://") != 0 && str_url.compare(0, 8, "https://") != 0) {
+            error = true;
+        }
+
+        if (str_url.size() >= 6 && str_url.compare(str_url.size() - 6, 6, "latest") != 0) {
+            error = true;
+        }
+
+        if (error) {
+            response["code"] = -1;
+            response["msg"] = "Invalid Address";
+            response["data"] = hv::Json({});
+
+            return resp->Json(response);
+        }
+    }
+
     if (str_ch.empty()) {
         response["code"] = 1109;
         response["msg"] = "value error";

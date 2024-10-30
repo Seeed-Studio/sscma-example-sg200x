@@ -3,6 +3,7 @@
 APP_TOOL="/mnt/system/usr/scripts/apptool.sh"
 CTRL_FILE=/tmp/upgrade.ctrl
 START_FILE=/tmp/upgrade.start
+PERCENTAGE_FILE=/tmp/upgrade.percentage
 
 function restartApp() {
     app="$1"
@@ -36,7 +37,11 @@ getUpdateStatus)
     if [[ -f $START_FILE && "$is_stop" != "stop" ]]; then
         echo "YES"
     else
-        echo "NO"
+        if [[ -f $PERCENTAGE_FILE && "`cat $PERCENTAGE_FILE`" = "100" ]]; then
+            echo "YES"
+        else
+            echo "NO"
+        fi
     fi
     ;;
 
