@@ -183,7 +183,6 @@ function download_file() {
 
     if [[ ! -f $zip_txt || ! -f $url_txt ]]; then
         echo "Failed"
-        clean_up
         return 1
     fi
 
@@ -208,7 +207,6 @@ function download_file() {
         else
             if [ "`ps | grep wget | grep ota.zip`" ]; then
                 echo "Failed, Firmware is downloading"
-                clean_up
                 return 0
             fi
         fi
@@ -219,7 +217,6 @@ function download_file() {
         current_md5="`cat $RESULT_MD5_FILE | awk '{print $1}'`"
         if [ "$current_md5" == "$md5" ]; then
             echo "OK"
-            clean_up
             return 0
         else
             rm -rf $RESULT_MD5_FILE
@@ -235,7 +232,6 @@ function download_file() {
         if [ "$result" == "OK" ]; then
             echo $result
             md5sum $full_path > $RESULT_MD5_FILE
-            clean_up
             return 0
         else
             echo "" > $RESULT_MD5_FILE
@@ -249,7 +245,6 @@ function download_file() {
     else
         echo "" > $RESULT_MD5_FILE
     fi
-    clean_up
 }
 
 # trap `rm -rf $CTRL_FILE` SIGINT
