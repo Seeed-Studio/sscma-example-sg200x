@@ -230,8 +230,15 @@ function download_file() {
 
         result=$(wget_file $mirror_url $full_path)
         if [ "$result" == "OK" ]; then
+            current_md5="`md5sum $full_path | awk '{print $1}'`"
+            if [ "$current_md5" != "$md5" ]; then
+                echo "Failed, Firmware download error"
+                rm -rf $full_path
+                return 1
+            fi
+
             echo $result
-            md5sum $full_path > $RESULT_MD5_FILE
+            echo "$current_md5" > $RESULT_MD5_FILE
             return 0
         else
             echo "" > $RESULT_MD5_FILE
@@ -239,10 +246,18 @@ function download_file() {
     fi
 
     result=$(wget_file $full_url $full_path)
-    echo $result
     if [ "$result" == "OK" ]; then
-        md5sum $full_path > $RESULT_MD5_FILE
+        current_md5="`md5sum $full_path | awk '{print $1}'`"
+        if [ "$current_md5" != "$md5" ]; then
+            echo "Failed, Firmware download error"
+            rm -rf $full_path
+            return 1
+        fi
+
+        echo $result
+        echo "$current_md5" > $RESULT_MD5_FILE
     else
+        echo $result
         echo "" > $RESULT_MD5_FILE
     fi
 }
