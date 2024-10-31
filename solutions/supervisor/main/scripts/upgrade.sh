@@ -1,5 +1,9 @@
 #!/bin/sh
 
+RECAMERA_URL=https://files.seeedstudio.com/reCamera
+LATEST_URL=https://files.seeedstudio.com/reCamera/latest
+LATEST_VERSION_FILE=/tmp/latest
+
 MD5_FILE=sg2002_recamera_emmc_md5sum.txt
 URL_FILE=url.txt
 ZIP_FILE=zip.txt
@@ -66,6 +70,29 @@ function write_upgrade_flag() {
     fw_setenv boot_rollback
 }
 
+function get_mirror_url() {
+    channel=$(cat /etc/upgrade | awk -F',' '{print $1}')
+    if [ "$channel" != "0" ]; then
+        echo ""
+        return
+    fi
+
+    result=$(wget_file $LATEST_URL $LATEST_VERSION_FILE)
+    if [ $result != "OK" ]; then
+        echo ""
+        return
+    fi
+
+    version=$(cat $LATEST_VERSION_FILE)
+    rm -rf $LATEST_VERSION_FILE
+    if [ -z $version ]; then
+        echo ""
+        return
+    fi
+
+    echo "$RECAMERA_URL/$version/$MD5_FILE"
+}
+
 function get_upgrade_url() {
     local url=$1
     local full_url=$url
@@ -73,9 +100,9 @@ function get_upgrade_url() {
     if [[ $url =~ .*\.txt$ ]]; then
         full_url=$url
     else
-        url=$(curl -skLi $url --connect-timeout 3 | grep -i '^location:.*tag.*' | awk '{print $2}' | sed 's/^"//;s/"$//')
+        url=$(curl -skLi $url --connect-timeout 2 | grep -i '^location:.*tag.*' | awk '{print $2}' | sed 's/^"//;s/"$//')
         if [ -z "$url" ]; then
-            echo ""
+            echo "$(get_mirror_url)"
             return 1
         fi
 
