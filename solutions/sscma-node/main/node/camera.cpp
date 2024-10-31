@@ -185,8 +185,7 @@ void CameraNode::threadEntry() {
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
             Thread::enterCritical();
-            skip--;
-            if (skip) {
+            if (--skip) {
                 frame->release();
                 Thread::exitCritical();
                 continue;

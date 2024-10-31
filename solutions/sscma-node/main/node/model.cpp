@@ -28,6 +28,7 @@ void ModelNode::threadEntry() {
     videoFrame* jpeg       = nullptr;
     int32_t width          = 0;
     int32_t height         = 0;
+    int32_t take           = 0;
 
     switch (model_->getType()) {
         case MA_MODEL_TYPE_IMCLS:
@@ -48,7 +49,7 @@ void ModelNode::threadEntry() {
         }
         Thread::enterCritical();
         json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
-    
+
         width  = raw->img.width;
         height = raw->img.height;
 
@@ -65,6 +66,7 @@ void ModelNode::threadEntry() {
             err                    = detector->run(nullptr);
             auto _perf             = detector->getPerf();
             auto _results          = detector->getResults();
+            take                   = _perf.postprocess + _perf.inference + _perf.preprocess;
             reply["data"]["boxes"] = json::array();
             std::vector<ma_bbox_t> _bboxes;
             _bboxes.assign(_results.begin(), _results.end());
@@ -106,10 +108,17 @@ void ModelNode::threadEntry() {
             err           = classifier->run(nullptr);
             auto _perf    = classifier->getPerf();
             auto _results = classifier->getResults();
+            take          = _perf.postprocess + _perf.inference + _perf.preprocess;
             reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
             reply["data"]["classes"] = json::array();
             for (auto& result : _results) {
                 reply["data"]["classes"].push_back({static_cast<int8_t>(result.score * 100), result.target});
+            }
+        }
+
+        if (debug_) {
+            if (take < 66) {  // restrict max 15 fps;
+                Thread::sleep(Tick::fromMilliseconds(66 - take));
             }
         }
 
