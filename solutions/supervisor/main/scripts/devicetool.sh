@@ -37,7 +37,11 @@ getUpdateStatus)
     if [[ -f $START_FILE && "$is_stop" != "stop" ]]; then
         echo "YES"
     else
-        if [[ -f $PERCENTAGE_FILE && "`cat $PERCENTAGE_FILE`" = "100" ]]; then
+        percentage=""
+        if [ -f "$PERCENTAGE_FILE" ]; then
+            percentage=$(cat $PERCENTAGE_FILE)
+        fi
+        if [ "$percentage" = "100" ]; then
             echo "YES"
         else
             echo "NO"
