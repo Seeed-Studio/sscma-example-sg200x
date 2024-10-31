@@ -546,7 +546,7 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
             error = true;
         }
 
-        if (error) {
+        if (error && str_url.size()) {
             response["code"] = -1;
             response["msg"] = "Invalid Address";
             response["data"] = hv::Json({});
