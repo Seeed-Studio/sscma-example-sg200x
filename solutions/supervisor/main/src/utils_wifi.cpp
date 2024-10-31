@@ -665,10 +665,15 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     char cmd[128] = "";
 
     if (g_wifiConnecting) {
-        response["code"] = -1;
-        response["msg"] = "There is a WiFi connection, the current operation is prohibited";
-        response["data"] = hv::Json({});
-        return resp->Json(response);
+        std::string wifiStatus = getWifiConnectStatus();
+
+        if (wifiStatus == "ASSOCIATING" || wifiStatus == "ASSOCIATED" ||
+            wifiStatus == "4WAY_HANDSHAKE" || wifiStatus == "GROUP_HANDSHAKE") {
+            response["code"] = -1;
+            response["msg"] = "There is a WiFi connection, the current operation is prohibited";
+            response["data"] = hv::Json({});
+            return resp->Json(response);
+        }
     }
 
     g_wifiConnecting = true;
