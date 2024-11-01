@@ -128,7 +128,7 @@ bool isLegalWifiIp() {
         return false;
     }
 
-    if (wifiIp.find("169.254") != std::string::npos) {
+    if (wifiIp.compare(0, 7, "169.254") == 0) {
         return false;
     }
 
@@ -622,7 +622,7 @@ int getWiFiScanResults(HttpRequest* req, HttpResponse* resp)
         syslog(LOG_INFO, "eth0 connect here\n");
     }
 
-    if (ip.empty() || ip.find("169.254") != std::string::npos) {
+    if (ip.empty() || ip.compare(0, 7, "169.254") == 0) {
         g_etherConnected = 0;
         etherInfo["connectedStatus"] = 0;
         etherInfo["macAddres"] = "-";
@@ -659,7 +659,8 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
 
     hv::Json response;
     std::string msg, currentWifiId;
-    int id = 0, connecting = 0;
+    bool status = true;
+    int id = 0, connecting = 0, connectCnt = 0, ipAssignmentCnt = 0;
     FILE* fp;
     char info[128];
     char cmd[128] = "";
@@ -723,37 +724,62 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp)
     }
 
     while (true) {
+        usleep(10 * 1000);
+
         std::string connectStatus = getWifiConnectStatus();
+
+        ++connectCnt;
+        if (connectCnt >= 1000) {
+            status = false;
+            response["code"] = -1;
+            response["msg"] = "Connection timeout";
+            response["data"] = hv::Json({});
+            break;
+        }
 
         if (connectStatus == "ASSOCIATING") {
             connecting = 1;
+        }
+
+        if (connectStatus == "COMPLETED") {
+            if (isLegalWifiIp()) {
+                response["code"] = 0;
+                response["msg"] = "Connection successful";
+                response["data"] = hv::Json({});
+                g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };
+                break;
+            }
+
+            ++ipAssignmentCnt;
+            if (ipAssignmentCnt >= 300) {
+                status = false;
+                response["code"] = -1;
+                response["msg"] = "Ip assignment timeout";
+                response["data"] = hv::Json({});
+                break;
+            }
         }
 
         if (!connecting) {
             continue;
         }
 
-        if (connectStatus == "COMPLETED" && isLegalWifiIp()) {
-            response["code"] = 0;
-            response["msg"] = "Connection successful";
-            g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };
-            break;
-        }
-
         if (connectStatus == "DISCONNECTED" || connectStatus == "INACTIVE" || connectStatus == "Failed") {
-            if (req->GetString("password").size()) {
-                removeWifi(std::to_string(id));
-            }
-            if (currentWifiId != "-1") {
-                selectWifi(currentWifiId);
-            }
+            status = false;
             response["code"] = -1;
             response["msg"] = "Connection failed";
             response["data"] = hv::Json({});
             break;
         }
+    }
 
-        usleep(10 * 1000);
+    if (!status) {
+        if (req->GetString("password").size()) {
+            removeWifi(std::to_string(id));
+        }
+        if (currentWifiId != "-1") {
+            selectWifi(currentWifiId);
+        }
     }
 
     g_wifiConnecting = false;
