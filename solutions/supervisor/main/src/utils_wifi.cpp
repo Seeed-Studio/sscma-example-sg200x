@@ -792,10 +792,20 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
     hv::Json response;
+    std::string currentId;
     FILE* fp;
     char info[128] = "";
     char cmd[128] = SCRIPT_WIFI_DISCONNECT;
     int len = 0;
+
+    updateConnectedWifiInfo();
+    currentId = getWifiId();
+    if (currentId != std::to_string(g_wifiInfo[req->GetString("ssid")].id)) {
+        response["code"] = -1;
+        response["msg"] = "The current wifi is not connected";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
