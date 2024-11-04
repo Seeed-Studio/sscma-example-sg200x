@@ -107,6 +107,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             channels_[VencChn].dropped = false;
             for (int j = i; j < i + cnt; j++) {
                 memcpy(frame->img.data + offset, pstStream->pstPack[j].pu8Addr + pstStream->pstPack[j].u32Offset, pstStream->pstPack[j].u32Len - pstStream->pstPack[j].u32Offset);
+                frame->blocks.push_back({frame->img.data + offset, pstStream->pstPack[j].u32Len - pstStream->pstPack[j].u32Offset});
                 offset += pstStream->pstPack[j].u32Len - pstStream->pstPack[j].u32Offset;
             }
             i += (cnt - 1);
@@ -124,6 +125,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             frame->img.physical = false;
             frame->img.data     = new uint8_t[ppack->u32Len - ppack->u32Offset];
             frame->fps          = channels_[VencChn].fps;
+            frame->blocks.push_back({frame->img.data, ppack->u32Len - ppack->u32Offset});
             memcpy(frame->img.data, ppack->pu8Addr + ppack->u32Offset, ppack->u32Len - ppack->u32Offset);
             if (VencChn == CHN_JPEG) {
                 frame->base64     = new char[4 * ((frame->img.size + 2) / 3 + 2)];

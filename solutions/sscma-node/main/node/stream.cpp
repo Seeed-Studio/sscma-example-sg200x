@@ -26,7 +26,9 @@ void StreamNode::threadEntry() {
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
             Thread::enterCritical();
-            transport_->send((char*)frame->img.data, frame->img.size);
+            for (auto& block : frame->blocks) {
+                transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+            }
             frame->release();
             Thread::exitCritical();
         }
