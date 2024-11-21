@@ -17,7 +17,7 @@ component_register(
     COMPONENT_NAME main
     SRCS ${srcs}
     INCLUDE_DIRS ${incs}
-    PRIVATE_REQUIREDS sscma cvi_rtsp avformat avcodec avutil 
+    PRIVATE_REQUIREDS sscma-micro cvi_rtsp avformat avcodec avutil 
 )
 
 
