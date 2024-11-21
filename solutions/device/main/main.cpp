@@ -6,6 +6,7 @@
 
 using namespace ma;
 
+
 int main(int argc, char** argv) {
 
     Device* device = Device::getInstance();
@@ -53,6 +54,8 @@ int main(int argc, char** argv) {
 
     camera->startStream(Camera::StreamMode::kRefreshOnReturn);
     static char buf[4 * 1024];
+    uint32_t count = 0;
+
     while (true) {
         // for(auto & transport : device->getTransports()) {
         //     if(*transport && transport->available() > 0) {
@@ -80,10 +83,15 @@ int main(int argc, char** argv) {
         // }
         // ma_img_t raw;
         // if (camera->retrieveFrame(raw, MA_PIXEL_FORMAT_RGB888) == MA_OK) {
-        //     MA_LOGI(MA_TAG, "raw size: %d", raw.size);
+        //     snprintf(buf, sizeof(buf), "test/%d_%dx%d.rgb", count++, raw.width, raw.height);
+        //     FILE* file = fopen(buf, "wb");
+        //     if (file != NULL) {
+        //         fwrite(raw.data, raw.size, 1, file);
+        //         fclose(file);
+        //     }
         //     camera->returnFrame(raw);
+        // }
     }
-    // }
 
     camera->stopStream();
 

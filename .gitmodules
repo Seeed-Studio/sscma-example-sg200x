@@ -1,4 +1,3 @@
-[submodule "components/sscma"]
-	path = components/sscma
-	url = https://github.com/Seeed-Studio/SSCMA-Micro.git
-	branch = refactor/sscma-deploy
+[submodule "components/sscma-micro/sscma-micro"]
+	path = components/sscma-micro/sscma-micro
+	url = https://github.com/Seeed-Studio/SSCMA-Micro
