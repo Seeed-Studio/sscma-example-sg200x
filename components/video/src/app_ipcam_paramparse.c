@@ -242,7 +242,7 @@ static const APP_VENC_CHN_CFG_S venc_jpeg = {
     .VpssGrp = 0,
     .VpssChn = 0,
     .stJpegCodecParam = {
-        .quality = 30,
+        .quality = 60,
         .MCUPerECS = 0,
     },
     .enBindMode = VENC_BIND_DISABLE,

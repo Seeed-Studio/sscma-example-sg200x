@@ -22,7 +22,7 @@ typedef struct {
 
 class videoFrame {
 public:
-    videoFrame() : ref_cnt(0), base64(nullptr), base64_len(0), blocks({}), timestamp(0), fps(0) {
+    videoFrame() : ref_cnt(0), blocks({}), timestamp(0), fps(0) {
         memset(&img, 0, sizeof(ma_img_t));
     }
     ~videoFrame() = default;
@@ -33,19 +33,14 @@ public:
         if (ref_cnt.load(std::memory_order_relaxed) == 0 || ref_cnt.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             if (!img.physical) {
                 delete[] img.data;
-                if (base64) {
-                    delete[] base64;
-                }
             }
             delete this;
         }
     }
     ma_tick_t timestamp;
     std::atomic<int> ref_cnt;
-    std::vector<std::pair<void *, size_t>> blocks;
+    std::vector<std::pair<void*, size_t>> blocks;
     int8_t fps;
-    char* base64;
-    int base64_len;
     ma_img_t img;
 };
 
