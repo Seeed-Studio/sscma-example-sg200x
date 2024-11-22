@@ -27,7 +27,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::exitCritical();                     \
     }
 
-CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), option_(0), frame_(30), thread_(nullptr) {
+CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), option_(0), frame_(1), thread_(nullptr) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -127,11 +127,6 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
             frame->fps          = channels_[VencChn].fps;
             frame->blocks.push_back({frame->img.data, ppack->u32Len - ppack->u32Offset});
             memcpy(frame->img.data, ppack->pu8Addr + ppack->u32Offset, ppack->u32Len - ppack->u32Offset);
-            if (VencChn == CHN_JPEG) {
-                frame->base64     = new char[4 * ((frame->img.size + 2) / 3 + 2)];
-                frame->base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
-                ma::utils::base64_encode(frame->img.data, frame->img.size, frame->base64, &frame->base64_len);
-            }
         }
         if (frame != nullptr) {
             frame->ref(channels_[VencChn].msgboxes.size());
@@ -182,24 +177,24 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
 
 void CameraNode::threadEntry() {
     videoFrame* frame = nullptr;
-    uint8_t skip      = 3;
+
 
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
             Thread::enterCritical();
-            if (--skip) {
-                frame->release();
-                Thread::exitCritical();
-                continue;
-            }
-            skip = 3;
+            ma_tick_t start = Tick::current();
             count_++;
-            json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
-            if (frame->base64 != nullptr) {
-                reply["data"]["image"] = std::string(frame->base64, frame->base64_len);
-                frame->release();
-            }
+            json reply     = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
+            char* base64   = new char[4 * ((frame->img.size + 2) / 3 + 2)];
+            int base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
+            ma::utils::base64_encode(frame->img.data, frame->img.size, base64, &base64_len);
+            reply["data"]["image"] = std::string(base64, base64_len);
+            delete[] base64;
+            frame->release();
             server_->response(id_, reply);
+            if (Tick::current() - start < Tick::fromMilliseconds(100)) {
+                Thread::sleep(Tick::fromMilliseconds(100) - (Tick::current() - start));
+            }
             Thread::exitCritical();
         }
     }
@@ -257,7 +252,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 480;
+            channels_[CHN_JPEG].height = 640;
             channels_[CHN_JPEG].fps    = 30;
             break;
         case 2:
@@ -267,7 +262,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 480;
+            channels_[CHN_JPEG].height = 640;
             channels_[CHN_JPEG].fps    = 30;
             break;
         default:
@@ -277,7 +272,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 480;
+            channels_[CHN_JPEG].height = 640;
             channels_[CHN_JPEG].fps    = 30;
             break;
     }

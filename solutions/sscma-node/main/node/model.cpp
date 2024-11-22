@@ -37,6 +37,7 @@ void ModelNode::threadEntry() {
         }
 
         Thread::enterCritical();
+        ma_tick_t start = Tick::current();
 
         json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
 
@@ -110,14 +111,22 @@ void ModelNode::threadEntry() {
             reply["data"]["labels"] = labels_;
         }
 
-        if (debug_ && jpeg->base64 != nullptr) {
-            reply["data"]["image"] = std::string(jpeg->base64, jpeg->base64_len);
+        if (debug_) {
+            char* base64   = new char[4 * ((jpeg->img.size + 2) / 3 + 2)];
+            int base64_len = 4 * ((jpeg->img.size + 2) / 3 + 2);
+            ma::utils::base64_encode(jpeg->img.data, jpeg->img.size, base64, &base64_len);
+            reply["data"]["image"] = std::string(base64, base64_len);
+            delete[] base64;
             jpeg->release();
         } else {
             reply["data"]["image"] = "";
         }
 
         server_->response(id_, reply);
+
+        if (debug_ && (Tick::current() - start < Tick::fromMilliseconds(100))) {
+            Thread::sleep(Tick::fromMilliseconds(100) - (Tick::current() - start));
+        }
 
         Thread::exitCritical();
     }
