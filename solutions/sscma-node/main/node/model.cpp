@@ -18,28 +18,16 @@ ModelNode::~ModelNode() {
     onDestroy();
 }
 
-
 void ModelNode::threadEntry() {
 
-    ma_err_t err           = MA_OK;
-    Detector* detector     = nullptr;
-    Classifier* classifier = nullptr;
-    videoFrame* raw        = nullptr;
-    videoFrame* jpeg       = nullptr;
-    int32_t width          = 0;
-    int32_t height         = 0;
-    int32_t take           = 0;
-
-    switch (model_->getType()) {
-        case MA_MODEL_TYPE_IMCLS:
-            classifier = static_cast<Classifier*>(model_);
-            break;
-        default:
-            detector = static_cast<Detector*>(model_);
-            break;
-    }
+    ma_err_t err     = MA_OK;
+    videoFrame* raw  = nullptr;
+    videoFrame* jpeg = nullptr;
+    int32_t width    = 0;
+    int32_t height   = 0;
 
     while (started_) {
+
         if (!raw_frame_.fetch(reinterpret_cast<void**>(&raw), Tick::fromSeconds(2))) {
             continue;
         }
@@ -47,7 +35,9 @@ void ModelNode::threadEntry() {
             raw->release();
             continue;
         }
+
         Thread::enterCritical();
+
         json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
 
         width  = raw->img.width;
@@ -59,14 +49,15 @@ void ModelNode::threadEntry() {
             .is_physical = true,
             .is_variable = false,
         };
+
         tensor.data.data = reinterpret_cast<void*>(raw->img.data);
         engine_->setInput(0, tensor);
         model_->setRunDone([this, raw](void* ctx) { raw->release(); });
-        if (detector != nullptr) {
+
+        if (model_->getOutputType() == MA_OUTPUT_TYPE_BBOX) {
+            Detector* detector     = static_cast<Detector*>(model_);
             err                    = detector->run(nullptr);
-            auto _perf             = detector->getPerf();
             auto _results          = detector->getResults();
-            take                   = _perf.postprocess + _perf.inference + _perf.preprocess;
             reply["data"]["boxes"] = json::array();
             std::vector<ma_bbox_t> _bboxes;
             _bboxes.assign(_results.begin(), _results.end());
@@ -102,25 +93,18 @@ void ModelNode::threadEntry() {
                 reply["data"]["lines"]  = json::array();
                 reply["data"]["lines"].push_back(counter_.getSplitter());
             }
-
-            reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
-        } else if (classifier != nullptr) {
-            err           = classifier->run(nullptr);
-            auto _perf    = classifier->getPerf();
-            auto _results = classifier->getResults();
-            take          = _perf.postprocess + _perf.inference + _perf.preprocess;
-            reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
+        } else if (model_->getOutputType() == MA_OUTPUT_TYPE_CLASS) {
+            Classifier* classifier   = static_cast<Classifier*>(model_);
+            err                      = classifier->run(nullptr);
+            auto _results            = classifier->getResults();
             reply["data"]["classes"] = json::array();
             for (auto& result : _results) {
                 reply["data"]["classes"].push_back({static_cast<int8_t>(result.score * 100), result.target});
             }
         }
 
-        if (debug_) {
-            if (take < 66) {  // restrict max 15 fps;
-                Thread::sleep(Tick::fromMilliseconds(66 - take));
-            }
-        }
+        const auto _perf = model_->getPerf();
+        reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
 
         if (labels_.size() > 0) {
             reply["data"]["labels"] = labels_;
@@ -342,7 +326,7 @@ ma_err_t ModelNode::onStart() {
         return MA_OK;
     }
 
-    const ma_img_t* img = nullptr;
+    const ma_img_t* img = static_cast<const ma_img_t*>(model_->getInput());
 
     for (auto& dep : dependencies_) {
         if (dep.second->type() == "camera") {
@@ -354,13 +338,6 @@ ma_err_t ModelNode::onStart() {
     if (camera_ == nullptr) {
         MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
         return MA_ENOTSUP;
-    }
-
-    switch (model_->getType()) {
-        case MA_MODEL_TYPE_IMCLS:
-            img = static_cast<Classifier*>(model_)->getInputImg();
-        default:
-            img = static_cast<Detector*>(model_)->getInputImg();
     }
 
     camera_->config(CHN_RAW, img->width, img->height, 30, img->format);
