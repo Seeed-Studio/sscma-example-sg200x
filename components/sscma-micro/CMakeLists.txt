@@ -27,7 +27,6 @@ set(INCS
         ${INCS_EIGEN}
         ${INCS_CJSON}
         ${SSCMA_ROOT_DIR}/sscma
-        ${SSCMA_ROOT_DIR}/sscma/porting/posix
         ${SSCMA_PORTING_DIR}/sophgo
         ${SSCMA_PORTING_DIR}/sophgo/sg200x
         ${SSCMA_PORTING_DIR}/sophgo/sg200x/recamera
