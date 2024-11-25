@@ -102,9 +102,29 @@ void ModelNode::threadEntry() {
             for (auto& result : _results) {
                 reply["data"]["classes"].push_back({static_cast<int8_t>(result.score * 100), result.target});
             }
+        } else if (model_->getOutputType() == MA_OUTPUT_TYPE_KEYPOINT) {
+            PoseDetector* pose_detector = static_cast<PoseDetector*>(model_);
+            err                         = pose_detector->run(nullptr);
+            auto _results               = pose_detector->getResults();
+            reply["data"]["keypoints"]  = json::array();
+            for (auto& result : _results) {
+                json pts = nlohmann::json::array();
+                for (auto& pt : result.pts) {
+                    pts.push_back({static_cast<int16_t>(pt.x * width), static_cast<int16_t>(pt.y * height), static_cast<int8_t>(pt.z * 100)});
+                }
+                nlohmann::json box = {static_cast<int16_t>(result.box.x * width),
+                                      static_cast<int16_t>(result.box.y * height),
+                                      static_cast<int16_t>(result.box.w * width),
+                                      static_cast<int16_t>(result.box.h * height),
+                                      static_cast<int8_t>(result.box.score * 100),
+                                      result.box.target};
+                reply["data"]["keypoints"].push_back({box, pts});
+            }
         }
 
+
         const auto _perf = model_->getPerf();
+
         reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
 
         if (labels_.size() > 0) {

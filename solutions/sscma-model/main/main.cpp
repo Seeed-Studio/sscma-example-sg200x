@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
             cv::rectangle(image, cv::Point(x1, y1), cv::Point(x2, y2), ColorPalette::getColor(result.box.target), 2, 8, 0);
             cv::putText(image, content, cv::Point(x1, y1 - 10), cv::FONT_HERSHEY_SIMPLEX, 0.6, ColorPalette::getColor(result.box.target), 2, cv::LINE_AA);
         }
-    } else if (model->getOutputType() == MA_OUTPUT_TYPE_SEGMENTATION) {
+    } else if (model->getOutputType() == MA_OUTPUT_TYPE_SEGMENT) {
         ma::model::Segmenter* segmenter = static_cast<ma::model::Segmenter*>(model);
         segmenter->run(&img);
         auto _results = segmenter->getResults();
