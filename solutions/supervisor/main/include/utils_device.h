@@ -2,10 +2,10 @@
 #define _UTILS_DEVICE_H_
 
 enum SERVICE_STATUS {
-    SERVICE_STATUS_NORMAL = 0,
-    SERVICE_STATUS_STARTING = 1,
+    SERVICE_STATUS_NORMAL      = 0,
+    SERVICE_STATUS_STARTING    = 1,
     SERVICE_STATUS_STARTFAILED = 2,
-    SERVICE_STATUS_ERROR = 4,
+    SERVICE_STATUS_ERROR       = 4,
 };
 
 extern bool g_updateStatus;
@@ -41,5 +41,7 @@ int uploadApp(const HttpContextPtr& ctx);
 int getModelInfo(HttpRequest* req, HttpResponse* resp);
 int getModelFile(HttpRequest* req, HttpResponse* resp);
 int uploadModel(const HttpContextPtr& ctx);
+
+int getModelList(HttpRequest* req, HttpResponse* resp);
 
 #endif
