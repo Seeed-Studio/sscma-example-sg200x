@@ -17,7 +17,6 @@ ModelNode::ModelNode(std::string id)
 ModelNode::~ModelNode() {
     onDestroy();
 }
-
 void ModelNode::threadEntry() {
 
     ma_err_t err     = MA_OK;
@@ -108,17 +107,33 @@ void ModelNode::threadEntry() {
             auto _results               = pose_detector->getResults();
             reply["data"]["keypoints"]  = json::array();
             for (auto& result : _results) {
-                json pts = nlohmann::json::array();
+                json pts = json::array();
                 for (auto& pt : result.pts) {
                     pts.push_back({static_cast<int16_t>(pt.x * width), static_cast<int16_t>(pt.y * height), static_cast<int8_t>(pt.z * 100)});
                 }
-                nlohmann::json box = {static_cast<int16_t>(result.box.x * width),
-                                      static_cast<int16_t>(result.box.y * height),
-                                      static_cast<int16_t>(result.box.w * width),
-                                      static_cast<int16_t>(result.box.h * height),
-                                      static_cast<int8_t>(result.box.score * 100),
-                                      result.box.target};
+                json box = {static_cast<int16_t>(result.box.x * width),
+                            static_cast<int16_t>(result.box.y * height),
+                            static_cast<int16_t>(result.box.w * width),
+                            static_cast<int16_t>(result.box.h * height),
+                            static_cast<int8_t>(result.box.score * 100),
+                            result.box.target};
                 reply["data"]["keypoints"].push_back({box, pts});
+            }
+        } else if (model_->getOutputType() == MA_OUTPUT_TYPE_SEGMENT) {
+            Segmentor* segmentor      = static_cast<Segmentor*>(model_);
+            err                       = segmentor->run(nullptr);
+            auto _results             = segmentor->getResults();
+            reply["data"]["segments"] = json::array();
+            for (auto& result : _results) {
+                json box = {static_cast<int16_t>(result.box.x * width),
+                            static_cast<int16_t>(result.box.y * height),
+                            static_cast<int16_t>(result.box.w * width),
+                            static_cast<int16_t>(result.box.h * height),
+                            static_cast<int8_t>(result.box.score * 100),
+                            result.box.target};
+
+                json mask = {static_cast<int16_t>(result.mask.width), static_cast<int16_t>(result.mask.height)};
+                reply["data"]["segments"].push_back({box, mask});
             }
         }
 
