@@ -4,6 +4,8 @@ configure_file(
     @ONLY
 )
 
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+
 include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/dummy.c "")

@@ -37,9 +37,8 @@ Navigate to the solution directory, configure the build, and compile the project
 
 ```bash
 cd solutions/helloworld
-mkdir build && cd build
-cmake ..
-make
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
 ```
 
 ### 4. Package the Application
@@ -47,5 +46,15 @@ make
 To package the application, run the following command in the build directory:
 
 ```bash
-cpack
+cd build && cpack
+```
+
+### 5. Install the Application
+
+To install the application, run the following command in the device:
+
+You need to upload the package to your device first.
+
+```bash
+opkg install helloworld-1.0.0-1.deb
 ```

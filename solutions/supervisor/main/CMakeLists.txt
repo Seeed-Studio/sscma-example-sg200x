@@ -1,17 +1,12 @@
-set(CMAKE_BUILD_TYPE Release)
+file(GLOB_RECURSE srcs ${CMAKE_CURRENT_LIST_DIR}/*.c ${CMAKE_CURRENT_LIST_DIR}/*.cpp)
 
-
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(incs ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/include
+)
 
 component_register(
     COMPONENT_NAME main
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/main.cpp
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/src/http.cpp
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/src/daemon.cpp
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/src/utils_device.cpp
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/src/utils_file.cpp
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/src/utils_user.cpp
-    SRCS ${CMAKE_CURRENT_LIST_DIR}/src/utils_wifi.cpp
-    INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/include
+    SRCS ${srcs}
+    INCLUDE_DIRS ${incs}
     PRIVATE_REQUIREDS ssl crypto hv
 )

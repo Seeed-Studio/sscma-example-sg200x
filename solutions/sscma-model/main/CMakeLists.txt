@@ -4,15 +4,6 @@ set(incs ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/node
 )
 
-message(STATUS "SOURCES: ${SOURCES}")
-
-set(CMAKE_BUILD_TYPE Release)
-
-#set(CMAKE_BUILD_TYPE Debug)
-
-
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
-
 component_register(
     COMPONENT_NAME main
     SRCS ${srcs}
