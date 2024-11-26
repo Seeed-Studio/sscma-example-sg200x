@@ -45,6 +45,7 @@ function installSupervisor() {
     mkdir -p mnt/system/usr/bin/
 
     cp $SG200X_PATH/scripts/S93sscma-supervisor etc/init.d/
+    cp -r $SG200X_SUPERVISOR_PATH/files/* /
     cp -r $SG200X_SUPERVISOR_PATH/main/scripts/ mnt/system/usr/
     cp -r $SG200X_SUPERVISOR_PATH/main/dist/ mnt/system/usr/
     cp -r $SG200X_SUPERVISOR_BUILD_PATH/supervisor mnt/system/usr/bin/
@@ -55,7 +56,7 @@ function installSscmaNode() {
 
     mkdir -p usr/local/bin/
 
-    cp $SG200X_SSCMANODE_PATH/files/etc/init.d/S91sscma-node etc/init.d/
+    cp $SG200X_SUPERVISOR_PATH/files/* /
     cp $SG200X_SSCMANODE_BUILD_PATH/sscma-node usr/local/bin/
 }
 
