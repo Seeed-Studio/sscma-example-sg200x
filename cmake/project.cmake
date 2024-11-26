@@ -32,13 +32,14 @@ endif()
 
 file(GLOB COMPONENTS LIST_DIRECTORIES  true ${ROOT_DIR}/components/*)
 
+include(${PROJECT_DIR}/main/CMakeLists.txt)
+
 foreach(component IN LISTS COMPONENTS)
-    if(EXISTS ${component}/CMakeLists.txt)
-        include(${component}/CMakeLists.txt)
+    get_filename_component(component_name ${component} NAME)  
+    if(EXISTS "${component}/CMakeLists.txt" AND component_name IN_LIST REQUIREDS)
+        include("${component}/CMakeLists.txt")
     endif()
 endforeach()
-
-include(${PROJECT_DIR}/main/CMakeLists.txt)
 
 include(${ROOT_DIR}/cmake/build.cmake)
 
