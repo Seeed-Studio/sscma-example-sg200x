@@ -12,11 +12,7 @@ public:
     static bool isfile(const char* path);
     static bool islink(const char* path);
 
-    // filepath = /mnt/share/image/test.jpg
-    // basename = test.jpg
-    // dirname  = /mnt/share/image
-    // filename = test
-    // suffixname = jpg
+
     static std::string basename(const std::string& filepath);
     static std::string dirname(const std::string& filepath);
     static std::string filename(const std::string& filepath);

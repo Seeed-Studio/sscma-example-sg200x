@@ -5,7 +5,7 @@
 #define HTTPD_PORT 80
 #define HTTPS_PORT 443
 #define TTYD_PORT 9090
-#define WWW(file) ("/mnt/system/usr/dist/" file)
+#define WWW(file) ("/usr/share/supervisor/www/" file)
 #define REDIRECT_URL "http://192.168.16.1/index.html"
 #define DEFAULT_UPGRADE_URL "https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
 
@@ -30,7 +30,7 @@
 #define PATH_SERVER_KEY "/etc/cert/server.key"
 
 /* usertool.sh*/
-#define SCRIPT_USER(action) ("/mnt/system/usr/scripts/usertool.sh" \
+#define SCRIPT_USER(action) ("/usr/share/supervisor/scripts/usertool.sh" \
                              " " #action " ")
 #define SCRIPT_USER_ID SCRIPT_USER(id)
 #define SCRIPT_USER_NAME SCRIPT_USER(name)
@@ -41,7 +41,7 @@
 #define SCRIPT_USER_VERIFY_SSH SCRIPT_USER(verify_key)
 
 /* wifitool.sh*/
-#define SCRIPT_WIFI(action) ("/mnt/system/usr/scripts/wifitool.sh" \
+#define SCRIPT_WIFI(action) ("/usr/share/supervisor/scripts/wifitool.sh" \
                              " " #action " ")
 #define SCRIPT_WIFI_START SCRIPT_WIFI(start)
 #define SCRIPT_WIFI_STOP SCRIPT_WIFI(stop)
@@ -63,7 +63,7 @@
 #define SCRIPT_WIFI_GATEWAY SCRIPT_WIFI(get_gateway)
 
 /* upgrade.sh */
-#define SCRIPT_UPGRADE(action) ("/mnt/system/usr/scripts/upgrade.sh" \
+#define SCRIPT_UPGRADE(action) ("/usr/share/supervisor/scripts/upgrade.sh" \
                                 " " #action " ")
 #define SCRIPT_UPGRADE_LATEST SCRIPT_UPGRADE(latest)
 #define SCRIPT_UPGRADE_DOWNLOAD SCRIPT_UPGRADE(download)
@@ -72,7 +72,7 @@
 #define SCRIPT_UPGRADE_STOP SCRIPT_UPGRADE(stop)
 
 /* devicetool.sh */
-#define SCRIPT_DEVICE(action) ("/mnt/system/usr/scripts/devicetool.sh" \
+#define SCRIPT_DEVICE(action) ("/usr/share/supervisor/scripts/devicetool.sh" \
                                 " " #action " ")
 #define SCRIPT_DEVICE_GETSYSTEMSTATUS SCRIPT_DEVICE(getSystemStatus)
 #define SCRIPT_DEVICE_GETSNCODE SCRIPT_DEVICE(getSnCode)

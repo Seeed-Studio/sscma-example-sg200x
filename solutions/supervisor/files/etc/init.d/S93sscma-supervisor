@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DAEMON=supervisor
-DAEMON_PATH=/mnt/system/usr/bin
+DAEMON_PATH=/usr/local/bin
 
 start() {
     printf 'Starting Supervisor Service: '
