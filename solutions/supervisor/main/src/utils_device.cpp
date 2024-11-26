@@ -1,29 +1,30 @@
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <stdio.h>
 #include <string>
-#include <syslog.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <syslog.h>
 
-#include <sys/ioctl.h>
+#include <arpa/inet.h>
 #include <net/if.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/ioctl.h>
 
-#include "hv/HttpServer.h"
-#include "global_cfg.h"
-#include "utils_device.h"
-#include "daemon.h"
 #include "common.h"
+#include "daemon.h"
+#include "global_cfg.h"
+#include "hv/HttpServer.h"
+#include "utils_device.h"
 
 SERVICE_STATUS systemStatus = SERVICE_STATUS_STARTING;
 std::string sn;
 std::string ip;
 bool g_updateStatus = true;
-int g_progress = 0;
-int g_restart = 0;
+int g_progress      = 0;
+int g_restart       = 0;
 
 SERVICE_STATUS convertStatus(APP_STATUS appStatus) {
     switch (appStatus) {
@@ -43,8 +44,7 @@ SERVICE_STATUS convertStatus(APP_STATUS appStatus) {
     return SERVICE_STATUS_ERROR;
 }
 
-std::string readFile(const std::string& path, const std::string& defaultname)
-{
+std::string readFile(const std::string& path, const std::string& defaultname) {
     std::ifstream ifs(path);
     if (!ifs.is_open()) {
         // 文件无法打开，返回默认值
@@ -54,8 +54,7 @@ std::string readFile(const std::string& path, const std::string& defaultname)
     return std::string((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 }
 
-static int writeFile(const std::string& path, const std::string& strWrite)
-{
+static int writeFile(const std::string& path, const std::string& strWrite) {
     std::ofstream outfile(path);
     if (outfile.is_open()) {
         outfile << strWrite;
@@ -95,7 +94,7 @@ int createFolder(const char* dirName) {
 
 static int saveModelFile(const HttpContextPtr& ctx, std::string filePath) {
     const char* modelKey = "model_file";
-    auto form = ctx->request->GetForm();
+    auto form            = ctx->request->GetForm();
     HFile file;
 
     if (form.empty()) {
@@ -122,7 +121,7 @@ static int saveModelFile(const HttpContextPtr& ctx, std::string filePath) {
 }
 
 static int saveModelInfoFile(const HttpContextPtr& ctx, std::string filePath) {
-    const char* modelKey = "model_info";
+    const char* modelKey  = "model_info";
     std::string modelInfo = ctx->request->GetFormData(modelKey);
     HFile file;
 
@@ -139,7 +138,7 @@ static int saveModelInfoFile(const HttpContextPtr& ctx, std::string filePath) {
 
 static std::string getFileMd5(std::string filePath) {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETFILEMD5;
+    char cmd[128]      = SCRIPT_DEVICE_GETFILEMD5;
     char md5Value[128] = "";
 
     strcat(cmd, filePath.c_str());
@@ -158,7 +157,7 @@ static std::string getFileMd5(std::string filePath) {
 
 static std::string getDeviceIp(std::string clientIp) {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
+    char cmd[128]      = SCRIPT_DEVICE_GETADDRESSS;
     char deviceIp[128] = "";
 
     strcat(cmd, clientIp.c_str());
@@ -177,14 +176,14 @@ static std::string getDeviceIp(std::string clientIp) {
 
 void initSystemStatus() {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
+    char cmd[128]  = SCRIPT_DEVICE_GETSYSTEMSTATUS;
     char info[128] = "";
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         systemStatus = SERVICE_STATUS_ERROR;
-        return ;
+        return;
     }
 
     fgets(info, sizeof(info) - 1, fp);
@@ -201,13 +200,13 @@ void initSystemStatus() {
 
 void getSnCode() {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETSNCODE;
+    char cmd[128]  = SCRIPT_DEVICE_GETSNCODE;
     char info[128] = "";
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
-        return ;
+        return;
     }
 
     fgets(info, sizeof(info) - 1, fp);
@@ -220,7 +219,7 @@ void getSnCode() {
 
 std::string getChannelUrl() {
     std::string info = "";
-    size_t pos = 0;
+    size_t pos       = 0;
 
     info = readFile(PATH_UPGRADE_URL);
     clearNewline(info);
@@ -239,7 +238,7 @@ std::string getChannelUrl() {
 
 bool needUpdateSystem() {
     FILE* fp;
-    char cmd[128] = SCRIPT_UPGRADE_LATEST;
+    char cmd[128]  = SCRIPT_UPGRADE_LATEST;
     char info[128] = "";
 
     strcat(cmd, getChannelUrl().c_str());
@@ -263,7 +262,7 @@ bool needUpdateSystem() {
 
 bool downloadFirmware() {
     FILE* fp;
-    char cmd[128] = SCRIPT_UPGRADE_DOWNLOAD;
+    char cmd[128]  = SCRIPT_UPGRADE_DOWNLOAD;
     char info[128] = "";
 
     fp = popen(cmd, "r");
@@ -286,7 +285,7 @@ bool downloadFirmware() {
 
 int getUpdateStatus() {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETUPDATESTATUS;
+    char cmd[128]  = SCRIPT_DEVICE_GETUPDATESTATUS;
     char info[128] = "";
 
     fp = popen(cmd, "r");
@@ -318,7 +317,7 @@ void updateSystemThread() {
 
 int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETSYSTEMSTATUS;
+    char cmd[128]  = SCRIPT_DEVICE_GETSYSTEMSTATUS;
     char info[128] = "";
     hv::Json response;
 
@@ -326,7 +325,7 @@ int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         response["code"] = -1;
-        response["msg"] = "Failed to run " + std::string(cmd);
+        response["msg"]  = "Failed to run " + std::string(cmd);
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
@@ -336,10 +335,10 @@ int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
 
     if (strlen(info) == 0) {
         response["code"] = 0;
-        response["msg"] = "";
+        response["msg"]  = "";
     } else {
         response["code"] = -1;
-        response["msg"] = "System damage";
+        response["msg"]  = "System damage";
     }
 
     pclose(fp);
@@ -352,32 +351,31 @@ int getSystemStatus(HttpRequest* req, HttpResponse* resp) {
 int queryServiceStatus(HttpRequest* req, HttpResponse* resp) {
     hv::Json response;
 
-    response["code"] = 0;
-    response["msg"] = "";
+    response["code"]              = 0;
+    response["msg"]               = "";
     response["data"]["sscmaNode"] = sscmaStarting ? SERVICE_STATUS_STARTING : convertStatus(sscmaStatus);
-    response["data"]["nodeRed"] = noderedStarting ? SERVICE_STATUS_STARTING : convertStatus(noderedStatus);
-    response["data"]["system"] = systemStatus;
+    response["data"]["nodeRed"]   = noderedStarting ? SERVICE_STATUS_STARTING : convertStatus(noderedStatus);
+    response["data"]["system"]    = systemStatus;
 
     return resp->Json(response);
 }
 
-int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
-{
+int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "start to get SystemUpdateVersinInfo...\n");
 
     hv::Json response;
     FILE* fp;
     char cmd[128] = SCRIPT_UPGRADE_LATEST, info[128] = "";
     std::string content = "", os = "Null", version = "Null";
-    size_t pos = 0;
+    size_t pos       = 0;
     int updateStatus = getUpdateStatus();
-    bool error = false;
+    bool error       = false;
 
     if (updateStatus) {
-        response["code"] = 0;
-        response["msg"] = "The system is being upgraded";
-        response["data"]["osName"] = os;
-        response["data"]["osVersion"] = version;
+        response["code"]                = 0;
+        response["msg"]                 = "The system is being upgraded";
+        response["data"]["osName"]      = os;
+        response["data"]["osVersion"]   = version;
         response["data"]["downloadUrl"] = "";
         response["data"]["isUpgrading"] = updateStatus;
         return resp->Json(response);
@@ -399,49 +397,48 @@ int getSystemUpdateVesionInfo(HttpRequest* req, HttpResponse* resp)
         clearNewline(content);
         pos = content.find(' ');
 
-        if(strstr(info, "Failed") != NULL || content == "" || pos == std::string::npos) {
+        if (strstr(info, "Failed") != NULL || content == "" || pos == std::string::npos) {
             error = true;
         }
     }
 
     if (error) {
-        response["code"] = -1;
-        response["msg"] = "Failed to get system version information";
-        response["data"]["osName"] = os;
-        response["data"]["osVersion"] = version;
+        response["code"]                = -1;
+        response["msg"]                 = "Failed to get system version information";
+        response["data"]["osName"]      = os;
+        response["data"]["osVersion"]   = version;
         response["data"]["downloadUrl"] = "";
         response["data"]["isUpgrading"] = updateStatus;
         return resp->Json(response);
     }
 
-    os = content.substr(0, pos);
+    os      = content.substr(0, pos);
     version = content.substr(pos + 1);
 
     syslog(LOG_DEBUG, "content: %s\n", content.c_str());
     syslog(LOG_DEBUG, "os: %s, version: %s\n", os.c_str(), version.c_str());
 
-    response["code"] = 0;
-    response["msg"] = "Get system version information successfully";
-    response["data"]["osName"] = os;
-    response["data"]["osVersion"] = version;
+    response["code"]                = 0;
+    response["msg"]                 = "Get system version information successfully";
+    response["data"]["osName"]      = os;
+    response["data"]["osVersion"]   = version;
     response["data"]["downloadUrl"] = "";
     response["data"]["isUpgrading"] = updateStatus;
 
     return resp->Json(response);
 }
 
-int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
-{
+int queryDeviceInfo(HttpRequest* req, HttpResponse* resp) {
     hv::Json device;
     device["code"] = 0;
-    device["msg"] = "";
+    device["msg"]  = "";
 
     std::string wifiStatus;
     std::string os_version = readFile(PATH_ISSUE);
     std::string os = "Null", version = "Null";
     size_t pos = os_version.find(' ');
     if (pos != std::string::npos) {
-        os = os_version.substr(0, pos);
+        os      = os_version.substr(0, pos);
         version = os_version.substr(pos + 1);
     }
     if (version.back() == '\n') {
@@ -452,7 +449,7 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     std::string ch = "0", url = "";
     pos = ch_url.find(',');
     if (pos != std::string::npos) {
-        ch = ch_url.substr(0, pos);
+        ch  = ch_url.substr(0, pos);
         url = ch_url.substr(pos + 1);
     }
     if (url.back() == '\n') {
@@ -462,33 +459,33 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     wifiStatus = getWifiConnectStatus();
 
     hv::Json data;
-    data["appName"] = "supervisor";
+    data["appName"]    = "supervisor";
     data["deviceName"] = readFile(PATH_DEVICE_NAME);
-    data["sn"] = sn;
-    data["ip"] = getDeviceIp(req->client_addr.ip);
+    data["sn"]         = sn;
+    data["ip"]         = getDeviceIp(req->client_addr.ip);
 
     if (wifiStatus == "COMPLETED" && isLegalWifiIp()) {
-        data["wifiIp"] = getIpAddress("wlan0");
-        data["mask"] = getNetmaskAddress("wlan0");
+        data["wifiIp"]  = getIpAddress("wlan0");
+        data["mask"]    = getNetmaskAddress("wlan0");
         data["gateway"] = getGateWay(data["wifiIp"]);
     } else {
-        data["wifiIp"] = "-";
-        data["mask"] = "-";
+        data["wifiIp"]  = "-";
+        data["mask"]    = "-";
         data["gateway"] = "-";
     }
 
-    data["dns"] = "-";
-    data["channel"] = std::stoi(ch);
-    data["serverUrl"] = url;
-    data["officialUrl"] = DEFAULT_UPGRADE_URL;
-    data["cpu"] = "sg2002";
-    data["ram"] = 256;
-    data["npu"] = 1;
-    data["osName"] = os;
-    data["osVersion"] = version;
+    data["dns"]          = "-";
+    data["channel"]      = std::stoi(ch);
+    data["serverUrl"]    = url;
+    data["officialUrl"]  = DEFAULT_UPGRADE_URL;
+    data["cpu"]          = "sg2002";
+    data["ram"]          = 256;
+    data["npu"]          = 1;
+    data["osName"]       = os;
+    data["osVersion"]    = version;
     data["osUpdateTime"] = "2024.01.01";
     data["terminalPort"] = TTYD_PORT;
-    data["needRestart"] = g_restart;
+    data["needRestart"]  = g_restart;
 
     device["data"] = data;
 
@@ -500,8 +497,7 @@ int queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
     return resp->Json(device);
 }
 
-int updateDeviceName(HttpRequest* req, HttpResponse* resp)
-{
+int updateDeviceName(HttpRequest* req, HttpResponse* resp) {
     std::string dev_name = req->GetString("deviceName");
 
     syslog(LOG_INFO, "update Device Name operation...\n");
@@ -511,16 +507,15 @@ int updateDeviceName(HttpRequest* req, HttpResponse* resp)
 
     hv::Json response;
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int updateChannel(HttpRequest* req, HttpResponse* resp)
-{
+int updateChannel(HttpRequest* req, HttpResponse* resp) {
     hv::Json response;
-    std::string str_ch = req->GetString("channel");
+    std::string str_ch  = req->GetString("channel");
     std::string str_url = req->GetString("serverUrl");
     std::string str_cmd;
 
@@ -530,7 +525,7 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
 
     if (getUpdateStatus()) {
         response["code"] = -1;
-        response["msg"] = "Upgrading, this operation is prohibited";
+        response["msg"]  = "Upgrading, this operation is prohibited";
         response["data"] = hv::Json({});
 
         return resp->Json(response);
@@ -548,7 +543,7 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
 
         if (error && str_url.size()) {
             response["code"] = -1;
-            response["msg"] = "Invalid Address";
+            response["msg"]  = "Invalid Address";
             response["data"] = hv::Json({});
 
             return resp->Json(response);
@@ -557,7 +552,7 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
 
     if (str_ch.empty()) {
         response["code"] = 1109;
-        response["msg"] = "value error";
+        response["msg"]  = "value error";
         response["data"] = hv::Json({});
 
         return resp->Json(response);
@@ -574,14 +569,13 @@ int updateChannel(HttpRequest* req, HttpResponse* resp)
     system(str_cmd.c_str());
 
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int setPower(HttpRequest* req, HttpResponse* resp)
-{
+int setPower(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "set Power operation...\n");
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
@@ -598,15 +592,14 @@ int setPower(HttpRequest* req, HttpResponse* resp)
     hv::Json response;
 
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
 /* upgrade */
-int updateSystem(HttpRequest* req, HttpResponse* resp)
-{
+int updateSystem(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "start to update System now...\n");
 
     char cmd[128] = SCRIPT_UPGRADE_START;
@@ -619,14 +612,13 @@ int updateSystem(HttpRequest* req, HttpResponse* resp)
     hv::Json response;
 
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
-{
+int getUpdateProgress(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "get Update Progress...\n");
 
     FILE* fp;
@@ -648,13 +640,13 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
         syslog(LOG_INFO, "info: %s\n", s.c_str());
         size_t pos = s.find(',');
         if (pos != std::string::npos) {
-            g_progress = stoi(s.substr(0, pos));
+            g_progress       = stoi(s.substr(0, pos));
             response["code"] = 1106;
-            response["msg"] = s.substr(pos + 1, s.size() - 1);
+            response["msg"]  = s.substr(pos + 1, s.size() - 1);
         } else {
-            g_progress = stoi(s);
+            g_progress       = stoi(s);
             response["code"] = 0;
-            response["msg"] = "";
+            response["msg"]  = "";
         }
     }
 
@@ -670,8 +662,7 @@ int getUpdateProgress(HttpRequest* req, HttpResponse* resp)
     return resp->Json(response);
 }
 
-int cancelUpdate(HttpRequest* req, HttpResponse* resp)
-{
+int cancelUpdate(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "cancel update...\n");
 
     system(SCRIPT_UPGRADE_STOP);
@@ -679,7 +670,7 @@ int cancelUpdate(HttpRequest* req, HttpResponse* resp)
     hv::Json response;
 
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
@@ -687,8 +678,8 @@ int cancelUpdate(HttpRequest* req, HttpResponse* resp)
 
 int getDeviceList(HttpRequest* req, HttpResponse* resp) {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETADDRESSS;
-    char info[128] = "";
+    char cmd[128]          = SCRIPT_DEVICE_GETADDRESSS;
+    char info[128]         = "";
     std::string deviceName = readFile(PATH_DEVICE_NAME);
     hv::Json response, data;
 
@@ -702,17 +693,14 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
     fgets(info, sizeof(info) - 1, fp);
     clearNewline(info, strlen(info));
 
-    data.push_back({
-        {"deviceName", deviceName},
-        {"ip", info}
-    });
+    data.push_back({{"deviceName", deviceName}, {"ip", info}});
 
     if (strlen(info) == 0) {
         response["code"] = 1;
-        response["mgs"] = "";
+        response["mgs"]  = "";
     } else {
         response["code"] = 0;
-        response["mgs"] = "";
+        response["mgs"]  = "";
     }
     response["data"]["deviceList"] = data;
 
@@ -730,18 +718,18 @@ int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
     clearNewline(os_version);
     pos = os_version.find(' ');
     if (pos != std::string::npos) {
-        os = os_version.substr(0, pos);
+        os      = os_version.substr(0, pos);
         version = os_version.substr(pos + 1);
     }
 
     data["deviceName"] = os;
-    data["ip"] = getDeviceIp(req->client_addr.ip);
-    data["status"] = 1;
-    data["osVersion"] = version;
-    data["sn"] = sn;
+    data["ip"]         = getDeviceIp(req->client_addr.ip);
+    data["status"]     = 1;
+    data["osVersion"]  = version;
+    data["sn"]         = sn;
 
     response["code"] = 0;
-    response["mgs"] = "";
+    response["mgs"]  = "";
     response["data"] = data;
 
     return resp->Json(response);
@@ -749,7 +737,7 @@ int getDeviceInfo(HttpRequest* req, HttpResponse* resp) {
 
 int getAppInfo(HttpRequest* req, HttpResponse* resp) {
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_GETAPPINFO;
+    char cmd[128]    = SCRIPT_DEVICE_GETAPPINFO;
     char appName[20] = "", appVersion[10] = "";
 
     fp = popen(cmd, "r");
@@ -765,9 +753,9 @@ int getAppInfo(HttpRequest* req, HttpResponse* resp) {
     clearNewline(appVersion, strlen(appVersion));
 
     hv::Json response;
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"]["appName"] = appName;
+    response["code"]               = 0;
+    response["msg"]                = "";
+    response["data"]["appName"]    = appName;
     response["data"]["appVersion"] = appVersion;
 
     pclose(fp);
@@ -776,10 +764,10 @@ int getAppInfo(HttpRequest* req, HttpResponse* resp) {
 }
 
 int uploadApp(const HttpContextPtr& ctx) {
-    int ret = 0;
+    int ret             = 0;
     std::string appPath = PATH_APP_DOWNLOAD_DIR;
     FILE* fp;
-    char cmd[128] = SCRIPT_DEVICE_INSTALLAPP;
+    char cmd[128]  = SCRIPT_DEVICE_INSTALLAPP;
     char info[128] = "";
 
     if (ctx->param("filename").empty()) {
@@ -791,7 +779,7 @@ int uploadApp(const HttpContextPtr& ctx) {
     } else {
         std::string fileName = ctx->param("filename", "app.zip");
         std::string filePath = appPath + fileName;
-        ret = ctx->request->SaveFile(filePath.c_str());
+        ret                  = ctx->request->SaveFile(filePath.c_str());
     }
 
     strcat(cmd, std::string(appPath + ctx->param("filename")).c_str());
@@ -813,10 +801,10 @@ int uploadApp(const HttpContextPtr& ctx) {
     hv::Json response;
     if (strcmp(info, "Finished") == 0) {
         response["code"] = 0;
-        response["msg"] = "";
+        response["msg"]  = "";
     } else {
         response["code"] = -1;
-        response["msg"] = info;
+        response["msg"]  = info;
     }
     response["data"] = hv::Json({});
 
@@ -829,7 +817,7 @@ int uploadApp(const HttpContextPtr& ctx) {
 
 int getModelInfo(HttpRequest* req, HttpResponse* resp) {
     std::string modelInfo;
-    std::string filePath = PATH_MODEL_DOWNLOAD_DIR + std::string("model.json");
+    std::string filePath      = PATH_MODEL_DOWNLOAD_DIR + std::string("model.json");
     std::string modelFilePath = PATH_MODEL_DOWNLOAD_DIR + std::string("model.cvimodel");
     hv::Json response;
 
@@ -837,13 +825,13 @@ int getModelInfo(HttpRequest* req, HttpResponse* resp) {
 
     if (modelInfo == "NULL") {
         response["code"] = -1;
-        response["msg"] = "File does not exist";
+        response["msg"]  = "File does not exist";
         response["data"] = hv::Json({});
     } else {
-        response["code"] = 0;
-        response["msg"] = "";
+        response["code"]               = 0;
+        response["msg"]                = "";
         response["data"]["model_info"] = modelInfo;
-        response["data"]["model_md5"] = getFileMd5(modelFilePath);
+        response["data"]["model_md5"]  = getFileMd5(modelFilePath);
     }
 
     return resp->Json(response);
@@ -863,7 +851,7 @@ int getModelFile(HttpRequest* req, HttpResponse* resp) {
 }
 
 int uploadModel(const HttpContextPtr& ctx) {
-    int ret = 0;
+    int ret               = 0;
     std::string modelPath = PATH_MODEL_DOWNLOAD_DIR;
 
     if (ctx->is(MULTIPART_FORM_DATA)) {
@@ -877,18 +865,54 @@ int uploadModel(const HttpContextPtr& ctx) {
     } else {
         std::string fileName = ctx->param("model_file", "model.cvimodel");
         std::string filePath = modelPath + fileName;
-        ret = ctx->request->SaveFile(filePath.c_str());
+        ret                  = ctx->request->SaveFile(filePath.c_str());
     }
 
     hv::Json response;
     if (ret == 200) {
         response["code"] = 0;
-        response["msg"] = "upload model successfully";
+        response["msg"]  = "upload model successfully";
     } else {
         response["code"] = -1;
-        response["msg"] = "upload model failed";
+        response["msg"]  = "upload model failed";
     }
     response["data"] = hv::Json({});
 
     return ctx->send(response.dump(2));
+}
+
+int getModelList(HttpRequest* req, HttpResponse* resp) {
+    hv::Json response;
+    uint32_t count           = 0;
+    response["code"]         = 0;
+    response["data"]["list"] = hv::Json::array();
+
+    if (std::filesystem::exists(PATH_MODEL_LIST_DIR)) {
+        for (auto& entry : std::filesystem::directory_iterator(PATH_MODEL_LIST_DIR)) {
+            if (entry.path().extension() == ".json") {
+                std::filesystem::path filePath = entry.path();
+                hv::Json model;
+                try {
+                    hv::Json modelInfo   = hv::Json::parse(readFile(entry.path().string(), "NULL"));
+                    model["id"]          = modelInfo.contains("model_id") ? modelInfo["model_id"] : "0";
+                    model["name"]        = modelInfo.contains("model_name") ? modelInfo["model_name"] : "";
+                    model["version"]     = modelInfo.contains("version") ? modelInfo["version"] : "";
+                    model["description"] = modelInfo.contains("description") ? modelInfo["description"] : "";
+                    model["md5"]         = modelInfo.contains("md5") ? modelInfo["md5"] : "";
+                    model["file"]        = filePath.replace_extension(".cvimodel").string();
+                    model["pic_url"]     = modelInfo.contains("pic_url") ? modelInfo["pic_url"] : "";
+                    model["author"]      = modelInfo.contains("author") ? modelInfo["author"] : "";
+                    model["classes"]        = modelInfo.contains("classes") ? modelInfo["classes"] : "";
+                    response["data"]["list"].push_back(model);
+                } catch (std::exception& e) {
+                    continue;
+                }
+                count++;
+            }
+        }
+    }
+    response["data"]["count"] = count;
+
+
+    return resp->Json(response);
 }

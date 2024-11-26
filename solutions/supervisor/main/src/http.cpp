@@ -4,14 +4,14 @@
 #include <thread>
 
 #include "hv/HttpServer.h"
-#include "hv/hthread.h"    // import hv_gettid
-#include "hv/hasync.h"     // import hv::async
+#include "hv/hasync.h"   // import hv::async
+#include "hv/hthread.h"  // import hv_gettid
 
 #include "http.h"
 #include "utils_device.h"
+#include "utils_file.h"
 #include "utils_user.h"
 #include "utils_wifi.h"
-#include "utils_file.h"
 
 using namespace hv;
 
@@ -19,33 +19,29 @@ extern "C" {
 
 static HttpServer server;
 
-static void registerHttpRedirect(HttpService& router)
-{
-    router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) { // IOS
+static void registerHttpRedirect(HttpService& router) {
+    router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) {  // IOS
         syslog(LOG_DEBUG, "[/hotspot-detect*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
-    router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) { // android
+    router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) {  // android
         syslog(LOG_DEBUG, "[/generate*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
-    router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) { // windows
+    router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) {  // windows
         syslog(LOG_DEBUG, "[/*.txt]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
-    router.GET("/index.html", [](HttpRequest* req, HttpResponse* resp) {
-        return resp->File(WWW("index.html"));
-    });
+    router.GET("/index.html", [](HttpRequest* req, HttpResponse* resp) { return resp->File(WWW("index.html")); });
 }
 
-static void registerUserApi(HttpService& router)
-{
+static void registerUserApi(HttpService& router) {
     router.GET("/api/userMgr/queryUserInfo", queryUserInfo);
     router.POST("/api/userMgr/updateUserName", updateUserName);
     router.POST("/api/userMgr/updatePassword", updatePassword);
@@ -53,8 +49,7 @@ static void registerUserApi(HttpService& router)
     router.POST("/api/userMgr/deleteSShkey", deleteSShkey);
 }
 
-static void registerWiFiApi(HttpService& router)
-{
+static void registerWiFiApi(HttpService& router) {
     router.GET("/api/wifiMgr/queryWiFiInfo", queryWiFiInfo);
     router.POST("/api/wifiMgr/scanWiFi", scanWiFi);
     router.GET("/api/wifiMgr/getWiFiScanResults", getWiFiScanResults);
@@ -66,8 +61,7 @@ static void registerWiFiApi(HttpService& router)
     router.POST("/api/wifiMgr/forgetWiFi", forgetWiFi);
 }
 
-static void registerDeviceApi(HttpService& router)
-{
+static void registerDeviceApi(HttpService& router) {
     router.GET("/api/deviceMgr/getSystemStatus", getSystemStatus);
     router.GET("/api/deviceMgr/queryServiceStatus", queryServiceStatus);
     router.POST("/api/deviceMgr/getSystemUpdateVesionInfo", getSystemUpdateVesionInfo);
@@ -88,28 +82,27 @@ static void registerDeviceApi(HttpService& router)
     router.GET("/api/deviceMgr/getModelInfo", getModelInfo);
     router.GET("/api/deviceMgr/getModelFile", getModelFile);
     router.POST("/api/deviceMgr/uploadModel", uploadModel);
+    router.GET("/api/deviceMgr/getModelList", getModelList);
 }
 
-static void registerFileApi(HttpService& router)
-{
+static void registerFileApi(HttpService& router) {
     router.GET("/api/fileMgr/queryFileList", queryFileList);
     router.POST("/api/fileMgr/uploadFile", uploadFile);
     router.POST("/api/fileMgr/deleteFile", deleteFile);
 }
 
-static void registerWebSocket(HttpService& router)
-{
+static void registerWebSocket(HttpService& router) {
     router.GET("/api/deviceMgr/getCameraWebsocketUrl", [](HttpRequest* req, HttpResponse* resp) {
         hv::Json data;
         data["websocketUrl"] = "ws://" + req->host + ":" + std::to_string(WS_PORT);
         hv::Json res;
         res["code"] = 0;
-        res["msg"] = "";
+        res["msg"]  = "";
         res["data"] = data;
 
-        std::string s_time = req->GetParam("time");//req->GetString("time");
-        int64_t time = std::stoll(s_time);
-        time /= 1000; // to sec
+        std::string s_time = req->GetParam("time");  // req->GetString("time");
+        int64_t time       = std::stoll(s_time);
+        time /= 1000;  // to sec
         std::string cmd = "date -s @" + std::to_string(time);
         system(cmd.c_str());
 
@@ -145,8 +138,7 @@ static void initHttpsService() {
     syslog(LOG_INFO, "https service open successful!\n");
 }
 
-int initHttpd()
-{
+int initHttpd() {
     static HttpService router;
 
     router.AllowCORS();
@@ -165,21 +157,20 @@ int initHttpd()
 
     // server.worker_threads = 3;
     server.service = &router;
-    server.port = HTTPD_PORT;
+    server.port    = HTTPD_PORT;
     server.start();
 
     return 0;
 }
 
-int deinitHttpd()
-{
+int deinitHttpd() {
     server.stop();
     hv::async::cleanup();
     return 0;
 }
 
 int initWiFi() {
-    char cmd[128] = SCRIPT_WIFI_START;
+    char cmd[128]        = SCRIPT_WIFI_START;
     std::string wifiName = getWiFiName("wlan0");
     std::thread th;
 
@@ -204,11 +195,11 @@ int initWiFi() {
 }
 
 int stopWifi() {
-    g_wifiStatus = false;
+    g_wifiStatus   = false;
     g_updateStatus = false;
     system(SCRIPT_WIFI_STOP);
 
     return 0;
 }
 
-} // extern "C" {
+}  // extern "C" {

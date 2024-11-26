@@ -21,9 +21,10 @@
 #define PATH_TMP_KEY_FILE "/tmp/sshkey.tmp"
 #define PATH_UPGRADE_PROGRESS_FILE "/tmp/upgrade.percentage"
 #define PATH_UPGRADE_VERSION_FILE "/tmp/upgrade.version"
-#define PATH_APP_DOWNLOAD_DIR "/tmp/opkg/"
 #define PATH_MODEL_DOWNLOAD_DIR "/userdata/MODEL/"
 #define PATH_APP_DOWNLOAD_DIR "/userdata/app/"
+#define PATH_MODEL_UPGRADE_DIR "/userdata/upgrade/"
+#define PATH_MODEL_LIST_DIR "/usr/share/supervisor/models/"
 
 #define PATH_SERVER_CRT "/etc/cert/server.crt"
 #define PATH_SERVER_KEY "/etc/cert/server.key"
