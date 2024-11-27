@@ -7,7 +7,12 @@ set(CMAKE_CXX_STANDARD 17)
 if( NOT "${SG200X_SDK_PATH}" STREQUAL "" )
 message(STATUS "SG200X_SDK_PATH: ${SG200X_SDK_PATH}")
 
-set(SYSROOT ${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot)
+if( "${SYSROOT}" STREQUAL "" )
+    set(SYSROOT ${SG200X_SDK_PATH}/buildroot-2021.05/output/cvitek_CV181X_musl_riscv64/host/riscv64-buildroot-linux-musl/sysroot)
+endif()
+
+message(STATUS "SYSROOT: ${SYSROOT}")
+
 include_directories("${SYSROOT}/usr/include")
 link_directories("${SYSROOT}/usr/lib")
 
