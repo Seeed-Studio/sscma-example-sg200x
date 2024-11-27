@@ -177,12 +177,13 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
 
 void CameraNode::threadEntry() {
     videoFrame* frame = nullptr;
-
+    ma_tick_t start   = Tick::current();
+    ma_tick_t end     = Tick::current();
 
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
             Thread::enterCritical();
-            ma_tick_t start = Tick::current();
+            start = Tick::current();
             count_++;
             json reply     = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
             char* base64   = new char[4 * ((frame->img.size + 2) / 3 + 2)];
@@ -192,8 +193,9 @@ void CameraNode::threadEntry() {
             delete[] base64;
             frame->release();
             server_->response(id_, reply);
-            if (Tick::current() - start < Tick::fromMilliseconds(100)) {
-                Thread::sleep(Tick::fromMilliseconds(100) - (Tick::current() - start));
+            end = Tick::current();
+            if (end - start < Tick::fromMilliseconds(100)) {
+                Thread::sleep(Tick::fromMilliseconds(100) - (end - start));
             }
             Thread::exitCritical();
         }

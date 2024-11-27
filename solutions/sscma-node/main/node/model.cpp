@@ -40,8 +40,14 @@ void ModelNode::threadEntry() {
 
         json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
 
-        width  = raw->img.width;
-        height = raw->img.height;
+        if (debug_) {
+            width  = jpeg->img.width;
+            height = jpeg->img.height;
+        } else {
+            width  = raw->img.width;
+            height = raw->img.height;
+        }
+
 
         reply["data"]["resolution"] = json::array({width, height});
 
@@ -52,7 +58,7 @@ void ModelNode::threadEntry() {
 
         tensor.data.data = reinterpret_cast<void*>(raw->img.data);
         engine_->setInput(0, tensor);
-        model_->setRunDone([this, raw](void* ctx) { raw->release(); });
+        model_->setPreprocessDone([this, raw](void* ctx) { raw->release(); });
 
         if (model_->getOutputType() == MA_OUTPUT_TYPE_BBOX) {
             Detector* detector     = static_cast<Detector*>(model_);
@@ -159,8 +165,9 @@ void ModelNode::threadEntry() {
 
         server_->response(id_, reply);
 
-        if (debug_ && (Tick::current() - start < Tick::fromMilliseconds(100))) {
-            Thread::sleep(Tick::fromMilliseconds(100) - (Tick::current() - start));
+        ma_tick_t end = Tick::current();
+        if (debug_ && (end - start < Tick::fromMilliseconds(100))) {
+            Thread::sleep(Tick::fromMilliseconds(100) - (end - start));
         }
 
         Thread::exitCritical();
