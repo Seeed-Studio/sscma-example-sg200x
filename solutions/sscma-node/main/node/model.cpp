@@ -24,6 +24,7 @@ void ModelNode::threadEntry() {
     videoFrame* jpeg = nullptr;
     int32_t width    = 0;
     int32_t height   = 0;
+    std::vector<std::string> labels;
 
     while (started_) {
 
@@ -60,6 +61,8 @@ void ModelNode::threadEntry() {
         engine_->setInput(0, tensor);
         model_->setPreprocessDone([this, raw](void* ctx) { raw->release(); });
 
+        reply["data"]["labels"] = json::array();
+
         if (model_->getOutputType() == MA_OUTPUT_TYPE_BBOX) {
             Detector* detector     = static_cast<Detector*>(model_);
             err                    = detector->run(nullptr);
@@ -77,6 +80,11 @@ void ModelNode::threadEntry() {
                                                       static_cast<int16_t>(_bboxes[i].h * height),
                                                       static_cast<int8_t>(_bboxes[i].score * 100),
                                                       _bboxes[i].target});
+                    if (labels_.size() > _bboxes[i].target) {
+                        reply["data"]["labels"].push_back(labels_[_bboxes[i].target]);
+                    } else {
+                        reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(_bboxes[i].target)));
+                    }
                     if (counting_) {
                         counter_.update(tracks[i], _bboxes[i].x * 100, _bboxes[i].y * 100);
                     }
@@ -92,6 +100,11 @@ void ModelNode::threadEntry() {
                                                       static_cast<int16_t>(_bboxes[i].h * height),
                                                       static_cast<int8_t>(_bboxes[i].score * 100),
                                                       _bboxes[i].target});
+                    if (labels_.size() > _bboxes[i].target) {
+                        reply["data"]["labels"].push_back(labels_[_bboxes[i].target]);
+                    } else {
+                        reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(_bboxes[i].target)));
+                    }
                 }
             }
             if (counting_) {
@@ -106,6 +119,11 @@ void ModelNode::threadEntry() {
             reply["data"]["classes"] = json::array();
             for (auto& result : _results) {
                 reply["data"]["classes"].push_back({static_cast<int8_t>(result.score * 100), result.target});
+                if (labels_.size() > result.target) {
+                    reply["data"]["labels"].push_back(result.target);
+                } else {
+                    reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(result.target)));
+                }
             }
         } else if (model_->getOutputType() == MA_OUTPUT_TYPE_KEYPOINT) {
             PoseDetector* pose_detector = static_cast<PoseDetector*>(model_);
@@ -123,6 +141,11 @@ void ModelNode::threadEntry() {
                             static_cast<int16_t>(result.box.h * height),
                             static_cast<int8_t>(result.box.score * 100),
                             result.box.target};
+                if (labels_.size() > result.box.target) {
+                    reply["data"]["labels"].push_back(labels_[result.box.target]);
+                } else {
+                    reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(result.box.target)));
+                }
                 reply["data"]["keypoints"].push_back({box, pts});
             }
         } else if (model_->getOutputType() == MA_OUTPUT_TYPE_SEGMENT) {
@@ -137,7 +160,11 @@ void ModelNode::threadEntry() {
                             static_cast<int16_t>(result.box.h * height),
                             static_cast<int8_t>(result.box.score * 100),
                             result.box.target};
-
+                if (labels_.size() > result.box.target) {
+                    reply["data"]["labels"].push_back(labels_[result.box.target]);
+                } else {
+                    reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(result.box.target)));
+                }
                 json mask = {static_cast<int16_t>(result.mask.width), static_cast<int16_t>(result.mask.height)};
                 reply["data"]["segments"].push_back({box, mask});
             }
@@ -147,10 +174,6 @@ void ModelNode::threadEntry() {
         const auto _perf = model_->getPerf();
 
         reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
-
-        if (labels_.size() > 0) {
-            reply["data"]["labels"] = labels_;
-        }
 
         if (debug_) {
             char* base64   = new char[4 * ((jpeg->img.size + 2) / 3 + 2)];
