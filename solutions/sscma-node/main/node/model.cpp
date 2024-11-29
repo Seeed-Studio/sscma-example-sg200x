@@ -1,5 +1,8 @@
 #include <unistd.h>
 
+#include <opencv2/opencv.hpp>
+namespace cv2 = cv;
+
 #include "model.h"
 
 namespace ma::node {
@@ -165,8 +168,34 @@ void ModelNode::threadEntry() {
                 } else {
                     reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(result.box.target)));
                 }
-                json mask = {static_cast<int16_t>(result.mask.width), static_cast<int16_t>(result.mask.height)};
-                reply["data"]["segments"].push_back({box, mask});
+
+                cv2::Mat maskImage(result.mask.height, result.mask.width, CV_8UC1, cv2::Scalar(0));
+
+                for (int i = 0; i < result.mask.height; ++i) {
+                    for (int j = 0; j < result.mask.width; ++j) {
+                        if (result.mask.data[i * result.mask.width / 8 + j / 8] & (1 << (j % 8))) {
+                            maskImage.at<uchar>(i, j) = 255;
+                        }
+                    }
+                }
+
+                std::vector<std::vector<cv2::Point>> contours;
+                std::vector<cv2::Vec4i> hierarchy;
+                cv2::findContours(maskImage, contours, hierarchy, cv2::RETR_EXTERNAL, cv2::CHAIN_APPROX_SIMPLE);
+
+                auto maxContour = std::max_element(contours.begin(), contours.end(), [](std::vector<cv2::Point>& a, std::vector<cv2::Point>& b) { return a.size() < b.size(); });
+
+                std::vector<uint16_t> contour;
+                if (maxContour != contours.end()) {
+                    contour.reserve(maxContour->size() * 2);
+                    float w_scale = width / result.mask.width;
+                    float h_scale = height / result.mask.height;
+                    for (auto& c : *maxContour) {
+                        contour.push_back(static_cast<uint16_t>(c.x * w_scale));
+                        contour.push_back(static_cast<uint16_t>(c.y * h_scale));
+                    }
+                }
+                reply["data"]["segments"].push_back({box, contour});
             }
         }
 
