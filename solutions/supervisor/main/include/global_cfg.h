@@ -25,6 +25,7 @@
 #define PATH_APP_DOWNLOAD_DIR "/userdata/app/"
 #define PATH_MODEL_UPGRADE_DIR "/userdata/upgrade/"
 #define PATH_MODEL_LIST_DIR "/usr/share/supervisor/models/"
+#define PATH_PLATFORM_INFO_FILE "/usr/share/supervisor/platform.info"
 
 #define PATH_SERVER_CRT "/etc/cert/server.crt"
 #define PATH_SERVER_KEY "/etc/cert/server.key"

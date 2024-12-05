@@ -44,4 +44,7 @@ int uploadModel(const HttpContextPtr& ctx);
 
 int getModelList(HttpRequest* req, HttpResponse* resp);
 
+int savePlatformInfo(HttpRequest* req, HttpResponse* resp);
+int getPlatformInfo(HttpRequest* req, HttpResponse* resp);
+
 #endif

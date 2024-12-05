@@ -913,6 +913,43 @@ int getModelList(HttpRequest* req, HttpResponse* resp) {
     }
     response["data"]["count"] = count;
 
+    return resp->Json(response);
+}
+
+int savePlatformInfo(HttpRequest* req, HttpResponse* resp) {
+    int ret = 0;
+    hv::Json response;
+    std::string platformInfo = req->GetString("platform_info");
+
+    ret = writeFile(PATH_PLATFORM_INFO_FILE, platformInfo);
+    if (ret != 0) {
+        response["code"] = -1;
+        response["msg"]  = "Upload platform information failed!";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
+    response["code"] = 0;
+    response["msg"]  = "";
+    response["data"] = hv::Json({});
+
+    return resp->Json(response);
+}
+
+int getPlatformInfo(HttpRequest* req, HttpResponse* resp) {
+    hv::Json response;
+    std::string platformInfo = readFile(PATH_PLATFORM_INFO_FILE, "NULL");
+
+    if (platformInfo == "NULL") {
+        response["code"] = -1;
+        response["msg"]  = "Platform information does not exist!";
+        response["data"] = hv::Json({});
+        return resp->Json(response);
+    }
+
+    response["code"]                  = 0;
+    response["msg"]                   = "";
+    response["data"]["platform_info"] = platformInfo;
 
     return resp->Json(response);
 }

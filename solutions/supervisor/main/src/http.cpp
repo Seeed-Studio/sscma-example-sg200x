@@ -83,6 +83,9 @@ static void registerDeviceApi(HttpService& router) {
     router.GET("/api/deviceMgr/getModelFile", getModelFile);
     router.POST("/api/deviceMgr/uploadModel", uploadModel);
     router.GET("/api/deviceMgr/getModelList", getModelList);
+
+    router.POST("/api/deviceMgr/savePlatformInfo", savePlatformInfo);
+    router.GET("/api/deviceMgr/getPlatformInfo", getPlatformInfo);
 }
 
 static void registerFileApi(HttpService& router) {
