@@ -76,6 +76,7 @@ private:
     int light_;
     Thread* thread_;
     MessageBox frame_;
+    TransportWebSocket* transport_;
 };
 
 }  // namespace ma::node

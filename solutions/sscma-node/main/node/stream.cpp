@@ -85,8 +85,8 @@ ma_err_t StreamNode::onCreate(const json& config) {
         MA_THROW(Exception(MA_ENOMEM, "transport create failed"));
     }
 
-    TransportRTSP::RTSPConfig rtspConfig = {port_, MA_PIXEL_FORMAT_H264, session_, username_, password_};
-    err                                  = transport_->init(&rtspConfig);
+    TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, session_, username_, password_};
+    err                              = transport_->init(&rtspConfig);
     if (err != MA_OK) {
         MA_THROW(Exception(err, "transport init failed"));
     }

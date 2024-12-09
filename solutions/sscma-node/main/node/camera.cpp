@@ -27,7 +27,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::exitCritical();                     \
     }
 
-CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), option_(0), frame_(1), thread_(nullptr) {
+CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), option_(0), frame_(60), thread_(nullptr), transport_(nullptr) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -177,26 +177,27 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
 
 void CameraNode::threadEntry() {
     videoFrame* frame = nullptr;
-    ma_tick_t start   = Tick::current();
-    ma_tick_t end     = Tick::current();
+    ma_tick_t last    = Tick::current();
 
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(1))) {
             Thread::enterCritical();
-            start = Tick::current();
-            count_++;
-            json reply     = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
-            char* base64   = new char[4 * ((frame->img.size + 2) / 3 + 2)];
-            int base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
-            ma::utils::base64_encode(frame->img.data, frame->img.size, base64, &base64_len);
-            reply["data"]["image"] = std::string(base64, base64_len);
-            delete[] base64;
-            frame->release();
-            server_->response(id_, reply);
-            end = Tick::current();
-            if (end - start < Tick::fromMilliseconds(100)) {
-                Thread::sleep(Tick::fromMilliseconds(100) - (end - start));
+            if (transport_ && frame->img.format == MA_PIXEL_FORMAT_H264) {
+                transport_->send(reinterpret_cast<const char*>(frame->img.data), frame->img.size);
+            } else {
+                if (Tick::current() - last > Tick::fromMilliseconds(100)) {
+                    count_++;
+                    json reply     = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "sample"}, {"code", MA_OK}, {"data", {{"count", count_}}}});
+                    char* base64   = new char[4 * ((frame->img.size + 2) / 3 + 2)];
+                    int base64_len = 4 * ((frame->img.size + 2) / 3 + 2);
+                    ma::utils::base64_encode(frame->img.data, frame->img.size, base64, &base64_len);
+                    reply["data"]["image"] = std::string(base64, base64_len);
+                    delete[] base64;
+                    server_->response(id_, reply);
+                    last = Tick::current();
+                }
             }
+            frame->release();
             Thread::exitCritical();
         }
     }
@@ -284,6 +285,16 @@ ma_err_t CameraNode::onCreate(const json& config) {
         this->attach(CHN_JPEG, &frame_);
     }
 
+    const TransportWebSocket::Config ws_config = {.port = 8080};
+
+    transport_ = new TransportWebSocket();
+    if (transport_ != nullptr) {
+        this->config(CHN_H264);
+        this->attach(CHN_H264, &frame_);
+        transport_->init(&ws_config);
+    }
+
+
     thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
     if (thread_ == nullptr) {
         MA_THROW(Exception(MA_ENOMEM, "Thread create failed"));
@@ -338,6 +349,12 @@ ma_err_t CameraNode::onDestroy() {
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
+    }
+
+    if (transport_ != nullptr) {
+        transport_->deInit();
+        delete transport_;
+        transport_ = nullptr;
     }
 
     created_ = false;

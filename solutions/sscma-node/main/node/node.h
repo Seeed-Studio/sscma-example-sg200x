@@ -5,12 +5,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "nlohmann/json.hpp"
-
 #include "core/ma_core.h"
 #include "porting/ma_porting.h"
-
-using json = nlohmann::json;
 
 namespace ma::node {
 
