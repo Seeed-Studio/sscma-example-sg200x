@@ -20,16 +20,14 @@ ma_err_t TransportWebSocket::init(const void* config) noexcept {
     m_server.port = config_->port;
 
     m_service.onopen = [this](const WebSocketChannelPtr& channel, const HttpRequestPtr& req) {
-        MA_LOGI(TAG, "onopen: %s %p", req->Path().c_str(), channel);
         m_channels.emplace_front(channel);
     };
 
     m_service.onmessage = [this](const WebSocketChannelPtr& channel, const std::string& msg) {
-        MA_LOGI(TAG, "onmessage: %s", msg.c_str());
+        m_receiveBuffer->push(msg.c_str(), msg.length());
     };
 
     m_service.onclose = [this](const WebSocketChannelPtr& channel) {
-        MA_LOGI(TAG, "onclose: %p %d", channel, channel->isConnected());
         m_channels.remove_if([](const WebSocketChannelPtr& c) { return !c->isConnected(); });
     };
 
