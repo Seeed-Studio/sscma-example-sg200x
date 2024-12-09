@@ -72,6 +72,7 @@ private:
     std::vector<channel> channels_;
     uint32_t count_;
     bool preview_;
+    bool websocket_;
     int option_;
     int light_;
     Thread* thread_;

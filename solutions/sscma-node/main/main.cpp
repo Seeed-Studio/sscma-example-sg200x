@@ -131,6 +131,8 @@ int main(int argc, char** argv) {
 
         NodeServer server(client);
 
+        server.setStorage(config);
+
         server.start(host, port, user, password);
 
         uint32_t count = 0;

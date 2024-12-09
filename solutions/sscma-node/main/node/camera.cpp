@@ -27,7 +27,8 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::exitCritical();                     \
     }
 
-CameraNode::CameraNode(std::string id) : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), option_(0), frame_(60), thread_(nullptr), transport_(nullptr) {
+CameraNode::CameraNode(std::string id)
+    : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), websocket_(true), option_(0), frame_(60), thread_(nullptr), transport_(nullptr) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -242,6 +243,10 @@ ma_err_t CameraNode::onCreate(const json& config) {
         preview_ = config["preview"].get<bool>();
     }
 
+    if (config.contains("websocket") && config["websocket"].is_boolean()) {
+        websocket_ = config["websocket"].get<bool>();
+    }
+
     if (config.contains("light") && config["light"].is_number()) {
         light_ = config["light"].get<int>();
     }
@@ -285,13 +290,18 @@ ma_err_t CameraNode::onCreate(const json& config) {
         this->attach(CHN_JPEG, &frame_);
     }
 
-    const TransportWebSocket::Config ws_config = {.port = 8080};
-
-    transport_ = new TransportWebSocket();
-    if (transport_ != nullptr) {
-        this->config(CHN_H264);
-        this->attach(CHN_H264, &frame_);
-        transport_->init(&ws_config);
+    if (websocket_) {
+        TransportWebSocket::Config ws_config = {.port = 8080};
+        MA_STORAGE_GET_POD(server_->getStorage(), MA_STORAGE_KEY_WS_PORT, ws_config.port, 8080);
+        transport_ = new TransportWebSocket();
+        if (transport_ != nullptr) {
+            this->config(CHN_H264);
+            this->attach(CHN_H264, &frame_);
+            transport_->init(&ws_config);
+        }
+        MA_LOGI(TAG, "camera websocket server started on port %d", ws_config.port);
+    } else {
+        transport_ = nullptr;
     }
 
 
