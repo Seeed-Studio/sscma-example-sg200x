@@ -130,7 +130,8 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, app_ipcam_ExitSig_handle);
     signal(SIGTERM, app_ipcam_ExitSig_handle);
 
-    initVideo();
+    if (initVideo())
+        return -1;
 
     video_ch_param_t param;
 
