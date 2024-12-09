@@ -39,5 +39,5 @@ component_register(
     COMPONENT_NAME sscma-micro
     SRCS ${SOURCES}
     INCLUDE_DIRS ${INCS}
-    PRIVATE_REQUIREDS  mosquitto ssl crypto cviruntime video cares
+    PRIVATE_REQUIREDS  mosquitto ssl crypto cviruntime video cares hv cvi_rtsp
 ) 
