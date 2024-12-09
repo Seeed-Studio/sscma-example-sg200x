@@ -33,10 +33,10 @@ ma_err_t TransportRTSP::init(const void* config) noexcept {
         return MA_ENOTSUP;
     }
 
-    RTSPConfig* rtsp_config = (RTSPConfig*)config;
-    m_port                  = rtsp_config->port;
-    m_format                = rtsp_config->format;
-    m_name                  = rtsp_config->session;
+    const Config* rtsp_config = reinterpret_cast<const Config*>(config);
+    m_port                    = rtsp_config->port;
+    m_format                  = rtsp_config->format;
+    m_name                    = rtsp_config->session;
 
     if (m_initialized) {
         return MA_EBUSY;
@@ -127,7 +127,7 @@ void TransportRTSP::deInit() noexcept {
     if (!m_initialized) {
         return;
     }
-    //s_auths[m_port]->removeUserRecord(m_user.c_str());
+    // s_auths[m_port]->removeUserRecord(m_user.c_str());
     CVI_RTSP_DestroySession(m_ctx, m_session);
 
     MA_LOGI(TAG, "rtsp session destroyed: %d/%s", m_port, m_name.c_str());

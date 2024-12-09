@@ -25,7 +25,7 @@ public:
     ~TransportRTSP();
 
 
-    struct RTSPConfig {
+    struct Config {
         int port;
         ma_pixel_format_t format;
         std::string session;
