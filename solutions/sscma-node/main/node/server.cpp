@@ -127,7 +127,15 @@ void NodeServer::response(const std::string& id, const json& msg) {
     return;
 }
 
-NodeServer::NodeServer(std::string client_id) : m_client(nullptr), m_connected(false), m_client_id(std::move(client_id)), m_mutex() {
+void NodeServer::setStorage(StorageFile* storage) {
+    m_storage = storage;
+}
+
+StorageFile* NodeServer::getStorage() const {
+    return m_storage;
+}
+
+NodeServer::NodeServer(std::string client_id) : m_client(nullptr), m_connected(false), m_client_id(std::move(client_id)), m_storage(nullptr), m_mutex() {
     mosquitto_lib_init();
 
     m_client = mosquitto_new(m_client_id.c_str(), true, this);

@@ -22,6 +22,9 @@ public:
     // void dispatch(const std::string& id, const json& msg);
     void response(const std::string& id, const json& msg);
 
+    StorageFile* getStorage() const;
+    void setStorage(StorageFile* storage);
+
 protected:
     void onConnect(struct mosquitto* mosq, int rc);
     void onDisconnect(struct mosquitto* mosq, int rc);
@@ -37,6 +40,7 @@ private:
     std::string m_topic_in_prefix;
     std::string m_topic_out_prefix;
     std::atomic<bool> m_connected;
+    StorageFile* m_storage;
     Executor m_executor;
     Mutex m_mutex;
 };
