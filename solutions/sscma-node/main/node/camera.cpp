@@ -220,7 +220,10 @@ void CameraNode::threadEntryStub(void* obj) {
 ma_err_t CameraNode::onCreate(const json& config) {
     Guard guard(mutex_);
 
-    initVideo();
+
+    if (initVideo() != 0) {
+        MA_THROW(Exception(MA_EIO, "Init camera device failed"));
+    }
 
     option_ = 0;
 
