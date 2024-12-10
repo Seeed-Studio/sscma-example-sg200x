@@ -32,14 +32,14 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     std::transform(_type.begin(), _type.end(), _type.begin(), ::tolower);
 
     if (m_nodes.find(id) != m_nodes.end()) {
-        MA_THROW(Exception(MA_EEXIST, "node already exists: " + id));
+        MA_THROW(Exception(MA_EEXIST, "Node already exists: " + id));
         return nullptr;
     }
 
     // find node type
     auto it = registry().find(_type);
     if (it == registry().end()) {
-        MA_THROW(Exception(MA_EINVAL, "unknown node type: " + _type));
+        MA_THROW(Exception(MA_EINVAL, "Unknown node type: " + _type));
         return nullptr;
     }
 
@@ -47,7 +47,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     if (it->second.singleton) {
         for (auto node : m_nodes) {
             if (node.second->type_ == _type) {
-                MA_THROW(Exception(MA_EEXIST, "singleton node already exists: " + _type));
+                MA_THROW(Exception(MA_EEXIST, "Singleton node already exists: " + id));
                 return nullptr;
             }
         }
@@ -57,7 +57,7 @@ Node* NodeFactory::create(const std::string id, const std::string type, const js
     MA_LOGI(TAG, "create node: %s(%s) %s", _type.c_str(), id.c_str(), data.dump().c_str());
     Node* n = it->second.create(id);
     if (!n) {
-        MA_THROW(Exception(MA_ENOMEM, "failed to create node: " + _type));
+        MA_THROW(Exception(MA_ENOMEM, "Failed to create node: " + id));
         return nullptr;
     }
     n->server_ = server;

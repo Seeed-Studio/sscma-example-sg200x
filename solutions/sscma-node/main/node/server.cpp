@@ -32,7 +32,7 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
         id      = topic.substr(m_topic_in_prefix.length() + 1);
         payload = json::parse(static_cast<const char*>(msg->payload), nullptr, false);
         if (payload.is_discarded() || !payload.contains("name") || !payload.contains("data")) {
-            e = Exception(MA_EINVAL, "invalid payload");
+            e = Exception(MA_EINVAL, "Invalid payload");
             MA_THROW(e);
         }
         MA_LOGV(TAG, "request: %s <== %s", id.c_str(), payload.dump().c_str());
@@ -44,13 +44,13 @@ void NodeServer::onMessage(struct mosquitto* mosq, const struct mosquitto_messag
             MA_TRY {
                 if (name == "create") {
                     if (!data.contains("type")) {
-                        e = Exception(MA_EINVAL, "invalid payload");
+                        e = Exception(MA_EINVAL, "Invalid payload");
                         MA_THROW(e);
                     }
                     std::string type = data["type"].get<std::string>();
                     if (NodeFactory::create(id, type, data, this) == nullptr) {
-                        e = Exception(MA_EINVAL, "invalid payload");
-                        MA_THROW(Exception(MA_EINVAL, "invalid payload"));
+                        e = Exception(MA_EINVAL, "Invalid payload");
+                        MA_THROW(Exception(MA_EINVAL, "Invalid payload"));
                     }
                 } else if (name == "destroy") {
                     NodeFactory::destroy(id);
