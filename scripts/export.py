@@ -10,7 +10,7 @@ import onnxoptimizer
 import numpy as np
 
 def args_parser():
-    parser = argparse.ArgumentParser(description="A CLI tool for configuring model parameters.")
+    parser = argparse.ArgumentParser(description="A CLI tool for con
 
     parser.add_argument(
         'model',
@@ -57,14 +57,13 @@ def args_parser():
     parser.add_argument(
         '--dataset',
         type=str,
-        default=os.path.dirname(os.path.realpath(__file__)) + '/image',
         help='Path to the dataset.'
     )
     
     parser.add_argument(
         '--test_input',
         type=str,
-        default=os.path.dirname(os.path.realpath(__file__)) + '/image/pose_256_192.jpg',
+        default=os.path.dirname(os.path.realpath(__file__)) + '/../image/bus.jpg',
         help='Path to the test image.'
     )
 
