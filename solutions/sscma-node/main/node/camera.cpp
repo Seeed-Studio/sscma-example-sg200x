@@ -222,7 +222,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
 
 
     if (initVideo() != 0) {
-        MA_THROW(Exception(MA_EIO, "Init camera device failed"));
+        MA_THROW(Exception(MA_EIO, "Not found camera device"));
     }
 
     option_ = 0;
@@ -310,7 +310,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
 
     thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
     if (thread_ == nullptr) {
-        MA_THROW(Exception(MA_ENOMEM, "Thread create failed"));
+        MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
     server_->response(

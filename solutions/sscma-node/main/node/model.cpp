@@ -245,7 +245,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
     }
 
     if (access(uri_.c_str(), R_OK) != 0) {
-        MA_THROW(Exception(MA_ENOENT, "model file not found: " + uri_));
+        MA_THROW(Exception(MA_ENOENT, "Model file not found " + uri_));
     }
 
     // find model.json
@@ -255,7 +255,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
         if (access(path.c_str(), R_OK) == 0) {
             std::ifstream ifs(path);
             if (!ifs.is_open()) {
-                MA_THROW(Exception(MA_EINVAL, "model json not found: " + path));
+                MA_THROW(Exception(MA_EINVAL, "Model config file not found " + path));
             }
             ifs >> info_;
             if (info_.is_object()) {
@@ -275,7 +275,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
         engine_ = new EngineDefault();
 
         if (engine_ == nullptr) {
-            MA_THROW(Exception(MA_ENOMEM, "Engine create failed"));
+            MA_THROW(Exception(MA_ENOMEM, "Engine init failed"));
         }
         if (engine_->init() != MA_OK) {
             MA_THROW(Exception(MA_EINVAL, "Engine init failed"));
@@ -285,7 +285,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
         }
         model_ = ModelFactory::create(engine_);
         if (model_ == nullptr) {
-            MA_THROW(Exception(MA_ENOTSUP, "Model Not Supported"));
+            MA_THROW(Exception(MA_ENOTSUP, "Model not supported"));
         }
 
         MA_LOGI(TAG, "model: %s %s", uri_.c_str(), model_->getName());
@@ -315,7 +315,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
 
         thread_ = new Thread((type_ + "#" + id_).c_str(), &ModelNode::threadEntryStub, this);
         if (thread_ == nullptr) {
-            MA_THROW(Exception(MA_ENOMEM, "Thread create failed"));
+            MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
         }
     }
     MA_CATCH(ma::Exception & e) {
@@ -439,7 +439,7 @@ ma_err_t ModelNode::onStart() {
     }
 
     if (camera_ == nullptr) {
-        MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
+        MA_THROW(Exception(MA_ENOTSUP, "No camera node found"));
         return MA_ENOTSUP;
     }
 

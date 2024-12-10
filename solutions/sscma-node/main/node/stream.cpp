@@ -65,7 +65,7 @@ ma_err_t StreamNode::onCreate(const json& config) {
     }
 
     if (session_.empty()) {
-        MA_THROW(Exception(MA_EINVAL, "session is empty"));
+        MA_THROW(Exception(MA_EINVAL, "Session is empty"));
     }
 
     url_ = "rtsp://" + username_ + ":" + password_ + "@" + host_ + ":" + std::to_string(port_) + "/" + session_;
@@ -73,7 +73,7 @@ ma_err_t StreamNode::onCreate(const json& config) {
     thread_ = new Thread((type_ + "#" + id_).c_str(), threadEntryStub);
 
     if (thread_ == nullptr) {
-        MA_THROW(Exception(MA_ENOMEM, "thread create failed"));
+        MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
     // show url
@@ -82,13 +82,13 @@ ma_err_t StreamNode::onCreate(const json& config) {
     transport_ = new TransportRTSP();
 
     if (transport_ == nullptr) {
-        MA_THROW(Exception(MA_ENOMEM, "transport create failed"));
+        MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
     TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, session_, username_, password_};
     err                              = transport_->init(&rtspConfig);
     if (err != MA_OK) {
-        MA_THROW(Exception(err, "transport init failed"));
+        MA_THROW(Exception(err, "RTSP transport init failed"));
     }
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", {"url", url_}}}));
     created_ = true;
@@ -142,7 +142,7 @@ ma_err_t StreamNode::onStart() {
     }
 
     if (camera_ == nullptr) {
-        MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
+        MA_THROW(Exception(MA_ENOTSUP, "No camera node found"));
         return MA_ENOTSUP;
     }
 

@@ -246,11 +246,11 @@ ma_err_t SaveNode::onCreate(const json& config) {
     MA_LOGD(TAG, "config: %s", config.dump().c_str());
 
     if (!config.contains("storage") || !config.contains("slice")) {
-        MA_THROW(Exception(MA_EINVAL, "invalid config"));
+        MA_THROW(Exception(MA_EINVAL, "Invalid config"));
     }
 
     if (!config["storage"].is_string() || !config["slice"].is_number()) {
-        MA_THROW(Exception(MA_EINVAL, "invalid config"));
+        MA_THROW(Exception(MA_EINVAL, "Invalid config"));
     }
 
     if (config.contains("duration") && config["duration"].is_number()) {
@@ -266,12 +266,12 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
 
     if (storage_.empty()) {
-        MA_THROW(Exception(MA_EINVAL, "invalid storage type"));
+        MA_THROW(Exception(MA_EINVAL, "Invalid storage type"));
     }
 
     if (!std::filesystem::exists(storage_) || !std::filesystem::is_directory(storage_)) {
         if (!std::filesystem::create_directory(storage_)) {
-            MA_THROW(Exception(MA_EINVAL, "invalid storage path"));
+            MA_THROW(Exception(MA_EINVAL, "Failed to create storage directory"));
         }
     }
 
@@ -279,7 +279,7 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
     thread_ = new Thread((type_ + "#" + id_).c_str(), threadEntryStub);
     if (thread_ == nullptr) {
-        MA_THROW(Exception(MA_ENOMEM, "no memory"));
+        MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
     std::filesystem::space_info si = std::filesystem::space(storage_);
@@ -350,7 +350,7 @@ ma_err_t SaveNode::onStart() {
     }
 
     if (camera_ == nullptr) {
-        MA_THROW(Exception(MA_ENOTSUP, "camera not found"));
+        MA_THROW(Exception(MA_ENOTSUP, "No camera node found"));
         return MA_ENOTSUP;
     }
 
