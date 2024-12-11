@@ -676,35 +676,84 @@ int cancelUpdate(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
-int getDeviceList(HttpRequest* req, HttpResponse* resp) {
-    FILE* fp;
-    char cmd[128]          = SCRIPT_DEVICE_GETADDRESSS;
-    char info[128]         = "";
-    std::string deviceName = readFile(PATH_DEVICE_NAME);
-    hv::Json response, data;
+std::vector<std::string> parse_line(const std::string& line) {
+    std::vector<std::string> fields;
+    std::stringstream ss(line);
+    std::string field;
+    while (std::getline(ss, field, ';')) {
+        fields.push_back(field);
+    }
+    return fields;
+}
 
-    strcat(cmd, req->client_addr.ip.c_str());
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
+int getDeviceList(HttpRequest* req, HttpResponse* resp) {
+    const char* cmd = "avahi-browse -arpt";
+    hv::Json response;
+    hv::Json data = hv::Json::array();
+
+    std::array<char, 256> buffer;
+    std::string result;
+    std::shared_ptr<FILE> pipe(popen(cmd, "r"), fclose);
+    if (!pipe) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         return -1;
     }
 
-    fgets(info, sizeof(info) - 1, fp);
-    clearNewline(info, strlen(info));
-
-    data.push_back({{"deviceName", deviceName}, {"ip", info}});
-
-    if (strlen(info) == 0) {
-        response["code"] = 1;
-        response["mgs"]  = "";
-    } else {
-        response["code"] = 0;
-        response["mgs"]  = "";
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
     }
-    response["data"]["deviceList"] = data;
 
-    pclose(fp);
+    std::map<std::pair<std::string, std::string>, std::map<std::string, std::string>> devices_services;
+
+    std::stringstream ss(result);
+    std::string line;
+
+    while (std::getline(ss, line)) {
+        auto fields = parse_line(line);
+
+        if (fields.size() >= 8 && fields[0] == "=") {
+            std::string device_name  = fields[3];
+            std::string service_name = fields[4];
+            std::string ip           = fields[7];
+            std::string port         = fields[8];
+            std::string type         = fields[1];
+
+            devices_services[{device_name, ip}][service_name] = port;
+            devices_services[{device_name, ip}]["type"]       = type;
+        }
+    }
+
+    for (const auto& device : devices_services) {
+
+        if (device.second.find("_sscma._tcp") == device.second.end()) {
+            continue;
+        }
+
+        hv::Json device_json;
+        const auto& device_name = device.first.first;
+        const auto& device_ip   = device.first.second;
+        const auto& device_type = device.second.at("type");
+
+        device_json["device"] = device_name;
+        device_json["ip"]     = device_ip;
+        device_json["type"]   = device_type;
+
+        hv::Json services = hv::Json::object();
+
+        for (const auto& service : device.second) {
+            if (service.first != "type") {
+                services[service.first] = service.second;
+            }
+        }
+
+        device_json["services"] = services;
+        data.push_back(device_json);
+    }
+
+    response["code"] = 0;
+    response["mgs"]  = "";
+
+    response["data"]["deviceList"] = data;
 
     return resp->Json(response);
 }
@@ -902,7 +951,7 @@ int getModelList(HttpRequest* req, HttpResponse* resp) {
                     model["file"]        = filePath.replace_extension(".cvimodel").string();
                     model["pic_url"]     = modelInfo.contains("pic_url") ? modelInfo["pic_url"] : "";
                     model["author"]      = modelInfo.contains("author") ? modelInfo["author"] : "";
-                    model["classes"]        = modelInfo.contains("classes") ? modelInfo["classes"] : "";
+                    model["classes"]     = modelInfo.contains("classes") ? modelInfo["classes"] : "";
                     response["data"]["list"].push_back(model);
                 } catch (std::exception& e) {
                     continue;
