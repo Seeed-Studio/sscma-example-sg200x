@@ -36,6 +36,7 @@ protected:
     bool trace_;
     bool counting_;
     json info_;
+    int algorithm_;
     Model* model_;
     Engine* engine_;
     BYTETracker tracker_;

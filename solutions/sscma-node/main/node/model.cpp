@@ -15,7 +15,19 @@ static constexpr char TAG[] = "ma::node::model";
 #define DEFAULT_MODEL "/userdata/MODEL/model.cvimodel"
 
 ModelNode::ModelNode(std::string id)
-    : Node("model", id), uri_(""), debug_(true), trace_(false), counting_(false), count_(0), engine_(nullptr), model_(nullptr), thread_(nullptr), raw_frame_(1), jpeg_frame_(1), camera_(nullptr) {}
+    : Node("model", id),
+      uri_(""),
+      debug_(true),
+      trace_(false),
+      counting_(false),
+      count_(0),
+      algorithm_(0),
+      engine_(nullptr),
+      model_(nullptr),
+      thread_(nullptr),
+      raw_frame_(1),
+      jpeg_frame_(1),
+      camera_(nullptr) {}
 
 ModelNode::~ModelNode() {
     onDestroy();
@@ -236,6 +248,10 @@ ma_err_t ModelNode::onCreate(const json& config) {
 
     labels_.clear();
 
+    if (config.contains("algorithm") && config["algorithm"].is_number_integer()) {
+        algorithm_ = config["algorithm"].get<int>();
+    }
+
     if (config.contains("uri") && config["uri"].is_string()) {
         uri_ = config["uri"].get<std::string>();
     }
@@ -283,7 +299,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
         if (engine_->load(uri_) != MA_OK) {
             MA_THROW(Exception(MA_EINVAL, "Engine load failed"));
         }
-        model_ = ModelFactory::create(engine_);
+        model_ = ModelFactory::create(engine_, algorithm_);
         if (model_ == nullptr) {
             MA_THROW(Exception(MA_ENOTSUP, "Model not supported"));
         }
