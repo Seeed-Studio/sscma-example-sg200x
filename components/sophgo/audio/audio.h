@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <linux/cvi_comm_sys.h>
+#include "app_ipcam_paramparse.h"
 
 typedef enum {
     AUDIO_CH0 = 0,
