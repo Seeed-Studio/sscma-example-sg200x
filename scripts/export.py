@@ -5,12 +5,11 @@ import subprocess
 import ast
 
 import onnx
-import onnxoptimizer
 
 import numpy as np
 
 def args_parser():
-    parser = argparse.ArgumentParser(description="A CLI tool for con
+    parser = argparse.ArgumentParser(description="A CLI tool for convert onnx model to cvimodel.")
 
     parser.add_argument(
         'model',
