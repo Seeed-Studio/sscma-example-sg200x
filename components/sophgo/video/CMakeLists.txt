@@ -1,6 +1,6 @@
 set(VIDEO_INC 
-    "${CMAKE_CURRENT_LIST_DIR}/include/"
     "${CMAKE_CURRENT_LIST_DIR}/"
+    "${CMAKE_CURRENT_LIST_DIR}/include/"
 )
 
 set(VIDEO_SRC
