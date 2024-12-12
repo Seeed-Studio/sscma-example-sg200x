@@ -128,6 +128,7 @@ static int fpSaveVpssFrame(void* pData, void* pArgs, void* pUserData) {
 
 int main(int argc, char* argv[]) {
     signal(SIGINT, app_ipcam_ExitSig_handle);
+    signal(SIGHUP, app_ipcam_ExitSig_handle);
     signal(SIGTERM, app_ipcam_ExitSig_handle);
 
     initVideo();
