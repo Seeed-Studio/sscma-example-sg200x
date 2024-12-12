@@ -43,7 +43,7 @@ static void registerHttpRedirect(HttpService& router) {
 
 static void registerUserApi(HttpService& router) {
     router.GET("/api/userMgr/queryUserInfo", queryUserInfo);
-    router.POST("/api/userMgr/updateUserName", updateUserName);
+    // router.POST("/api/userMgr/updateUserName", updateUserName); # disabled
     router.POST("/api/userMgr/updatePassword", updatePassword);
     router.POST("/api/userMgr/addSShkey", addSShkey);
     router.POST("/api/userMgr/deleteSShkey", deleteSShkey);

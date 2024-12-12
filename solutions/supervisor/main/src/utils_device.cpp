@@ -510,6 +510,16 @@ int updateDeviceName(HttpRequest* req, HttpResponse* resp) {
     response["msg"]  = "";
     response["data"] = hv::Json({});
 
+    // sync ap name
+    // system(("sed -i s/^ssid=.*/ssid=" + dev_name + "/ " PATH_HOSTAPD_CONF).c_str());
+
+    // rebroadcast device name
+    system(("sed -i s/^host-name=.*/host-name=" + dev_name + "/ " PATH_AVAHI_CONF).c_str());
+    system(PATH_AVAHI_DAEMON_SERVICE " stop");
+    hv_msleep(100);
+    system(PATH_AVAHI_DAEMON_SERVICE " start");
+
+
     return resp->Json(response);
 }
 
