@@ -1,5 +1,5 @@
-#ifndef __APP_IPCAM_PARAM_PARSE_H__
-#define __APP_IPCAM_PARAM_PARSE_H__
+#ifndef __SOPHGO_VIDEO_PARAM_PARSE_H__
+#define __SOPHGO_VIDEO_PARAM_PARSE_H__
 
 #include <linux/cvi_comm_sys.h>
 
@@ -20,4 +20,4 @@ int app_ipcam_Param_Load(void);
 }
 #endif
 
-#endif
+#endif // __SOPHGO_VIDEO_PARAM_PARSE_H__

@@ -32,15 +32,14 @@ typedef struct {
     uint8_t fps;
 } video_ch_param_t;
 
-typedef struct {
-    uint32_t width;
-    uint32_t height;
-    uint8_t* pdata;
-    uint32_t size;
-    uint32_t timestamp;
-    uint32_t id;
-} video_frame_t;
-
+// typedef struct {
+//     uint32_t width;
+//     uint32_t height;
+//     uint8_t* pdata;
+//     uint32_t size;
+//     uint32_t timestamp;
+//     uint32_t id;
+// } video_frame_t;
 
 int initVideo(void);
 int deinitVideo(void);

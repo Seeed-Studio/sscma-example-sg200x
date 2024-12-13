@@ -3,7 +3,7 @@ set(VIDEO_INC
     "${CMAKE_CURRENT_LIST_DIR}/include/"
 )
 
-file(GLOB_RECURSE VIDEO_SRC 
+file(GLOB VIDEO_SRC 
     "${CMAKE_CURRENT_LIST_DIR}/*.c"
     "${CMAKE_CURRENT_LIST_DIR}/src/*.c"
 )

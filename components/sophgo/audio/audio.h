@@ -5,24 +5,39 @@
 extern "C" {
 #endif
 
-#include "app_ipcam_paramparse.h"
+#include <inttypes.h>
+#include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
-typedef enum {
-    AUDIO_CH0 = 0,
-    AUDIO_CH1,
+#include <linux/cvi_comm_sys.h>
+#include <linux/cvi_common.h>
+#include <linux/cvi_type.h>
 
-    AUDIO_CH_MAX
-} audio_ch_index_t;
+#include "acodec.h"
+#include "cvi_audio.h"
+#include "cvi_audio_aac_adp.h"
+#include "cvi_comm_aio.h"
 
-typedef struct {
-    uint8_t fps;
-} audio_ch_param_t;
+#define SMP_AUD_UNUSED_REF(X) ((X) = (X))
+#define AUDIO_ADPCM_TYPE ADPCM_TYPE_DVI4 /* ADPCM_TYPE_IMA, ADPCM_TYPE_DVI4*/
+#define G726_BPS MEDIA_G726_32K /* MEDIA_G726_16K, MEDIA_G726_24K ... */
 
-int initAudio(void);
-int deinitAudio(void);
-int startAudio(void);
-int setupAudio(audio_ch_index_t ch, const audio_ch_param_t* param);
-int registerAudioFrameHandler(audio_ch_index_t ch, int index, void* handler, void* pUserData);
+typedef int (*audio_frame_handler)(AUDIO_FRAME_S* pFrame);
+typedef int (*audio_stream_handler)(AUDIO_STREAM_S* pStream);
+
+// rate=[AUDIO_SAMPLE_RATE_8K, AUDIO_SAMPLE_RATE_16K] (VQE only support on 8k/16k sample rate)
+// eType=[PT_G726, PT_G711A, PT_G711U, PT_ADPCMA, PT_AAC]
+int startAudioIn(AUDIO_SAMPLE_RATE_E rate, PAYLOAD_TYPE_E enType,
+    audio_frame_handler frame_out, audio_stream_handler stream_out);
+int stopAudioIn(void);
+
+int startAudioOut(AUDIO_SAMPLE_RATE_E rate, PAYLOAD_TYPE_E enType,
+    audio_stream_handler stream_in, audio_frame_handler frame_out);
+int stopAudioOut(void);
 
 #ifdef __cplusplus
 }
