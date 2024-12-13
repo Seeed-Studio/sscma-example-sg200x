@@ -1,5 +1,5 @@
-#ifndef _AUDIO_H_
-#define _AUDIO_H_
+#ifndef __SOPHGO_AUDIO_H__
+#define __SOPHGO_AUDIO_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,4 +28,4 @@ int registerAudioFrameHandler(audio_ch_index_t ch, int index, void* handler, voi
 }
 #endif
 
-#endif // _AUDIO_H_
+#endif // __SOPHGO_AUDIO_H__

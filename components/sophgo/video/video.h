@@ -1,5 +1,5 @@
-#ifndef _VIDEO_H_
-#define _VIDEO_H_
+#ifndef _SOPHGO_VIDEO_H_
+#define _SOPHGO_VIDEO_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,4 +52,4 @@ int registerVideoFrameHandler(video_ch_index_t ch, int index, pfpDataConsumes ha
 }
 #endif
 
-#endif // _VIDEO_H_
+#endif // _SOPHGO_VIDEO_H_
