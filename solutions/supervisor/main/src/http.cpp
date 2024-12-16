@@ -10,6 +10,7 @@
 #include "http.h"
 #include "utils_device.h"
 #include "utils_file.h"
+#include "utils_led.h"
 #include "utils_user.h"
 #include "utils_wifi.h"
 
@@ -96,6 +97,12 @@ static void registerFileApi(HttpService& router) {
     router.POST("/api/fileMgr/deleteFile", deleteFile);
 }
 
+static void registerLedApi(HttpService& router) {
+    router.GET("/api/led/{led}/on", ledOn);
+    router.GET("/api/led/{led}/off", ledOff);
+    router.GET("/api/led/{led}/brightness", ledBrightness);
+}
+
 static void registerWebSocket(HttpService& router) {
     router.GET("/api/deviceMgr/getCameraWebsocketUrl", [](HttpRequest* req, HttpResponse* resp) {
         hv::Json data;
@@ -163,7 +170,9 @@ int initHttpd() {
     registerWiFiApi(router);
     registerDeviceApi(router);
     registerFileApi(router);
+    registerLedApi(router);
     registerWebSocket(router);
+    
 
 #if HTTPS_SUPPORT
     initHttpsService();
