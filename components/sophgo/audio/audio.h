@@ -22,10 +22,6 @@ extern "C" {
 #include "cvi_audio_aac_adp.h"
 #include "cvi_comm_aio.h"
 
-#define SMP_AUD_UNUSED_REF(X) ((X) = (X))
-#define AUDIO_ADPCM_TYPE ADPCM_TYPE_DVI4 /* ADPCM_TYPE_IMA, ADPCM_TYPE_DVI4*/
-#define G726_BPS MEDIA_G726_32K /* MEDIA_G726_16K, MEDIA_G726_24K ... */
-
 typedef int (*audio_frame_handler)(AUDIO_FRAME_S* pFrame);
 typedef int (*audio_stream_handler)(AUDIO_STREAM_S* pStream);
 
@@ -34,6 +30,7 @@ typedef int (*audio_stream_handler)(AUDIO_STREAM_S* pStream);
 int startAudioIn(AUDIO_SAMPLE_RATE_E rate, PAYLOAD_TYPE_E enType,
     audio_frame_handler frame_out, audio_stream_handler stream_out);
 int stopAudioIn(void);
+int setAudioInVolume(uint8_t volumedb);
 
 int startAudioOut(AUDIO_SAMPLE_RATE_E rate, PAYLOAD_TYPE_E enType,
     audio_stream_handler stream_in, audio_frame_handler frame_out);
