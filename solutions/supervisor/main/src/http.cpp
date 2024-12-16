@@ -13,6 +13,8 @@
 #include "utils_user.h"
 #include "utils_wifi.h"
 
+#include "version.h"
+
 using namespace hv;
 
 extern "C" {
@@ -146,6 +148,15 @@ int initHttpd() {
 
     router.AllowCORS();
     router.Static("/", WWW(""));
+
+    router.GET("/api/version", [](HttpRequest* req, HttpResponse* resp) {
+        hv::Json res;
+        res["code"] = 0;
+        res["msg"]  = "";
+        res["data"] = PROJECT_VERSION;
+        return resp->Json(res);
+    });
+
 
     registerHttpRedirect(router);
     registerUserApi(router);
