@@ -165,15 +165,12 @@ void* Thread_AudioIn_Proc(void* arg)
     int AiChn = 0;
     int AeChn = 0;
 
-    AI_TALKVQE_CONFIG_S stAiVqeTalkAttr;
-    AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr = (AI_TALKVQE_CONFIG_S*)&stAiVqeTalkAttr;
-
     AUDIO_SAMPLE_RATE_E Chnsample_rate = (AUDIO_SAMPLE_RATE_E)pstThreadAioCtx->enRate;
     PAYLOAD_TYPE_E enType = pstThreadAioCtx->enType;
 
     AIO_ATTR_S AudinAttr;
     AudinAttr.enSamplerate = Chnsample_rate;
-    AudinAttr.u32ChnCnt = 3;
+    AudinAttr.u32ChnCnt = 1;
     AudinAttr.enSoundmode = (ChCnt == 2 ? AUDIO_SOUND_MODE_STEREO : AUDIO_SOUND_MODE_MONO);
     AudinAttr.enBitwidth = AUDIO_BIT_WIDTH_16;
     AudinAttr.enWorkmode = AIO_MODE_I2S_MASTER;
@@ -182,21 +179,6 @@ void* Thread_AudioIn_Proc(void* arg)
     AudinAttr.u32PtNumPerFrm = (PT_AAC == enType) ? 1024 : 480; /* sample_rate/fps */
     AudinAttr.u32ClkSel = 0;
     AudinAttr.enI2sType = AIO_I2STYPE_INNERCODEC;
-
-    // if (bVqe) {
-    //     memset(&stAiVqeTalkAttr, 0, sizeof(AI_TALKVQE_CONFIG_S));
-    //     if (((AudinAttr.enSamplerate == AUDIO_SAMPLE_RATE_8000)
-    //             || (AudinAttr.enSamplerate == AUDIO_SAMPLE_RATE_16000))
-    //         && ChCnt == 2) {
-    //         pstAiVqeTalkAttr->s32WorkSampleRate = AudinAttr.enSamplerate;
-    //         _update_agc_anr_setting(pstAiVqeTalkAttr);
-    //         _update_aec_setting(pstAiVqeTalkAttr);
-    //     } else {
-    //         printf("[error] AEC will need to setup record in to channel Count = 2\n");
-    //         printf("[error] VQE only support on 8k/16k sample rate. current[%d]\n",
-    //             AudinAttr.enSamplerate);
-    //     }
-    // }
 
     s32Ret = CVI_AUDIO_INIT();
     if (s32Ret != CVI_SUCCESS) {
@@ -222,7 +204,9 @@ void* Thread_AudioIn_Proc(void* arg)
     }
 
     if (bVqe) {
-        printf("----------------->VQE enable\n");
+        AI_TALKVQE_CONFIG_S stAiVqeTalkAttr;
+        AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr = (AI_TALKVQE_CONFIG_S*)&stAiVqeTalkAttr;
+
         memset(&stAiVqeTalkAttr, 0, sizeof(AI_TALKVQE_CONFIG_S));
         if (((AudinAttr.enSamplerate == AUDIO_SAMPLE_RATE_8000)
                 || (AudinAttr.enSamplerate == AUDIO_SAMPLE_RATE_16000))
@@ -254,7 +238,7 @@ void* Thread_AudioIn_Proc(void* arg)
         printf("G711 only support sr 8000,change to 8000.\n");
     }
 
-    if ((Chnsample_rate != (unsigned int)AudinAttr.enSamplerate)) {
+    if (Chnsample_rate != (unsigned int)AudinAttr.enSamplerate) {
         s32Ret = CVI_AI_EnableReSmp(AiDev, AiChn, Chnsample_rate);
         if (s32Ret != CVI_SUCCESS) {
             printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
@@ -297,20 +281,21 @@ void* Thread_AudioIn_Proc(void* arg)
             break;
         }
 
-        s32Ret = CVI_AENC_GetStream(AeChn, &stStream, -1);
+        s32Ret = CVI_AENC_GetStream(AeChn, &stStream, 0);
         if (s32Ret != CVI_SUCCESS) {
             printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
             goto ERROR;
         }
         if (!stStream.u32Len) {
+            printf("stStream conitinue");
             continue;
         }
 
         if (pstThreadAioCtx->stream_handler)
             pstThreadAioCtx->stream_handler(&stStream);
 
-        CVI_AI_ReleaseFrame(AiDev, AiChn, &stFrame, &stAecFrm);
         CVI_AENC_ReleaseStream(AeChn, &stStream);
+        CVI_AI_ReleaseFrame(AiDev, AiChn, &stFrame, &stAecFrm);
     }
 
 ERROR:
@@ -323,11 +308,9 @@ ERROR1:
         CVI_AI_DisableVqe(AiDev, AiChn);
     CVI_AI_DisableChn(AiDev, AiChn);
 ERROR2:
-    // CVI_AI_Disable(AiDev);
+    // CVI_AI_Disable(AiDev); // Segmentation fault in thread mode
 ERROR3:
     CVI_AUDIO_DEINIT();
-
-    printf("CCCCCCCCCCCCCCCCC:CVI_AUDIO_DEINIT\n");
 
     if (s32Ret != CVI_SUCCESS)
         return (CVI_VOID*)(uintptr_t)s32Ret;

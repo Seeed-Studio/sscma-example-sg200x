@@ -11,7 +11,6 @@ static CVI_VOID app_ipcam_ExitSig_handle(CVI_S32 signo)
     signal(SIGTERM, SIG_IGN);
 
     if ((SIGINT == signo) || (SIGTERM == signo)) {
-        printf("AAAAAAAAAAAAAAAAA:app_ipcam_ExitSig_handle\n");
         stopAudioIn();
     }
 

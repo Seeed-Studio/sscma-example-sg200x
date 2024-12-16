@@ -29,12 +29,13 @@ int startAudioIn(uint32_t rate, PAYLOAD_TYPE_E enType,
         return s32Ret;
     }
 
+    // Thread_AudioIn_Proc(&audio_in_context);
+
     return CVI_SUCCESS;
 }
 
 int stopAudioIn(void)
 {
-    printf("BBBBBBBBBBBBBB:stopAudioIn\n");
     if (audio_in_context.is_running) {
         audio_in_context.is_running = 0;
     }
@@ -44,7 +45,6 @@ int stopAudioIn(void)
         audio_in_context.thread = 0;
     }
 
-    printf("DDDDDDDDDDDDD:stopAudioIn\n");
     return CVI_SUCCESS;
 }
 
