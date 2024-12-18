@@ -87,7 +87,7 @@ start)
     hostapd -B $hostapdFile
 
     export PS1='[\u@\h]\w\$ '
-    ttyd -p $3 -u $4 sh > /dev/null 2>&1 &
+    ttyd -p $3 -u $4 login > /dev/null 2>&1 &
 
     if [ -c /dev/null ]; then
         chmod 666 /dev/null
