@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <string>
 #include <syslog.h>
@@ -6,6 +7,7 @@
 #include "hv/HttpServer.h"
 #include "hv/hasync.h"   // import hv::async
 #include "hv/hthread.h"  // import hv_gettid
+
 
 #include "http.h"
 #include "utils_device.h"
@@ -17,7 +19,6 @@
 #include "version.h"
 
 using namespace hv;
-
 extern "C" {
 
 static HttpServer server;
@@ -45,6 +46,7 @@ static void registerHttpRedirect(HttpService& router) {
 }
 
 static void registerUserApi(HttpService& router) {
+    router.POST("/api/userMgr/login", login);
     router.GET("/api/userMgr/queryUserInfo", queryUserInfo);
     // router.POST("/api/userMgr/updateUserName", updateUserName); # disabled
     router.POST("/api/userMgr/updatePassword", updatePassword);
@@ -98,9 +100,9 @@ static void registerFileApi(HttpService& router) {
 }
 
 static void registerLedApi(HttpService& router) {
-    router.GET("/api/led/{led}/on", ledOn);
-    router.GET("/api/led/{led}/off", ledOff);
-    router.GET("/api/led/{led}/brightness", ledBrightness);
+    router.POST("/api/led/{led}/on", ledOn);
+    router.POST("/api/led/{led}/off", ledOff);
+    router.POST("/api/led/{led}/brightness", ledBrightness);
 }
 
 static void registerWebSocket(HttpService& router) {
@@ -150,11 +152,22 @@ static void initHttpsService() {
     syslog(LOG_INFO, "https service open successful!\n");
 }
 
+
+static int response_status(HttpResponse* resp, int code = 200, const char* message = NULL) {
+    if (message == NULL)
+        message = http_status_str((enum http_status)code);
+    resp->Set("code", code);
+    resp->Set("message", message);
+    return code;
+}
+
+
 int initHttpd() {
     static HttpService router;
 
     router.AllowCORS();
     router.Static("/", WWW(""));
+    router.Use(authorization);
 
     router.GET("/api/version", [](HttpRequest* req, HttpResponse* resp) {
         hv::Json res;
@@ -164,7 +177,6 @@ int initHttpd() {
         return resp->Json(res);
     });
 
-
     registerHttpRedirect(router);
     registerUserApi(router);
     registerWiFiApi(router);
@@ -172,7 +184,7 @@ int initHttpd() {
     registerFileApi(router);
     registerLedApi(router);
     registerWebSocket(router);
-    
+
 
 #if HTTPS_SUPPORT
     initHttpsService();

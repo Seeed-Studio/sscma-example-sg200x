@@ -1,16 +1,24 @@
-#include <iostream>
 #include <fstream>
-#include <string>
+#include <iostream>
 #include <pwd.h>
+#include <random>
 #include <stdio.h>
+#include <string>
+#include <syslog.h>
 #include <unistd.h>
 #include <vector>
-#include <syslog.h>
 
-#include "hv/HttpServer.h"
 #include "global_cfg.h"
-#include "utils_user.h"
+#include "hv/HttpServer.h"
+#include "hv/base64.h"
 #include "utils_device.h"
+#include "utils_user.h"
+
+#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3  // 3 days
+// #define TOKEN_EXPIRATION_TIME 60 * 1  // 1 min
+
+static std::unordered_map<std::string, std::time_t> g_tokens;
+
 
 static std::string g_sUserName;
 static std::string g_sPassword;
@@ -41,8 +49,7 @@ int initUserInfo() {
     return 0;
 }
 
-static int getUserName()
-{
+static int getUserName() {
     char username[128];
     struct passwd* pw = getpwuid(g_userId);
 
@@ -59,7 +66,7 @@ static int getUserName()
 
 static int verifyPasswd(const std::string& passwd) {
     FILE* fp;
-    char cmd[128] = SCRIPT_USER_VERIFY;
+    char cmd[128]  = SCRIPT_USER_VERIFY;
     char info[128] = "";
 
     strcat(cmd, passwd.c_str());
@@ -89,7 +96,7 @@ static void savePasswd(const std::string& passwd) {
 
 static int verifyKey(const std::string& keyValue) {
     FILE* fp;
-    char cmd[128] = SCRIPT_USER_VERIFY_SSH;
+    char cmd[128]    = SCRIPT_USER_VERIFY_SSH;
     char result[128] = "";
     std::ofstream file;
 
@@ -121,11 +128,34 @@ static int verifyKey(const std::string& keyValue) {
     return 0;
 }
 
-int queryUserInfo(HttpRequest* req, HttpResponse* resp)
-{
+static std::string generateToken(const std::string& username) {
+
+    std::time_t now = std::time(nullptr);
+    char token[48]  = {0};
+
+    std::srand(static_cast<unsigned int>(now));
+
+    std::stringstream ss;
+
+    for (int i = 0; i < 4; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (std::rand() % 256);
+    }
+
+    ss << now << username;
+
+    for (int i = 0; i < 4; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (std::rand() % 256);
+    }
+
+    hv_base64_encode(reinterpret_cast<const unsigned char*>(ss.str().c_str()), ss.str().size(), token);
+
+    return std::string(token);
+}
+
+int queryUserInfo(HttpRequest* req, HttpResponse* resp) {
     hv::Json User;
     User["code"] = 0;
-    User["msg"] = "";
+    User["msg"]  = "";
 
     getUserName();
     syslog(LOG_DEBUG, "%s, %s\n", g_sUserName.c_str());
@@ -155,26 +185,25 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp)
         size_t pos = s.find(' ');
         while (pos < std::string::npos) {
             keyInfo[cnt++] = s.substr(0, pos);
-            s = s.substr(pos + 1);
-            pos = s.find(' ');
+            s              = s.substr(pos + 1);
+            pos            = s.find(' ');
         }
 
-        sshkey["id"] = keyInfo[1];
-        sshkey["name"] = keyInfo[2];
-        sshkey["value"] = keyInfo[0];
+        sshkey["id"]      = keyInfo[1];
+        sshkey["name"]    = keyInfo[2];
+        sshkey["value"]   = keyInfo[0];
         sshkey["addTime"] = keyInfo[3];
         sshkeyList.push_back(sshkey);
     }
     pclose(fp);
 
     data["sshkeyList"] = hv::Json(sshkeyList);
-    User["data"] = data;
+    User["data"]       = data;
 
     return resp->Json(User);
 }
 
-int updateUserName(HttpRequest* req, HttpResponse* resp)
-{
+int updateUserName(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "update UserName operation...\n");
     syslog(LOG_INFO, "userName: %s\n", req->GetString("userName").c_str());
 
@@ -195,14 +224,13 @@ int updateUserName(HttpRequest* req, HttpResponse* resp)
 
     hv::Json User;
     User["code"] = 0;
-    User["msg"] = "";
+    User["msg"]  = "";
     User["data"] = hv::Json({});
 
     return resp->Json(User);
 }
 
-int updatePassword(HttpRequest* req, HttpResponse* resp)
-{
+int updatePassword(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "update Password operation...\n");
     syslog(LOG_INFO, "oldPassword: %s\n", req->GetString("oldPassword").c_str());
     syslog(LOG_INFO, "newPassword: %s\n", req->GetString("newPassword").c_str());
@@ -210,7 +238,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     if (verifyPasswd(req->GetString("oldPassword")) != 0) {
         hv::Json User;
         User["code"] = -1;
-        User["msg"] = "Incorrect password";
+        User["msg"]  = "Incorrect password";
         User["data"] = hv::Json({});
         return resp->Json(User);
     }
@@ -218,7 +246,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     if (req->GetString("oldPassword") == req->GetString("newPassword")) {
         hv::Json User;
         User["code"] = -1;
-        User["msg"] = "Password duplication";
+        User["msg"]  = "Password duplication";
         User["data"] = hv::Json({});
         return resp->Json(User);
     }
@@ -242,7 +270,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
 
     hv::Json User;
     User["code"] = 0;
-    User["msg"] = "";
+    User["msg"]  = "";
     User["data"] = hv::Json({});
 
     if (fgets(info, sizeof(info) - 1, fp) != NULL) {
@@ -263,8 +291,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp)
     return resp->Json(User);
 }
 
-int addSShkey(HttpRequest* req, HttpResponse* resp)
-{
+int addSShkey(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "Add ssh key operation...\n");
     syslog(LOG_INFO, "name: %s\n", req->GetString("name").c_str());
     syslog(LOG_INFO, "value: %s\n", req->GetString("value").c_str());
@@ -273,9 +300,9 @@ int addSShkey(HttpRequest* req, HttpResponse* resp)
     std::ofstream file;
     std::string keyValue = req->GetString("value");
 
-    if(0 != verifyKey(keyValue)) {
+    if (0 != verifyKey(keyValue)) {
         response["code"] = -1;
-        response["msg"] = "Invalid key";
+        response["msg"]  = "Invalid key";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
@@ -284,7 +311,7 @@ int addSShkey(HttpRequest* req, HttpResponse* resp)
     if (!file.is_open()) {
         syslog(LOG_ERR, "open %s file failed here!\n", PATH_SSH_KEY_FILE);
         response["code"] = -1;
-        response["msg"] = "Secret key file does not exist";
+        response["msg"]  = "Secret key file does not exist";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
@@ -293,14 +320,13 @@ int addSShkey(HttpRequest* req, HttpResponse* resp)
     file.close();
 
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int deleteSShkey(HttpRequest* req, HttpResponse* resp)
-{
+int deleteSShkey(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "delete ssh key operation...\n");
     syslog(LOG_INFO, "id: %s\n", req->GetString("id").c_str());
 
@@ -314,8 +340,68 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp)
 
     hv::Json response;
     response["code"] = 0;
-    response["msg"] = "";
+    response["msg"]  = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
+}
+
+int authorization(HttpRequest* req, HttpResponse* resp) {
+
+    if (strncmp(req->path.c_str(), "/api/userMgr/login", strlen("/api/userMgr/login")) == 0) {
+        return HTTP_STATUS_NEXT;
+    }
+    if (strncmp(req->path.c_str(), "/api/version", strlen("/api/version")) == 0) {
+        return HTTP_STATUS_NEXT;
+    }
+    if (strncmp(req->path.c_str(), "/api/userMgr/updatePassword", strlen("/api/userMgr/updatePassword")) == 0) {
+        return HTTP_STATUS_NEXT;
+    }
+    std::string token = req->GetHeader("Authorization");
+    if (token.empty()) {
+        return HTTP_STATUS_UNAUTHORIZED;
+    }
+
+    if (g_tokens.find(token) != g_tokens.end()) {
+        std::time_t now = std::time(nullptr);
+        if (now - g_tokens[token] > TOKEN_EXPIRATION_TIME) {
+            g_tokens.erase(token);
+            return HTTP_STATUS_UNAUTHORIZED;
+        }
+        g_tokens[token] = now;
+        return HTTP_STATUS_NEXT;
+    }
+
+    return HTTP_STATUS_UNAUTHORIZED;
+}
+
+
+int login(HttpRequest* req, HttpResponse* resp) {
+    hv::Json res;
+    std::string username = req->GetString("userName");
+    std::string password = req->GetString("password");
+    if (username.empty() || password.empty()) {
+        res["code"] = -1;
+        res["msg"]  = "Username or password is empty";
+        res["data"] = hv::Json({});
+        return resp->Json(res);
+    }
+
+    if (verifyPasswd(password) != 0) {
+        res["code"] = -1;
+        res["msg"]  = "Incorrect password";
+        res["data"] = hv::Json({});
+        return resp->Json(res);
+    }
+
+    // generate token randomly
+    unsigned char buf[32];
+    std::string token = generateToken(username);
+    g_tokens[token]   = std::time(nullptr);
+    res["code"]       = 0;
+    res["data"]       = hv::Json({
+        {"token", token},
+        {"expire", TOKEN_EXPIRATION_TIME},
+    });
+    return resp->Json(res);
 }
