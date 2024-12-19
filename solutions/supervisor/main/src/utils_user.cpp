@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <openssl/aes.h>
 #include <pwd.h>
 #include <random>
 #include <stdio.h>
@@ -138,6 +139,12 @@ static int verifyKey(const std::string& keyValue) {
     return 0;
 }
 
+static void aes_decrypt(const unsigned char* key, const unsigned char* ciphertext, unsigned char* plaintext) {
+    AES_KEY decryptKey;
+    AES_set_decrypt_key(key, 128, &decryptKey);
+    AES_decrypt(ciphertext, plaintext, &decryptKey);
+}
+
 static std::string generateToken(const std::string& username) {
 
     std::time_t now = std::time(nullptr);
@@ -172,6 +179,12 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp) {
 
     hv::Json data;
     data["userName"] = g_sUserName;
+
+    if (access(PATH_FIRST_LOGIN, F_OK) == 0) {
+        data["firstLogin"] = true;
+    } else {
+        data["firstLogin"] = false;
+    }
 
     FILE* fp;
     char info[128];
@@ -298,6 +311,10 @@ int updatePassword(HttpRequest* req, HttpResponse* resp) {
     }
     pclose(fp);
 
+    if (access(PATH_FIRST_LOGIN, F_OK) == 0) {
+        remove(PATH_FIRST_LOGIN);
+    }
+
     return resp->Json(User);
 }
 
@@ -358,7 +375,8 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp) {
 
 int authorization(HttpRequest* req, HttpResponse* resp) {
 
-    static const std::unordered_set<std::string> allowed_paths = {"/api/userMgr/login", "/api/version", "/api/userMgr/updatePassword"};
+    static const std::unordered_set<std::string> allowed_paths = {
+        "/api/userMgr/login", "/api/version", "/api/userMgr/updatePassword", "/api/deviceMgr/queryDeviceInfo", "/api/deviceMgr/getDeviceList", "/api/userMgr/queryUserInfo"};
 
     // Only check paths that start with "/api"
     std::string rpath = req->path;

@@ -29,11 +29,12 @@
 
 #define PATH_AVAHI_CONF            "/etc/avahi/avahi-daemon.conf"
 #define PATH_AVAHI_DAEMON_SERVICE  "/etc/init.d/S50avahi-daemon"
-
 #define PATH_HOSTAPD_CONF          "/etc/hostapd_2g4.conf"
 
 #define PATH_SERVER_CRT            "/etc/cert/server.crt"
 #define PATH_SERVER_KEY            "/etc/cert/server.key"
+
+#define PATH_FIRST_LOGIN           "/etc/.first_login"
 
 #define PATH_WLAN0_MAC             "/sys/class/net/wlan0/address"
 
