@@ -1,3 +1,4 @@
+#include <crypt.h>
 #include <fstream>
 #include <iostream>
 #include <openssl/aes.h>
@@ -16,7 +17,8 @@
 #include "utils_device.h"
 #include "utils_user.h"
 
-#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3  // 3 days
+
+#define TOKEN_EXPIRATION_TIME 60 * 60 * 24  // 1 days
 // #define TOKEN_EXPIRATION_TIME 60 * 1  // 1 min
 
 static std::unordered_map<std::string, std::time_t> g_tokens;
@@ -25,6 +27,8 @@ static std::unordered_map<std::string, std::time_t> g_tokens;
 static std::string g_sUserName;
 static std::string g_sPassword;
 int g_userId = 0;
+
+const unsigned char* g_encryptKey = (const unsigned char*)KEY_AES_128;
 
 static void clearNewline(char* value, int len) {
     if (value[len - 1] == '\n') {
@@ -139,22 +143,109 @@ static int verifyKey(const std::string& keyValue) {
     return 0;
 }
 
-static void aes_decrypt(const unsigned char* key, const unsigned char* ciphertext, unsigned char* plaintext) {
+std::string toHexString(const unsigned char* data, size_t len) {
+    std::stringstream ss;
+    for (size_t i = 0; i < len; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+    }
+    return ss.str();
+}
+
+
+bool fromHexString(const std::string& hexStr, unsigned char* data, size_t& len) {
+    if (hexStr.length() % 2 != 0)
+        return false;
+    for (auto c : hexStr) {
+        if (!isxdigit(c))
+            return false;
+    }
+    len = hexStr.length() / 2;
+    for (size_t i = 0; i < len; ++i) {
+        sscanf(hexStr.c_str() + 2 * i, "%2hhx", &data[i]);
+    }
+    return true;
+}
+
+
+std::string aes_encrypt(const std::string& plaintext, const unsigned char* key) {
+    AES_KEY encryptKey;
+    AES_set_encrypt_key(key, 128, &encryptKey);
+
+    size_t len           = plaintext.size();
+    size_t paddedLen     = (len / AES_BLOCK_SIZE + 1) * AES_BLOCK_SIZE;
+    unsigned char* input = new unsigned char[paddedLen]();
+    memcpy(input, plaintext.c_str(), len);
+
+    unsigned char* output = new unsigned char[paddedLen]();
+    for (size_t i = 0; i < paddedLen; i += AES_BLOCK_SIZE) {
+        AES_encrypt(input + i, output + i, &encryptKey);
+    }
+
+    std::string cipherTextHex = toHexString(output, paddedLen);
+
+    delete[] input;
+    delete[] output;
+
+    return cipherTextHex;
+}
+
+std::string aes_decrypt(const std::string& ciphertextHex, const unsigned char* key) {
+    size_t len                = ciphertextHex.length() / 2;
+    unsigned char* ciphertext = new unsigned char[len];
+
+    if (fromHexString(ciphertextHex, ciphertext, len) != true) {
+        delete[] ciphertext;
+        return "";
+    }
+
+
     AES_KEY decryptKey;
     AES_set_decrypt_key(key, 128, &decryptKey);
-    AES_decrypt(ciphertext, plaintext, &decryptKey);
+
+    unsigned char* decryptedText = new unsigned char[len];
+    for (size_t i = 0; i < len; i += AES_BLOCK_SIZE) {
+        if (i + AES_BLOCK_SIZE > len) {
+            break;
+        }
+        AES_decrypt(ciphertext + i, decryptedText + i, &decryptKey);
+    }
+
+    std::string decryptedStr(reinterpret_cast<char*>(decryptedText), len);
+    delete[] ciphertext;
+    delete[] decryptedText;
+
+    size_t pos = decryptedStr.find_last_not_of('\0');
+    if (pos != std::string::npos) {
+        decryptedStr = decryptedStr.substr(0, pos + 1);
+    }
+
+    return decryptedStr;
+}
+
+static std::string bcryptNodeRed(const std::string& password) {
+    char salt[29] = "$2a$08$";
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < 22; i++) {
+        salt[i + 7] = 'a' + (rand() % 26);
+    }
+
+    char* hashedPassword = crypt(password.c_str(), salt);
+    if (hashedPassword == nullptr) {
+        return "";
+    }
+    return std::string(hashedPassword);
 }
 
 static std::string generateToken(const std::string& username) {
 
     std::time_t now = std::time(nullptr);
-    char token[64]  = {0};
+    char token[128] = {0};
 
     std::srand(static_cast<unsigned int>(now));
 
     std::stringstream ss;
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 8; ++i) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (std::rand() % 256);
     }
 
@@ -255,21 +346,39 @@ int updateUserName(HttpRequest* req, HttpResponse* resp) {
 
 int updatePassword(HttpRequest* req, HttpResponse* resp) {
     syslog(LOG_INFO, "update Password operation...\n");
-    syslog(LOG_INFO, "oldPassword: %s\n", req->GetString("oldPassword").c_str());
-    syslog(LOG_INFO, "newPassword: %s\n", req->GetString("newPassword").c_str());
 
-    if (verifyPasswd(req->GetString("oldPassword")) != 0) {
+    if (req->GetString("oldPassword").empty() || req->GetString("newPassword").empty()) {
         hv::Json User;
         User["code"] = -1;
-        User["msg"]  = "Incorrect password";
+        User["msg"]  = "Username or password is empty";
         User["data"] = hv::Json({});
         return resp->Json(User);
     }
 
-    if (req->GetString("oldPassword") == req->GetString("newPassword")) {
+
+    // if (req->GetString("oldPassword") == req->GetString("newPassword")) {
+    //     hv::Json User;
+    //     User["code"] = -1;
+    //     User["msg"]  = "Password duplication";
+    //     User["data"] = hv::Json({});
+    //     return resp->Json(User);
+    // }
+
+    std::string oldPassword = aes_decrypt(req->GetString("oldPassword"), g_encryptKey);
+    std::string newPassword = aes_decrypt(req->GetString("newPassword"), g_encryptKey);
+
+    if (oldPassword.empty() || newPassword.empty()) {
         hv::Json User;
         User["code"] = -1;
-        User["msg"]  = "Password duplication";
+        User["msg"]  = "Password is empty";
+        User["data"] = hv::Json({});
+        return resp->Json(User);
+    }
+
+    if (verifyPasswd(oldPassword) != 0) {
+        hv::Json User;
+        User["code"] = -1;
+        User["msg"]  = "Incorrect password";
         User["data"] = hv::Json({});
         return resp->Json(User);
     }
@@ -280,10 +389,9 @@ int updatePassword(HttpRequest* req, HttpResponse* resp) {
 
     strcat(cmd, g_sUserName.c_str());
     strcat(cmd, " ");
-    strcat(cmd, req->GetString("oldPassword").c_str());
+    strcat(cmd, oldPassword.c_str());
     strcat(cmd, " ");
-    strcat(cmd, req->GetString("newPassword").c_str());
-    syslog(LOG_DEBUG, "cmd: %s\n", cmd);
+    strcat(cmd, newPassword.c_str());
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -306,7 +414,7 @@ int updatePassword(HttpRequest* req, HttpResponse* resp) {
                 User["msg"] = std::string(info);
             }
         } else {
-            savePasswd(req->GetString("newPassword"));
+            savePasswd(newPassword);
         }
     }
     pclose(fp);
@@ -385,7 +493,7 @@ int authorization(HttpRequest* req, HttpResponse* resp) {
     }
 
     for (auto& path : allowed_paths) {
-        if (rpath.find(path) != std::string::npos) {
+        if (rpath.substr(0, path.size()) == path) {
             return HTTP_STATUS_NEXT;
         }
     }
@@ -430,8 +538,16 @@ int login(HttpRequest* req, HttpResponse* resp) {
         res["data"] = hv::Json({});
         return resp->Json(res);
     }
+    std::string plaintext = aes_decrypt(password, g_encryptKey);
 
-    if (verifyPasswd(password) != 0) {
+    if (plaintext.empty()) {
+        res["code"] = -1;
+        res["msg"]  = "Password is invalid";
+        res["data"] = hv::Json({});
+        return resp->Json(res);
+    }
+
+    if (verifyPasswd(plaintext) != 0) {
         res["code"] = -1;
         res["msg"]  = "Incorrect password";
         res["data"] = hv::Json({});
@@ -439,13 +555,14 @@ int login(HttpRequest* req, HttpResponse* resp) {
     }
 
     // generate token randomly
-    unsigned char buf[32];
     std::string token = generateToken(username);
-    g_tokens[token]   = std::time(nullptr);
-    res["code"]       = 0;
-    res["data"]       = hv::Json({
+
+    g_tokens[token] = std::time(nullptr);
+    res["code"]     = 0;
+    res["data"]     = hv::Json({
         {"token", token},
         {"expire", TOKEN_EXPIRATION_TIME},
     });
+
     return resp->Json(res);
 }

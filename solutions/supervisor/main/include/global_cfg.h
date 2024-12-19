@@ -38,6 +38,8 @@
 
 #define PATH_WLAN0_MAC             "/sys/class/net/wlan0/address"
 
+#define KEY_AES_128                "zqCwT7H7!rNdP3wL"
+
 /* usertool.sh*/
 #define SCRIPT_USER(action)                      \
     ("/usr/share/supervisor/scripts/usertool.sh" \
