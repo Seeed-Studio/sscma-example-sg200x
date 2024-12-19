@@ -6,6 +6,7 @@
 #include <string>
 #include <syslog.h>
 #include <unistd.h>
+#include <unordered_set>
 #include <vector>
 
 #include "global_cfg.h"
@@ -87,6 +88,15 @@ static int verifyPasswd(const std::string& passwd) {
     return 0;
 }
 
+static int verifyUser(const std::string& username) {
+    getUserName();
+    syslog(LOG_DEBUG, "%s, %s\n", g_sUserName.c_str());
+    if (username != g_sUserName) {
+        return -1;
+    }
+    return 0;
+}
+
 static void savePasswd(const std::string& passwd) {
     char cmd[128] = SCRIPT_USER_SAVE;
 
@@ -131,7 +141,7 @@ static int verifyKey(const std::string& keyValue) {
 static std::string generateToken(const std::string& username) {
 
     std::time_t now = std::time(nullptr);
-    char token[48]  = {0};
+    char token[64]  = {0};
 
     std::srand(static_cast<unsigned int>(now));
 
@@ -143,7 +153,7 @@ static std::string generateToken(const std::string& username) {
 
     ss << now << username;
 
-    for (int i = 0; i < 4; ++i) {
+    while (ss.str().size() < 48) {
         ss << std::hex << std::setw(2) << std::setfill('0') << (std::rand() % 256);
     }
 
@@ -348,26 +358,34 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp) {
 
 int authorization(HttpRequest* req, HttpResponse* resp) {
 
-    if (strncmp(req->path.c_str(), "/api/userMgr/login", strlen("/api/userMgr/login")) == 0) {
+    static const std::unordered_set<std::string> allowed_paths = {"/api/userMgr/login", "/api/version", "/api/userMgr/updatePassword"};
+
+    // Only check paths that start with "/api"
+    std::string rpath = req->path;
+    if (rpath.substr(0, 4) != "/api") {
         return HTTP_STATUS_NEXT;
     }
-    if (strncmp(req->path.c_str(), "/api/version", strlen("/api/version")) == 0) {
-        return HTTP_STATUS_NEXT;
+
+    for (auto& path : allowed_paths) {
+        if (rpath.find(path) != std::string::npos) {
+            return HTTP_STATUS_NEXT;
+        }
     }
-    if (strncmp(req->path.c_str(), "/api/userMgr/updatePassword", strlen("/api/userMgr/updatePassword")) == 0) {
-        return HTTP_STATUS_NEXT;
-    }
+
     std::string token = req->GetHeader("Authorization");
     if (token.empty()) {
         return HTTP_STATUS_UNAUTHORIZED;
     }
 
-    if (g_tokens.find(token) != g_tokens.end()) {
+
+    auto it = g_tokens.find(token);
+    if (it != g_tokens.end()) {
         std::time_t now = std::time(nullptr);
-        if (now - g_tokens[token] > TOKEN_EXPIRATION_TIME) {
-            g_tokens.erase(token);
+        if (now - it->second > TOKEN_EXPIRATION_TIME) {
+            g_tokens.erase(it);
             return HTTP_STATUS_UNAUTHORIZED;
         }
+
         g_tokens[token] = now;
         return HTTP_STATUS_NEXT;
     }
@@ -380,9 +398,17 @@ int login(HttpRequest* req, HttpResponse* resp) {
     hv::Json res;
     std::string username = req->GetString("userName");
     std::string password = req->GetString("password");
+
     if (username.empty() || password.empty()) {
         res["code"] = -1;
         res["msg"]  = "Username or password is empty";
+        res["data"] = hv::Json({});
+        return resp->Json(res);
+    }
+
+    if (verifyUser(username) != 0) {
+        res["code"] = -1;
+        res["msg"]  = "User does not exist";
         res["data"] = hv::Json({});
         return resp->Json(res);
     }
