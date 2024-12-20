@@ -17,6 +17,10 @@ using namespace hv;
 
 extern "C" {
 
+#define API_STR(api, func) "/api/" #api "/" #func
+#define API_GET(api, func) router.GET(API_STR(api, func), func)
+#define API_POST(api, func) router.POST(API_STR(api, func), func)
+
 static HttpServer server;
 
 static void registerHttpRedirect(HttpService& router) {
@@ -42,60 +46,60 @@ static void registerHttpRedirect(HttpService& router) {
 }
 
 static void registerUserApi(HttpService& router) {
-    router.GET("/api/userMgr/queryUserInfo", queryUserInfo);
-    // router.POST("/api/userMgr/updateUserName", updateUserName); # disabled
-    router.POST("/api/userMgr/updatePassword", updatePassword);
-    router.POST("/api/userMgr/addSShkey", addSShkey);
-    router.POST("/api/userMgr/deleteSShkey", deleteSShkey);
+    API_GET(userMgr, queryUserInfo);
+    // API_POST(userMgr, updateUserName); # disabled
+    API_POST(userMgr, updatePassword);
+    API_POST(userMgr, addSShkey);
+    API_POST(userMgr, deleteSShkey);
 }
 
 static void registerWiFiApi(HttpService& router) {
-    router.GET("/api/wifiMgr/queryWiFiInfo", queryWiFiInfo);
-    router.POST("/api/wifiMgr/scanWiFi", scanWiFi);
-    router.GET("/api/wifiMgr/getWiFiScanResults", getWiFiScanResults);
-    router.POST("/api/wifiMgr/connectWiFi", connectWiFi);
-    router.POST("/api/wifiMgr/disconnectWiFi", disconnectWiFi);
-    router.POST("/api/wifiMgr/switchWiFi", switchWiFi);
-    router.GET("/api/wifiMgr/getWifiStatus", getWifiStatus);
-    router.POST("/api/wifiMgr/autoConnectWiFi", autoConnectWiFi);
-    router.POST("/api/wifiMgr/forgetWiFi", forgetWiFi);
+    API_GET(wifiMgr, queryWiFiInfo);
+    API_POST(wifiMgr, scanWiFi);
+    API_GET(wifiMgr, getWiFiScanResults);
+    API_POST(wifiMgr, connectWiFi);
+    API_POST(wifiMgr, disconnectWiFi);
+    API_POST(wifiMgr, switchWiFi);
+    API_GET(wifiMgr, getWifiStatus);
+    API_POST(wifiMgr, autoConnectWiFi);
+    API_POST(wifiMgr, forgetWiFi);
 }
 
 static void registerDeviceApi(HttpService& router) {
-    router.GET("/api/deviceMgr/getSystemStatus", getSystemStatus);
-    router.GET("/api/deviceMgr/queryServiceStatus", queryServiceStatus);
-    router.POST("/api/deviceMgr/getSystemUpdateVesionInfo", getSystemUpdateVesionInfo);
-    router.GET("/api/deviceMgr/queryDeviceInfo", queryDeviceInfo);
-    router.POST("/api/deviceMgr/updateDeviceName", updateDeviceName);
-    router.POST("/api/deviceMgr/updateChannel", updateChannel);
-    router.POST("/api/deviceMgr/setPower", setPower);
-    router.POST("/api/deviceMgr/updateSystem", updateSystem);
-    router.GET("/api/deviceMgr/getUpdateProgress", getUpdateProgress);
-    router.POST("/api/deviceMgr/cancelUpdate", cancelUpdate);
+    API_GET(deviceMgr, getSystemStatus);
+    API_GET(deviceMgr, queryServiceStatus);
+    API_POST(deviceMgr, getSystemUpdateVesionInfo);
+    API_GET(deviceMgr, queryDeviceInfo);
+    API_POST(deviceMgr, updateDeviceName);
+    API_POST(deviceMgr, updateChannel);
+    API_POST(deviceMgr, setPower);
+    API_POST(deviceMgr, updateSystem);
+    API_GET(deviceMgr, getUpdateProgress);
+    API_POST(deviceMgr, cancelUpdate);
 
-    router.GET("/api/deviceMgr/getDeviceList", getDeviceList);
-    router.GET("/api/deviceMgr/getDeviceInfo", getDeviceInfo);
+    API_GET(deviceMgr, getDeviceList);
+    API_GET(deviceMgr, getDeviceInfo);
 
-    router.GET("/api/deviceMgr/getAppInfo", getAppInfo);
-    router.POST("/api/deviceMgr/uploadApp", uploadApp);
+    API_GET(deviceMgr, getAppInfo);
+    API_POST(deviceMgr, uploadApp);
 
-    router.GET("/api/deviceMgr/getModelInfo", getModelInfo);
-    router.GET("/api/deviceMgr/getModelFile", getModelFile);
-    router.POST("/api/deviceMgr/uploadModel", uploadModel);
-    router.GET("/api/deviceMgr/getModelList", getModelList);
+    API_GET(deviceMgr, getModelInfo);
+    API_GET(deviceMgr, getModelFile);
+    API_POST(deviceMgr, uploadModel);
+    API_GET(deviceMgr, getModelList);
 
-    router.POST("/api/deviceMgr/savePlatformInfo", savePlatformInfo);
-    router.GET("/api/deviceMgr/getPlatformInfo", getPlatformInfo);
+    API_POST(deviceMgr, savePlatformInfo);
+    API_GET(deviceMgr, getPlatformInfo);
 }
 
 static void registerFileApi(HttpService& router) {
-    router.GET("/api/fileMgr/queryFileList", queryFileList);
-    router.POST("/api/fileMgr/uploadFile", uploadFile);
-    router.POST("/api/fileMgr/deleteFile", deleteFile);
+    API_GET(fileMgr, queryFileList);
+    API_POST(fileMgr, uploadFile);
+    API_POST(fileMgr, deleteFile);
 }
 
 static void registerWebSocket(HttpService& router) {
-    router.GET("/api/deviceMgr/getCameraWebsocketUrl", [](HttpRequest* req, HttpResponse* resp) {
+    router.GET(API_STR(deviceMgr, getCameraWebsocketUrl), [](HttpRequest* req, HttpResponse* resp) {
         hv::Json data;
         data["websocketUrl"] = "ws://" + req->host + ":" + std::to_string(WS_PORT);
         hv::Json res;
