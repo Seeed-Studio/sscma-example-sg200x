@@ -31,6 +31,8 @@
 #define PATH_AVAHI_DAEMON_SERVICE  "/etc/init.d/S50avahi-daemon"
 #define PATH_HOSTAPD_CONF          "/etc/hostapd_2g4.conf"
 
+#define PATH_NODERED_CONF          "/home/recamera/.node-red/settings.js"
+
 #define PATH_SERVER_CRT            "/etc/cert/server.crt"
 #define PATH_SERVER_KEY            "/etc/cert/server.key"
 

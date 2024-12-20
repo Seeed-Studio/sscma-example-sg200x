@@ -176,6 +176,7 @@ std::string aes_encrypt(const std::string& plaintext, const unsigned char* key) 
     unsigned char* input = new unsigned char[paddedLen]();
     memcpy(input, plaintext.c_str(), len);
 
+
     unsigned char* output = new unsigned char[paddedLen]();
     for (size_t i = 0; i < paddedLen; i += AES_BLOCK_SIZE) {
         AES_encrypt(input + i, output + i, &encryptKey);
@@ -417,6 +418,11 @@ int updatePassword(HttpRequest* req, HttpResponse* resp) {
             savePasswd(newPassword);
         }
     }
+
+    // std::string newPasswordHash = bcryptNodeRed(newPassword);
+    // system(("sed -i 's/\\(password: \\)\"[^\"]*\"/\\1\"" + newPasswordHash + "\"/' " + PATH_NODERED_CONF).c_str());
+    // system("sed -i '/\\/\\/ adminAuth:/,+9s/\\/\\/\\([^\n]*\\)/\\1/' " PATH_NODERED_CONF);
+
     pclose(fp);
 
     if (access(PATH_FIRST_LOGIN, F_OK) == 0) {

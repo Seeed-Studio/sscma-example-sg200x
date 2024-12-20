@@ -513,6 +513,9 @@ int updateDeviceName(HttpRequest* req, HttpResponse* resp) {
     // sync ap name
     // system(("sed -i s/^ssid=.*/ssid=" + dev_name + "/ " PATH_HOSTAPD_CONF).c_str());
 
+    // sync nodered name
+    system(("sed -i 's/\\(username: \\)\"[^\"]*\"/\\1\"" + dev_name + "\"/' " + PATH_NODERED_CONF).c_str());
+
     // rebroadcast device name
     system(("sed -i s/^host-name=.*/host-name=" + dev_name + "/ " PATH_AVAHI_CONF).c_str());
     system(PATH_AVAHI_DAEMON_SERVICE " stop");
