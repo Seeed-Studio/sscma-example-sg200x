@@ -88,8 +88,8 @@ int setAudioOutVolume(uint8_t volumedb)
     CVI_S32 s32Ret = CVI_SUCCESS;
     CVI_S32 idevid = 0;
 
-    if (volumedb > 24) {
-        volumedb = 24;
+    if (volumedb > 30) {
+        volumedb = 30;
     }
     s32Ret = CVI_AI_SetVolume(idevid, (CVI_S32)volumedb);
 
