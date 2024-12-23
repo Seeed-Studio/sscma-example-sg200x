@@ -9,7 +9,7 @@ namespace ma::node {
 
 static constexpr char TAG[] = "ma::node::stream";
 
-StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), thread_(nullptr), camera_(nullptr), frame_(30), transport_(nullptr) {
+StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), thread_(nullptr), camera_(nullptr), frame_(60), transport_(nullptr) {
     char hostname[1024];
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
@@ -21,13 +21,21 @@ StreamNode::~StreamNode() {
 }
 
 void StreamNode::threadEntry() {
-    videoFrame* frame = nullptr;
+    videoFrame* video = nullptr;
+    audioFrame* audio = nullptr;
+    Frame* frame      = nullptr;
 
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
             Thread::enterCritical();
-            for (auto& block : frame->blocks) {
-                transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+            if (frame->chn == CHN_H264) {
+                video = static_cast<videoFrame*>(frame);
+                for (auto& block : video->blocks) {
+                    transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+                }
+            } else if (frame->chn == CHN_AUDIO) {
+                audio = static_cast<audioFrame*>(frame);
+                transport_->sendAudio(reinterpret_cast<const char*>(audio->data), audio->size);
             }
             frame->release();
             Thread::exitCritical();
@@ -85,8 +93,9 @@ ma_err_t StreamNode::onCreate(const json& config) {
         MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
-    TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, session_, username_, password_};
-    err                              = transport_->init(&rtspConfig);
+    TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, MA_AUDIO_FORMAT_PCM, 16000, 1, 16, session_, username_, password_};
+
+    err = transport_->init(&rtspConfig);
     if (err != MA_OK) {
         MA_THROW(Exception(err, "RTSP transport init failed"));
     }
@@ -148,6 +157,7 @@ ma_err_t StreamNode::onStart() {
 
     camera_->config(CHN_H264);
     camera_->attach(CHN_H264, &frame_);
+    camera_->attach(CHN_AUDIO, &frame_);
 
     started_ = true;
 
@@ -170,6 +180,7 @@ ma_err_t StreamNode::onStop() {
 
     if (camera_ != nullptr) {
         camera_->detach(CHN_H264, &frame_);
+        camera_->detach(CHN_AUDIO, &frame_);
     }
 
     if (transport_ != nullptr) {

@@ -28,6 +28,10 @@ public:
     struct Config {
         int port;
         ma_pixel_format_t format;
+        ma_audio_format_t audio_format;
+        int sample_rate;
+        int chnanels;
+        int bit_width;
         std::string session;
         std::string user;
         std::string pass;
@@ -42,6 +46,9 @@ public:
     size_t receive(char* data, size_t length) noexcept override;
     size_t receiveIf(char* data, size_t length, char delimiter) noexcept override;
     size_t flush() noexcept override;
+
+    size_t sendVideo(const char* data, size_t length) noexcept;
+    size_t sendAudio(const char* data, size_t length) noexcept;
 
 private:
     ma_pixel_format_t m_format;

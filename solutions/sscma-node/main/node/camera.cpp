@@ -1,3 +1,6 @@
+
+#include <alsa/asoundlib.h>
+
 #include "camera.h"
 
 namespace ma::node {
@@ -5,6 +8,12 @@ namespace ma::node {
 static constexpr char TAG[] = "ma::node::camera";
 
 const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
+
+
+#define AUDIO_DEVICE "hw:0"
+#define SAMPLE_RATE  16000
+#define CHANNELS     1
+#define FORMAT       SND_PCM_FORMAT_S16_LE
 
 #define CAMERA_INIT()                               \
     {                                               \
@@ -28,7 +37,18 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
     }
 
 CameraNode::CameraNode(std::string id)
-    : Node("camera", std::move(id)), channels_(CHN_MAX), count_(0), light_(0), preview_(false), websocket_(true), option_(0), frame_(60), thread_(nullptr), transport_(nullptr) {
+    : Node("camera", std::move(id)),
+      channels_(CHN_MAX),
+      count_(0),
+      light_(0),
+      preview_(false),
+      websocket_(true),
+      audio_(true),
+      option_(0),
+      frame_(60),
+      thread_(nullptr),
+      thread_audio_(nullptr),
+      transport_(nullptr) {
     for (int i = 0; i < CHN_MAX; i++) {
         channels_[i].configured = false;
         channels_[i].enabled    = false;
@@ -62,7 +82,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pstDataParam->pParam;
     VENC_CHN VencChn                  = pstVencChnCfg->VencChn;
 
-    if (!started_ || channels_[VencChn].msgboxes.empty()) {
+    if (!started_ || paused_ || channels_[VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
     }
     if (pstVencChnCfg->VencChn >= CHN_MAX) {
@@ -96,6 +116,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
                 cnt = 1;
             }
             frame                      = new videoFrame();
+            frame->chn                 = VencChn;
             frame->timestamp           = Tick::current();
             frame->img.width           = channels_[VencChn].width;
             frame->img.height          = channels_[VencChn].height;
@@ -117,6 +138,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
                 continue;
             }
             frame               = new videoFrame();
+            frame->chn          = VencChn;
             frame->timestamp    = Tick::current();
             frame->img.width    = channels_[VencChn].width;
             frame->img.height   = channels_[VencChn].height;
@@ -149,7 +171,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     VIDEO_FRAME_INFO_S* VpssFrame     = (VIDEO_FRAME_INFO_S*)pData;
     VIDEO_FRAME_S* f                  = &VpssFrame->stVFrame;
 
-    if (!started_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
+    if (!started_ || paused_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
     }
     if (pstVencChnCfg->VencChn >= CHN_MAX) {
@@ -158,6 +180,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     }
 
     videoFrame* frame   = new videoFrame();
+    frame->chn          = pstVencChnCfg->VencChn;
     frame->img.size     = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
     frame->img.width    = channels_[pstVencChnCfg->VencChn].width;
     frame->img.height   = channels_[pstVencChnCfg->VencChn].height;
@@ -167,6 +190,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     frame->img.data     = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
     frame->timestamp    = Tick::current();
     frame->fps          = channels_[pstVencChnCfg->VencChn].fps;
+    frame->ref(channels_[pstVencChnCfg->VencChn].msgboxes.size());
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
         if (!msgbox->post(frame, Tick::fromMilliseconds(5))) {
             frame->release();
@@ -204,6 +228,131 @@ void CameraNode::threadEntry() {
     }
 }
 
+
+void CameraNode::threadAudioEntry() {
+    const char* device_name = AUDIO_DEVICE;
+    snd_pcm_t* handle;
+    int err = 0;
+    snd_pcm_hw_params_t* params;
+    snd_pcm_uframes_t frames;
+    int pcm_return;
+    uint16_t* buffer;
+    snd_pcm_uframes_t buffer_size = 0;
+    snd_pcm_uframes_t chunk_size  = 0;
+    unsigned int buffer_time      = 0;
+    unsigned period_time          = 0;
+    unsigned int rate             = SAMPLE_RATE;
+    int bits_per_sample           = snd_pcm_format_physical_width(FORMAT);
+
+    system("amixer -D" AUDIO_DEVICE "cset name='ADC Capture Volume' 24");
+
+    pcm_return = snd_pcm_open(&handle, device_name, SND_PCM_STREAM_CAPTURE, 0);
+    if (pcm_return < 0) {
+        MA_LOGE(TAG, "Unable to open PCM device: %s", snd_strerror(pcm_return));
+        return;
+    }
+    MA_LOGI(TAG, "PCM device opened successfully.");
+
+    snd_pcm_hw_params_malloc(&params);
+    snd_pcm_hw_params_any(handle, params);
+    err = snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set access type: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+    err = snd_pcm_hw_params_set_format(handle, params, FORMAT);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set sample format: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+    err = snd_pcm_hw_params_set_channels(handle, params, CHANNELS);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set channel count: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+
+    err = snd_pcm_hw_params_set_rate_near(handle, params, &rate, 0);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set sample rate: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+
+    err = snd_pcm_hw_params_get_buffer_time_max(params, &buffer_time, 0);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to get buffer time: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+    if (buffer_time > 100000)
+        buffer_time = 100000;
+
+    period_time = buffer_time / 4;
+    err         = snd_pcm_hw_params_set_period_time_near(handle, params, &period_time, 0);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set period time: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+    err = snd_pcm_hw_params_set_buffer_time_near(handle, params, &buffer_time, 0);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set buffer time: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+
+    err = snd_pcm_hw_params(handle, params);
+    if (err < 0) {
+        MA_LOGE(TAG, "Unable to set parameters: %s", snd_strerror(err));
+        snd_pcm_close(handle);
+        return;
+    }
+
+    snd_pcm_hw_params_get_period_size(params, &chunk_size, 0);
+    snd_pcm_hw_params_get_buffer_size(params, &buffer_size);
+
+    if (buffer_size < chunk_size) {
+        MA_LOGE(TAG, "Cannot allocate buffer of size %d", buffer_size);
+        snd_pcm_close(handle);
+        return;
+    }
+
+    buffer = new uint16_t[chunk_size * bits_per_sample / 8 * 2];
+
+    while (started_) {
+        pcm_return = snd_pcm_readi(handle, buffer, chunk_size * 2);
+        if (pcm_return == -EPIPE) {
+            MA_LOGW(TAG, "overrun occurred");
+            snd_pcm_prepare(handle);
+            continue;
+        } else if (pcm_return < 0) {
+            MA_LOGE(TAG, "error from read: %s", snd_strerror(pcm_return));
+            break;
+        }
+        if (paused_ || channels_[CHN_AUDIO].msgboxes.empty()) {
+            continue;
+        }
+        audioFrame* frame = new audioFrame();
+        frame->chn        = CHN_AUDIO;
+        frame->data       = new uint8_t[chunk_size * bits_per_sample / 8 * 2];
+        frame->size       = chunk_size * bits_per_sample / 8 * 2;
+        frame->timestamp  = Tick::current();
+        memcpy(frame->data, buffer, chunk_size * bits_per_sample / 8 * 2);
+        frame->ref(channels_[CHN_AUDIO].msgboxes.size());
+        for (auto& msgbox : channels_[CHN_AUDIO].msgboxes) {
+            if (!msgbox->post(frame, Tick::fromMilliseconds(20))) {
+                frame->release();
+            }
+        }
+    }
+
+    snd_pcm_close(handle);
+    delete[] buffer;
+}
+
 int CameraNode::vencCallbackStub(void* pData, void* pArgs, void* pUserData) {
     return reinterpret_cast<CameraNode*>(pUserData)->vencCallback(pData, pArgs);
 }
@@ -215,6 +364,11 @@ int CameraNode::vpssCallbackStub(void* pData, void* pArgs, void* pUserData) {
 
 void CameraNode::threadEntryStub(void* obj) {
     reinterpret_cast<CameraNode*>(obj)->threadEntry();
+}
+
+
+void CameraNode::threadAudioEntryStub(void* obj) {
+    reinterpret_cast<CameraNode*>(obj)->threadAudioEntry();
 }
 
 ma_err_t CameraNode::onCreate(const json& config) {
@@ -248,6 +402,10 @@ ma_err_t CameraNode::onCreate(const json& config) {
 
     if (config.contains("websocket") && config["websocket"].is_boolean()) {
         websocket_ = config["websocket"].get<bool>();
+    }
+
+    if (config.contains("audio") && config["audio"].is_boolean()) {
+        audio_ = config["audio"].get<bool>();
     }
 
     if (config.contains("light") && config["light"].is_number()) {
@@ -307,11 +465,21 @@ ma_err_t CameraNode::onCreate(const json& config) {
         transport_ = nullptr;
     }
 
-
     thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
     if (thread_ == nullptr) {
         MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
+
+    if (audio_) {
+        channels_[CHN_AUDIO].enabled    = true;
+        channels_[CHN_AUDIO].configured = true;
+        thread_audio_                   = new Thread((type_ + "#" + id_ + "#audio").c_str(), &CameraNode::threadAudioEntryStub, this);
+        if (thread_audio_ == nullptr) {
+            delete thread_;
+            MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
+        }
+    }
+
 
     server_->response(
         id_,
@@ -406,6 +574,9 @@ ma_err_t CameraNode::onStart() {
     }
 
     for (int i = 0; i < CHN_MAX; i++) {
+        if (i == CHN_AUDIO) {
+            continue;
+        }
         video_ch_param_t param;
         switch (channels_[i].format) {
             case MA_PIXEL_FORMAT_JPEG:
@@ -441,9 +612,14 @@ ma_err_t CameraNode::onStart() {
     }
 
     started_ = true;
+    paused_  = false;
 
     if (thread_ != nullptr) {
         thread_->start(this);
+    }
+
+    if (audio_ && thread_audio_ != nullptr) {
+        thread_audio_->start(this);
     }
 
     CAMERA_INIT();
@@ -462,6 +638,9 @@ ma_err_t CameraNode::onStop() {
 
     if (thread_ != nullptr) {
         thread_->join();
+    }
+    if (audio_ && thread_audio_ != nullptr) {
+        thread_audio_->join();
     }
     CAMERA_DEINIT();
     return MA_OK;
@@ -497,15 +676,16 @@ ma_err_t CameraNode::attach(int chn, MessageBox* msgbox) {
     return MA_OK;
 }
 
+
 ma_err_t CameraNode::detach(int chn, MessageBox* msgbox) {
     Guard guard(mutex_);
     auto it = std::find(channels_[chn].msgboxes.begin(), channels_[chn].msgboxes.end(), msgbox);
     if (it != channels_[chn].msgboxes.end()) {
+        paused_ = true;
         MA_LOGI(TAG, "detach %p from %d", msgbox, chn);
-        started_ = false;
-        Thread::sleep(Tick::fromMilliseconds(2000 / channels_[chn].fps));  // skip last frame
+        Thread::sleep(Tick::fromMilliseconds(50));  // skip last frame
         channels_[chn].msgboxes.erase(it);
-        started_ = true;
+        paused_ = false;
     }
     return MA_OK;
 }

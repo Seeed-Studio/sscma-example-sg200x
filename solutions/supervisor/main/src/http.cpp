@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <string>
 #include <syslog.h>
@@ -7,14 +8,17 @@
 #include "hv/hasync.h"   // import hv::async
 #include "hv/hthread.h"  // import hv_gettid
 
+
 #include "http.h"
 #include "utils_device.h"
 #include "utils_file.h"
+#include "utils_led.h"
 #include "utils_user.h"
 #include "utils_wifi.h"
 
-using namespace hv;
+#include "version.h"
 
+using namespace hv;
 extern "C" {
 
 #define API_STR(api, func) "/api/" #api "/" #func
@@ -46,6 +50,7 @@ static void registerHttpRedirect(HttpService& router) {
 }
 
 static void registerUserApi(HttpService& router) {
+    API_POST(userMgr, login);
     API_GET(userMgr, queryUserInfo);
     // API_POST(userMgr, updateUserName); # disabled
     API_POST(userMgr, updatePassword);
@@ -98,6 +103,12 @@ static void registerFileApi(HttpService& router) {
     API_POST(fileMgr, deleteFile);
 }
 
+static void registerLedApi(HttpService& router) {
+    router.POST("/api/led/{led}/on", ledOn);
+    router.POST("/api/led/{led}/off", ledOff);
+    router.POST("/api/led/{led}/brightness", ledBrightness);
+}
+
 static void registerWebSocket(HttpService& router) {
     router.GET(API_STR(deviceMgr, getCameraWebsocketUrl), [](HttpRequest* req, HttpResponse* resp) {
         hv::Json data;
@@ -145,18 +156,39 @@ static void initHttpsService() {
     syslog(LOG_INFO, "https service open successful!\n");
 }
 
+
+static int response_status(HttpResponse* resp, int code = 200, const char* message = NULL) {
+    if (message == NULL)
+        message = http_status_str((enum http_status)code);
+    resp->Set("code", code);
+    resp->Set("message", message);
+    return code;
+}
+
+
 int initHttpd() {
     static HttpService router;
 
     router.AllowCORS();
     router.Static("/", WWW(""));
+    router.Use(authorization);
+
+    router.GET("/api/version", [](HttpRequest* req, HttpResponse* resp) {
+        hv::Json res;
+        res["code"] = 0;
+        res["msg"]  = "";
+        res["data"] = PROJECT_VERSION;
+        return resp->Json(res);
+    });
 
     registerHttpRedirect(router);
     registerUserApi(router);
     registerWiFiApi(router);
     registerDeviceApi(router);
     registerFileApi(router);
+    registerLedApi(router);
     registerWebSocket(router);
+
 
 #if HTTPS_SUPPORT
     initHttpsService();

@@ -108,6 +108,21 @@ ma_err_t TransportRTSP::init(const void* config) noexcept {
             return MA_EINVAL;
     }
 
+
+    attr.audio.sampleRate = rtsp_config->sample_rate;
+
+    switch (rtsp_config->audio_format) {
+        case MA_AUDIO_FORMAT_PCM:
+            attr.audio.codec = RTSP_AUDIO_PCM_L16;
+            break;
+        case MA_AUDIO_FORMAT_AAC:
+            attr.audio.codec = RTSP_AUDIO_AAC;
+            break;
+        default:
+            attr.audio.codec = RTSP_AUDIO_PCM_L16;
+            break;
+    }
+
     snprintf(attr.name, sizeof(attr.name), "%s", m_name.c_str());
 
     CVI_RTSP_CreateSession(m_ctx, &attr, &m_session);
@@ -177,7 +192,35 @@ size_t TransportRTSP::send(const char* data, size_t length) noexcept {
 
     CVI_RTSP_WriteFrame(s_contexts[m_port], m_session->video, (CVI_RTSP_DATA*)&frame);
 
-    return 0;
+    return length;
+}
+
+size_t TransportRTSP::sendVideo(const char* data, size_t length) noexcept {
+    Guard guard(m_mutex);
+    if (!m_initialized) {
+        return 0;
+    }
+    CVI_RTSP_DATA frame = {0};
+    frame.blockCnt      = 1;
+    frame.dataPtr[0]    = reinterpret_cast<uint8_t*>(const_cast<char*>(data));
+    frame.dataLen[0]    = length;
+
+    CVI_RTSP_WriteFrame(s_contexts[m_port], m_session->video, (CVI_RTSP_DATA*)&frame);
+
+    return length;
+}
+
+size_t TransportRTSP::sendAudio(const char* data, size_t length) noexcept {
+    Guard guard(m_mutex);
+    if (!m_initialized) {
+        return 0;
+    }
+    CVI_RTSP_DATA frame = {0};
+    frame.blockCnt      = 1;
+    frame.dataPtr[0]    = reinterpret_cast<uint8_t*>(const_cast<char*>(data));
+    frame.dataLen[0]    = length;
+    CVI_RTSP_WriteFrame(s_contexts[m_port], m_session->audio, (CVI_RTSP_DATA*)&frame);
+    return length;
 }
 
 

@@ -1,26 +1,26 @@
+#include <semaphore.h>
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
-#include <semaphore.h>
 #include <time.h>
 
-#include "hv/mqtt_client.h"
-#include "hv/hv.h"
-#include "hv/requests.h"
-#include "global_cfg.h"
 #include "daemon.h"
+#include "global_cfg.h"
+#include "hv/hv.h"
+#include "hv/mqtt_client.h"
+#include "hv/requests.h"
 
 #define MQTT_TOPIC_IN  "sscma/v0/recamera/node/in/"
 #define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
 #define MQTT_PAYLOAD   "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
 
-const int threadTimeout = 3;
-const int retryTimes = 3;
-int daemonStatus = 0;
-int noderedStarting = 1;
-int sscmaStarting = 1;
+const int threadTimeout  = 3;
+const int retryTimes     = 3;
+int daemonStatus         = 0;
+int noderedStarting      = 1;
+int sscmaStarting        = 1;
 APP_STATUS noderedStatus = APP_STATUS_UNKNOWN;
-APP_STATUS sscmaStatus = APP_STATUS_UNKNOWN;
+APP_STATUS sscmaStatus   = APP_STATUS_UNKNOWN;
 sem_t semSscma;
 
 hv::MqttClient cli;
@@ -57,7 +57,7 @@ int startFlow() {
     hv::Json data;
     http_headers headers;
 
-    data["state"] = "start";
+    data["state"]           = "start";
     headers["Content-Type"] = "application/json";
 
     auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
@@ -73,7 +73,7 @@ int stopFlow() {
     hv::Json data;
     http_headers headers;
 
-    data["state"] = "stop";
+    data["state"]           = "stop";
     headers["Content-Type"] = "application/json";
 
     auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
@@ -88,7 +88,7 @@ int stopFlow() {
 int startApp(const char* cmd, const char* appName) {
     FILE* fp;
     char info[128] = "";
-    int len = 0;
+    int len        = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -117,10 +117,14 @@ APP_STATUS getFlowStatus() {
     if (resp == NULL) {
         return APP_STATUS_NORESPONSE;
     } else {
-        hv::Json data = hv::Json::parse(resp->body.begin(), resp->body.end());
+        try {
+            hv::Json data = hv::Json::parse(resp->body.begin(), resp->body.end());
 
-        if (data["state"] == "stop") {
-            return APP_STATUS_STOP;
+            if (data["state"] == "stop") {
+                return APP_STATUS_STOP;
+            }
+        } catch (const std::exception& e) {
+            return APP_STATUS_NORESPONSE;
         }
     }
 
@@ -192,7 +196,7 @@ void runDaemon() {
             } else {
                 syslog(LOG_ERR, "node-red is not responding");
                 if (0 != startApp(SCRIPT_DEVICE_RESTARTNODERED, "node-red")) {
-                    noderedStatus = APP_STATUS_STARTFAILED;
+                    noderedStatus   = APP_STATUS_STARTFAILED;
                     noderedStarting = 0;
                 } else {
                     noderedStarting = 1;
@@ -225,7 +229,7 @@ void runDaemon() {
             syslog(LOG_ERR, "sscma-node is not responding");
             stopFlow();
             if (0 != startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node")) {
-                sscmaStatus = APP_STATUS_STARTFAILED;
+                sscmaStatus   = APP_STATUS_STARTFAILED;
                 sscmaStarting = 0;
             } else {
                 sscmaStarting = 1;
@@ -238,7 +242,7 @@ void initDaemon() {
     std::thread th;
 
     daemonStatus = 1;
-    th = std::thread(runDaemon);
+    th           = std::thread(runDaemon);
     th.detach();
 }
 
