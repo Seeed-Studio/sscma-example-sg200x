@@ -10,11 +10,6 @@ static constexpr char TAG[] = "ma::node::camera";
 const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
 
 
-#define AUDIO_DEVICE "hw:0"
-#define SAMPLE_RATE  16000
-#define CHANNELS     1
-#define FORMAT       SND_PCM_FORMAT_S16_LE
-
 #define CAMERA_INIT()                               \
     {                                               \
         Thread::enterCritical();                    \

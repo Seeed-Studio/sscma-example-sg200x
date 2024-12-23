@@ -7,6 +7,11 @@
 
 namespace ma::node {
 
+#define AUDIO_DEVICE "hw:0"
+#define SAMPLE_RATE  16000
+#define CHANNELS     1
+#define FORMAT       SND_PCM_FORMAT_S16_LE
+
 enum { CHN_RAW = 0, CHN_JPEG = 1, CHN_H264 = 2, CHN_AUDIO = 3, CHN_MAX };
 
 typedef struct {

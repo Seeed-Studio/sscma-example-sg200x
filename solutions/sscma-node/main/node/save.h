@@ -45,15 +45,15 @@ protected:
     int duration_;
     bool enabled_;
     ma_tick_t begin_;
-    int count_;
+    int vcount_;
+    int acount_;
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
     std::string filename_;
     AVFormatContext* avFmtCtx_;
-    AVCodecContext* avCodecCtx_;
-    AVCodec* avCodec_;
     AVStream* avStream_;
+    AVStream* audioStream_;
 };
 
 }  // namespace ma::node
