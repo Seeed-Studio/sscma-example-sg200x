@@ -7,9 +7,10 @@
 
 namespace ma::node {
 
-enum { CHN_RAW = 0, CHN_JPEG = 1, CHN_H264 = 2, CHN_MAX };
+enum { CHN_RAW = 0, CHN_JPEG = 1, CHN_H264 = 2, CHN_AUDIO = 3, CHN_MAX };
 
 typedef struct {
+    int chn;
     int32_t width;
     int32_t height;
     int32_t fps;
@@ -20,16 +21,25 @@ typedef struct {
     std::vector<MessageBox*> msgboxes;
 } channel;
 
-class videoFrame {
+class Frame {
 public:
-    videoFrame() : ref_cnt(0), blocks({}), timestamp(0), fps(0) {
-        memset(&img, 0, sizeof(ma_img_t));
-    }
-    ~videoFrame() = default;
+    Frame() : ref_cnt(0), chn(CHN_MAX) {}
+    ~Frame() = default;
     inline void ref(int n = 1) {
         ref_cnt.fetch_add(n, std::memory_order_relaxed);
     }
-    inline void release() {
+    virtual inline void release() = 0;
+    int chn;
+    std::atomic<int> ref_cnt;
+    ma_tick_t timestamp;
+};
+
+class videoFrame : public Frame {
+public:
+    videoFrame() : Frame() {
+        memset(&img, 0, sizeof(img));
+    }
+    inline void release() override {
         if (ref_cnt.load(std::memory_order_relaxed) == 0 || ref_cnt.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             if (!img.physical) {
                 delete[] img.data;
@@ -37,16 +47,32 @@ public:
             delete this;
         }
     }
-    ma_tick_t timestamp;
-    std::atomic<int> ref_cnt;
     std::vector<std::pair<void*, size_t>> blocks;
-    int8_t fps;
     ma_img_t img;
+    int fps;
+};
+
+class audioFrame : public Frame {
+public:
+    audioFrame() : Frame() {
+        data = nullptr;
+        size = 0;
+    }
+    inline void release() override {
+        if (ref_cnt.load(std::memory_order_relaxed) == 0 || ref_cnt.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            delete[] data;
+            delete this;
+        }
+    }
+
+    uint8_t* data;
+    size_t size;
 };
 
 class CameraNode : public Node {
 
 public:
+    using audioCallback = void (*)(const uint8_t* data, size_t size);
     CameraNode(std::string id);
     ~CameraNode();
 
@@ -62,20 +88,25 @@ public:
 
 protected:
     void threadEntry();
+    void threadAudioEntry();
     static void threadEntryStub(void* obj);
+    static void threadAudioEntryStub(void* obj);
     int vencCallback(void* pData, void* pArgs);
     int vpssCallback(void* pData, void* pArgs);
     static int vencCallbackStub(void* pData, void* pArgs, void* pUserData);
     static int vpssCallbackStub(void* pData, void* pArgs, void* pUserData);
 
 private:
+    std::atomic<bool> paused_;
     std::vector<channel> channels_;
     uint32_t count_;
     bool preview_;
     bool websocket_;
+    bool audio_;
     int option_;
     int light_;
     Thread* thread_;
+    Thread* thread_audio_;
     MessageBox frame_;
     TransportWebSocket* transport_;
 };

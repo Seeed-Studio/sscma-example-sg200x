@@ -1,4 +1,3 @@
-#include <alsa/asoundlib.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -10,7 +9,7 @@ namespace ma::node {
 
 static constexpr char TAG[] = "ma::node::stream";
 
-StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), thread_(nullptr), camera_(nullptr), frame_(30), transport_(nullptr) {
+StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), thread_(nullptr), camera_(nullptr), frame_(60), transport_(nullptr) {
     char hostname[1024];
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
@@ -22,13 +21,21 @@ StreamNode::~StreamNode() {
 }
 
 void StreamNode::threadEntry() {
-    videoFrame* frame = nullptr;
+    videoFrame* video = nullptr;
+    audioFrame* audio = nullptr;
+    Frame* frame      = nullptr;
 
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
             Thread::enterCritical();
-            for (auto& block : frame->blocks) {
-                transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+            if (frame->chn == CHN_H264) {
+                video = static_cast<videoFrame*>(frame);
+                for (auto& block : video->blocks) {
+                    transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+                }
+            } else if (frame->chn == CHN_AUDIO) {
+                audio = static_cast<audioFrame*>(frame);
+                transport_->sendAudio(reinterpret_cast<const char*>(audio->data), audio->size);
             }
             frame->release();
             Thread::exitCritical();
@@ -38,61 +45,6 @@ void StreamNode::threadEntry() {
 
 void StreamNode::threadEntryStub(void* obj) {
     reinterpret_cast<StreamNode*>(obj)->threadEntry();
-}
-
-void StreamNode::threadAudioEntry() {
-    const char* device_name = "hw:0";
-    snd_pcm_t* handle;
-    snd_pcm_hw_params_t* params;
-    snd_pcm_uframes_t frames;
-    int pcm_return;
-    uint16_t* buffer;
-    int rate            = 16000;                 // 采样率
-    int channels        = 1;                     // 声道数（立体声）
-    int bits_per_sample = 16;                    // 每个样本 16 位
-    int buffer_size     = 16000 * 2 * channels;  // 16000 * 2 字节/通道 * 2 通道）
-
-    // 打开 PCM 设备
-    pcm_return = snd_pcm_open(&handle, device_name, SND_PCM_STREAM_CAPTURE, 0);
-    if (pcm_return < 0) {
-        std::cerr << "Unable to open PCM device " << device_name << std::endl;
-        return;
-    }
-    std::cout << "Opened PCM device " << device_name << std::endl;
-
-    // 设置硬件参数
-    snd_pcm_hw_params_malloc(&params);
-    snd_pcm_hw_params_any(handle, params);
-    snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-    snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
-    snd_pcm_hw_params_set_rate(handle, params, rate, 0);
-    snd_pcm_hw_params_set_channels(handle, params, channels);
-    snd_pcm_hw_params(handle, params);
-    snd_pcm_hw_params_free(params);
-
-    // 分配缓冲区
-    frames = 640;
-    buffer = new uint16_t[frames * channels];
-
-
-    // 开始录音
-    while (started_) {
-        pcm_return = snd_pcm_readi(handle, buffer, frames);
-        if (pcm_return == -EPIPE) {
-            std::cerr << "Buffer overrun occurred" << std::endl;
-            snd_pcm_prepare(handle);
-        } else if (pcm_return < 0) {
-            std::cerr << "Error reading from PCM device: " << snd_strerror(pcm_return) << std::endl;
-            break;
-        }
-        transport_->sendAudio(reinterpret_cast<char*>(buffer), pcm_return * channels * (bits_per_sample / 8));
-    }
-    // 停止录音
-    snd_pcm_close(handle);
-    delete[] buffer;
-}
-void StreamNode::threadAudioEntryStub(void* obj) {
-    reinterpret_cast<StreamNode*>(obj)->threadAudioEntry();
 }
 
 ma_err_t StreamNode::onCreate(const json& config) {
@@ -132,11 +84,6 @@ ma_err_t StreamNode::onCreate(const json& config) {
         MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
-    audio_thread_ = new Thread((type_ + "#" + id_ + "#audio").c_str(), threadAudioEntryStub);
-    if (audio_thread_ == nullptr) {
-        MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
-    }
-
     // show url
     MA_LOGI(TAG, "%s", url_.c_str());
 
@@ -147,7 +94,8 @@ ma_err_t StreamNode::onCreate(const json& config) {
     }
 
     TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, MA_AUDIO_FORMAT_PCM, 16000, 1, 16, session_, username_, password_};
-    err                              = transport_->init(&rtspConfig);
+
+    err = transport_->init(&rtspConfig);
     if (err != MA_OK) {
         MA_THROW(Exception(err, "RTSP transport init failed"));
     }
@@ -175,11 +123,6 @@ ma_err_t StreamNode::onDestroy() {
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
-    }
-
-    if (audio_thread_ != nullptr) {
-        delete audio_thread_;
-        audio_thread_ = nullptr;
     }
 
     if (transport_ != nullptr) {
@@ -214,11 +157,11 @@ ma_err_t StreamNode::onStart() {
 
     camera_->config(CHN_H264);
     camera_->attach(CHN_H264, &frame_);
+    camera_->attach(CHN_AUDIO, &frame_);
 
     started_ = true;
 
     thread_->start(this);
-    audio_thread_->start(this);
 
     return MA_OK;
 }
@@ -235,14 +178,9 @@ ma_err_t StreamNode::onStop() {
         thread_->join();
     }
 
-    if (audio_thread_ != nullptr) {
-        printf("audio_thread_->join()\n");
-        audio_thread_->join();
-        printf("audio_thread_->join() done\n");
-    }
-
     if (camera_ != nullptr) {
         camera_->detach(CHN_H264, &frame_);
+        camera_->detach(CHN_AUDIO, &frame_);
     }
 
     if (transport_ != nullptr) {

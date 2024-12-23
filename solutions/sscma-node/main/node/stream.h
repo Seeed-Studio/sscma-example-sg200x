@@ -23,9 +23,6 @@ protected:
     void threadEntry();
     static void threadEntryStub(void* obj);
 
-    void threadAudioEntry();
-    static void threadAudioEntryStub(void* obj);
-
 protected:
     int port_;
     std::string session_;
@@ -37,7 +34,6 @@ protected:
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
-    Thread* audio_thread_;
 };
 
 }  // namespace ma::node
