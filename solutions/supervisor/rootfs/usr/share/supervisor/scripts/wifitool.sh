@@ -73,6 +73,14 @@ wifi_status() {
 }
 
 case $1 in
+wifi_valid)
+    if [ -z "$(ifconfig wlan0 2>/dev/null)" ]; then
+        echo "0"
+    else
+        echo "1"
+    fi
+    ;;
+
 start)
     if [ -z "$(ifconfig wlan1 2> /dev/null)" ]; then
         iw dev wlan0 interface add wlan1 type __ap;
