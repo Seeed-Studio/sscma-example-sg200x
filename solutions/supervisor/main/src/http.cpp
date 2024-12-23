@@ -192,8 +192,17 @@ int initWiFi() {
     strcat(cmd, std::to_string(g_userId).c_str());
     system(cmd);
 
-    th = std::thread(monitorWifiStatusThread);
-    th.detach();
+    char result[8] = "";
+    if (0 == exec_cmd(SCRIPT_WIFI("wifi_valid"), result, NULL) ) {
+        if (strcmp(result, "0") == 0) {
+            g_wifiMode = 4; // No wifi module
+        }
+    }
+
+    if (4 != g_wifiMode) {
+        th = std::thread(monitorWifiStatusThread);
+        th.detach();
+    }
 
     th = std::thread(updateSystemThread);
     th.detach();

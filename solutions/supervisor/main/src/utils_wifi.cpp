@@ -30,6 +30,35 @@ bool g_wifiConnecting = false;
 int g_wifiMode        = 1;
 int g_etherConnected  = 0;
 
+int exec_cmd(const char* cmd, char* result, const char* param)
+{
+    FILE* fp;
+    char full_cmd[CMD_BUF_SIZE] = "";
+    size_t len;
+
+    if (NULL == cmd)
+        return -1;
+
+    sprintf(full_cmd, "%s %s", cmd, (param == NULL) ? "" : param);
+
+    fp = popen(full_cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        return -1;
+    }
+
+    if (result != NULL) {
+        fgets(result, CMD_BUF_SIZE, fp);
+        len = strlen(result);
+        if (result[len - 1] == '\n') {
+            result[len - 1] = '\0';
+        }
+    }
+    pclose(fp);
+
+    return 0;
+}
+
 static int getWifiInfo(std::vector<std::string>& wifiStatus) {
     FILE* fp;
     char info[128];
