@@ -118,13 +118,12 @@ APP_STATUS getFlowStatus() {
         return APP_STATUS_NORESPONSE;
     } else {
         try {
-            printf("body: %s\n", resp->body.c_str());
             hv::Json data = hv::Json::parse(resp->body.begin(), resp->body.end());
+
             if (data["state"] == "stop") {
                 return APP_STATUS_STOP;
             }
-        } catch (hv::Json::exception& e) {
-            printf("this is here %s\n", e.what());
+        } catch (const std::exception& e) {
             return APP_STATUS_NORESPONSE;
         }
     }
