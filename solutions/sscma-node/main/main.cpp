@@ -30,7 +30,7 @@ void show_help() {
               << "  -h, --help           Show this help message\n"
               << "  -c, --config <file>  Configuration file, default is " << MA_NODE_CONFIG_FILE << "\n"
               << "  --start              Start the service\n"
-              << "  --deamon             Run in deamon mode\n"
+              << "  --daemon             Run in daemon mode\n"
               << std::endl;
 }
 
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
 
     std::string config_file = MA_NODE_CONFIG_FILE;
     bool start_service      = false;
-    bool deamon             = false;
+    bool daemon             = false;
 
     if (argc < 2) {
         show_help();
@@ -79,8 +79,9 @@ int main(int argc, char** argv) {
             }
         } else if (arg == "--start") {
             start_service = true;
-        } else if (arg == "--deamon") {
-            deamon = true;
+        } else if (arg == "--daemon") {
+            daemon = true;
+            start_service = true;
         } else {
             std::cerr << "Error: Unknown option " << arg << std::endl;
             return 1;
@@ -109,7 +110,7 @@ int main(int argc, char** argv) {
         MA_STORAGE_GET_STR(config, MA_STORAGE_KEY_MQTT_PWD, password, "");
         MA_STORAGE_GET_POD(config, MA_STORAGE_KEY_MQTT_PORT, port, 1883);
 
-        if (deamon) {
+        if (daemon) {
             char* err;
             pid_t pid;
 
