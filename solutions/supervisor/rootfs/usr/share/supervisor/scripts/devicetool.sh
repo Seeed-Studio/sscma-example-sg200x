@@ -50,7 +50,7 @@ getUpdateStatus)
     ;;
 
 getAddress)
-    ip route get $2 | awk '{print $NF}'
+    ip route get $2 | awk '/src/ {print $5}'
     ;;
 
 installApp)
