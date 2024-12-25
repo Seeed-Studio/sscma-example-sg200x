@@ -489,8 +489,16 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp) {
 
 int authorization(HttpRequest* req, HttpResponse* resp) {
 
-    static const std::unordered_set<std::string> allowed_paths = {
-        "/api/userMgr/login", "/api/version", "/api/userMgr/updatePassword", "/api/deviceMgr/queryDeviceInfo", "/api/deviceMgr/getDeviceList", "/api/userMgr/queryUserInfo"};
+    static const std::unordered_set<std::string> allowed_paths = {"/api/version",
+                                                                  "/api/userMgr/login",
+                                                                  "/api/userMgr/updatePassword",
+                                                                  "/api/userMgr/queryUserInfo",
+                                                                  "/api/deviceMgr/queryDeviceInfo",
+                                                                  "/api/deviceMgr/getDeviceList",
+                                                                  "/api/deviceMgr/getModelList",
+                                                                  "/api/deviceMgr/getModelInfo",
+                                                                  "/api/deviceMgr/uploadModel",
+                                                                  "/api/leds"};
 
     // Only check paths that start with "/api"
     std::string rpath = req->path;
