@@ -18,7 +18,7 @@
 #include "utils_user.h"
 
 
-#define TOKEN_EXPIRATION_TIME 60 * 60 * 24  // 1 days
+#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3  // 3 days
 // #define TOKEN_EXPIRATION_TIME 60 * 1  // 1 min
 
 static std::unordered_map<std::string, std::time_t> g_tokens;
