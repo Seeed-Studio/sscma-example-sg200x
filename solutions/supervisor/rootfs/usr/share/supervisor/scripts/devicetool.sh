@@ -85,16 +85,16 @@ getFileMd5)
     md5sum $2 | awk '{print $1}'
     ;;
 
-restartNodered)
-    nodered="/etc/init.d/S*node-red"
+# restartNodered)
+#     nodered="/etc/init.d/S*node-red"
 
-    restartApp $nodered
-    ;;
+#     restartApp $nodered
+#     ;;
 
-restartSscma)
-    sscma="/etc/init.d/S*sscma-node"
+# restartSscma)
+#     sscma="/etc/init.d/S*sscma-node"
 
-    restartApp $sscma
-    ;;
+#     restartApp $sscma
+#     ;;
 
 esac

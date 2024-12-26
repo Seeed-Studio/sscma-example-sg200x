@@ -1,3 +1,152 @@
+#include <syslog.h>
+
+#include "app_daemon.h"
+
+extern std::string exec_shell_cmd(const std::string& cmd);
+
+int app_daemon::restart_sscma()
+{
+    exec_shell_cmd("/etc/init.d/S*sscma-node restart");
+    syslog(LOG_INFO, "restart sscma-node");
+
+    return 0;
+}
+
+int app_daemon::restart_nodered()
+{
+    exec_shell_cmd("/etc/init.d/S*node-red restart");
+    syslog(LOG_INFO, "restart node-red");
+
+    return 0;
+}
+
+int app_daemon::start_flow(bool start)
+{
+    hv::Json data;
+    http_headers headers;
+
+    data["state"] = start ? "start" : "stop";
+    headers["Content-Type"] = "application/json";
+    auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
+    if (resp == NULL) {
+        syslog(LOG_ERR, "stop flow failed");
+        return -1;
+    }
+
+    return 0;
+}
+
+app_status_t app_daemon::get_flow_status()
+{
+    auto resp = requests::get("localhost:1880/flows/state");
+    if (resp == NULL)
+        return APP_STATUS_NORESPONSE;
+
+    try {
+        hv::Json data = hv::Json::parse(resp->body.begin(), resp->body.end());
+        if (data["state"] == "stop") {
+            return APP_STATUS_STOP;
+        }
+    } catch (const std::exception& e) {
+        return APP_STATUS_NORESPONSE;
+    }
+
+    return APP_STATUS_NORMAL;
+}
+
+app_status_t app_daemon::get_sscma_status()
+{
+    if (!cli.isConnected()) {
+        syslog(LOG_ERR, "mqtt is not connected\n");
+        cli.reconnect();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    cli.publish(MQTT_TOPIC_IN, MQTT_PAYLOAD);
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_nsec += 500 * 1000;
+    if (0 == sem_timedwait(&sem_sscma, &ts)) {
+        return APP_STATUS_NORMAL;
+    }
+
+    return APP_STATUS_NORESPONSE;
+}
+
+app_status_t app_daemon::get_nodered_status()
+{
+    auto resp = requests::get("localhost:1880");
+    if (NULL != resp) {
+        return APP_STATUS_NORMAL;
+    }
+
+    return APP_STATUS_NORESPONSE;
+}
+
+void app_daemon::daemon_loop()
+{
+    flow_status = APP_STATUS_UNKNOWN;
+    sscma_status = APP_STATUS_UNKNOWN;
+    nodered_status = APP_STATUS_UNKNOWN;
+
+    init_mqtt_cli();
+
+    while (!daemon_loop_exit) {
+        flow_status = get_flow_status();
+        app_status_t status = flow_status;
+        if ((status == APP_STATUS_NORMAL) || (status == APP_STATUS_STOP)) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        } else {
+            syslog(LOG_ERR, "flow status is APP_STATUS_NORESPONSE");
+        }
+
+        sscma_status = get_sscma_status();
+        status = sscma_status;
+        while ((!daemon_loop_exit) && (APP_STATUS_NORMAL != status)) {
+            start_flow(false);
+            restart_sscma();
+            std::this_thread::sleep_for(std::chrono::seconds(1)); // wait for sscma restart
+            status = get_sscma_status();
+            sscma_status = status;
+            if (APP_STATUS_NORMAL == status) {
+                syslog(LOG_INFO, "sscma restart success");
+                break;
+            }
+            sscma_status = APP_STATUS_STARTFAILED;
+            syslog(LOG_ERR, "sscma restart failed");
+        }
+
+        nodered_status = get_nodered_status();
+        status = nodered_status;
+        while ((!daemon_loop_exit) && (APP_STATUS_NORMAL != status)) {
+            start_flow(false);
+            restart_nodered();
+            for (int i = 0; (!daemon_loop_exit) && (i < 120); i++) { // wait for nodered restart
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                status = get_nodered_status();
+                if (APP_STATUS_NORMAL == status)
+                    break;
+            }
+            nodered_status = status;
+            if (APP_STATUS_NORMAL == status) {
+                syslog(LOG_INFO, "node-red restart success");
+                break;
+            }
+            nodered_status = APP_STATUS_STARTFAILED;
+            syslog(LOG_ERR, "node-red restart failed");
+        }
+
+        start_flow(true);
+    }
+
+    cli.disconnect();
+    cli.stop();
+    sem_destroy(&sem_sscma);
+    syslog(LOG_INFO, "Daemon loop exited.");
+}
+
+#if 0
 #include <semaphore.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,26 +159,28 @@
 #include "hv/mqtt_client.h"
 #include "hv/requests.h"
 
-#define MQTT_TOPIC_IN  "sscma/v0/recamera/node/in/"
+#define MQTT_TOPIC_IN "sscma/v0/recamera/node/in/"
 #define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
-#define MQTT_PAYLOAD   "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
+#define MQTT_PAYLOAD "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
 
-const int threadTimeout  = 3;
-const int retryTimes     = 3;
-int daemonStatus         = 0;
-int noderedStarting      = 1;
-int sscmaStarting        = 1;
+const int threadTimeout = 3;
+const int retryTimes = 3;
+int daemonStatus = 0;
+int noderedStarting = 1;
+int sscmaStarting = 1;
 APP_STATUS noderedStatus = APP_STATUS_UNKNOWN;
-APP_STATUS sscmaStatus   = APP_STATUS_UNKNOWN;
+APP_STATUS sscmaStatus = APP_STATUS_UNKNOWN;
 sem_t semSscma;
 
 hv::MqttClient cli;
 
-void runMqtt() {
+void runMqtt()
+{
     cli.run();
 }
 
-void initMqtt() {
+void initMqtt()
+{
     sem_init(&semSscma, 0, 0);
 
     cli.onConnect = [](hv::MqttClient* cli) {
@@ -53,11 +204,12 @@ void initMqtt() {
     th.detach();
 }
 
-int startFlow() {
+int startFlow()
+{
     hv::Json data;
     http_headers headers;
 
-    data["state"]           = "start";
+    data["state"] = "start";
     headers["Content-Type"] = "application/json";
 
     auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
@@ -69,11 +221,12 @@ int startFlow() {
     return 0;
 }
 
-int stopFlow() {
+int stopFlow()
+{
     hv::Json data;
     http_headers headers;
 
-    data["state"]           = "stop";
+    data["state"] = "stop";
     headers["Content-Type"] = "application/json";
 
     auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
@@ -85,10 +238,11 @@ int stopFlow() {
     return 0;
 }
 
-int startApp(const char* cmd, const char* appName) {
+int startApp(const char* cmd, const char* appName)
+{
     FILE* fp;
     char info[128] = "";
-    int len        = 0;
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -111,7 +265,8 @@ int startApp(const char* cmd, const char* appName) {
     return 0;
 }
 
-APP_STATUS getFlowStatus() {
+APP_STATUS getFlowStatus()
+{
     auto resp = requests::get("localhost:1880/flows/state");
 
     if (resp == NULL) {
@@ -131,7 +286,8 @@ APP_STATUS getFlowStatus() {
     return APP_STATUS_NORMAL;
 }
 
-APP_STATUS getNoderedStatus() {
+APP_STATUS getNoderedStatus()
+{
     for (int i = 0; i < retryTimes; i++) {
         auto resp = requests::get("localhost:1880");
 
@@ -145,7 +301,8 @@ APP_STATUS getNoderedStatus() {
     return APP_STATUS_NORESPONSE;
 }
 
-APP_STATUS getSscmaStatus() {
+APP_STATUS getSscmaStatus()
+{
     struct timespec ts;
 
     if (!cli.isConnected()) {
@@ -169,7 +326,8 @@ APP_STATUS getSscmaStatus() {
     return APP_STATUS_NORESPONSE;
 }
 
-void runDaemon() {
+void runDaemon()
+{
     initMqtt();
 
     while (daemonStatus) {
@@ -196,7 +354,7 @@ void runDaemon() {
             } else {
                 syslog(LOG_ERR, "node-red is not responding");
                 if (0 != startApp(SCRIPT_DEVICE_RESTARTNODERED, "node-red")) {
-                    noderedStatus   = APP_STATUS_STARTFAILED;
+                    noderedStatus = APP_STATUS_STARTFAILED;
                     noderedStarting = 0;
                 } else {
                     noderedStarting = 1;
@@ -229,7 +387,7 @@ void runDaemon() {
             syslog(LOG_ERR, "sscma-node is not responding");
             stopFlow();
             if (0 != startApp(SCRIPT_DEVICE_RESTARTSSCMA, "sscma-node")) {
-                sscmaStatus   = APP_STATUS_STARTFAILED;
+                sscmaStatus = APP_STATUS_STARTFAILED;
                 sscmaStarting = 0;
             } else {
                 sscmaStarting = 1;
@@ -238,14 +396,17 @@ void runDaemon() {
     }
 }
 
-void initDaemon() {
+void initDaemon()
+{
     std::thread th;
 
     daemonStatus = 1;
-    th           = std::thread(runDaemon);
+    th = std::thread(runDaemon);
     th.detach();
 }
 
-void stopDaemon() {
+void stopDaemon()
+{
     daemonStatus = 0;
 }
+#endif

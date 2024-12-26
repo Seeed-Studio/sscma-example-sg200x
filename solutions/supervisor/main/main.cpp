@@ -1,42 +1,50 @@
 #include <iostream>
-#include <string>
-#include <unistd.h>
 #include <signal.h>
+#include <string>
 #include <syslog.h>
+#include <thread>
+#include <unistd.h>
 
-#include "hv/hlog.h"
-#include "http.h"
-#include "daemon.h"
+#include "app_daemon.h"
+#include "http_server.h"
 
-static void exitHandle(int signo) {
-    stopDaemon();
-    deinitHttpd();
-    stopWifi();
-    closelog();
+#define RESOURCE_DIR "/usr/share/supervisor/www/"
+#define REDIRECT_URL "http://192.168.16.1/index.html"
 
-    exit(0);
+static std::atomic<bool> main_loop_exit;
+
+static void exitHandle(int signo)
+{
+    syslog(LOG_INFO, "received signal %d", signo);
+    std::cout << "received signal " << signo << std::endl;
+
+    main_loop_exit = true;
+    // exit(0);
 }
 
-static void initSupervisor() {
-    hlog_disable();
-    initWiFi();
-    initHttpd();
-    initDaemon();
+int main(int argc, char** argv)
+{
+    openlog("supervisor", LOG_CONS | LOG_PID, 0);
+    setlogmask(LOG_UPTO(LOG_DEBUG));
 
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);
 
-    openlog("supervisor", LOG_CONS | LOG_PID, 0);
-    setlogmask(LOG_UPTO(LOG_NOTICE));
-}
+    std::cout << "*****start*****" << std::endl;
 
-int main(int argc, char** argv) {
-    initSupervisor();
+    {
+        app_daemon app_daemon;
 
-    while(1) sleep(1000);
+        main_loop_exit = false;
+        while (!main_loop_exit) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
 
-    system(SCRIPT_WIFI_STOP);
-    deinitHttpd();
+        std::cout << "*****end*****" << std::endl;
+    }
+    sleep(10);
+
+    std::cout << "*****exit*****" << std::endl;
     closelog();
 
     return 0;

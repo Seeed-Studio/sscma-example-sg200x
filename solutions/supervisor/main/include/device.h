@@ -2,21 +2,23 @@
 #define _UTILS_DEVICE_H_
 
 enum SERVICE_STATUS {
-    SERVICE_STATUS_NORMAL      = 0,
-    SERVICE_STATUS_STARTING    = 1,
+    SERVICE_STATUS_NORMAL = 0,
+    SERVICE_STATUS_STARTING = 1,
     SERVICE_STATUS_STARTFAILED = 2,
-    SERVICE_STATUS_ERROR       = 4,
+    SERVICE_STATUS_ERROR = 4,
 };
 
-extern bool g_updateStatus;
+std::string exec_shell_cmd(const std::string& cmd);
 
-std::string readFile(const std::string& path, const std::string& defaultname = "EmptyContent");
-int createFolder(const char* dirName);
+// extern bool g_updateStatus;
 
-void initSystemStatus();
-void getSnCode();
+// std::string readFile(const std::string& path, const std::string& defaultname = "EmptyContent");
+// int createFolder(const char* dirName);
 
-void updateSystemThread();
+// void initSystemStatus();
+// void getSnCode();
+
+// void updateSystemThread();
 
 int getSystemStatus(HttpRequest* req, HttpResponse* resp);
 int queryServiceStatus(HttpRequest* req, HttpResponse* resp);

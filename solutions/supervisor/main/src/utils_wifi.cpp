@@ -25,41 +25,13 @@ typedef struct _WIFI_INFO_S {
 std::vector<std::vector<std::string>> g_wifiList;
 std::map<std::string, WIFI_INFO_S> g_wifiInfo;
 std::string g_currentWifi;
-bool g_wifiStatus     = true;
+bool g_wifiStatus = true;
 bool g_wifiConnecting = false;
-int g_wifiMode        = 1;
-int g_etherConnected  = 0;
+int g_wifiMode = 1;
+int g_etherConnected = 0;
 
-int exec_cmd(const char* cmd, char* result, const char* param)
+static int getWifiInfo(std::vector<std::string>& wifiStatus)
 {
-    FILE* fp;
-    char full_cmd[CMD_BUF_SIZE] = "";
-    size_t len;
-
-    if (NULL == cmd)
-        return -1;
-
-    sprintf(full_cmd, "%s %s", cmd, (param == NULL) ? "" : param);
-
-    fp = popen(full_cmd, "r");
-    if (fp == NULL) {
-        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
-        return -1;
-    }
-
-    if (result != NULL) {
-        fgets(result, CMD_BUF_SIZE, fp);
-        len = strlen(result);
-        if (result[len - 1] == '\n') {
-            result[len - 1] = '\0';
-        }
-    }
-    pclose(fp);
-
-    return 0;
-}
-
-static int getWifiInfo(std::vector<std::string>& wifiStatus) {
     FILE* fp;
     char info[128];
     int index = 0;
@@ -83,11 +55,12 @@ static int getWifiInfo(std::vector<std::string>& wifiStatus) {
     return 0;
 }
 
-std::string getWifiConnectStatus() {
+std::string getWifiConnectStatus()
+{
     FILE* fp;
-    char cmd[128]           = SCRIPT_WIFI_CONNECT_STATUS;
+    char cmd[128] = SCRIPT_WIFI_CONNECT_STATUS;
     char connectStatus[128] = "";
-    int len                 = 0;
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -105,11 +78,12 @@ std::string getWifiConnectStatus() {
     return std::string(connectStatus);
 }
 
-static std::string getWifiId() {
+static std::string getWifiId()
+{
     FILE* fp;
-    char cmd[128]  = SCRIPT_WIFI_GET_WIFI_ID;
+    char cmd[128] = SCRIPT_WIFI_GET_WIFI_ID;
     char info[128] = "";
-    int len        = 0;
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -127,11 +101,12 @@ static std::string getWifiId() {
     return std::string(info);
 }
 
-std::string getWifiIp() {
+std::string getWifiIp()
+{
     FILE* fp;
-    char cmd[128]  = SCRIPT_WIFI_GET_WIFI_IP;
+    char cmd[128] = SCRIPT_WIFI_GET_WIFI_IP;
     char info[128] = "";
-    int len        = 0;
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
@@ -149,7 +124,8 @@ std::string getWifiIp() {
     return std::string(info);
 }
 
-bool isLegalWifiIp() {
+bool isLegalWifiIp()
+{
     std::string wifiIp = getWifiIp();
 
     if (wifiIp.empty()) {
@@ -163,7 +139,8 @@ bool isLegalWifiIp() {
     return true;
 }
 
-std::string getGateWay(std::string ip) {
+std::string getGateWay(std::string ip)
+{
     FILE* fp;
     char info[128];
     char cmd[128] = SCRIPT_WIFI_GATEWAY;
@@ -187,7 +164,8 @@ std::string getGateWay(std::string ip) {
     return res;
 }
 
-static int selectWifi(std::string id) {
+static int selectWifi(std::string id)
+{
     char cmd[128] = SCRIPT_WIFI_SELECT;
 
     strcat(cmd, id.c_str());
@@ -196,11 +174,12 @@ static int selectWifi(std::string id) {
     return 0;
 }
 
-static std::string removeWifi(std::string id) {
+static std::string removeWifi(std::string id)
+{
     FILE* fp;
     char info[128] = "";
-    char cmd[128]  = SCRIPT_WIFI_REMOVE;
-    int len        = 0;
+    char cmd[128] = SCRIPT_WIFI_REMOVE;
+    int len = 0;
 
     strcat(cmd, id.c_str());
     fp = popen(cmd, "r");
@@ -220,22 +199,26 @@ static std::string removeWifi(std::string id) {
     return std::string(info);
 }
 
-static void startAp() {
+static void startAp()
+{
     system(SCRIPT_WIFI_START_AP);
 }
 
-static void stopAp() {
+static void stopAp()
+{
     system(SCRIPT_WIFI_STOP_AP);
 }
 
-static bool cmp(std::vector<std::string> lhs, std::vector<std::string> rhs) {
+static bool cmp(std::vector<std::string> lhs, std::vector<std::string> rhs)
+{
     if (lhs[0] == rhs[0]) {
         return std::stoi(lhs[1]) > std::stoi(rhs[1]);
     }
     return lhs[0] < rhs[0];
 }
 
-static int deduplicate(std::vector<std::vector<std::string>>& wifiList) {
+static int deduplicate(std::vector<std::vector<std::string>>& wifiList)
+{
     int size = wifiList.size();
     int l = 0, r = 1;
 
@@ -252,7 +235,8 @@ static int deduplicate(std::vector<std::vector<std::string>>& wifiList) {
     return l;
 }
 
-static int getWifiList() {
+static int getWifiList()
+{
     FILE* fp;
     char info[128];
     char cmd[128] = SCRIPT_WIFI_SCAN_RESULTS;
@@ -291,7 +275,8 @@ static int getWifiList() {
     return 0;
 }
 
-static int updateConnectedWifiInfo() {
+static int updateConnectedWifiInfo()
+{
     FILE* fp;
     char info[128];
     int len = 0;
@@ -320,7 +305,7 @@ static int updateConnectedWifiInfo() {
             token = strtok(NULL, " ");
         }
 
-        g_wifiInfo[wifi[1]].id              = stoi(wifi[0]);
+        g_wifiInfo[wifi[1]].id = stoi(wifi[0]);
         g_wifiInfo[wifi[1]].connectedStatus = 1;
         if (wifi.size() >= 3 && wifi[2] == "[DISABLED]") {
             g_wifiInfo[wifi[1]].autoConnect = 0;
@@ -334,7 +319,8 @@ static int updateConnectedWifiInfo() {
     return 0;
 }
 
-static int getLocalNetInfo(const char* name, std::string& ip, std::string& mask, std::string& mac) {
+static int getLocalNetInfo(const char* name, std::string& ip, std::string& mask, std::string& mac)
+{
     int sock;
     struct ifreq ifr;
     char info[INET_ADDRSTRLEN];
@@ -373,13 +359,13 @@ static int getLocalNetInfo(const char* name, std::string& ip, std::string& mask,
         exit(1);
     }
     sprintf(mac_address,
-            "%02x:%02x:%02x:%02x:%02x:%02x",
-            (unsigned char)ifr.ifr_hwaddr.sa_data[0],
-            (unsigned char)ifr.ifr_hwaddr.sa_data[1],
-            (unsigned char)ifr.ifr_hwaddr.sa_data[2],
-            (unsigned char)ifr.ifr_hwaddr.sa_data[3],
-            (unsigned char)ifr.ifr_hwaddr.sa_data[4],
-            (unsigned char)ifr.ifr_hwaddr.sa_data[5]);
+        "%02x:%02x:%02x:%02x:%02x:%02x",
+        (unsigned char)ifr.ifr_hwaddr.sa_data[0],
+        (unsigned char)ifr.ifr_hwaddr.sa_data[1],
+        (unsigned char)ifr.ifr_hwaddr.sa_data[2],
+        (unsigned char)ifr.ifr_hwaddr.sa_data[3],
+        (unsigned char)ifr.ifr_hwaddr.sa_data[4],
+        (unsigned char)ifr.ifr_hwaddr.sa_data[5]);
     mac = mac_address;
 
     close(sock);
@@ -391,10 +377,11 @@ static int getLocalNetInfo(const char* name, std::string& ip, std::string& mask,
     return 0;
 }
 
-std::string getWiFiName(const char* ifrName) {
+std::string getWiFiName(const char* ifrName)
+{
     std::string wifiName = "reCamera_xxxxxx";
 
-    int fd   = 0;
+    int fd = 0;
     FILE* fp = nullptr;
     struct ifreq ifr;
 
@@ -412,7 +399,6 @@ std::string getWiFiName(const char* ifrName) {
 
     sprintf(&wifiName[0], "reCamera_%02x%02x%02x", (uint8_t)ifr.ifr_hwaddr.sa_data[3], (uint8_t)ifr.ifr_hwaddr.sa_data[4], (uint8_t)ifr.ifr_hwaddr.sa_data[5]);
 
-
     // fp = fopen(PATH_DEVICE_NAME, "r");
 
     // if (!fp) {
@@ -424,7 +410,6 @@ std::string getWiFiName(const char* ifrName) {
     // if (fgets(&wifiName[0], sizeof(wifiName) - 1, fp) != NULL) {
     //     wifiName[wifiName.size() - 1] = '\0';
     // }
-
 
 exit:
     if (fp) {
@@ -438,7 +423,8 @@ exit:
     return wifiName;
 }
 
-std::string getIpAddress(const char* ifrName) {
+std::string getIpAddress(const char* ifrName)
+{
     char info[INET_ADDRSTRLEN];
     int fd;
     struct ifreq ifr;
@@ -462,7 +448,8 @@ std::string getIpAddress(const char* ifrName) {
     return std::string(info);
 }
 
-std::string getNetmaskAddress(const char* ifrName) {
+std::string getNetmaskAddress(const char* ifrName)
+{
     char netmask[INET_ADDRSTRLEN];
     int fd;
     struct ifreq ifr;
@@ -486,9 +473,10 @@ std::string getNetmaskAddress(const char* ifrName) {
     return std::string(netmask);
 }
 
-void monitorWifiStatusThread() {
+void monitorWifiStatusThread()
+{
     std::string wifiStatus;
-    bool apStatus    = true;
+    bool apStatus = true;
     unsigned int cnt = 0;
 
     while (g_wifiStatus) {
@@ -517,7 +505,8 @@ void monitorWifiStatusThread() {
     }
 }
 
-int queryWiFiInfo(HttpRequest* req, HttpResponse* resp) {
+int queryWiFiInfo(HttpRequest* req, HttpResponse* resp)
+{
     std::vector<std::string> wifiStatus(4, "");
 
     if (getWifiInfo(wifiStatus) != 0) {
@@ -526,7 +515,7 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp) {
 
     hv::Json response;
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
 
     hv::Json data;
     data["status"] = g_wifiMode;
@@ -534,19 +523,19 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp) {
     hv::Json wifiInfo;
 
     wifiInfo["ssid"] = wifiStatus[0];
-    g_currentWifi    = wifiStatus[0];
+    g_currentWifi = wifiStatus[0];
     if (wifiStatus[1] != "") {
         wifiInfo["auth"] = 1;
     } else {
         wifiInfo["auth"] = 0;
     }
-    wifiInfo["signal"]          = 0;
+    wifiInfo["signal"] = 0;
     wifiInfo["connectedStatus"] = wifiStatus[0] != "-";
-    wifiInfo["macAddres"]       = wifiStatus[2];
-    wifiInfo["ip"]              = wifiStatus[3];
-    wifiInfo["ipAssignment"]    = 0;
-    wifiInfo["subnetMask"]      = "255.255.255.0";
-    wifiInfo["autoConnect"]     = 0;
+    wifiInfo["macAddres"] = wifiStatus[2];
+    wifiInfo["ip"] = wifiStatus[3];
+    wifiInfo["ipAssignment"] = 0;
+    wifiInfo["subnetMask"] = "255.255.255.0";
+    wifiInfo["autoConnect"] = 0;
 
     data["wifiInfo"] = wifiInfo;
     response["data"] = data;
@@ -554,19 +543,20 @@ int queryWiFiInfo(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
-int scanWiFi(HttpRequest* req, HttpResponse* resp) {
+int scanWiFi(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "scan WiFi operation...\n");
     hv::Json response;
     FILE* fp;
-    char cmd[128]  = SCRIPT_WIFI_SCAN;
+    char cmd[128] = SCRIPT_WIFI_SCAN;
     char info[128] = "";
-    int len        = 0;
+    int len = 0;
 
     fp = popen(cmd, "r");
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         response["code"] = -1;
-        response["msg"]  = "Failed to scan WiFi";
+        response["msg"] = "Failed to scan WiFi";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
@@ -580,17 +570,18 @@ int scanWiFi(HttpRequest* req, HttpResponse* resp) {
 
     if (strcmp(info, "OK") == 0) {
         response["code"] = 0;
-        response["msg"]  = "Scan wifi successfully";
+        response["msg"] = "Scan wifi successfully";
     } else {
         response["code"] = 0;
-        response["msg"]  = "Scanning WiFi too frequently";
+        response["msg"] = "Scanning WiFi too frequently";
     }
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int getWiFiScanResults(HttpRequest* req, HttpResponse* resp) {
+int getWiFiScanResults(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "get WiFi scan results operation...\n");
 
     std::string ip, mask, mac;
@@ -598,20 +589,20 @@ int getWiFiScanResults(HttpRequest* req, HttpResponse* resp) {
 
     if (updateConnectedWifiInfo() != 0) {
         response["code"] = -1;
-        response["msg"]  = "Failed to update connected wifi information";
+        response["msg"] = "Failed to update connected wifi information";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
 
     if (getWifiList() != 0) {
         response["code"] = -1;
-        response["msg"]  = "Failed to get wifi list";
+        response["msg"] = "Failed to get wifi list";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
 
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
 
     hv::Json data;
     hv::Json etherInfo;
@@ -626,33 +617,33 @@ int getWiFiScanResults(HttpRequest* req, HttpResponse* resp) {
 
     for (auto wifi : g_wifiList) {
         wifiInfo.clear();
-        wifiInfo["ssid"]   = wifi[0];
-        wifiInfo["auth"]   = stoi(wifi[2]);
+        wifiInfo["ssid"] = wifi[0];
+        wifiInfo["auth"] = stoi(wifi[2]);
         wifiInfo["signal"] = stoi(wifi[1]);
 
         if (g_wifiInfo.find(wifi[0]) != g_wifiInfo.end()) {
             wifiInfo["connectedStatus"] = g_wifiInfo[wifi[0]].connectedStatus;
-            wifiInfo["autoConnect"]     = g_wifiInfo[wifi[0]].autoConnect;
+            wifiInfo["autoConnect"] = g_wifiInfo[wifi[0]].autoConnect;
         } else {
             wifiInfo["connectedStatus"] = 0;
-            wifiInfo["autoConnect"]     = 0;
+            wifiInfo["autoConnect"] = 0;
         }
 
         wifiInfo["macAddress"] = wifi[3].substr(0, 17);
 
         if (wifi[0].compare(g_currentWifi) == 0) {
-            wifiInfo["ip"]           = ip;
+            wifiInfo["ip"] = ip;
             wifiInfo["ipAssignment"] = 0;
-            wifiInfo["subnetMask"]   = mask;
-            wifiInfo["dns1"]         = "-";
-            wifiInfo["dns2"]         = "-";
-            wifiInfo["autoConnect"]  = 1;
+            wifiInfo["subnetMask"] = mask;
+            wifiInfo["dns1"] = "-";
+            wifiInfo["dns2"] = "-";
+            wifiInfo["autoConnect"] = 1;
         } else {
-            wifiInfo["ip"]           = "";
+            wifiInfo["ip"] = "";
             wifiInfo["ipAssignment"] = 0;
-            wifiInfo["subnetMask"]   = "-";
-            wifiInfo["dns1"]         = "-";
-            wifiInfo["dns2"]         = "-";
+            wifiInfo["subnetMask"] = "-";
+            wifiInfo["dns1"] = "-";
+            wifiInfo["dns2"] = "-";
         }
         wifiInfoList.push_back(wifiInfo);
     }
@@ -662,35 +653,36 @@ int getWiFiScanResults(HttpRequest* req, HttpResponse* resp) {
     }
 
     if (ip.empty() || ip.compare(0, 7, "169.254") == 0) {
-        g_etherConnected             = 0;
+        g_etherConnected = 0;
         etherInfo["connectedStatus"] = 0;
-        etherInfo["macAddres"]       = "-";
-        etherInfo["ip"]              = "-";
-        etherInfo["ipAssignment"]    = 0;
-        etherInfo["subnetMask"]      = "-";
-        etherInfo["dns1"]            = "-";
-        etherInfo["dns2"]            = "-";
+        etherInfo["macAddres"] = "-";
+        etherInfo["ip"] = "-";
+        etherInfo["ipAssignment"] = 0;
+        etherInfo["subnetMask"] = "-";
+        etherInfo["dns1"] = "-";
+        etherInfo["dns2"] = "-";
     } else {
-        g_etherConnected             = 1;
+        g_etherConnected = 1;
         etherInfo["connectedStatus"] = 1;
-        etherInfo["macAddres"]       = mac;
-        etherInfo["ip"]              = ip;
-        etherInfo["ipAssignment"]    = 0;
-        etherInfo["subnetMask"]      = mask;
-        etherInfo["dns1"]            = "-";
-        etherInfo["dns2"]            = "-";
+        etherInfo["macAddres"] = mac;
+        etherInfo["ip"] = ip;
+        etherInfo["ipAssignment"] = 0;
+        etherInfo["subnetMask"] = mask;
+        etherInfo["dns1"] = "-";
+        etherInfo["dns2"] = "-";
     }
 
-    data["etherinfo"]    = etherInfo;
+    data["etherinfo"] = etherInfo;
     data["wifiInfoList"] = hv::Json(wifiInfoList);
-    response["data"]     = data;
+    response["data"] = data;
 
     // std::cout << "response: " << response.dump(2) << "\n";
 
     return resp->Json(response);
 }
 
-int connectWiFi(HttpRequest* req, HttpResponse* resp) {
+int connectWiFi(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "connect WiFi...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
     syslog(LOG_INFO, "password: %s\n", req->GetString("password").c_str());
@@ -708,14 +700,14 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
 
         if (wifiStatus == "ASSOCIATING" || wifiStatus == "ASSOCIATED" || wifiStatus == "4WAY_HANDSHAKE" || wifiStatus == "GROUP_HANDSHAKE") {
             response["code"] = -1;
-            response["msg"]  = "There is a WiFi connection, the current operation is prohibited";
+            response["msg"] = "There is a WiFi connection, the current operation is prohibited";
             response["data"] = hv::Json({});
             return resp->Json(response);
         }
     }
 
     g_wifiConnecting = true;
-    currentWifiId    = getWifiId();
+    currentWifiId = getWifiId();
     if (req->GetString("password").empty()) {
         strcpy(cmd, SCRIPT_WIFI_SELECT);
         updateConnectedWifiInfo();
@@ -733,7 +725,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         response["code"] = -1;
-        response["msg"]  = "Failed to connect WiFi";
+        response["msg"] = "Failed to connect WiFi";
         response["data"] = hv::Json({});
         g_wifiConnecting = false;
         return resp->Json(response);
@@ -754,7 +746,7 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
 
     if (msg.compare("OK") != 0) {
         response["code"] = -1;
-        response["msg"]  = msg;
+        response["msg"] = msg;
         response["data"] = hv::Json({});
         g_wifiConnecting = false;
         return resp->Json(response);
@@ -767,9 +759,9 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
 
         ++connectCnt;
         if (connectCnt >= 1000) {
-            status           = false;
+            status = false;
             response["code"] = -1;
-            response["msg"]  = "Connection timeout";
+            response["msg"] = "Connection timeout";
             response["data"] = hv::Json({});
             break;
         }
@@ -780,18 +772,18 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
 
         if (connectStatus == "COMPLETED") {
             if (isLegalWifiIp()) {
-                response["code"]                   = 0;
-                response["msg"]                    = "Connection successful";
-                response["data"]                   = hv::Json({});
-                g_wifiInfo[req->GetString("ssid")] = {id, 1, 1};
+                response["code"] = 0;
+                response["msg"] = "Connection successful";
+                response["data"] = hv::Json({});
+                g_wifiInfo[req->GetString("ssid")] = { id, 1, 1 };
                 break;
             }
 
             ++ipAssignmentCnt;
             if (ipAssignmentCnt >= 300) {
-                status           = false;
+                status = false;
                 response["code"] = -1;
-                response["msg"]  = "Ip assignment timeout";
+                response["msg"] = "Ip assignment timeout";
                 response["data"] = hv::Json({});
                 break;
             }
@@ -802,9 +794,9 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
         }
 
         if (connectStatus == "DISCONNECTED" || connectStatus == "INACTIVE" || connectStatus == "Failed") {
-            status           = false;
+            status = false;
             response["code"] = -1;
-            response["msg"]  = "Connection failed";
+            response["msg"] = "Connection failed";
             response["data"] = hv::Json({});
             break;
         }
@@ -823,7 +815,8 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
-int disconnectWiFi(HttpRequest* req, HttpResponse* resp) {
+int disconnectWiFi(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "disconnect WiFi...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
@@ -831,14 +824,14 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp) {
     std::string currentId;
     FILE* fp;
     char info[128] = "";
-    char cmd[128]  = SCRIPT_WIFI_DISCONNECT;
-    int len        = 0;
+    char cmd[128] = SCRIPT_WIFI_DISCONNECT;
+    int len = 0;
 
     updateConnectedWifiInfo();
     currentId = getWifiId();
     if (currentId != std::to_string(g_wifiInfo[req->GetString("ssid")].id)) {
         response["code"] = -1;
-        response["msg"]  = "The current wifi is not connected";
+        response["msg"] = "The current wifi is not connected";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
@@ -847,7 +840,7 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp) {
     if (fp == NULL) {
         syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
         response["code"] = -1;
-        response["msg"]  = "Failed to disconnect WiFi";
+        response["msg"] = "Failed to disconnect WiFi";
         response["data"] = hv::Json({});
         return resp->Json(response);
     }
@@ -861,17 +854,18 @@ int disconnectWiFi(HttpRequest* req, HttpResponse* resp) {
 
     if (strcmp(info, "OK") == 0) {
         response["code"] = 0;
-        response["msg"]  = "Disconnect wifi successfully";
+        response["msg"] = "Disconnect wifi successfully";
     } else {
         response["code"] = -1;
-        response["msg"]  = info;
+        response["msg"] = info;
     }
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int switchWiFi(HttpRequest* req, HttpResponse* resp) {
+int switchWiFi(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "switch WiFi operation...\n");
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
@@ -881,19 +875,20 @@ int switchWiFi(HttpRequest* req, HttpResponse* resp) {
 
     hv::Json response;
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int getWifiStatus(HttpRequest* req, HttpResponse* resp) {
+int getWifiStatus(HttpRequest* req, HttpResponse* resp)
+{
     FILE* fp;
     char info[128];
     hv::Json response, data;
 
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
 
     fp = popen(SCRIPT_WIFI_STATE, "r");
     if (fp == NULL) {
@@ -908,19 +903,19 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp) {
         }
 
         if (s.compare("COMPLETED") == 0) {
-            g_wifiMode     = 3;  // wifi connected
-            data["status"] = 1;  // wifi connected
+            g_wifiMode = 3; // wifi connected
+            data["status"] = 1; // wifi connected
         } else if (s.compare("INACTIVE") == 0) {
-            g_wifiMode     = 1;  // wifi is on
-            data["status"] = 2;  // wifi not connected
+            g_wifiMode = 1; // wifi is on
+            data["status"] = 2; // wifi not connected
         } else {
-            g_wifiMode     = 2;  // wifi connecting
-            data["status"] = 2;  // wifi not connected
+            g_wifiMode = 2; // wifi connecting
+            data["status"] = 2; // wifi not connected
         }
     }
 
     if (g_etherConnected) {
-        data["status"] = 0;  // ethernet connected
+        data["status"] = 0; // ethernet connected
     }
 
     pclose(fp);
@@ -929,13 +924,14 @@ int getWifiStatus(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
-int autoConnectWiFi(HttpRequest* req, HttpResponse* resp) {
+int autoConnectWiFi(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "auto Connect operation...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
     syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
 
     char cmd[128] = SCRIPT_WIFI_AUTO_CONNECT;
-    int id        = 0;
+    int id = 0;
 
     updateConnectedWifiInfo();
     id = g_wifiInfo[req->GetString("ssid")].id;
@@ -947,13 +943,14 @@ int autoConnectWiFi(HttpRequest* req, HttpResponse* resp) {
 
     hv::Json response;
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);
 }
 
-int forgetWiFi(HttpRequest* req, HttpResponse* resp) {
+int forgetWiFi(HttpRequest* req, HttpResponse* resp)
+{
     syslog(LOG_INFO, "forget WiFi operation...\n");
     syslog(LOG_INFO, "ssid: %s\n", req->GetString("ssid").c_str());
 
@@ -971,7 +968,7 @@ int forgetWiFi(HttpRequest* req, HttpResponse* resp) {
 
     hv::Json response;
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
     response["data"] = hv::Json({});
 
     return resp->Json(response);

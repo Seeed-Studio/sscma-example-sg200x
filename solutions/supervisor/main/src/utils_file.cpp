@@ -1,22 +1,23 @@
+#include <dirent.h>
 #include <stdio.h>
 #include <string>
-#include <vector>
 #include <syslog.h>
-#include <dirent.h>
+#include <vector>
 
-#include "hv/HttpServer.h"
 #include "global_cfg.h"
-#include "utils_file.h"
+#include "hv/HttpServer.h"
 #include "utils_device.h"
+#include "utils_file.h"
 
-static bool isLegalPath(const std::string& filePath) {
+static bool isLegalPath(const std::string& filePath)
+{
     std::string str[] = {
         "..",
         ".*",
         "/"
     };
 
-    for (auto s: str) {
+    for (auto s : str) {
         if (filePath.find(s) != std::string::npos) {
             return false;
         }
@@ -25,7 +26,8 @@ static bool isLegalPath(const std::string& filePath) {
     return true;
 }
 
-int queryFileList(HttpRequest* req, HttpResponse* resp) {
+int queryFileList(HttpRequest* req, HttpResponse* resp)
+{
     DIR* dir;
     struct dirent* ent;
     char fullpath[128];
@@ -43,7 +45,7 @@ int queryFileList(HttpRequest* req, HttpResponse* resp) {
         return resp->Json(response);
     }
 
-    while((ent = readdir(dir)) != NULL) {
+    while ((ent = readdir(dir)) != NULL) {
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
             continue;
         }
@@ -60,7 +62,8 @@ int queryFileList(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
-int uploadFile(HttpRequest* req, HttpResponse* resp) {
+int uploadFile(HttpRequest* req, HttpResponse* resp)
+{
     std::string filePath = req->GetString("filePath");
     hv::Json response;
     int ret = 0;
@@ -91,7 +94,8 @@ int uploadFile(HttpRequest* req, HttpResponse* resp) {
     return resp->Json(response);
 }
 
-int deleteFile(HttpRequest* req, HttpResponse* resp) {
+int deleteFile(HttpRequest* req, HttpResponse* resp)
+{
     std::string filePath = req->GetString("filePath");
     hv::Json response;
     int ret = 0;

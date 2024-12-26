@@ -5,9 +5,9 @@
 #include <random>
 #include <unordered_map>
 
-extern int g_userId;
+// extern int g_userId;
 
-int initUserInfo();
+// int initUserInfo();
 
 int queryUserInfo(HttpRequest* req, HttpResponse* resp);
 int updateUserName(HttpRequest* req, HttpResponse* resp);

@@ -4,11 +4,33 @@
 #include <syslog.h>
 #include <thread>
 
-#include "hv/HttpServer.h"
-#include "hv/hasync.h"   // import hv::async
-#include "hv/hthread.h"  // import hv_gettid
+#include "http.h"
+
+#define API_STR(api, func) "/api/" #api "/" #func
+#define API_GET(api, func) router.GET(API_STR(api, func), func)
+#define API_POST(api, func) router.POST(API_STR(api, func), func)
+// #define API_POST_P(api, func) router.POST("/api/" #api "/{" #api "}"/func, api##func)
+
+// void http_server::register_post(string api)
+// {
+//     // registerUserApi(router);
+//     // registerWiFiApi(router);
+// }
+
+// void http_server::start()
+// {
+//     cout << "server_=" << server_.get() << endl;
+// }
 
 
+#if 0
+#include "http.h"
+
+// #include "hv/HttpServer.h"
+// #include "hv/hasync.h" // import hv::async
+// #include "hv/hthread.h" // import hv_gettid
+
+#if 0
 #include "http.h"
 #include "utils_device.h"
 #include "utils_file.h"
@@ -17,30 +39,25 @@
 #include "utils_wifi.h"
 
 #include "version.h"
-
-using namespace hv;
-extern "C" {
-
-#define API_STR(api, func) "/api/" #api "/" #func
-#define API_GET(api, func) router.GET(API_STR(api, func), func)
-#define API_POST(api, func) router.POST(API_STR(api, func), func)
+#endif
 
 static HttpServer server;
 
-static void registerHttpRedirect(HttpService& router) {
-    router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) {  // IOS
+static void registerHttpRedirect(HttpService& router)
+{
+    router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) { // IOS
         syslog(LOG_DEBUG, "[/hotspot-detect*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
-    router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) {  // android
+    router.GET("/generate*", [](HttpRequest* req, HttpResponse* resp) { // android
         syslog(LOG_DEBUG, "[/generate*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
     });
 
-    router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) {  // windows
+    router.GET("/*.txt", [](HttpRequest* req, HttpResponse* resp) { // windows
         syslog(LOG_DEBUG, "[/*.txt]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
 
         return resp->Redirect(REDIRECT_URL);
@@ -49,7 +66,8 @@ static void registerHttpRedirect(HttpService& router) {
     router.GET("/index.html", [](HttpRequest* req, HttpResponse* resp) { return resp->File(WWW("index.html")); });
 }
 
-static void registerUserApi(HttpService& router) {
+static void registerUserApi(HttpService& router)
+{
     API_POST(userMgr, login);
     API_GET(userMgr, queryUserInfo);
     // API_POST(userMgr, updateUserName); # disabled
@@ -58,7 +76,8 @@ static void registerUserApi(HttpService& router) {
     API_POST(userMgr, deleteSShkey);
 }
 
-static void registerWiFiApi(HttpService& router) {
+static void registerWiFiApi(HttpService& router)
+{
     API_GET(wifiMgr, queryWiFiInfo);
     API_POST(wifiMgr, scanWiFi);
     API_GET(wifiMgr, getWiFiScanResults);
@@ -70,7 +89,8 @@ static void registerWiFiApi(HttpService& router) {
     API_POST(wifiMgr, forgetWiFi);
 }
 
-static void registerDeviceApi(HttpService& router) {
+static void registerDeviceApi(HttpService& router)
+{
     API_GET(deviceMgr, getSystemStatus);
     API_GET(deviceMgr, queryServiceStatus);
     API_POST(deviceMgr, getSystemUpdateVesionInfo);
@@ -97,30 +117,33 @@ static void registerDeviceApi(HttpService& router) {
     API_GET(deviceMgr, getPlatformInfo);
 }
 
-static void registerFileApi(HttpService& router) {
+static void registerFileApi(HttpService& router)
+{
     API_GET(fileMgr, queryFileList);
     API_POST(fileMgr, uploadFile);
     API_POST(fileMgr, deleteFile);
 }
 
-static void registerLedApi(HttpService& router) {
+static void registerLedApi(HttpService& router)
+{
     router.POST("/api/led/{led}/on", ledOn);
     router.POST("/api/led/{led}/off", ledOff);
     router.POST("/api/led/{led}/brightness", ledBrightness);
 }
 
-static void registerWebSocket(HttpService& router) {
+static void registerWebSocket(HttpService& router)
+{
     router.GET(API_STR(deviceMgr, getCameraWebsocketUrl), [](HttpRequest* req, HttpResponse* resp) {
         hv::Json data;
         data["websocketUrl"] = "ws://" + req->host + ":" + std::to_string(WS_PORT);
         hv::Json res;
         res["code"] = 0;
-        res["msg"]  = "";
+        res["msg"] = "";
         res["data"] = data;
 
-        std::string s_time = req->GetParam("time");  // req->GetString("time");
-        int64_t time       = std::stoll(s_time);
-        time /= 1000;  // to sec
+        std::string s_time = req->GetParam("time"); // req->GetString("time");
+        int64_t time = std::stoll(s_time);
+        time /= 1000; // to sec
         std::string cmd = "date -s @" + std::to_string(time);
         system(cmd.c_str());
 
@@ -129,7 +152,8 @@ static void registerWebSocket(HttpService& router) {
     });
 }
 
-static void initHttpsService() {
+static void initHttpsService()
+{
     if (0 != access(PATH_SERVER_CRT, F_OK)) {
         syslog(LOG_ERR, "The crt file does not exist\n");
         return;
@@ -156,17 +180,17 @@ static void initHttpsService() {
     syslog(LOG_INFO, "https service open successful!\n");
 }
 
+// static int response_status(HttpResponse* resp, int code = 200, const char* message = NULL)
+// {
+//     if (message == NULL)
+//         message = http_status_str((enum http_status)code);
+//     resp->Set("code", code);
+//     resp->Set("message", message);
+//     return code;
+// }
 
-static int response_status(HttpResponse* resp, int code = 200, const char* message = NULL) {
-    if (message == NULL)
-        message = http_status_str((enum http_status)code);
-    resp->Set("code", code);
-    resp->Set("message", message);
-    return code;
-}
-
-
-int initHttpd() {
+int httpd_init()
+{
     static HttpService router;
 
     router.AllowCORS();
@@ -176,7 +200,7 @@ int initHttpd() {
     router.GET("/api/version", [](HttpRequest* req, HttpResponse* resp) {
         hv::Json res;
         res["code"] = 0;
-        res["msg"]  = "";
+        res["msg"] = "";
         res["data"] = PROJECT_VERSION;
         return resp->Json(res);
     });
@@ -189,65 +213,66 @@ int initHttpd() {
     registerLedApi(router);
     registerWebSocket(router);
 
-
 #if HTTPS_SUPPORT
     initHttpsService();
 #endif
 
     // server.worker_threads = 3;
     server.service = &router;
-    server.port    = HTTPD_PORT;
+    server.port = HTTPD_PORT;
     server.start();
 
     return 0;
 }
 
-int deinitHttpd() {
+int httpd_deinit()
+{
     server.stop();
     hv::async::cleanup();
     return 0;
 }
 
-int initWiFi() {
-    char cmd[128]        = SCRIPT_WIFI_START;
-    std::string wifiName = getWiFiName("wlan0");
-    std::thread th;
+// int initWiFi() {
+//     char cmd[128]        = SCRIPT_WIFI_START;
+//     std::string wifiName = getWiFiName("wlan0");
+//     std::thread th;
 
-    initUserInfo();
-    initSystemStatus();
-    getSnCode();
+//     initUserInfo();
+//     initSystemStatus();
+//     getSnCode();
 
-    strcat(cmd, wifiName.c_str());
-    strcat(cmd, " ");
-    strcat(cmd, std::to_string(TTYD_PORT).c_str());
-    strcat(cmd, " ");
-    strcat(cmd, std::to_string(g_userId).c_str());
-    system(cmd);
+//     strcat(cmd, wifiName.c_str());
+//     strcat(cmd, " ");
+//     strcat(cmd, std::to_string(TTYD_PORT).c_str());
+//     strcat(cmd, " ");
+//     strcat(cmd, std::to_string(g_userId).c_str());
+//     system(cmd);
 
-    char result[8] = "";
-    if (0 == exec_cmd(SCRIPT_WIFI("wifi_valid"), result, NULL) ) {
-        if (strcmp(result, "0") == 0) {
-            g_wifiMode = 4; // No wifi module
-        }
-    }
+//     char result[8] = "";
+//     if (0 == exec_cmd(SCRIPT_WIFI("wifi_valid"), result, NULL) ) {
+//         if (strcmp(result, "0") == 0) {
+//             g_wifiMode = 4; // No wifi module
+//         }
+//     }
 
-    if (4 != g_wifiMode) {
-        th = std::thread(monitorWifiStatusThread);
-        th.detach();
-    }
+//     if (4 != g_wifiMode) {
+//         th = std::thread(monitorWifiStatusThread);
+//         th.detach();
+//     }
 
-    th = std::thread(updateSystemThread);
-    th.detach();
+//     th = std::thread(updateSystemThread);
+//     th.detach();
 
-    return 0;
-}
+//     return 0;
+// }
 
-int stopWifi() {
-    g_wifiStatus   = false;
-    g_updateStatus = false;
-    system(SCRIPT_WIFI_STOP);
+// int stopWifi() {
+//     g_wifiStatus   = false;
+//     g_updateStatus = false;
+//     system(SCRIPT_WIFI_STOP);
 
-    return 0;
-}
+//     return 0;
+// }
 
-}  // extern "C" {
+// }  // extern "C" {
+#endif

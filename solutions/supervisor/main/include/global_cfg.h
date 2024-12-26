@@ -2,12 +2,12 @@
 #define _GLOBAL_CFG_H_
 
 /* HTTPD */
-#define HTTPD_PORT          80
-#define HTTPS_PORT          443
-#define TTYD_PORT           9090
-#define WWW(file)           ("/usr/share/supervisor/www/" file)
-#define REDIRECT_URL        "http://192.168.16.1/index.html"
-#define DEFAULT_UPGRADE_URL "https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
+// #define HTTPD_PORT          80
+// #define HTTPS_PORT          443
+// #define TTYD_PORT           9090
+// #define WWW(file)           ("/usr/share/supervisor/www/" file)
+// #define REDIRECT_URL        "http://192.168.16.1/index.html"
+// #define DEFAULT_UPGRADE_URL "https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
 
 /* WebSocket */
 #define WS_PORT                    8000
@@ -17,19 +17,21 @@
 #define PATH_SECRET                "/etc/secret"
 #define PATH_DEVICE_NAME           "/etc/device-name"
 #define PATH_UPGRADE_URL           "/etc/upgrade"
+
 #define PATH_SSH_KEY_FILE          "/home/recamera/.ssh/authorized_keys"
 #define PATH_TMP_KEY_FILE          "/tmp/sshkey.tmp"
-#define PATH_UPGRADE_PROGRESS_FILE "/tmp/upgrade.percentage"
-#define PATH_UPGRADE_VERSION_FILE  "/tmp/upgrade.version"
+
+// #define PATH_UPGRADE_PROGRESS_FILE "/tmp/upgrade.percentage"
+// #define PATH_UPGRADE_VERSION_FILE  "/tmp/upgrade.version"
 #define PATH_MODEL_DOWNLOAD_DIR    "/userdata/MODEL/"
 #define PATH_APP_DOWNLOAD_DIR      "/userdata/app/"
-#define PATH_MODEL_UPGRADE_DIR     "/userdata/upgrade/"
+// #define PATH_MODEL_UPGRADE_DIR     "/userdata/upgrade/"
 #define PATH_MODEL_LIST_DIR        "/usr/share/supervisor/models/"
 #define PATH_PLATFORM_INFO_FILE    "/usr/share/supervisor/platform.info"
 
 #define PATH_AVAHI_CONF            "/etc/avahi/avahi-daemon.conf"
 #define PATH_AVAHI_DAEMON_SERVICE  "/etc/init.d/S50avahi-daemon"
-#define PATH_HOSTAPD_CONF          "/etc/hostapd_2g4.conf"
+// #define PATH_HOSTAPD_CONF          "/etc/hostapd_2g4.conf"
 
 #define PATH_NODERED_CONF          "/home/recamera/.node-red/settings.js"
 
@@ -38,10 +40,12 @@
 
 #define PATH_FIRST_LOGIN           "/etc/.first_login"
 
-#define PATH_WLAN0_MAC             "/sys/class/net/wlan0/address"
+// #define PATH_WLAN0_MAC             "/sys/class/net/wlan0/address"
 
 #define KEY_AES_128                "zqCwT7H7!rNdP3wL"
 
+
+#if 0
 /* usertool.sh*/
 #define SCRIPT_USER(action)                      \
     ("/usr/share/supervisor/scripts/usertool.sh" \
@@ -98,7 +102,9 @@
 #define SCRIPT_DEVICE_INSTALLAPP      SCRIPT_DEVICE(installApp)
 #define SCRIPT_DEVICE_GETAPPINFO      SCRIPT_DEVICE(getAppInfo)
 #define SCRIPT_DEVICE_GETFILEMD5      SCRIPT_DEVICE(getFileMd5)
-#define SCRIPT_DEVICE_RESTARTNODERED  SCRIPT_DEVICE(restartNodered)
-#define SCRIPT_DEVICE_RESTARTSSCMA    SCRIPT_DEVICE(restartSscma)
+// #define SCRIPT_DEVICE_RESTARTNODERED  SCRIPT_DEVICE(restartNodered)
+// #define SCRIPT_DEVICE_RESTARTSSCMA    SCRIPT_DEVICE(restartSscma)
+
+#endif
 
 #endif
