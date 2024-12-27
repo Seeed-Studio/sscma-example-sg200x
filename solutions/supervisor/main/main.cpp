@@ -7,6 +7,7 @@
 
 #include "app_daemon.h"
 #include "http_server.h"
+#include "device.h"
 
 #define RESOURCE_DIR "/usr/share/supervisor/www/"
 #define REDIRECT_URL "http://192.168.16.1/index.html"
@@ -35,6 +36,10 @@ int main(int argc, char** argv)
     {
         app_daemon app_daemon;
 
+        http_server http_server(RESOURCE_DIR);
+        http_server.register_redirect(REDIRECT_URL);
+        http_server.start();
+
         main_loop_exit = false;
         while (!main_loop_exit) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -42,7 +47,6 @@ int main(int argc, char** argv)
 
         std::cout << "*****end*****" << std::endl;
     }
-    sleep(10);
 
     std::cout << "*****exit*****" << std::endl;
     closelog();

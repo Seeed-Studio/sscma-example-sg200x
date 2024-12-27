@@ -22,18 +22,12 @@ std::string exec_shell_cmd(const std::string& cmd)
     std::string result;
     unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
 
+    cout << "cmd: " << cmd << endl;
     if (!pipe) {
         syslog(LOG_ERR, "popen() failed: `%s`(%s)\n", cmd.c_str(), strerror(errno));
         throw runtime_error("popen() failed!");
     }
 
-    // fgets(buffer.data(), buffer.size(), pipe.get());
-    // result = buffer.data();
-    // if (result.size() > 0) {
-    //     if (result[result.size() - 1] == '\n') {
-    //         result.pop_back();
-    //     }
-    // }
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
         result += buffer.data();
     }
@@ -45,7 +39,7 @@ int getSystemStatus(HttpRequest* req, HttpResponse* resp)
 {
     Json response;
     string result = exec_shell_cmd(SCRIPT_DEVICE(getSystemStatus));
-
+    std::cout << result << std::endl;
     if (result.empty()) {
         response["code"] = 0;
         response["msg"] = "";

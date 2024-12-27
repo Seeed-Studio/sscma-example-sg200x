@@ -5,10 +5,6 @@
 #include "hv/mqtt_client.h"
 #include "hv/requests.h"
 
-#define MQTT_TOPIC_IN "sscma/v0/recamera/node/in/"
-#define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
-#define MQTT_PAYLOAD "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
-
 typedef enum {
     APP_STATUS_NORMAL,
     APP_STATUS_STOP,
@@ -17,41 +13,47 @@ typedef enum {
     APP_STATUS_UNKNOWN
 } app_status_t;
 
+#define MQTT_TOPIC_IN "sscma/v0/recamera/node/in/"
+#define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
+#define MQTT_PAYLOAD "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
+
+extern std::string exec_shell_cmd(const std::string& cmd);
 class app_daemon {
 public:
     app_daemon()
+        : daemon_loop_exit(false)
     {
-        daemon_loop_exit = false;
+        if (worker_thread_.joinable()) {
+            std::cerr << "app_daemon is already running.\n";
+            return;
+        }
+        syslog(LOG_INFO, "app_daemon starting...");
         sem_init(&sem_sscma, 0, 0);
-        std::thread th(&app_daemon::daemon_loop, this);
-        th.detach();
-
-        syslog(LOG_INFO, "Daemon started.");
-        std::cout << "Daemon started." << std::endl;
+        worker_thread_ = std::thread(&app_daemon::daemon_loop, this);
     }
 
     ~app_daemon()
     {
+        syslog(LOG_INFO, "app_daemon stopping...");
         daemon_loop_exit = true;
-        syslog(LOG_INFO, "Stopping daemon...");
-        std::cout << "Stopping daemon..." << std::endl;
+        if (worker_thread_.joinable()) {
+            worker_thread_.join();
+            syslog(LOG_INFO, "app_daemon stopped.");
+        }
     }
 
-    app_status_t query_nodered_status() { return nodered_status; };
-    app_status_t query_sscma_status() { return sscma_status; }
-    app_status_t query_flow_status() { return flow_status; }
-
-    int restart_nodered();
-    int restart_sscma();
+    app_status_t get_flow_status();
+    app_status_t get_nodered_status();
+    app_status_t get_sscma_status();
 
 private:
+    const std::string service_sscma = "sscma-node";
+    const std::string service_nodered = "node-red";
+
     std::atomic<bool> daemon_loop_exit;
+    std::thread worker_thread_;
     sem_t sem_sscma;
     hv::MqttClient cli;
-
-    app_status_t nodered_status;
-    app_status_t sscma_status;
-    app_status_t flow_status;
 
     void init_mqtt_cli()
     {
@@ -72,36 +74,12 @@ private:
         cli.setID("supervisor");
         cli.connect("localhost", 1883, 0);
 
-        std::thread th([this]() {
-            this->cli.run();
-        });
-        th.detach();
+        std::thread([this]() { this->cli.run(); }).detach();
     }
 
-    // int start_service(std::string path);
+    void check_service(std::string service, std::function<app_status_t()> get_status);
     int start_flow(bool start);
-    app_status_t get_flow_status();
-    app_status_t get_nodered_status();
-    app_status_t get_sscma_status();
     void daemon_loop();
 };
-
-// typedef enum {
-//     APP_STATUS_NORMAL,
-//     APP_STATUS_STOP,
-//     APP_STATUS_NORESPONSE,
-//     APP_STATUS_STARTFAILED,
-//     APP_STATUS_UNKNOWN
-// } ;
-
-// extern int noderedStarting;
-// extern int sscmaStarting;
-// extern APP_STATUS noderedStatus;
-// extern APP_STATUS sscmaStatus;
-
-// int stopFlow();
-
-// void initDaemon();
-// void stopDaemon();
 
 #endif
