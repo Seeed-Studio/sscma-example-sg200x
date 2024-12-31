@@ -383,7 +383,7 @@ ma_err_t ModelNode::onControl(const std::string& control, const json& data) {
             model_->setConfig(MA_MODEL_CFG_OPT_NMS, data["tiou"].get<float>());
         }
         if (data.contains("topk") && data["topk"].is_number_integer()) {
-            model_->setConfig(MA_MODEL_CFG_OPT_TOPK, data["tiou"].get<int32_t>());
+            model_->setConfig(MA_MODEL_CFG_OPT_TOPK, data["topk"].get<int32_t>());
         }
         if (data.contains("debug") && data["debug"].is_boolean()) {
             debug_ = data["debug"].get<bool>();
