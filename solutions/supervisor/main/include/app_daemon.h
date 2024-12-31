@@ -1,6 +1,7 @@
-#ifndef _DAEMON_H_
-#define _DAEMON_H_
+#ifndef _API_DAEMON_H_
+#define _API_DAEMON_H_
 
+#include "hv/hlog.h"
 #include "hv/hv.h"
 #include "hv/mqtt_client.h"
 #include "hv/requests.h"
@@ -17,12 +18,13 @@ typedef enum {
 #define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
 #define MQTT_PAYLOAD "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
 
-extern std::string exec_shell_cmd(const std::string& cmd);
 class app_daemon {
 public:
     app_daemon()
         : daemon_loop_exit(false)
     {
+        hlog_disable();
+
         if (worker_thread_.joinable()) {
             std::cerr << "app_daemon is already running.\n";
             return;
@@ -77,9 +79,9 @@ private:
         std::thread([this]() { this->cli.run(); }).detach();
     }
 
-    void check_service(std::string service, std::function<app_status_t()> get_status);
+    void check_service(const std::string& service, std::function<app_status_t()> get_status);
     int start_flow(bool start);
     void daemon_loop();
 };
 
-#endif
+#endif // _API_DAEMON_H_

@@ -1,3 +1,4 @@
+#if 0
 #include <crypt.h>
 #include <fstream>
 #include <iostream>
@@ -584,3 +585,4 @@ int login(HttpRequest* req, HttpResponse* resp)
 
     return resp->Json(res);
 }
+#endif

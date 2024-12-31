@@ -1,4 +1,4 @@
-#ifndef _GLOBAL_CFG_H_
+#if 0//ndef _GLOBAL_CFG_H_
 #define _GLOBAL_CFG_H_
 
 /* HTTPD */

@@ -7,10 +7,8 @@ set(incs ${CMAKE_CURRENT_LIST_DIR}
 set(srcs 
     ${CMAKE_CURRENT_LIST_DIR}/main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/app_daemon.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/device.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/api_device.cpp
 )
-
-    # ${CMAKE_CURRENT_LIST_DIR}/src/http.cpp
 
 component_register(
     COMPONENT_NAME main

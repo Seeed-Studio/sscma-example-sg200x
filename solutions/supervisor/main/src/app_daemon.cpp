@@ -1,5 +1,6 @@
 #include <syslog.h>
 
+#include "api_base.h"
 #include "app_daemon.h"
 
 #define _LOOP_COND(c) ((!daemon_loop_exit) && (c))
@@ -65,17 +66,18 @@ app_status_t app_daemon::get_nodered_status()
     return APP_STATUS_NORESPONSE;
 }
 
-void app_daemon::check_service(std::string service, std::function<app_status_t()> get_status)
+void app_daemon::check_service(const std::string& service, std::function<app_status_t()> get_status)
 {
     app_status_t status = get_status();
     while (_LOOP_COND(APP_STATUS_NORMAL != status)) {
         start_flow(false);
-        exec_shell_cmd("/etc/init.d/S*" + service + " restart");
-        syslog(LOG_INFO, std::string("restart: " + service).c_str());
+        api_base api_base;
+        api_base.system_service(service, "restart");
 
         for (int i = 0; _LOOP_COND(i < 100); i++) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             status = get_status();
+            std::cout << "status:" << status << std::endl;
             if (APP_STATUS_NORMAL == status) {
                 syslog(LOG_INFO, std::string(service + " restart success.").c_str());
                 return;

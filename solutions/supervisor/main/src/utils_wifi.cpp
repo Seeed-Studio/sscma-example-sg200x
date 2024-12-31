@@ -1,3 +1,4 @@
+#if 0
 #include <algorithm>
 #include <arpa/inet.h>
 #include <iostream>
@@ -973,3 +974,4 @@ int forgetWiFi(HttpRequest* req, HttpResponse* resp)
 
     return resp->Json(response);
 }
+#endif

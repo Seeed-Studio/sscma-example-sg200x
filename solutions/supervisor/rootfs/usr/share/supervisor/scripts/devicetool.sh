@@ -5,20 +5,20 @@ CTRL_FILE=/tmp/upgrade.ctrl
 START_FILE=/tmp/upgrade.start
 PERCENTAGE_FILE=/tmp/upgrade.percentage
 
-function restartApp() {
-    app="$1"
+# function restartApp() {
+#     app="$1"
 
-    if [ -f "$app" ]; then
-        $app restart >/dev/null 2>&1
-        if [ $? == 0 ]; then
-            echo "Finished"
-        else
-            echo "Restart failed"
-        fi
-    else
-        echo "File does not exist"
-    fi
-}
+#     if [ -f "$app" ]; then
+#         $app restart >/dev/null 2>&1
+#         if [ $? == 0 ]; then
+#             echo "Finished"
+#         else
+#             echo "Restart failed"
+#         fi
+#     else
+#         echo "File does not exist"
+#     fi
+# }
 
 case $1 in
 getSystemStatus)

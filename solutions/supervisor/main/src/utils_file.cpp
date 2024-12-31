@@ -1,3 +1,5 @@
+#if 0
+
 #include <dirent.h>
 #include <stdio.h>
 #include <string>
@@ -125,3 +127,4 @@ int deleteFile(HttpRequest* req, HttpResponse* resp)
 
     return resp->Json(response);
 }
+#endif

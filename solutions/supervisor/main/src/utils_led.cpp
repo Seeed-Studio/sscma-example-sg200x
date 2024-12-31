@@ -1,3 +1,5 @@
+#if 0
+
 #include <fstream>
 #include <iostream>
 #include <pwd.h>
@@ -89,3 +91,4 @@ int ledBrightness(const HttpContextPtr& ctx)
 
     return ctx->send(response.dump(2));
 }
+#endif
