@@ -19,6 +19,8 @@ static void exitHandle(int signo) {
 
 static void initSupervisor() {
     hlog_disable();
+    openlog("supervisor", LOG_CONS | LOG_PERROR, LOG_DAEMON);
+
     initWiFi();
     initHttpd();
     initDaemon();
@@ -26,17 +28,20 @@ static void initSupervisor() {
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);
 
-    openlog("supervisor", LOG_CONS | LOG_PID, 0);
     setlogmask(LOG_UPTO(LOG_NOTICE));
 }
 
 int main(int argc, char** argv) {
+
+    printf("Build Time: %s %s\n", __DATE__, __TIME__);
+
     initSupervisor();
 
     while(1) sleep(1000);
 
     system(SCRIPT_WIFI_STOP);
     deinitHttpd();
+
     closelog();
 
     return 0;
