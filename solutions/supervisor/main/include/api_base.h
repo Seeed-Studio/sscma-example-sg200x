@@ -13,6 +13,10 @@
 
 #include "http_server.h"
 
+#define BASE_API(_type, _auth, _api, _class, _func) apis.emplace_back( \
+    _type, _auth, "/api/" #_api "/" #_func,                    \
+    std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2));
+
 class api_base {
 private:
     const std::string& script_;

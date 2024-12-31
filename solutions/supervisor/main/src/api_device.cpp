@@ -10,14 +10,10 @@
 
 #include "api_device.h"
 
-#define BASE_API(_type, _auth, _api, _func, _class) apis.emplace_back( \
-    _type, _auth, "/api/" #_api "/" #_func,                            \
-    std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2));
-
-#define API_GET(_func) BASE_API(API_TYPE_GET, true, deviceMgr, _func, api_device)
-#define API_GET_NOAUTH(_func) BASE_API(API_TYPE_GET, false, deviceMgr, _func, api_device)
-#define API_POST(_func) BASE_API(API_TYPE_POST, true, deviceMgr, _func, api_device)
-#define API_POST_NOAUTH(_func) BASE_API(API_TYPE_POST, false, deviceMgr, _func, api_device)
+#define API_GET(_func) BASE_API(API_TYPE_GET, true, deviceMgr, api_device, _func)
+#define API_GET_NOAUTH(_func) BASE_API(API_TYPE_GET, false, deviceMgr, api_device, _func)
+#define API_POST(_func) BASE_API(API_TYPE_POST, true, deviceMgr, api_device, _func)
+#define API_POST_NOAUTH(_func) BASE_API(API_TYPE_POST, false, deviceMgr, api_device, _func)
 
 void api_device::register_apis()
 {

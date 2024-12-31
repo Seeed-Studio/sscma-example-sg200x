@@ -11,11 +11,11 @@ public:
         register_apis();
     }
 
+private:
+    void register_apis() override;
+
     int getSystemStatus(HttpRequest* req, HttpResponse* resp);
     int queryDeviceInfo(HttpRequest* req, HttpResponse* resp);
-
-private:
-    void register_apis();
 };
 
 #endif // _API_DEVICE_H_
