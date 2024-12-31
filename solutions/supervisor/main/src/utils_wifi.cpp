@@ -267,10 +267,10 @@ static int getWifiList() {
     while (fgets(info, sizeof(info) - 1, fp) != NULL) {
         std::vector<std::string> wifi;
 
-        char* token = strtok(info, " ");
+        char* token = strtok(info, "\t");
         while (token != NULL) {
             wifi.push_back(std::string(token));
-            token = strtok(NULL, " ");
+            token = strtok(NULL, "\t");
         }
 
         if (!wifi.empty()) {
@@ -314,10 +314,10 @@ static int updateConnectedWifiInfo() {
             info[len - 1] = '\0';
         }
 
-        char* token = strtok(info, " ");
+        char* token = strtok(info, "\t");
         while (token != NULL) {
             wifi.push_back(std::string(token));
-            token = strtok(NULL, " ");
+            token = strtok(NULL, "\t");
         }
 
         g_wifiInfo[wifi[1]].id              = stoi(wifi[0]);
@@ -723,9 +723,11 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
         strcat(cmd, std::to_string(id).c_str());
     } else {
         strcpy(cmd, SCRIPT_WIFI_CONNECT);
+        strcat(cmd, "'");
         strcat(cmd, req->GetString("ssid").c_str());
-        strcat(cmd, " ");
+        strcat(cmd, "' '");
         strcat(cmd, req->GetString("password").c_str());
+        strcat(cmd, "'");
     }
 
     syslog(LOG_DEBUG, "cmd: %s\n", cmd);
