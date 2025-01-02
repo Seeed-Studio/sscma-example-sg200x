@@ -39,14 +39,14 @@ add_custom_target(
 )
 
 add_custom_target(
-    npm_run_staging
-    COMMAND npm run staging
+    npm_run_build
+    COMMAND npm run build
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-    COMMENT "Running npm run staging"
+    COMMENT "Running npm run build"
 )
 
 add_custom_target(
-    deploy_web
+    deploy_www
     COMMAND rm -rf ${CMAKE_CURRENT_LIST_DIR}/../rootfs/usr/share/supervisor/www/*
     COMMAND mkdir -p ${CMAKE_CURRENT_LIST_DIR}/../rootfs/usr/share/supervisor/www/
     COMMAND cp -r ${CMAKE_CURRENT_LIST_DIR}/dist/* ${CMAKE_CURRENT_LIST_DIR}/../rootfs/usr/share/supervisor/www/
@@ -54,8 +54,8 @@ add_custom_target(
     COMMENT "Deploying web files"
 )
 
-add_dependencies(npm_run_staging npm_install)
+add_dependencies(npm_run_build npm_install)
 
-add_dependencies(deploy_web npm_run_staging)
+add_dependencies(deploy_www npm_run_build)
 
-add_dependencies(${PROJECT_NAME} deploy_web)
+add_dependencies(${PROJECT_NAME} deploy_www)
