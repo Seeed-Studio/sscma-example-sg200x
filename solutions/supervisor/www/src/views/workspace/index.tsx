@@ -701,7 +701,11 @@ const Workspace = () => {
         if (model_id == "0") {
           //判断当前模型的md5有没有变化
           // 如果md5值有变化就重新上传
-          if (cloudApp.model_data.model_md5 != model_data.model_md5) {
+          // 如果云端应用没有url
+          if (
+            !cloudApp.model_data.arguments?.url ||
+            cloudApp.model_data.model_md5 != model_data.model_md5
+          ) {
             const model_name = model_data.model_name;
             const file_name = `${model_name}_${cloudApp.app_id}`;
             // 先从设备拿到模型文件
@@ -797,6 +801,11 @@ const Workspace = () => {
           if (needUpdateApp) {
             if (list.length > 0) {
               const app = list[0];
+              await syncLocalAppToCloud({
+                cloudApp: app,
+                flow_data_str: flow_data,
+                model_data: model_data,
+              });
               if (needUpdateFlow) {
                 await sendFlow(app.flow_data);
               }
