@@ -18,6 +18,10 @@ message(STATUS "ROOT_DIR: ${ROOT_DIR}")
 
 include(${ROOT_DIR}/cmake/project.cmake)
 
+include(${PROJECT_DIR}/www/CMakeLists.txt)
+
+
+
 
 
 
