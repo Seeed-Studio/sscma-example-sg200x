@@ -26,7 +26,7 @@ clean_upgrade_file() {
 get_wifi_scan_results() {
     wpa_cli -i wlan0 scan_results | tail -n +2 | while read -r line
     do
-        printf "%b\n" $line | awk '$5 != "" {print $5, $3, $4, $1}'
+        printf "%b\n" $line | awk -F'\t' '$5 != "" {print $5 "\t" $3 "\t" $4 "\t" $1}'
     done
 }
 
@@ -34,7 +34,7 @@ list_wifi() {
     # wpa_cli -i wlan0 list_networks | tail -n +2 | awk '{print $1, $2, $4}'
     wpa_cli -i wlan0 list_networks | tail -n +3 | while read -r line
     do
-        printf "%b\n" $line | awk '{print $1, $2, $4}'
+        printf "%b\n" $line | awk -F'\t' '{print $1 "\t" $2 "\t" $4}'
     done
 }
 
@@ -59,17 +59,8 @@ connect_wifi() {
 }
 
 wifi_status() {
-    wifiStatus=`wpa_cli -i wlan0 status`
-
-    ssid=`echo $wifiStatus | tr ' ' '\n' | grep "^ssid"`
-    key_mgmt=`echo $wifiStatus | tr ' ' '\n' | grep "^key_mgmt"`
-    address=`echo $wifiStatus | tr ' ' '\n' | grep "^address"`
-    ip_address=`echo $wifiStatus | tr ' ' '\n' | grep "^ip_address"`
-
-    printf "%b" $ssid | awk -F= '{ if (length($0) == 0) print "-"; else print $2 }'
-    echo $key_mgmt | awk -F= '{ if (length($0) == 0) print "-"; else print $2 }'
-    echo $address | awk -F= '{ if (length($0) == 0) print "-"; else print $2 }'
-    echo $ip_address | awk -F= '{ if (length($0) == 0) print "-"; else print $2 }'
+    ret=$(wpa_cli -i wlan0 status)
+    printf "%b" "$ret" | awk -F= '/ssid/ {ssid=$2} /key_mgmt/ {key_mgmt=$2} /ip_address/ {ip_address=$2} /address/ {address=$2} END {printf "%s\n%s\n%s\n%s\n", ssid, key_mgmt, ip_address, address}'
 }
 
 case $1 in

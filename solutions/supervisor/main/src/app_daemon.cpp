@@ -29,9 +29,9 @@ app_status_t app_daemon::get_flow_status()
 
     try {
         hv::Json data = hv::Json::parse(resp->body.begin(), resp->body.end());
-        if (data["state"] == "stop") {
-            return APP_STATUS_STOP;
-        }
+        // if (data["state"] == "stop") {
+        //     return APP_STATUS_STOP;
+        // }
     } catch (const std::exception& e) {
         return APP_STATUS_NORESPONSE;
     }
@@ -60,13 +60,10 @@ app_status_t app_daemon::get_sscma_status()
 app_status_t app_daemon::get_nodered_status()
 {
     auto resp = requests::get("localhost:1880");
-    if (NULL != resp)
-        return APP_STATUS_NORMAL;
-
-    return APP_STATUS_NORESPONSE;
+    return (NULL != resp) ? APP_STATUS_NORMAL : APP_STATUS_NORESPONSE;
 }
 
-void app_daemon::check_service(const std::string& service, std::function<app_status_t()> get_status)
+void app_daemon::check_service(const std::string& service, app_status_t* latest, std::function<app_status_t()> get_status)
 {
     app_status_t status = get_status();
     while (_LOOP_COND(APP_STATUS_NORMAL != status)) {
@@ -74,17 +71,21 @@ void app_daemon::check_service(const std::string& service, std::function<app_sta
         api_base api_base;
         api_base.system_service(service, "restart");
 
+        *latest = APP_STATUS_STARTING;
         for (int i = 0; _LOOP_COND(i < 100); i++) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             status = get_status();
             std::cout << "status:" << status << std::endl;
             if (APP_STATUS_NORMAL == status) {
+                *latest = APP_STATUS_NORMAL;
                 syslog(LOG_INFO, std::string(service + " restart success.").c_str());
                 return;
             }
         }
+        *latest = APP_STATUS_FAILED;
         syslog(LOG_ERR, std::string(service + " restart failed.").c_str());
     }
+    *latest = status;
 
     return;
 }
@@ -96,15 +97,15 @@ void app_daemon::daemon_loop()
 
     while (_LOOP_COND(true)) {
         app_status_t status = get_flow_status();
-        if ((status == APP_STATUS_NORMAL) || (status == APP_STATUS_STOP)) {
+        if ((status == APP_STATUS_NORMAL) /*|| (status == APP_STATUS_STOP)*/) {
             std::this_thread::sleep_for(std::chrono::seconds(5));
             continue;
         } else {
             syslog(LOG_ERR, "get_flow_status: APP_STATUS_NORESPONSE");
         }
 
-        check_service(service_sscma, [this]() { return get_sscma_status(); });
-        check_service(service_nodered, [this]() { return get_nodered_status(); });
+        check_service(service_sscma, &sscma_status, [this]() { return get_sscma_status(); });
+        check_service(service_nodered, &nodered_status, [this]() { return get_nodered_status(); });
 
         start_flow(true);
     }

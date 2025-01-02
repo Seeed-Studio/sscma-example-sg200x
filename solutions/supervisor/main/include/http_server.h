@@ -3,12 +3,14 @@
 
 #include <filesystem>
 
+#include "logger.hpp"
+#include "version.h"
+
 #include "hv/HttpServer.h"
 #include "hv/HttpService.h"
 #include "hv/hasync.h" // import hv::async
 #include "hv/hlog.h"
 #include "hv/hthread.h" // import hv_gettid
-#include "version.h"
 
 typedef enum {
     API_TYPE_HEAD = 0,

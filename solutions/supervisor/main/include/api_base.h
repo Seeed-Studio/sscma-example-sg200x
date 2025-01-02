@@ -11,25 +11,33 @@
 #include <string>
 #include <syslog.h>
 
+#include "app_daemon.h"
 #include "http_server.h"
 
-#define BASE_API(_type, _auth, _api, _class, _func) apis.emplace_back( \
-    _type, _auth, "/api/" #_api "/" #_func,                    \
+#define BASE_API(_type, _auth, _group, _class, _func) apis.emplace_back( \
+    _type,                                                               \
+    _auth,                                                               \
+    "/api/" _group "/" #_func,                                           \
     std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2));
+
+class supervisor;
 
 class api_base {
 private:
     const std::string& script_;
 
 protected:
+    const supervisor* sv_;
     std::vector<api_t> apis;
     virtual void register_apis() {};
 
 public:
-    api_base(const std::string& script = "")
-        : script_(script)
+    api_base(const supervisor* sv = NULL, const std::string& script = "")
+        : sv_(sv)
+        , script_(script)
     {
     }
+    virtual ~api_base() = default;
 
     std::vector<api_t> get_apis() const { return apis; }
 
@@ -49,8 +57,6 @@ public:
         while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
             result += buffer.data();
         }
-        std::cout << "Result:" << result << std::endl;
-
         if (ferror(pipe.get())) {
             syslog(LOG_ERR, "fgets() encountered an I/O error: %s\n", strerror(errno));
             throw std::runtime_error("fgets() encountered an I/O error!");
@@ -60,6 +66,7 @@ public:
             result.pop_back();
         }
 
+        std::cout << "Result:" << result << std::endl;
         return result;
     }
 
