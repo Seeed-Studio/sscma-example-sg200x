@@ -171,7 +171,7 @@ const Workspace = () => {
 
   useEffect(() => {
     const initAction = async () => {
-      if (isLogin && actionInfo?.action) {
+      if (actionInfo?.action) {
         const action = actionInfo.action; //new / app / clone / model /normal  action为空默认为normal
         const app_id = actionInfo.app_id; //type为app时才需要传
         const model_id = actionInfo.model_id; //type为model时才需要传
@@ -205,7 +205,7 @@ const Workspace = () => {
       }
     };
     initAction();
-  }, [isLogin, actionInfo?.action]);
+  }, [actionInfo?.action]);
 
   const getSensecraftUserInfo = async () => {
     try {
