@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Spin } from "antd";
+import { Button, FloatButton, Spin } from "antd";
 import { ServiceStatus } from "@/enum";
 import { baseIP } from "@/utils/noderedRequest";
 import { queryServiceStatusApi } from "@/api/device";
+import DashboardImg from "@/assets/images/svg/dashboard.svg";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -77,18 +78,11 @@ const Dashboard = () => {
           {hasDashboard ? (
             <div className="w-full h-full relative overflow-hidden">
               <iframe className="w-full h-full" src={dashboardURL} />
-              <Button
-                style={{
-                  position: "absolute",
-                  top: "16px",
-                  right: "280px",
-                  borderRadius: 0,
-                }}
+              <FloatButton
                 type="primary"
+                icon={<img src={DashboardImg} />}
                 onClick={gotoWorkspace}
-              >
-                Workspace
-              </Button>
+              />
             </div>
           ) : (
             <div className="flex flex-col justify-center items-center">

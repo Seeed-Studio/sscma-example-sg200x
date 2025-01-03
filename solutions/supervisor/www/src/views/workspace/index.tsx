@@ -695,6 +695,9 @@ const Workspace = () => {
         return false;
       }
 
+      let needUpdate = false;
+      needUpdate = cloudApp.flow_data !== flow_data_str;
+
       if (model_data) {
         const model_id = model_data.model_id;
         // 判断模型是本地模型还是云端模型 本地模型，需要上传到云端保存
@@ -734,6 +737,7 @@ const Workspace = () => {
                 if (fileRes.ok) {
                   //将模型在云端的地址保存在应用模型信息
                   model_data.arguments = { url: data.file_url };
+                  needUpdate = true;
                 } else {
                   setSyncing(false);
                   return false;
@@ -747,23 +751,27 @@ const Workspace = () => {
         }
       }
 
-      const response = await updateAppApi({
-        app_id: cloudApp.app_id,
-        flow_data: flow_data_str,
-        model_data: model_data,
-      });
-      if (response.code == 0) {
-        cloudApp.flow_data = flow_data_str || "[]";
-        if (model_data) {
-          cloudApp.model_data = model_data;
+      if (needUpdate) {
+        const response = await updateAppApi({
+          app_id: cloudApp.app_id,
+          flow_data: flow_data_str,
+          model_data: model_data,
+        });
+        if (response.code == 0) {
+          cloudApp.flow_data = flow_data_str || "[]";
+          if (model_data) {
+            cloudApp.model_data = model_data;
+          }
+          updateAppInfo(cloudApp);
+          savePlatformInfo();
+          setSyncing(false);
+          return true;
         }
-        updateAppInfo(cloudApp);
-        savePlatformInfo();
         setSyncing(false);
-        return true;
+        return false;
       }
       setSyncing(false);
-      return false;
+      return true;
     } catch (error) {
       setSyncing(false);
       return false;
