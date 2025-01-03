@@ -15,10 +15,6 @@
 
 #define GROUP_NAME "deviceMgr"
 #define CLASS_TYPE api_device
-#define API_GET(_func) BASE_API(API_TYPE_GET, true, GROUP_NAME, CLASS_TYPE, _func)
-#define API_GET_NOAUTH(_func) BASE_API(API_TYPE_GET, false, GROUP_NAME, CLASS_TYPE, _func)
-#define API_POST(_func) BASE_API(API_TYPE_POST, true, GROUP_NAME, CLASS_TYPE, _func)
-#define API_POST_NOAUTH(_func) BASE_API(API_TYPE_POST, false, GROUP_NAME, CLASS_TYPE, _func)
 
 void api_device::register_apis()
 {
@@ -27,12 +23,9 @@ void api_device::register_apis()
     API_POST(updateDeviceName);
     API_POST(updateChannel);
     API_POST(setPower);
-    // API_POST(updateSystem);
-    // API_GET(getUpdateProgress);
-    // API_POST(cancelUpdate);
 
-    // API_GET(getDeviceList);
-    // API_GET(getDeviceInfo);
+    API_GET(getDeviceList);
+    API_GET(getDeviceInfo);
 
     // API_GET(getAppInfo);
     // API_POST(uploadApp);
@@ -171,22 +164,48 @@ int api_device::updateChannel(HttpRequest* req, HttpResponse* resp)
 
 int api_device::setPower(HttpRequest* req, HttpResponse* resp)
 {
-    // syslog(LOG_INFO, "set Power operation...\n");
-    // syslog(LOG_INFO, "mode: %s\n", req->GetString("mode").c_str());
     int mode = stoi(req->GetString("mode"));
+    const char* cmd = (mode == 0) ? "poweroff" : "reboot";
 
-    if (mode) {
-        // syslog(LOG_INFO, "start to reboot system\n");
-        system("reboot");
-    } else {
-        // syslog(LOG_INFO, "start to shut down system\n");
-        system("poweroff");
-    }
+    MA_LOGW(TAG, "%s: %s", __func__, cmd);
+    exec_shell_cmd(std::string(__func__) + cmd);
 
     return resp->Json(
         hv::Json({
             { "code", 0 },
             { "msg", "" },
             { "data", hv::Json({}) },
+        }));
+}
+
+int api_device::getDeviceList(HttpRequest* req, HttpResponse* resp)
+{
+    std::string result = exec_shell_cmd(std::string(__func__)); // generate result
+
+    exec_shell_cmd(std::string(__func__) + " " + result); // rm result
+
+    return resp->Json(
+        hv::Json({
+            { "code", 0 },
+            { "msg", "" },
+            { "data", hv::Json({}) },
+        }));
+}
+
+int api_device::getDeviceInfo(HttpRequest* req, HttpResponse* resp)
+{
+    hv::Json data;
+
+    data["ip"] = "192.168.111.181"; // getDeviceIp(req->client_addr.ip);
+    data["osVersion"] = os_version_;
+    data["deviceName"] = os_name_;
+    data["status"] = 1;
+    data["sn"] = sn_;
+
+    return resp->Json(
+        hv::Json({
+            { "code", 0 },
+            { "msg", "" },
+            { "data", data },
         }));
 }

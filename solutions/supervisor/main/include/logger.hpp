@@ -1,5 +1,7 @@
-#pragma once
+#ifndef __LOGGER_H__
+#define __LOGGER_H__
 
+#include <signal.h>
 #include <syslog.h>
 
 extern std::atomic<int> log_to_std_mask;
@@ -45,3 +47,5 @@ extern std::string format_log(const char* format, ...);
             abort();                                       \
         }                                                  \
     } while (0)
+
+#endif // __LOGGER_H__

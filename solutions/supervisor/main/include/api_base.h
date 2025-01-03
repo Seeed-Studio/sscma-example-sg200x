@@ -22,11 +22,16 @@
     "/api/" _group "/" #_func,                                           \
     std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2));
 
+#define API_GET(_func) BASE_API(API_TYPE_GET, true, GROUP_NAME, CLASS_TYPE, _func)
+#define API_GET_NOAUTH(_func) BASE_API(API_TYPE_GET, false, GROUP_NAME, CLASS_TYPE, _func)
+#define API_POST(_func) BASE_API(API_TYPE_POST, true, GROUP_NAME, CLASS_TYPE, _func)
+#define API_POST_NOAUTH(_func) BASE_API(API_TYPE_POST, false, GROUP_NAME, CLASS_TYPE, _func)
+
 class supervisor;
 
 class api_base {
 private:
-    const std::string& script_;
+    const std::string script_;
 
 protected:
     const supervisor* sv_;
@@ -52,7 +57,7 @@ public:
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);
         MA_LOGD(TAG, "Executing: %s", full_cmd.c_str());
         if (!pipe) {
-            MA_LOGE(TAG, "popen() failed: `%s`(%s)\n", full_cmd.c_str(), strerror(errno));
+            MA_LOGE(TAG, "popen() failed: `%s`(%s)", full_cmd.c_str(), strerror(errno));
             throw std::runtime_error("popen() failed!");
         }
 
@@ -60,7 +65,7 @@ public:
             result += buffer.data();
         }
         if (ferror(pipe.get())) {
-            MA_LOGE(TAG, "fgets() encountered an I/O error: %s\n", strerror(errno));
+            MA_LOGE(TAG, "fgets() encountered an I/O error: %s", strerror(errno));
             throw std::runtime_error("fgets() encountered an I/O error!");
         }
 

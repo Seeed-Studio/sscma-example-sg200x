@@ -2,6 +2,7 @@
 #define _SUPERVISOR_H_
 
 #include "api_device.h"
+#include "api_update.h"
 #include "app_daemon.h"
 #include "http_server.h"
 
@@ -21,11 +22,13 @@ private:
 public:
     std::shared_ptr<app_daemon> daemon;
     std::shared_ptr<api_device> device;
+    std::shared_ptr<api_update> update;
 
     supervisor()
         : server(std::make_shared<http_server>(resource_dir, redirect_url))
         , daemon(std::make_shared<app_daemon>())
         , device(std::make_shared<api_device>(this))
+        , update(std::make_shared<api_update>(this))
     {
         MA_LOGI(TAG, "*****start*****");
     }
@@ -43,4 +46,4 @@ public:
     }
 };
 
-#endif
+#endif // _SUPERVISOR_H_

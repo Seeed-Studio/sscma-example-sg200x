@@ -35,7 +35,7 @@ static void exitHandle(int signo)
 int main(int argc, char** argv)
 {
     MA_LOG_INIT("supervisor", LOG_CONS | LOG_PID, 0);
-    MA_LOG_MASK(LOG_UPTO(LOG_INFO));
+    MA_LOG_MASK(LOG_UPTO(LOG_DEBUG));
 
     signal(SIGINT, &exitHandle);
     signal(SIGTERM, &exitHandle);

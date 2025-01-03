@@ -1,5 +1,4 @@
 #include "api_base.h"
-#include "app_daemon.h"
 
 #undef TAG
 #define TAG "app_daemon"
@@ -15,7 +14,7 @@ int app_daemon::start_flow(bool start)
     headers["Content-Type"] = "application/json";
     auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
     if (resp == NULL) {
-        MA_LOGE(TAG, "%s flow failed\n", data["state"].dump());
+        MA_LOGE(TAG, "%s flow failed", data["state"].dump());
         return -1;
     }
 
@@ -43,7 +42,7 @@ app_status_t app_daemon::get_flow_status()
 app_status_t app_daemon::get_sscma_status()
 {
     if (!cli.isConnected()) {
-        MA_LOGI(TAG, "mqtt is not connected\n");
+        MA_LOGI(TAG, "mqtt is not connected");
         cli.reconnect();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
