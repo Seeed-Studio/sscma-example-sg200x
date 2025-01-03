@@ -15,32 +15,34 @@
 #undef TAG
 #define TAG "http_server"
 
-typedef enum {
-    API_TYPE_HEAD = 0,
-    API_TYPE_GET,
-    API_TYPE_POST,
-
-    API_TYPE_MAX
-} api_type_t;
-
 class api_t {
 public:
-    api_type_t type;
     bool auth;
-    std::string url;
-    std::function<int(HttpRequest*, HttpResponse*)> func;
+    std::string method;
+    std::string path;
+    http_sync_handler sync;
+    http_async_handler async;
+    http_ctx_handler ctx;
+    http_state_handler state;
 
-    api_t(api_type_t t, bool a, const std::string& u, std::function<int(HttpRequest*, HttpResponse*)> f)
-        : type(t)
-        , auth(a)
-        , url(u)
-        , func(f)
+    api_t(bool auth_, const std::string& method_, const std::string& path_,
+        http_sync_handler sync_,
+        http_async_handler async_,
+        http_ctx_handler ctx_,
+        http_state_handler state_)
+        : auth(auth_)
+        , method(method_)
+        , path(path_)
+        , sync(sync_)
+        , async(async_)
+        , ctx(ctx_)
+        , state(state_)
     {
     }
 
     friend std::ostream& operator<<(std::ostream& os, const api_t& api)
     {
-        os << "Type: " << api.type << ", Auth: " << api.auth << ", Url: " << api.url;
+        os << "Auth: " << api.auth << ", Method: " << api.method << ", Path: " << api.path;
         return os;
     }
 };
@@ -74,19 +76,14 @@ public:
     void register_apis(const std::vector<api_t>& apis)
     {
         for (auto& api : apis) {
-            switch (api.type) {
-            case API_TYPE_HEAD:
-                router_.HEAD(api.url.c_str(), api.func);
-                break;
-            case API_TYPE_GET:
-                router_.GET(api.url.c_str(), api.func);
-                break;
-            case API_TYPE_POST:
-                router_.POST(api.url.c_str(), api.func);
-                break;
-            default:
-                throw std::runtime_error("Invalid api type");
-            }
+            if (api.sync)
+                router_.Handle<http_sync_handler>(api.method.c_str(), api.path.c_str(), api.sync);
+            else if (api.async)
+                router_.Handle<http_async_handler>(api.method.c_str(), api.path.c_str(), api.async);
+            else if (api.ctx)
+                router_.Handle<http_ctx_handler>(api.method.c_str(), api.path.c_str(), api.ctx);
+            else if (api.state)
+                router_.Handle<http_state_handler>(api.method.c_str(), api.path.c_str(), api.state);
         }
     }
 

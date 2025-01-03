@@ -18,14 +18,14 @@
 
 void api_device::register_apis()
 {
-    API_GET(queryServiceStatus);
-    API_GET(queryDeviceInfo);
-    API_POST(updateDeviceName);
-    API_POST(updateChannel);
-    API_POST(setPower);
+    SYNC_API(GET, queryServiceStatus);
+    SYNC_API(GET, queryDeviceInfo);
+    SYNC_API(POST, updateDeviceName);
+    SYNC_API(POST, updateChannel);
+    SYNC_API(POST, setPower);
+    SYNC_API(POST, getDeviceList);
 
-    API_GET(getDeviceList);
-    API_GET(getDeviceInfo);
+    // API_GET(getDeviceInfo);
 
     // API_GET(getAppInfo);
     // API_POST(uploadApp);

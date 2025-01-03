@@ -16,16 +16,20 @@
 #undef TAG
 #define TAG "api_base"
 
-#define BASE_API(_type, _auth, _group, _class, _func) apis.emplace_back( \
-    _type,                                                               \
-    _auth,                                                               \
-    "/api/" _group "/" #_func,                                           \
-    std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2));
+#define _BASE_API_(auth_, method_, path_, sync_, async_, ctx_, state_) \
+    apis.emplace_back(auth_, method_, path_, sync_, async_, ctx_, state_)
 
-#define API_GET(_func) BASE_API(API_TYPE_GET, true, GROUP_NAME, CLASS_TYPE, _func)
-#define API_GET_NOAUTH(_func) BASE_API(API_TYPE_GET, false, GROUP_NAME, CLASS_TYPE, _func)
-#define API_POST(_func) BASE_API(API_TYPE_POST, true, GROUP_NAME, CLASS_TYPE, _func)
-#define API_POST_NOAUTH(_func) BASE_API(API_TYPE_POST, false, GROUP_NAME, CLASS_TYPE, _func)
+#define _SYNC_API_(auth_, method_, _group, _class, _func) _BASE_API_(auth_, #method_, \
+    "/api/" _group "/" #_func,                                                        \
+    std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2), nullptr, nullptr, nullptr)
+#define SYNC_API(method_, _func) _SYNC_API_(true, method_, GROUP_NAME, CLASS_TYPE, _func)
+#define SYNC_API_NOAUTH(method_, _func) _SYNC_API_(false, method_, GROUP_NAME, CLASS_TYPE, _func)
+
+#define _CTX_API_(auth_, method_, _group, _class, _func) _BASE_API_(auth_, #method_, \
+    "/api/" _group "/" #_func,                                                       \
+    nullptr, nullptr, std::bind(&_class::_func, this, std::placeholders::_1), nullptr)
+#define CTX_API(method_, _func) _CTX_API_(true, method_, GROUP_NAME, CLASS_TYPE, _func)
+#define CTX_API_NOAUTH(method_, _func) _CTX_API_(false, method_, GROUP_NAME, CLASS_TYPE, _func)
 
 class supervisor;
 
