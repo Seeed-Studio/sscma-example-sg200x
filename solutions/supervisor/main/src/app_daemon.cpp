@@ -1,7 +1,8 @@
-#include <syslog.h>
-
 #include "api_base.h"
 #include "app_daemon.h"
+
+#undef TAG
+#define TAG "app_daemon"
 
 #define _LOOP_COND(c) ((!daemon_loop_exit) && (c))
 
@@ -14,7 +15,7 @@ int app_daemon::start_flow(bool start)
     headers["Content-Type"] = "application/json";
     auto resp = requests::post("localhost:1880/flows/state", data.dump(), headers);
     if (resp == NULL) {
-        syslog(LOG_ERR, "stop flow failed");
+        MA_LOGE(TAG, "%s flow failed\n", data["state"].dump());
         return -1;
     }
 
@@ -42,7 +43,7 @@ app_status_t app_daemon::get_flow_status()
 app_status_t app_daemon::get_sscma_status()
 {
     if (!cli.isConnected()) {
-        syslog(LOG_ERR, "mqtt is not connected\n");
+        MA_LOGI(TAG, "mqtt is not connected\n");
         cli.reconnect();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -75,15 +76,15 @@ void app_daemon::check_service(const std::string& service, app_status_t* latest,
         for (int i = 0; _LOOP_COND(i < 100); i++) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             status = get_status();
-            std::cout << "status:" << status << std::endl;
+            MA_LOGD(TAG, "%s, status:%d", service.c_str(), status);
             if (APP_STATUS_NORMAL == status) {
                 *latest = APP_STATUS_NORMAL;
-                syslog(LOG_INFO, std::string(service + " restart success.").c_str());
+                MA_LOGI(TAG, "%s restart success.", service.c_str());
                 return;
             }
         }
         *latest = APP_STATUS_FAILED;
-        syslog(LOG_ERR, std::string(service + " restart failed.").c_str());
+        MA_LOGI(TAG, "%s restart failed.", service.c_str());
     }
     *latest = status;
 
@@ -92,7 +93,7 @@ void app_daemon::check_service(const std::string& service, app_status_t* latest,
 
 void app_daemon::daemon_loop()
 {
-    syslog(LOG_INFO, "daemon_loop started.");
+    MA_LOGI(TAG, "daemon_loop started.");
     init_mqtt_cli();
 
     while (_LOOP_COND(true)) {
@@ -101,7 +102,7 @@ void app_daemon::daemon_loop()
             std::this_thread::sleep_for(std::chrono::seconds(5));
             continue;
         } else {
-            syslog(LOG_ERR, "get_flow_status: APP_STATUS_NORESPONSE");
+            MA_LOGE(TAG, "get_flow_status: APP_STATUS_NORESPONSE");
         }
 
         check_service(service_sscma, &sscma_status, [this]() { return get_sscma_status(); });
@@ -113,5 +114,5 @@ void app_daemon::daemon_loop()
     cli.disconnect();
     cli.stop();
     sem_destroy(&sem_sscma);
-    syslog(LOG_INFO, "daemon_loop exited.");
+    MA_LOGI(TAG, "daemon_loop exited.");
 }

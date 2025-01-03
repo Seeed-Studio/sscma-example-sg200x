@@ -12,6 +12,9 @@
 #include "hv/hlog.h"
 #include "hv/hthread.h" // import hv_gettid
 
+#undef TAG
+#define TAG "http_server"
+
 typedef enum {
     API_TYPE_HEAD = 0,
     API_TYPE_GET,
@@ -52,22 +55,23 @@ public:
         , https_port_(https_port)
         , server_(std::make_unique<hv::HttpServer>())
     {
-        syslog(LOG_INFO, "http server resource: %s, http: %d, https: %d\n",
-            resource.c_str(), http_port, https_port);
+        MA_LOGI(TAG, "resource: %s", resource_.c_str());
+        MA_LOGI(TAG, "redirect: %s", redirect_.c_str());
+        MA_LOGI(TAG, "http port: %d, https port: %d", http_port, https_port);
         hlog_disable();
-
         set_redirect(redirect_);
     }
 
     ~http_server()
     {
         if (server_ != nullptr) {
+            MA_LOGI(TAG, "exit");
             server_->stop();
             hv::async::cleanup();
         }
     }
 
-    void register_apis(std::vector<api_t> apis)
+    void register_apis(const std::vector<api_t>& apis)
     {
         for (auto& api : apis) {
             switch (api.type) {
@@ -125,40 +129,29 @@ private:
     void set_redirect(const std::string& redirect)
     {
         if (redirect.empty()) {
-            syslog(LOG_ERR, "redirect: %s\n", redirect.c_str());
+            MA_LOGE(TAG, "redirect is empty");
             return;
         }
 
-        // router_.GET("/index.html",
-        //     [this](HttpRequest* req, HttpResponse* resp) {
-        //         std::cout << "Request index.html" << std::endl;
-        //         return resp->File(std::string(this->resource_ + "/index.html").c_str());
-        //     });
-
         router_.GET("/*", [this](HttpRequest* req, HttpResponse* resp) {
             std::string req_url = req->Url();
-            std::cout << "Request url: " << req_url << std::endl;
+            MA_LOGD(TAG, "Request url: %s", req_url.c_str());
             size_t s_pos = req_url.find("//");
             if (s_pos != std::string::npos) {
                 size_t e_pos = req_url.find("/", s_pos + 2);
                 if (e_pos == std::string::npos)
                     goto goto_redirect;
 
-                // if (req_url.substr(e_pos, 4) == "/api") {
-                //     std::cout << "=====> api request" << std::endl;
-                //     return HTTP_STATUS_NEXT;
-                // } else {
                 std::string res_path = this->resource_ + req_url.substr(e_pos);
                 if (std::filesystem::exists(res_path)) {
-                    std::cout << "=====> path: " << res_path << std::endl;
+                    MA_LOGD(TAG, "=====> path: %s", res_path.c_str());
                     return resp->File(res_path.c_str());
                 }
-                // }
             }
 
         goto_redirect:
             std::string res_path = redirect_;
-            std::cout << "-----> redirect: " << res_path << std::endl;
+            MA_LOGD(TAG, "-----> redirect: %s", res_path.c_str());
             return resp->Redirect(res_path.c_str());
         });
     }

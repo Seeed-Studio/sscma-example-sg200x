@@ -9,10 +9,12 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <syslog.h>
 
 #include "app_daemon.h"
 #include "http_server.h"
+
+#undef TAG
+#define TAG "api_base"
 
 #define BASE_API(_type, _auth, _group, _class, _func) apis.emplace_back( \
     _type,                                                               \
@@ -32,14 +34,14 @@ protected:
     virtual void register_apis() {};
 
 public:
-    api_base(const supervisor* sv = NULL, const std::string& script = "")
+    api_base(const supervisor* sv = nullptr, const std::string& script = "")
         : sv_(sv)
         , script_(script)
     {
     }
     virtual ~api_base() = default;
 
-    std::vector<api_t> get_apis() const { return apis; }
+    const std::vector<api_t>& get_apis() const { return apis; }
 
     std::string exec_shell_cmd(const std::string& cmd)
     {
@@ -48,9 +50,9 @@ public:
 
         std::string full_cmd = script_ + " " + cmd;
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);
-        std::cout << "Executing command:" << full_cmd << std::endl;
+        MA_LOGD(TAG, "Executing: %s", full_cmd.c_str());
         if (!pipe) {
-            syslog(LOG_ERR, "popen() failed: `%s`(%s)\n", full_cmd.c_str(), strerror(errno));
+            MA_LOGE(TAG, "popen() failed: `%s`(%s)\n", full_cmd.c_str(), strerror(errno));
             throw std::runtime_error("popen() failed!");
         }
 
@@ -58,7 +60,7 @@ public:
             result += buffer.data();
         }
         if (ferror(pipe.get())) {
-            syslog(LOG_ERR, "fgets() encountered an I/O error: %s\n", strerror(errno));
+            MA_LOGE(TAG, "fgets() encountered an I/O error: %s\n", strerror(errno));
             throw std::runtime_error("fgets() encountered an I/O error!");
         }
 
@@ -66,7 +68,7 @@ public:
             result.pop_back();
         }
 
-        std::cout << "Result:" << result << std::endl;
+        MA_LOGD(TAG, "Result: %s", result.c_str());
         return result;
     }
 
@@ -77,7 +79,7 @@ public:
         _cmd += " ";
         _cmd += action;
 
-        std::cout << "Service: " << _cmd << std::endl;
+        MA_LOGD(TAG, "Service: %s", _cmd.c_str());
         return exec_shell_cmd(_cmd);
     }
 };

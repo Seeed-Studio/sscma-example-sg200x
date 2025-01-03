@@ -6,10 +6,12 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <syslog.h>
 
 #include "api_device.h"
 #include "supervisor.h"
+
+#undef TAG
+#define TAG "api_device"
 
 #define GROUP_NAME "deviceMgr"
 #define CLASS_TYPE api_device
@@ -139,7 +141,8 @@ int api_device::queryDeviceInfo(HttpRequest* req, HttpResponse* resp)
 int api_device::updateDeviceName(HttpRequest* req, HttpResponse* resp)
 {
     std::string new_name = req->GetString("deviceName");
-    std::cout << "new_name: " << new_name << std::endl;
+
+    MA_LOGD(TAG, "new_name: %s", new_name.c_str());
     exec_shell_cmd(std::string(__func__) + " " + new_name);
 
     return resp->Json(
@@ -154,9 +157,8 @@ int api_device::updateChannel(HttpRequest* req, HttpResponse* resp)
 {
     std::string new_ch = req->GetString("channel");
     std::string new_url = req->GetString("serverUrl");
-    std::cout << "new_ch: " << new_ch << std::endl;
-    std::cout << "new_url: " << new_url << std::endl;
 
+    MA_LOGD(TAG, "new_ch: %s, new_url: %s", new_ch.c_str(), new_url.c_str());
     exec_shell_cmd(std::string(__func__) + " " + new_ch + " " + new_url);
 
     return resp->Json(
@@ -188,4 +190,3 @@ int api_device::setPower(HttpRequest* req, HttpResponse* resp)
             { "data", hv::Json({}) },
         }));
 }
-

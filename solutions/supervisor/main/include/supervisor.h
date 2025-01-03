@@ -27,21 +27,17 @@ public:
         , daemon(std::make_shared<app_daemon>())
         , device(std::make_shared<api_device>(this))
     {
-        MA_LOG_INIT("supervisor", LOG_CONS | LOG_PID, 0);
-        MA_LOG_MASK(LOG_UPTO(LOG_DEBUG));
-        MA_LOGD(TAG, "*****start*****");
+        MA_LOGI(TAG, "*****start*****");
     }
 
     ~supervisor()
     {
-        MA_LOGD(TAG, "*****exit*****");
-        MA_LOG_DEINIT();
+        MA_LOGI(TAG, "*****exit*****");
     }
 
     void start()
     {
-        MA_LOGE(TAG, "%s", __func__);
-        MA_LOGD(TAG, "%s", __func__);
+        MA_LOGI(TAG, "%s", __func__);
         server->register_apis(device->get_apis());
         server->start();
     }

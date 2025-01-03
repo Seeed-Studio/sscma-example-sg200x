@@ -19,6 +19,9 @@ typedef enum {
 #define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
 #define MQTT_PAYLOAD "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
 
+#undef TAG
+#define TAG "app_daemon"
+
 class app_daemon {
 public:
     app_daemon()
@@ -26,24 +29,24 @@ public:
         , sscma_status(APP_STATUS_NORMAL)
         , nodered_status(APP_STATUS_NORMAL)
     {
+        MA_LOGI(TAG, "app_daemon starting...");
         hlog_disable();
 
         if (worker_thread_.joinable()) {
-            std::cerr << "app_daemon is already running.\n";
+            MA_LOGE(TAG, "app_daemon is already running.");
             return;
         }
-        syslog(LOG_INFO, "app_daemon starting...");
         sem_init(&sem_sscma, 0, 0);
         worker_thread_ = std::thread(&app_daemon::daemon_loop, this);
     }
 
     ~app_daemon()
     {
-        syslog(LOG_INFO, "app_daemon stopping...");
+        MA_LOGI(TAG, "app_daemon stopping...");
         daemon_loop_exit = true;
         if (worker_thread_.joinable()) {
             worker_thread_.join();
-            syslog(LOG_INFO, "app_daemon stopped.");
+            MA_LOGI(TAG, "app_daemon stopped.");
         }
     }
 
@@ -80,7 +83,7 @@ private:
         };
 
         cli.onClose = [](hv::MqttClient* cli) {
-            syslog(LOG_INFO, "mqtt disconnected");
+            MA_LOGI(TAG, "mqtt disconnected");
         };
 
         cli.setPingInterval(10);
