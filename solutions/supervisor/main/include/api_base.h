@@ -88,13 +88,20 @@ public:
         return exec_shell_cmd("/etc/init.d/S*" + service, action);
     }
 
-    std::string read_file(const std::string& path, const std::string& defaultname = "")
+    std::string read_file(const std::string& path, const std::string& default_str = "")
     {
         std::ifstream ifs(path);
         if (!ifs.is_open()) {
-            return defaultname;
+            return default_str;
         }
-        return std::string((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+
+        std::ostringstream oss;
+        oss << ifs.rdbuf();
+        if (ifs.fail() && !ifs.eof()) {
+            return default_str;
+        }
+
+        return oss.str();
     }
 };
 
