@@ -24,16 +24,12 @@ void api_device::register_apis()
     SYNC_API(POST, updateChannel);
     SYNC_API(POST, setPower);
     SYNC_API(POST, getDeviceList);
+    SYNC_API(GET, getDeviceInfo);
 
-    // API_GET(getDeviceInfo);
-
-    // API_GET(getAppInfo);
-    // API_POST(uploadApp);
-
-    // API_GET(getModelInfo);
-    // API_GET(getModelFile);
-    // API_POST(uploadModel);
-    // API_GET(getModelList);
+    SYNC_API(GET, getModelInfo);
+    // SYNC_API(GET, getModelFile);
+    // SYNC_API(POST, uploadModel);
+    // SYNC_API(GET, getModelList);
 
     // API_POST(savePlatformInfo);
     // API_GET(getPlatformInfo);
@@ -136,7 +132,7 @@ int api_device::updateDeviceName(HttpRequest* req, HttpResponse* resp)
     std::string new_name = req->GetString("deviceName");
 
     MA_LOGD(TAG, "new_name: %s", new_name.c_str());
-    exec_shell_cmd(std::string(__func__) + " " + new_name);
+    exec_shell_cmd(std::string(__func__), new_name);
 
     return resp->Json(
         hv::Json({
@@ -152,7 +148,7 @@ int api_device::updateChannel(HttpRequest* req, HttpResponse* resp)
     std::string new_url = req->GetString("serverUrl");
 
     MA_LOGD(TAG, "new_ch: %s, new_url: %s", new_ch.c_str(), new_url.c_str());
-    exec_shell_cmd(std::string(__func__) + " " + new_ch + " " + new_url);
+    exec_shell_cmd(std::string(__func__), new_ch + " " + new_url);
 
     return resp->Json(
         hv::Json({
@@ -165,10 +161,10 @@ int api_device::updateChannel(HttpRequest* req, HttpResponse* resp)
 int api_device::setPower(HttpRequest* req, HttpResponse* resp)
 {
     int mode = stoi(req->GetString("mode"));
-    const char* cmd = (mode == 0) ? "poweroff" : "reboot";
+    const char* action = (mode == 0) ? "poweroff" : "reboot";
 
-    MA_LOGW(TAG, "%s: %s", __func__, cmd);
-    exec_shell_cmd(std::string(__func__) + cmd);
+    MA_LOGW(TAG, "%s: %s", __func__, action);
+    exec_shell_cmd(std::string(__func__), action);
 
     return resp->Json(
         hv::Json({
@@ -182,7 +178,7 @@ int api_device::getDeviceList(HttpRequest* req, HttpResponse* resp)
 {
     std::string result = exec_shell_cmd(std::string(__func__)); // generate result
 
-    exec_shell_cmd(std::string(__func__) + " " + result); // rm result
+    exec_shell_cmd(std::string(__func__), result); // rm result
 
     return resp->Json(
         hv::Json({
@@ -194,18 +190,49 @@ int api_device::getDeviceList(HttpRequest* req, HttpResponse* resp)
 
 int api_device::getDeviceInfo(HttpRequest* req, HttpResponse* resp)
 {
-    hv::Json data;
+    std::string result = exec_shell_cmd("getAddress", req->client_addr.ip);
 
-    data["ip"] = "192.168.111.181"; // getDeviceIp(req->client_addr.ip);
+    hv::Json data;
+    data["ip"] = result;
     data["osVersion"] = os_version_;
     data["deviceName"] = os_name_;
-    data["status"] = 1;
     data["sn"] = sn_;
+    data["status"] = 1;
 
     return resp->Json(
         hv::Json({
             { "code", 0 },
             { "msg", "" },
+            { "data", data },
+        }));
+}
+
+int api_device::getModelInfo(HttpRequest* req, HttpResponse* resp)
+{
+    std::string json_file;
+    std::string model_file;
+    std::string model_md5;
+    std::string result = exec_shell_cmd(std::string(__func__));
+
+    std::istringstream iss(result);
+    std::getline(iss, json_file, '\n');
+    std::getline(iss, model_file, '\n');
+    std::getline(iss, model_md5, '\n');
+
+    int code = -1;
+    std::string msg = "File does not exist";
+    hv::Json data({});
+    if (!(json_file.empty() || model_file.empty() || model_md5.empty())) {
+        data["model_info"] = read_file(json_file);
+        data["model_md5"] = model_md5;
+        code = 0;
+        msg = "";
+    }
+
+    return resp->Json(
+        hv::Json({
+            { "code", code },
+            { "msg", msg },
             { "data", data },
         }));
 }

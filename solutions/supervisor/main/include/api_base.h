@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -52,12 +53,12 @@ public:
 
     const std::vector<api_t>& get_apis() const { return apis; }
 
-    std::string exec_shell_cmd(const std::string& cmd)
+    std::string exec_shell_cmd(const std::string& cmd, const std::string& args = "")
     {
         std::array<char, 1024> buffer;
         std::string result;
 
-        std::string full_cmd = script_ + " " + cmd;
+        std::string full_cmd = script_ + " " + cmd + " " + args;
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);
         MA_LOGD(TAG, "Executing: %s", full_cmd.c_str());
         if (!pipe) {
@@ -83,13 +84,17 @@ public:
 
     std::string system_service(const std::string& service, const std::string& action)
     {
-        std::string _cmd = "/etc/init.d/S*";
-        _cmd += service;
-        _cmd += " ";
-        _cmd += action;
+        MA_LOGD(TAG, "Service: %s %s", service.c_str(), action.c_str());
+        return exec_shell_cmd("/etc/init.d/S*" + service, action);
+    }
 
-        MA_LOGD(TAG, "Service: %s", _cmd.c_str());
-        return exec_shell_cmd(_cmd);
+    std::string read_file(const std::string& path, const std::string& defaultname = "")
+    {
+        std::ifstream ifs(path);
+        if (!ifs.is_open()) {
+            return defaultname;
+        }
+        return std::string((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
     }
 };
 

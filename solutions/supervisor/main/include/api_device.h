@@ -29,6 +29,8 @@ public:
         }
         MA_LOGI(TAG, "os_name: %s os_version: %s", os_name_.c_str(), os_version_.c_str());
 
+        exec_shell_cmd("getModelInfo", "1&");
+
         register_apis();
     }
 
@@ -47,6 +49,8 @@ private:
     int setPower(HttpRequest* req, HttpResponse* resp);
     int getDeviceList(HttpRequest* req, HttpResponse* resp);
     int getDeviceInfo(HttpRequest* req, HttpResponse* resp);
+    int getModelInfo(HttpRequest* req, HttpResponse* resp);
+
 };
 
 #endif // _API_DEVICE_H_
