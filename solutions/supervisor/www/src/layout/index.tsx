@@ -21,7 +21,7 @@ const ConfigLayout: React.FC<Props> = ({ children }) => {
   return (
     <div className="flex flex-col w-full h-full">
       {isDisableLayout ? (
-        <div>{children}</div>
+        <div className="w-full h-full">{children}</div>
       ) : isMobile ? (
         // 移动端布局
         <MobileLayout>{children}</MobileLayout>
