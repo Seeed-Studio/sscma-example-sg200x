@@ -26,14 +26,14 @@
 #define _SYNC_API_(auth_, method_, _group, _class, _func) _BASE_API_(auth_, #method_, \
     "/api/" _group "/" #_func,                                                        \
     std::bind(&_class::_func, this, std::placeholders::_1, std::placeholders::_2), nullptr, nullptr, nullptr)
-#define SYNC_API(method_, _func) _SYNC_API_(true, method_, GROUP_NAME, CLASS_TYPE, _func)
-#define SYNC_API_NOAUTH(method_, _func) _SYNC_API_(false, method_, GROUP_NAME, CLASS_TYPE, _func)
+#define SYNC_API(method_, _func) _SYNC_API_(true, method_, API_GROUP, CLASS_TYPE, _func)
+#define SYNC_API_NOAUTH(method_, _func) _SYNC_API_(false, method_, API_GROUP, CLASS_TYPE, _func)
 
 #define _CTX_API_(auth_, method_, _group, _class, _func) _BASE_API_(auth_, #method_, \
     "/api/" _group "/" #_func,                                                       \
     nullptr, nullptr, std::bind(&_class::_func, this, std::placeholders::_1), nullptr)
-#define CTX_API(method_, _func) _CTX_API_(true, method_, GROUP_NAME, CLASS_TYPE, _func)
-#define CTX_API_NOAUTH(method_, _func) _CTX_API_(false, method_, GROUP_NAME, CLASS_TYPE, _func)
+#define CTX_API(method_, _func) _CTX_API_(true, method_, API_GROUP, CLASS_TYPE, _func)
+#define CTX_API_NOAUTH(method_, _func) _CTX_API_(false, method_, API_GROUP, CLASS_TYPE, _func)
 
 class api_base {
 public:

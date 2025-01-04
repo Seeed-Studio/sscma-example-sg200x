@@ -12,7 +12,7 @@
 #undef TAG
 #define TAG "api_device"
 
-#define GROUP_NAME "deviceMgr"
+#define API_GROUP "deviceMgr"
 #define CLASS_TYPE api_device
 
 void api_device::register_apis()
