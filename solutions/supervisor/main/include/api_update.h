@@ -8,8 +8,8 @@
 
 class api_update : public api_base {
 public:
-    api_update(const supervisor* sv)
-        : api_base(sv, "/usr/share/supervisor/scripts/upgrade.sh")
+    api_update(const std::string& path = "/usr/share/supervisor/scripts/upgrade.sh")
+        : api_base(path)
     {
         register_apis();
     }

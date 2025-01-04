@@ -39,14 +39,12 @@ private:
     const std::string script_;
 
 protected:
-    const supervisor* sv_;
     std::vector<api_t> apis;
     virtual void register_apis() {};
 
 public:
-    api_base(const supervisor* sv = nullptr, const std::string& script = "")
-        : sv_(sv)
-        , script_(script)
+    api_base(const std::string& script = "")
+        : script_(script)
     {
     }
     virtual ~api_base() = default;

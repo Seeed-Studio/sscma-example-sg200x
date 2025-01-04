@@ -45,8 +45,8 @@ int api_device::queryServiceStatus(HttpRequest* req, HttpResponse* resp)
 
     json["code"] = 0;
     json["msg"] = "";
-    json["data"]["sscmaNode"] = sv_->daemon->latest_sscma_status();
-    json["data"]["nodeRed"] = sv_->daemon->latest_nodered_status();
+    json["data"]["sscmaNode"] = (nullptr != sscma_status) ? sscma_status() : APP_STATUS_UNKOWN;
+    json["data"]["nodeRed"] = (nullptr != nodered_status) ? nodered_status() : APP_STATUS_UNKOWN;
     json["data"]["system"] = system_status_;
 
     return resp->Json(json);

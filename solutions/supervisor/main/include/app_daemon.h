@@ -12,7 +12,10 @@ typedef enum {
     APP_STATUS_NORMAL,
     APP_STATUS_STARTING,
     APP_STATUS_FAILED,
-    APP_STATUS_NORESPONSE
+    APP_STATUS_NORESPONSE,
+    APP_STATUS_UNKOWN,
+
+    APP_STATUS_MAX
 } app_status_t;
 
 #define MQTT_TOPIC_IN "sscma/v0/recamera/node/in/"

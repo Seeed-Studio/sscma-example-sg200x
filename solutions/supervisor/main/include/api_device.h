@@ -8,8 +8,8 @@
 
 class api_device : public api_base {
 public:
-    api_device(const supervisor* sv)
-        : api_base(sv, "/usr/share/supervisor/scripts/devicetool.sh")
+    api_device(const std::string& path = "/usr/share/supervisor/scripts/devicetool.sh")
+        : api_base(path)
     {
         system_status_ = exec_shell_cmd("getSystemStatus").empty()
             ? APP_STATUS_NORMAL
@@ -34,6 +34,9 @@ public:
         register_apis();
     }
 
+    std::function<app_status_t()> sscma_status;
+    std::function<app_status_t()> nodered_status;
+
 private:
     app_status_t system_status_;
     std::string sn_;
@@ -50,7 +53,6 @@ private:
     int getDeviceList(HttpRequest* req, HttpResponse* resp);
     int getDeviceInfo(HttpRequest* req, HttpResponse* resp);
     int getModelInfo(HttpRequest* req, HttpResponse* resp);
-
 };
 
 #endif // _API_DEVICE_H_
