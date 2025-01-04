@@ -17,9 +17,6 @@
 #include "app_daemon.h"
 #include "http_server.h"
 
-#undef TAG
-#define TAG "api_base"
-
 #define _BASE_API_(auth_, method_, path_, sync_, async_, ctx_, state_) \
     apis.emplace_back(auth_, method_, path_, sync_, async_, ctx_, state_)
 
@@ -56,6 +53,7 @@ protected:
     virtual void register_apis() {};
 
 private:
+    static constexpr char TAG[] = "api_base";
     const std::string script_;
 
 public:

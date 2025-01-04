@@ -3,9 +3,6 @@
 
 #include "api_base.h"
 
-#undef TAG
-#define TAG "api_update"
-
 class api_update : public api_base {
 public:
     api_update(const std::string& path = "/usr/share/supervisor/scripts/upgrade.sh")
@@ -15,6 +12,7 @@ public:
     }
 
 private:
+    static constexpr char TAG[] = "api_update";
     void register_apis() override {};
 
     // API_POST(updateSystem);

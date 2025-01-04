@@ -3,9 +3,6 @@
 
 #include "api_base.h"
 
-#undef TAG
-#define TAG "api_device"
-
 class api_device : public api_base {
 public:
     api_device(const std::string& path = "/usr/share/supervisor/scripts/devicetool.sh")
@@ -38,6 +35,7 @@ public:
     std::function<app_status_t()> nodered_status;
 
 private:
+    static constexpr char TAG[] = "api_device";
     app_status_t system_status_;
     std::string sn_;
     std::string os_name_;

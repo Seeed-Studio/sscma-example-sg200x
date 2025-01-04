@@ -22,9 +22,6 @@ typedef enum {
 #define MQTT_TOPIC_OUT "sscma/v0/recamera/node/out/"
 #define MQTT_PAYLOAD "{\"name\":\"health\",\"type\":3,\"data\":\"\"}"
 
-#undef TAG
-#define TAG "app_daemon"
-
 class app_daemon {
 public:
     app_daemon()
@@ -57,8 +54,9 @@ public:
     app_status_t latest_nodered_status() { return nodered_status; }
 
 private:
-    const std::string service_sscma = "sscma-node";
-    const std::string service_nodered = "node-red";
+    static constexpr char TAG[] = "app_daemon";
+    static constexpr char service_sscma[] = "sscma-node";
+    static constexpr char service_nodered[] = "node-red";
 
     std::atomic<bool> daemon_loop_exit;
     std::thread worker_thread_;
@@ -85,8 +83,8 @@ private:
             sem_post(&this->sem_sscma);
         };
 
-        cli.onClose = [](hv::MqttClient* cli) {
-            MA_LOGI(TAG, "mqtt disconnected");
+        cli.onClose = [this](hv::MqttClient* cli) {
+            MA_LOGI(this->TAG, "mqtt disconnected");
         };
 
         cli.setPingInterval(10);

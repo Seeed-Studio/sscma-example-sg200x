@@ -12,9 +12,6 @@
 #include "hv/hlog.h"
 #include "hv/hthread.h" // import hv_gettid
 
-#undef TAG
-#define TAG "http_server"
-
 class api_t {
 public:
     bool auth;
@@ -114,9 +111,10 @@ public:
     }
 
 private:
+    static constexpr char TAG[] = "http_server";
+
     uint16_t http_port_;
     uint16_t https_port_;
-
     std::string resource_;
     std::string redirect_;
 

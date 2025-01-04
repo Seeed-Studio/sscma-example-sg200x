@@ -4,9 +4,6 @@
 #include "api_device.h"
 #include "api_update.h"
 
-#undef TAG
-#define TAG "supervisor"
-
 class http_server;
 class app_daemon;
 class api_device;
@@ -37,8 +34,10 @@ public:
     }
 
 private:
-    const std::string resource_dir = "/usr/share/supervisor/www";
-    const std::string redirect_url = "http://192.168.16.1/index.html";
+    static constexpr char TAG[] = "supervisor";
+    static constexpr char resource_dir[] = "/usr/share/supervisor/www";
+    static constexpr char redirect_url[] = "http://192.168.16.1/index.html";
+
     std::shared_ptr<http_server> server;
     std::shared_ptr<app_daemon> daemon;
     std::shared_ptr<api_device> device;

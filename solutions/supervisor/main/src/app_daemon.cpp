@@ -1,9 +1,6 @@
 #include "app_daemon.h"
 #include "api_base.h"
 
-#undef TAG
-#define TAG "app_daemon"
-
 #define _LOOP_COND(c) ((!daemon_loop_exit) && (c))
 
 int app_daemon::start_flow(bool start)

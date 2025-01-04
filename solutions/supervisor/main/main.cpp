@@ -8,8 +8,7 @@
 
 #include "supervisor.h"
 
-#undef TAG
-#define TAG "main"
+static const char TAG[] = "main";
 
 int log_to_std_mask = 0;
 std::string format_log(const char* format, ...)

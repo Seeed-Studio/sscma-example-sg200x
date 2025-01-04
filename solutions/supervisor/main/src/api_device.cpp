@@ -9,9 +9,6 @@
 
 #include "api_device.h"
 
-#undef TAG
-#define TAG "api_device"
-
 #define API_GROUP "deviceMgr"
 #define CLASS_TYPE api_device
 
