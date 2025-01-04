@@ -1,3 +1,4 @@
+#include "app_daemon.h"
 #include "api_base.h"
 
 #undef TAG
@@ -68,8 +69,7 @@ void app_daemon::check_service(const std::string& service, app_status_t* latest,
     app_status_t status = get_status();
     while (_LOOP_COND(APP_STATUS_NORMAL != status)) {
         start_flow(false);
-        api_base api_base;
-        api_base.system_service(service, "restart");
+        api_base::exec_shell_cmd(service, "restart");
 
         *latest = APP_STATUS_STARTING;
         for (int i = 0; _LOOP_COND(i < 100); i++) {

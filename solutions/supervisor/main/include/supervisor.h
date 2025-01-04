@@ -3,8 +3,6 @@
 
 #include "api_device.h"
 #include "api_update.h"
-#include "app_daemon.h"
-#include "http_server.h"
 
 #undef TAG
 #define TAG "supervisor"

@@ -8,7 +8,6 @@
 #include <string>
 
 #include "api_device.h"
-#include "supervisor.h"
 
 #undef TAG
 #define TAG "api_device"
@@ -132,7 +131,7 @@ int api_device::updateDeviceName(HttpRequest* req, HttpResponse* resp)
     std::string new_name = req->GetString("deviceName");
 
     MA_LOGD(TAG, "new_name: %s", new_name.c_str());
-    exec_shell_cmd(std::string(__func__), new_name);
+    run_script(std::string(__func__), new_name);
 
     return resp->Json(
         hv::Json({
@@ -148,7 +147,7 @@ int api_device::updateChannel(HttpRequest* req, HttpResponse* resp)
     std::string new_url = req->GetString("serverUrl");
 
     MA_LOGD(TAG, "new_ch: %s, new_url: %s", new_ch.c_str(), new_url.c_str());
-    exec_shell_cmd(std::string(__func__), new_ch + " " + new_url);
+    run_script(std::string(__func__), new_ch + " " + new_url);
 
     return resp->Json(
         hv::Json({
@@ -164,7 +163,7 @@ int api_device::setPower(HttpRequest* req, HttpResponse* resp)
     const char* action = (mode == 0) ? "poweroff" : "reboot";
 
     MA_LOGW(TAG, "%s: %s", __func__, action);
-    exec_shell_cmd(std::string(__func__), action);
+    run_script(std::string(__func__), action);
 
     return resp->Json(
         hv::Json({
@@ -176,9 +175,9 @@ int api_device::setPower(HttpRequest* req, HttpResponse* resp)
 
 int api_device::getDeviceList(HttpRequest* req, HttpResponse* resp)
 {
-    std::string result = exec_shell_cmd(std::string(__func__)); // generate result
+    std::string result = run_script(std::string(__func__)); // generate result
 
-    exec_shell_cmd(std::string(__func__), result); // rm result
+    run_script(std::string(__func__), result); // rm result
 
     return resp->Json(
         hv::Json({
@@ -190,7 +189,7 @@ int api_device::getDeviceList(HttpRequest* req, HttpResponse* resp)
 
 int api_device::getDeviceInfo(HttpRequest* req, HttpResponse* resp)
 {
-    std::string result = exec_shell_cmd("getAddress", req->client_addr.ip);
+    std::string result = run_script("getAddress", req->client_addr.ip);
 
     hv::Json data;
     data["ip"] = result;
@@ -212,7 +211,7 @@ int api_device::getModelInfo(HttpRequest* req, HttpResponse* resp)
     std::string json_file;
     std::string model_file;
     std::string model_md5;
-    std::string result = exec_shell_cmd(std::string(__func__));
+    std::string result = run_script(std::string(__func__));
 
     std::istringstream iss(result);
     std::getline(iss, json_file, '\n');

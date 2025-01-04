@@ -11,15 +11,15 @@ public:
     api_device(const std::string& path = "/usr/share/supervisor/scripts/devicetool.sh")
         : api_base(path)
     {
-        system_status_ = exec_shell_cmd("getSystemStatus").empty()
+        system_status_ = run_script("getSystemStatus").empty()
             ? APP_STATUS_NORMAL
             : APP_STATUS_FAILED;
         MA_LOGI(TAG, "system_status: %d", system_status_);
 
-        sn_ = exec_shell_cmd("getSnCode");
+        sn_ = run_script("getSnCode");
         MA_LOGI(TAG, "sn: %s", sn_.c_str());
 
-        std::string os_info = exec_shell_cmd("getOsInfo");
+        std::string os_info = run_script("getOsInfo");
         if (!os_info.empty()) {
             size_t pos = os_info.find(' ');
             if (pos != std::string::npos) {
@@ -29,7 +29,7 @@ public:
         }
         MA_LOGI(TAG, "os_name: %s os_version: %s", os_name_.c_str(), os_version_.c_str());
 
-        exec_shell_cmd("getModelInfo", "1&");
+        run_script("getModelInfo", "1&");
 
         register_apis();
     }

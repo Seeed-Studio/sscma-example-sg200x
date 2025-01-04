@@ -1,10 +1,10 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#include <signal.h>
+#include <string>
 #include <syslog.h>
 
-extern std::atomic<int> log_to_std_mask;
+extern int log_to_std_mask;
 extern std::string format_log(const char* format, ...);
 
 #define MA_LOG_INIT(_id, _opt, _fac) \

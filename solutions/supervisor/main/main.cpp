@@ -11,7 +11,7 @@
 #undef TAG
 #define TAG "main"
 
-std::atomic<int> log_to_std_mask { 0 };
+int log_to_std_mask = 0;
 std::string format_log(const char* format, ...)
 {
     char buffer[256];
