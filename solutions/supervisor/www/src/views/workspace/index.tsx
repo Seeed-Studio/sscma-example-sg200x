@@ -155,7 +155,7 @@ const Workspace = () => {
       if (!loading && !syncing) {
         autoSaveApp();
       }
-    }, 15000);
+    }, 30000);
 
     return () => clearInterval(intervalId);
   }, [loading, syncing]);
