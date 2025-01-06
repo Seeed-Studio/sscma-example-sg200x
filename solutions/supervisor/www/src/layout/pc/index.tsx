@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Button, Form, Input, Modal, message } from "antd";
+import React, { useState, useEffect } from "react";
+import { Form, Input, Modal } from "antd";
 import useConfigStore from "@/store/config";
 import EditImg from "@/assets/images/svg/edit.svg";
 import OverviewImg from "@/assets/images/svg/overview.svg";
@@ -12,7 +12,6 @@ import ApplicationImg from "@/assets/images/svg/application.svg";
 import { updateDeviceInfoApi, getDeviceInfoApi } from "@/api/device/index";
 import { requiredTrimValidate } from "@/utils/validate";
 import { getWifiStatusApi } from "@/api/network";
-import { WifiConnectStatus } from "@/enum/network";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface Props {
@@ -54,13 +53,6 @@ const PCLayout: React.FC<Props> = ({ children }) => {
 
   const getWifiStatus = async () => {
     let { data } = await getWifiStatusApi();
-    if (
-      ![WifiConnectStatus.Wired, WifiConnectStatus.Wireless_Connect].includes(
-        data?.status
-      )
-    ) {
-      navigate("/init");
-    }
     updateWifiStatus(data.status);
   };
 

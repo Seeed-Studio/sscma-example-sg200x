@@ -264,7 +264,7 @@ function Network() {
       </CommonPopup>
       <Mask
         visible={state.wifiVisible}
-        style={{ zIndex: 1020 }}
+        // style={{ zIndex: 1020 }}
         onMaskClick={() => {
           setStates({
             wifiVisible: false,

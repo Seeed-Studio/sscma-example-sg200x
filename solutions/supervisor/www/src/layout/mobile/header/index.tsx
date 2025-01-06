@@ -7,8 +7,6 @@ import { FormInstance } from "antd-mobile/es/components/form";
 import useConfigStore from "@/store/config";
 import { updateDeviceInfoApi, getDeviceInfoApi } from "@/api/device/index";
 import { getWifiStatusApi } from "@/api/network";
-import { WifiConnectStatus } from "@/enum/network";
-import { useNavigate } from "react-router-dom";
 import { requiredTrimValidate } from "@/utils/validate";
 
 interface FormParams {
@@ -19,7 +17,6 @@ function Header() {
   const [visible, setVisible] = useState(false);
   const formRef = useRef<FormInstance>(null);
   const { deviceInfo, updateDeviceInfo, updateWifiStatus } = useConfigStore();
-  const navigate = useNavigate();
 
   const onFinish = async (values: FormParams) => {
     await updateDeviceInfoApi(values);
@@ -39,13 +36,6 @@ function Header() {
   };
   const getWifiStatus = async () => {
     let { data } = await getWifiStatusApi();
-    if (
-      ![WifiConnectStatus.Wired, WifiConnectStatus.Wireless_Connect].includes(
-        data?.status
-      )
-    ) {
-      navigate("/init");
-    }
     updateWifiStatus(data.status);
   };
   useEffect(() => {
@@ -56,8 +46,6 @@ function Header() {
     <div className="bg-white text-center py-10">
       <div className="text-primary text-18 font-medium relative flex justify-center px-40 pl-50">
         <div className="absolute left-0 -mt-4 ">
-          {/* {
-					[WifiConnectStatus.Wired,WifiConnectStatus.Wireless_Connect].includes(wifiStatus )&&(<Sidebar></Sidebar>)} */}
           <Sidebar></Sidebar>
         </div>
         <div className="truncate">{deviceInfo?.deviceName}</div>
