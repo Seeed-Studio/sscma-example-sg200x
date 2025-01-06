@@ -150,6 +150,16 @@ const Workspace = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (!loading && !syncing) {
+        autoSaveApp();
+      }
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [loading, syncing]);
+
   const showNetworkModal = () => {
     setIsNetworkModalOpen(true);
   };
@@ -970,12 +980,37 @@ const Workspace = () => {
       } else {
         messageApi.error("Save failed");
       }
-      setLoading(false);
     } catch (error) {
       console.log(error);
       messageApi.error("Save failed");
+    } finally {
       setLoading(false);
       setLoadingTip("");
+      setSyncing(false);
+    }
+  };
+
+  const autoSaveApp = async () => {
+    try {
+      if (!appInfo) {
+        return;
+      }
+      setSyncing(true);
+      // 查询当前应用的本地flow数据
+      const localFlowsData = await getFlows();
+      // 查询当前应用的模型数据
+      const model_data = await getLocalModel(localFlowsData);
+      const localFlowsDataStr = JSON.stringify(localFlowsData);
+
+      await syncLocalAppToCloud({
+        cloudApp: appInfo,
+        flow_data_str: localFlowsDataStr,
+        model_data: model_data,
+      });
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setSyncing(false);
     }
   };
 
