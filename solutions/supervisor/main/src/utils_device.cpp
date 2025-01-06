@@ -700,7 +700,7 @@ std::vector<std::string> parse_line(const std::string& line) {
 }
 
 int getDeviceList(HttpRequest* req, HttpResponse* resp) {
-    const char* cmd = "avahi-browse -arpt";
+    const char* cmd = "timeout 5 avahi-browse -arpt";
     hv::Json response;
     hv::Json data = hv::Json::array();
 
