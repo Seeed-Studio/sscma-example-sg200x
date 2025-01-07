@@ -1,0 +1,32 @@
+# genetated time: 2024-11-08 07:25:58.527062
+# sample number: 10
+# chip: cv181x  mix_mode: BF16
+# number of BF16 layer: 26
+###
+# op_name   quantize_mode
+/model.6/cv1/act/Mul_output_0_Mul BF16
+/model.6/Slice_output_0_Slice BF16
+/model.6/Slice_1_output_0_Slice BF16
+/model.6/cv2/conv/Conv_output_0_Conv BF16
+/model.6/cv2/act/Mul_output_0_Mul BF16
+/model.13/cv1/conv/Conv_output_0_Conv BF16
+/model.13/cv1/act/Mul_output_0_Mul BF16
+/model.13/Slice_1_output_0_Slice BF16
+/model.13/m.0/cv1/conv/Conv_output_0_Conv BF16
+/model.13/m.0/Add_output_0_Add BF16
+/model.13/Concat_output_0_Concat BF16
+/model.19/Slice_output_0_Slice BF16
+/model.19/Concat_output_0_Concat BF16
+/model.21/Concat_output_0_Concat BF16
+/model.22/cv1/conv/Conv_output_0_Conv BF16
+/model.22/cv1/act/Mul_output_0_Mul BF16
+/model.22/Slice_output_0_Slice BF16
+/model.22/Slice_1_output_0_Slice BF16
+/model.23/cv3.0/cv3.0.1/cv3.0.1.1/conv/Conv_output_0_Conv BF16
+/model.23/cv3.0/cv3.0.1/cv3.0.1.1/act/Mul_output_0_Mul BF16
+/model.23/cv3.1/cv3.1.0/cv3.1.0.1/act/Mul_output_0_Mul BF16
+/model.23/cv3.1/cv3.1.1/cv3.1.1.0/conv/Conv_output_0_Conv BF16
+/model.23/cv3.1/cv3.1.1/cv3.1.1.1/conv/Conv_output_0_Conv BF16
+/model.23/cv3.1/cv3.1.1/cv3.1.1.1/act/Mul_output_0_Mul BF16
+/model.23/Sigmoid_output_0_Sigmoid BF16
+output0_Concat BF16
