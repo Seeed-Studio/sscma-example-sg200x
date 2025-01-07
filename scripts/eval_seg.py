@@ -157,18 +157,18 @@ class YOLOv8Seg:
             # cvinn inference
             np.savez('.input.npz', im)
 
-            # try:
-            #     cmd = [
-            #         'model_runner',
-            #         '--model', self.model,
-            #         '--input', '.input.npz',
-            #         '--output', '.output.npz' 
-            #     ]
-            #     result = subprocess.run(cmd, check=True, text=True, capture_output=True)
-            # except subprocess.CalledProcessError as e:
-            #     print(f"An error occurred while executing the command: {e}")
-            #     print("Command error output:\n", e.stderr)
-            #     exit(1)
+            try:
+                cmd = [
+                    'model_runner',
+                    '--model', self.model,
+                    '--input', '.input.npz',
+                    '--output', '.output.npz' 
+                ]
+                result = subprocess.run(cmd, check=True, text=True, capture_output=True)
+            except subprocess.CalledProcessError as e:
+                print(f"An error occurred while executing the command: {e}")
+                print("Command error output:\n", e.stderr)
+                exit(1)
             
             data = np.load('.output.npz')
             
