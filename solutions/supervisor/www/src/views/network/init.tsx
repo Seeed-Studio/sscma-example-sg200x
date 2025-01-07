@@ -65,7 +65,7 @@ function Init() {
           {deviceInfo.wifiIp != "-" && deviceInfo.wifiIp != deviceInfo.ip && (
             <div className="text-center text-18 px-32  break-all">
               <span>
-                Connect to ‘{deviceInfo.deviceName}' then you can explore the
+                Connect to '{deviceInfo.deviceName}' then you can explore the
                 dashboard by visit
               </span>
               <a

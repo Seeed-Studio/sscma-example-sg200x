@@ -150,15 +150,22 @@ const Workspace = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // 自动保存
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (!loading && !syncing) {
         autoSaveApp();
       }
-    }, 30000);
-
+    }, 15000);
     return () => clearInterval(intervalId);
   }, [loading, syncing]);
+
+  // 切换路由的时候做一次自动保存
+  useEffect(() => {
+    return () => {
+      autoSaveApp();
+    };
+  }, []);
 
   const showNetworkModal = () => {
     setIsNetworkModalOpen(true);
@@ -465,6 +472,7 @@ const Workspace = () => {
             }
           }
           await createAppAndUpdateFlow({
+            app_name: `${cloudApp.app_name}_clone`,
             flow_data: cloudApp.flow_data,
             model_data: model_data,
             needUpdateFlow: true,
@@ -595,7 +603,15 @@ const Workspace = () => {
           // 保存当前应用到云端
           if (confirmed) {
             // 给设备当前应用创建app
+            const firstTabItem = localFlowsData?.find(
+              (item: any) => item.type === "tab"
+            ) as any;
+            let app_name;
+            if (firstTabItem) {
+              app_name = firstTabItem.label;
+            }
             await createAppAndUpdateFlow({
+              app_name,
               flow_data: localFlowsDataStr,
               model_data: model_data,
               needUpdateApp: false,
@@ -656,7 +672,15 @@ const Workspace = () => {
         }
       } else {
         // 给设备当前应用创建app
+        const firstTabItem = localFlowsData?.find(
+          (item: any) => item.type === "tab"
+        ) as any;
+        let app_name;
+        if (firstTabItem) {
+          app_name = firstTabItem.label;
+        }
         await createAppAndUpdateFlow({
+          app_name,
           flow_data: localFlowsDataStr,
           model_data: model_data,
         });
@@ -1148,7 +1172,7 @@ const Workspace = () => {
                             onMouseLeave={() => handleBlurApp()}
                           >
                             <div
-                              className="flex flex-1 cursor-pointer"
+                              className="flex flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
                               onClick={() => handleSelectApp(app)}
                             >
                               {app.app_name}
@@ -1191,7 +1215,7 @@ const Workspace = () => {
                           onMouseLeave={() => handleBlurApp()}
                         >
                           <div
-                            className="flex-1 cursor-pointer"
+                            className="flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
                             onClick={() => handleSelectApp(app)}
                           >
                             {app.app_name}

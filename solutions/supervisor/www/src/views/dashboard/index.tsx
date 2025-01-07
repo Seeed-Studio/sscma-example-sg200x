@@ -68,6 +68,10 @@ const Dashboard = () => {
     return `${baseIP}:1880/dashboard`;
   }, [baseIP]);
 
+  const gotoSensecraft = () => {
+    window.open("https://sensecraft.seeed.cc/ai/#/recamera", "_blank");
+  };
+
   const gotoWorkspace = () => {
     navigate("/workspace");
   };
@@ -90,6 +94,14 @@ const Dashboard = () => {
                 Something went wrong with dashboard, please check your palette
                 and flow
               </div>
+              <Button
+                style={{ fontSize: "16px" }}
+                type="link"
+                onClick={gotoSensecraft}
+              >
+                Download dashboard flow
+              </Button>
+              <div className="text-16 mb-10">or</div>
               <Button type="primary" onClick={gotoWorkspace}>
                 Go to Workspace
               </Button>
