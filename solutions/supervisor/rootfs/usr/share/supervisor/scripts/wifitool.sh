@@ -79,6 +79,7 @@ start)
 
     if [ "$2" ]; then
         sed -i "s/ssid=.*$/ssid=$2/g" $hostapdFile
+        sync
     fi
 
     ifconfig wlan1 up
@@ -188,6 +189,7 @@ remove)
 passwd)
     if [ "$2" ]; then
         sed -i "s/wpa_passphrase=.*$/wpa_passphrase=$2/g" $hostapdFile
+        sync
     else
         echo ""
     fi

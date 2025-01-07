@@ -479,6 +479,8 @@ int deleteSShkey(HttpRequest* req, HttpResponse* resp) {
     strcat(cmd, PATH_SSH_KEY_FILE);
     system(cmd);
 
+    system("sync");
+
     hv::Json response;
     response["code"] = 0;
     response["msg"]  = "";
