@@ -327,16 +327,26 @@ const Workspace = () => {
           return true;
         }
       }
-      if (url) {
+      //是否预置模型
+      const isPreset =
+        model_data.model_id == "10001" ||
+        model_data.model_id == "10002" ||
+        model_data.model_id == "10003" ||
+        model_data.model_id == "10004";
+
+      if (isPreset || url) {
         try {
           setLoading(true);
           setLoadingTip("Uploading model to reCamera");
-          const response = await fetch(
-            `${url}?timestamp=${new Date().getTime()}`
-          );
-          const blob = await response.blob();
           const formData = new FormData();
-          formData.append("model_file", blob); // 文件名可以根据需要修改
+          //如果是设备预置模型，只需要更新描述信息
+          if (!isPreset) {
+            const response = await fetch(
+              `${url}?timestamp=${new Date().getTime()}`
+            );
+            const blob = await response.blob();
+            formData.append("model_file", blob); // 文件名可以根据需要修改
+          }
           formData.append("model_info", JSON.stringify(model_data));
           const resp = await uploadModelApi(formData);
           setLoading(false);
