@@ -3,6 +3,24 @@
 DAEMON=supervisor
 DAEMON_PATH=/usr/local/bin
 
+SRC_FLOW="/usr/share/supervisor/flows.json"
+DST_FLOW="/home/recamera/.node-red/flows.json"
+DEFAULT_MODEL="/usr/share/supervisor/MODEL.zip"
+
+if [ ! -f $DST_FLOW ] || [ ! -s $DEST_FLOW ]; then
+    if [ -f $SRC_FLOW ]; then
+        cp $SRC_FLOW $DST_FLOW
+        sync
+    fi
+fi
+
+if [ -d /userdata/ ] && [ ! -f /userdata/MODEL/model.cvimodel ]; then
+    if [ -f $DEFAULT_MODEL ]; then
+        unzip -oq $DEFAULT_MODEL -d /userdata/
+        sync
+    fi
+fi
+
 start() {
     printf 'Starting Supervisor Service: '
     PID="`pidof $DAEMON`"
