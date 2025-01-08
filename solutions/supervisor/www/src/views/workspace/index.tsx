@@ -1047,7 +1047,6 @@ const Workspace = () => {
               </p>
             </div>
           ),
-          onOk() {},
         });
       }
     } catch (error) {
