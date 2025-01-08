@@ -1016,7 +1016,9 @@ const Workspace = () => {
 
   const autoSaveApp = async () => {
     try {
-      if (!appInfo) {
+      //退出组件的时候，组件里面的变量可能被清掉了，直接取store里面的
+      const { appInfo: currAppInfo } = usePlatformStore.getState();
+      if (!currAppInfo) {
         return;
       }
       setSyncing(true);
@@ -1027,7 +1029,7 @@ const Workspace = () => {
       const localFlowsDataStr = JSON.stringify(localFlowsData);
 
       await syncLocalAppToCloud({
-        cloudApp: appInfo,
+        cloudApp: currAppInfo,
         flow_data_str: localFlowsDataStr,
         model_data: model_data,
       });
