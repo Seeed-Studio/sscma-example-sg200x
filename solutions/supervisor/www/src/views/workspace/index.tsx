@@ -1036,6 +1036,7 @@ const Workspace = () => {
       });
       if (currAppInfo?.app_id != localAppInfo.app_id) {
         setTimestamp(new Date().getTime());
+        getAppList();
         Modal.info({
           title: "Flow has been changed",
           content: (
