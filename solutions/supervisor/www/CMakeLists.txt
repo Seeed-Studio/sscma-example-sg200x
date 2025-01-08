@@ -1,4 +1,4 @@
-
+option(WEB "Build WEB" OFF)
 option(STAGING "Staging build" OFF)
 
 add_custom_target(
@@ -39,4 +39,6 @@ endif()
 
 add_dependencies(deploy_www npm_run_build)
 
+if(WEB)
 add_dependencies(${PROJECT_NAME} deploy_www)
+endif()
