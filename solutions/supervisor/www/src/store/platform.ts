@@ -86,7 +86,7 @@ export const initPlatformStore = async () => {
   } catch (error) {}
 };
 
-export const initAppInfo = async () => {
+export const getLocalAppInfo = async () => {
   try {
     const resp = await getPlatformInfoApi();
     if (resp.code == 0) {
@@ -105,6 +105,7 @@ export const initAppInfo = async () => {
         usePlatformStore.setState({
           appInfo: app_info,
         });
+        return app_info;
       }
     }
   } catch (error) {}

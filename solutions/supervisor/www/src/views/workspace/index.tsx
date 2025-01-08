@@ -44,7 +44,7 @@ import { sensecraftAuthorize, parseUrlParam, DefaultFlowData } from "@/utils";
 import usePlatformStore, {
   savePlatformInfo,
   initPlatformStore,
-  initAppInfo,
+  getLocalAppInfo,
   logout,
 } from "@/store/platform";
 import useConfigStore from "@/store/config";
@@ -111,7 +111,7 @@ const Workspace = () => {
       }
 
       if (token_url && refresh_token) {
-        await initAppInfo();
+        await getLocalAppInfo();
         updateToken(token_url);
         updateRefreshToken(refresh_token);
         setActionInfo(actionInfo);
@@ -1018,7 +1018,8 @@ const Workspace = () => {
     try {
       //退出组件的时候，组件里面的变量可能被清掉了，直接取store里面的
       const { appInfo: currAppInfo } = usePlatformStore.getState();
-      if (!currAppInfo) {
+      const localAppInfo = await getLocalAppInfo();
+      if (!localAppInfo) {
         return;
       }
       setSyncing(true);
@@ -1029,10 +1030,26 @@ const Workspace = () => {
       const localFlowsDataStr = JSON.stringify(localFlowsData);
 
       await syncLocalAppToCloud({
-        cloudApp: currAppInfo,
+        cloudApp: localAppInfo,
         flow_data_str: localFlowsDataStr,
         model_data: model_data,
       });
+      if (currAppInfo?.app_id != localAppInfo.app_id) {
+        setTimestamp(new Date().getTime());
+        Modal.info({
+          title: "Flow has been changed",
+          content: (
+            <div>
+              <p>
+                Due to the device limitation, please notice that only one flow
+                can be deployed on the device. The flow has been changed to the
+                current flow that is running on the device at this moment.
+              </p>
+            </div>
+          ),
+          onOk() {},
+        });
+      }
     } catch (error) {
       console.log(error);
     } finally {
