@@ -5,18 +5,25 @@ DAEMON_PATH=/usr/local/bin
 
 SRC_FLOW="/usr/share/supervisor/flows.json"
 DST_FLOW="/home/recamera/.node-red/flows.json"
-DEFAULT_MODEL="/usr/share/supervisor/MODEL.zip"
+
+SRC_MODEL="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.cvimodel"
+SRC_INFO="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.json"
+DST_MODEL="/userdata/MODEL/model.cvimodel"
+DST_INFO="/userdata/MODEL/model.json"
 
 if [ ! -f $DST_FLOW ] || [ ! -s $DEST_FLOW ]; then
     if [ -f $SRC_FLOW ]; then
         cp $SRC_FLOW $DST_FLOW
+        cp $SRC_MODEL $DST_MODEL
+        cp $SRC_INFO $DST_INFO
         sync
     fi
 fi
 
-if [ -d /userdata/ ] && [ ! -f /userdata/MODEL/model.cvimodel ]; then
-    if [ -f $DEFAULT_MODEL ]; then
-        unzip -oq $DEFAULT_MODEL -d /userdata/
+if [ -d /userdata/ ] && [ ! -f $DST_MODEL ]; then
+    if [ -f $SRC_MODEL ]; then
+        cp $SRC_MODEL $DST_MODEL
+        cp $SRC_INFO $DST_INFO
         sync
     fi
 fi
