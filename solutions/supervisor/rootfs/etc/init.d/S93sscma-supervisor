@@ -11,8 +11,10 @@ SRC_INFO="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.json"
 DST_MODEL="/userdata/MODEL/model.cvimodel"
 DST_INFO="/userdata/MODEL/model.json"
 
+
 if [ ! -f $DST_FLOW ] || [ ! -s $DEST_FLOW ]; then
     if [ -f $SRC_FLOW ]; then
+        mkdir -p /userdata/MODEL
         cp $SRC_FLOW $DST_FLOW
         cp $SRC_MODEL $DST_MODEL
         cp $SRC_INFO $DST_INFO
@@ -22,6 +24,7 @@ fi
 
 if [ -d /userdata/ ] && [ ! -f $DST_MODEL ]; then
     if [ -f $SRC_MODEL ]; then
+        mkdir -p /userdata/MODEL
         cp $SRC_MODEL $DST_MODEL
         cp $SRC_INFO $DST_INFO
         sync
