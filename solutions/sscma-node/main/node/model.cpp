@@ -41,6 +41,8 @@ void ModelNode::threadEntry() {
     int32_t height   = 0;
     std::vector<std::string> labels;
 
+    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
+
     while (started_) {
 
         if (!raw_frame_.fetch(reinterpret_cast<void**>(&raw), Tick::fromSeconds(2))) {
@@ -51,7 +53,16 @@ void ModelNode::threadEntry() {
             continue;
         }
 
+        if (!enabled_) {
+            raw->release();
+            if (debug_) {
+                jpeg->release();
+            }
+            continue;
+        }
+
         Thread::enterCritical();
+
         ma_tick_t start = Tick::current();
 
         json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
@@ -400,8 +411,14 @@ ma_err_t ModelNode::onControl(const std::string& control, const json& data) {
             counter_.setSplitter(data["splitter"].get<std::vector<int16_t>>());
         }
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", data}}));
+    } else if (control == "enabled" && data.is_boolean()) {
+        bool enabled = data.get<bool>();
+        if (enabled_.load() != enabled) {
+            enabled_.store(enabled);
+        }
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", enabled_.load()}}));
     } else {
-        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", "Not supported"}}));
     }
     return MA_OK;
 }

@@ -10,25 +10,26 @@ static constexpr char TAG[] = "ma::node::camera";
 const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
 
 
-#define CAMERA_INIT()                               \
-    {                                               \
-        Thread::enterCritical();                    \
-        Thread::sleep(Tick::fromMilliseconds(100)); \
-        MA_LOGI(TAG, "start video");                \
-        startVideo();                               \
-        Thread::sleep(Tick::fromSeconds(1));        \
-        Thread::exitCritical();                     \
+#define CAMERA_INIT()                                                                                                                        \
+    {                                                                                                                                        \
+        Thread::enterCritical();                                                                                                             \
+        Thread::sleep(Tick::fromMilliseconds(100));                                                                                          \
+        MA_LOGI(TAG, "start video");                                                                                                         \
+        startVideo();                                                                                                                        \
+        Thread::sleep(Tick::fromSeconds(1));                                                                                                 \
+        Thread::exitCritical();                                                                                                              \
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}})); \
     }
 
-#define CAMERA_DEINIT()                             \
-    {                                               \
-        Thread::enterCritical();                    \
-        MA_LOGI(TAG, "stop video");                 \
-        Thread::sleep(Tick::fromMilliseconds(100)); \
-        deinitVideo();                              \
-        MA_LOGI(TAG, "stop video done");            \
-        Thread::sleep(Tick::fromSeconds(1));        \
-        Thread::exitCritical();                     \
+#define CAMERA_DEINIT()                                                                                                                      \
+    {                                                                                                                                        \
+        Thread::enterCritical();                                                                                                             \
+        MA_LOGI(TAG, "stop video");                                                                                                          \
+        Thread::sleep(Tick::fromMilliseconds(100));                                                                                          \
+        deinitVideo();                                                                                                                       \
+        Thread::sleep(Tick::fromSeconds(1));                                                                                                 \
+        Thread::exitCritical();                                                                                                              \
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}})); \
     }
 
 CameraNode::CameraNode(std::string id)
@@ -77,7 +78,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pstDataParam->pParam;
     VENC_CHN VencChn                  = pstVencChnCfg->VencChn;
 
-    if (!started_ || paused_ || channels_[VencChn].msgboxes.empty()) {
+    if (!started_ || !enabled_ || channels_[VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
     }
     if (pstVencChnCfg->VencChn >= CHN_MAX) {
@@ -166,7 +167,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     VIDEO_FRAME_INFO_S* VpssFrame     = (VIDEO_FRAME_INFO_S*)pData;
     VIDEO_FRAME_S* f                  = &VpssFrame->stVFrame;
 
-    if (!started_ || paused_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
+    if (!started_ || !enabled_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
     }
     if (pstVencChnCfg->VencChn >= CHN_MAX) {
@@ -327,7 +328,7 @@ void CameraNode::threadAudioEntry() {
             MA_LOGE(TAG, "error from read: %s", snd_strerror(pcm_return));
             break;
         }
-        if (paused_ || channels_[CHN_AUDIO].msgboxes.empty()) {
+        if (!enabled_ || channels_[CHN_AUDIO].msgboxes.empty()) {
             continue;
         }
         audioFrame* frame = new audioFrame();
@@ -507,6 +508,16 @@ ma_err_t CameraNode::onControl(const std::string& control, const json& data) {
             system("echo 1 > /sys/devices/platform/leds/leds/white/brightness");
         }
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", {"light", light_}}}));
+    } else if (control == "enabled" && data.is_boolean()) {
+        bool enabled = data.get<bool>();
+        if (enabled_ != enabled) {
+            enabled_.store(enabled);
+            if (enabled_) {
+                CAMERA_INIT();
+            } else {
+                CAMERA_DEINIT();
+            }
+        }
     } else {
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
     }
@@ -607,7 +618,6 @@ ma_err_t CameraNode::onStart() {
     }
 
     started_ = true;
-    paused_  = false;
 
     if (thread_ != nullptr) {
         thread_->start(this);
@@ -676,11 +686,11 @@ ma_err_t CameraNode::detach(int chn, MessageBox* msgbox) {
     Guard guard(mutex_);
     auto it = std::find(channels_[chn].msgboxes.begin(), channels_[chn].msgboxes.end(), msgbox);
     if (it != channels_[chn].msgboxes.end()) {
-        paused_ = true;
+        enabled_ = false;
         MA_LOGI(TAG, "detach %p from %d", msgbox, chn);
         Thread::sleep(Tick::fromMilliseconds(50));  // skip last frame
         channels_[chn].msgboxes.erase(it);
-        paused_ = false;
+        enabled_ = true;
     }
     return MA_OK;
 }

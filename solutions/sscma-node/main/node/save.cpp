@@ -26,18 +26,7 @@ namespace ma::node {
 static constexpr char TAG[] = "ma::node::save";
 
 SaveNode::SaveNode(std::string id)
-    : Node("save", id),
-      storage_(NODE_SAVE_PATH_LOCAL),
-      enabled_(true),
-      slice_(300),
-      duration_(-1),
-      vcount_(0),
-      acount_(0),
-      camera_(nullptr),
-      frame_(60),
-      thread_(nullptr),
-      avFmtCtx_(nullptr),
-      avStream_(nullptr) {
+    : Node("save", id), storage_(NODE_SAVE_PATH_LOCAL), slice_(300), duration_(-1), vcount_(0), acount_(0), camera_(nullptr), frame_(60), thread_(nullptr), avFmtCtx_(nullptr), avStream_(nullptr) {
     // av_log_set_level(AV_LOG_LEVEL);
 }
 
@@ -201,6 +190,9 @@ void SaveNode::threadEntry() {
     audioFrame* audio = nullptr;
     AVPacket packet   = {0};
     begin_            = Tick::current();
+
+    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
+
     while (started_) {
         Thread::exitCritical();
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
@@ -227,13 +219,14 @@ void SaveNode::threadEntry() {
                         if (filename_.empty()) {
                             begin_ = Tick::current();
                             MA_LOGI(TAG, "start recording");
-                            server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "start"}, {"code", MA_OK}, {"data", ""}}));
+                            server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
                         }
                         closeFile();
                         if (!openFile(video)) {
                             enabled_ = false;
                             video->release();
                             server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "save"}, {"code", MA_ENOMEM}, {"data", "No space left on device"}}));
+                            frame->release();
                             continue;
                         }
                     }
@@ -254,13 +247,15 @@ void SaveNode::threadEntry() {
                         closeFile();
                         enabled_ = false;
                         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "save"}, {"code", MA_ENOMEM}, {"data", "No space left on device"}}));
+                        frame->release();
                         continue;
                     }
-                    if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_)) {
+                    if ((duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_)) || begin_ == 0) {
                         closeFile();
                         enabled_ = false;
                         MA_LOGI(TAG, "stop recording");
-                        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "stop"}, {"code", MA_OK}, {"data", ""}}));
+                        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
+                        frame->release();
                         continue;
                     }
                 }
@@ -283,6 +278,7 @@ void SaveNode::threadEntry() {
                         closeFile();
                         enabled_ = false;
                         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "save"}, {"code", MA_ENOMEM}, {"data", "No space left on device"}}));
+                        frame->release();
                         continue;
                     }
                 }
@@ -359,16 +355,18 @@ ma_err_t SaveNode::onCreate(const json& config) {
 
 ma_err_t SaveNode::onControl(const std::string& control, const json& data) {
     Guard guard(mutex_);
-    if (control == "enable") {
-        if (!enabled_) {
-            enabled_ = true;
+    if (control == "enabled" && data.is_boolean()) {
+        bool enabled = data.get<bool>();
+        if (enabled_.load() != enabled) {
+            if (!enabled) {
+                begin_ = 0;
+            } else {
+                enabled_.store(enabled);
+            }
         }
-        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", ""}}));
-    } else if (control == "disable") {
-        begin_ = 0;
-        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", ""}}));
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", enabled_.load()}}));
     } else {
-        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", ""}}));
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", "Not supported"}}));
     }
     return MA_OK;
 }

@@ -43,7 +43,6 @@ protected:
     std::string storage_;
     int slice_;
     int duration_;
-    bool enabled_;
     ma_tick_t begin_;
     int vcount_;
     int acount_;

@@ -102,7 +102,6 @@ protected:
     static int vpssCallbackStub(void* pData, void* pArgs, void* pUserData);
 
 private:
-    std::atomic<bool> paused_;
     std::vector<channel> channels_;
     uint32_t count_;
     bool preview_;

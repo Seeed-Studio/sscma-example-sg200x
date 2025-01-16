@@ -5,7 +5,7 @@ namespace ma::node {
 
 static constexpr char TAG[] = "ma::node";
 
-Node::Node(std::string type, std::string id) : mutex_(), id_(std::move(id)), type_(std::move(type)), started_(false), dependencies_(), dependents_(), server_(nullptr) {}
+Node::Node(std::string type, std::string id) : mutex_(), id_(std::move(id)), type_(std::move(type)), started_(false), enabled_(true), dependencies_(), dependents_(), server_(nullptr) {}
 
 Node::~Node() = default;
 

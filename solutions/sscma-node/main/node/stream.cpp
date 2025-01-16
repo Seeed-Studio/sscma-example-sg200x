@@ -25,17 +25,21 @@ void StreamNode::threadEntry() {
     audioFrame* audio = nullptr;
     Frame* frame      = nullptr;
 
+    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
+
     while (started_) {
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
             Thread::enterCritical();
-            if (frame->chn == CHN_H264) {
-                video = static_cast<videoFrame*>(frame);
-                for (auto& block : video->blocks) {
-                    transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+            if (enabled_) {
+                if (frame->chn == CHN_H264) {
+                    video = static_cast<videoFrame*>(frame);
+                    for (auto& block : video->blocks) {
+                        transport_->send(reinterpret_cast<const char*>(block.first), block.second);
+                    }
+                } else if (frame->chn == CHN_AUDIO) {
+                    audio = static_cast<audioFrame*>(frame);
+                    transport_->sendAudio(reinterpret_cast<const char*>(audio->data), audio->size);
                 }
-            } else if (frame->chn == CHN_AUDIO) {
-                audio = static_cast<audioFrame*>(frame);
-                transport_->sendAudio(reinterpret_cast<const char*>(audio->data), audio->size);
             }
             frame->release();
             Thread::exitCritical();
@@ -106,7 +110,15 @@ ma_err_t StreamNode::onCreate(const json& config) {
 
 ma_err_t StreamNode::onControl(const std::string& control, const json& data) {
     Guard guard(mutex_);
-    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", "not supported"}}));
+    if (control == "enabled" && data.is_boolean()) {
+        bool enabled = data.get<bool>();
+        if (enabled_.load() != enabled) {
+            enabled_.store(enabled);
+        }
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", enabled_.load()}}));
+    } else {
+        server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", "Not supported"}}));
+    }
     return MA_OK;
 }
 
