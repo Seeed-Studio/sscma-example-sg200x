@@ -1,4 +1,6 @@
 
+#include <chrono>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <syslog.h>
@@ -9,6 +11,7 @@
 #include "hv/hthread.h"  // import hv_gettid
 
 
+#include "common.h"
 #include "http.h"
 #include "utils_device.h"
 #include "utils_file.h"
@@ -19,14 +22,32 @@
 #include "version.h"
 
 using namespace hv;
+
+uint64_t getUptime() {
+    std::ifstream uptime_file("/proc/uptime");
+    if (uptime_file.is_open()) {
+        double uptime_seconds;
+        uptime_file >> uptime_seconds;
+        return static_cast<uint64_t>(uptime_seconds * 1000);
+    } else {
+        std::cerr << "Failed to open /proc/uptime." << std::endl;
+        return 0;
+    }
+}
+uint64_t getTimestamp() {
+    auto now       = std::chrono::system_clock::now();
+    auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch());
+    return timestamp.count();
+}
+
+
 extern "C" {
 
-#define API_STR(api, func) "/api/" #api "/" #func
-#define API_GET(api, func) router.GET(API_STR(api, func), func)
+#define API_STR(api, func)  "/api/" #api "/" #func
+#define API_GET(api, func)  router.GET(API_STR(api, func), func)
 #define API_POST(api, func) router.POST(API_STR(api, func), func)
 
 static HttpServer server;
-
 static void registerHttpRedirect(HttpService& router) {
     router.GET("/hotspot-detect*", [](HttpRequest* req, HttpResponse* resp) {  // IOS
         syslog(LOG_DEBUG, "[/hotspot-detect*]current url: %s -> redirect to %s\n", req->Url().c_str(), REDIRECT_URL);
@@ -175,9 +196,11 @@ int initHttpd() {
 
     router.GET("/api/version", [](HttpRequest* req, HttpResponse* resp) {
         hv::Json res;
-        res["code"] = 0;
-        res["msg"]  = "";
-        res["data"] = PROJECT_VERSION;
+        res["code"]      = 0;
+        res["msg"]       = "";
+        res["data"]      = PROJECT_VERSION;
+        res["uptime"]    = getUptime();
+        res["timestamp"] = getTimestamp();
         return resp->Json(res);
     });
 
@@ -225,9 +248,9 @@ int initWiFi() {
     system(cmd);
 
     char result[8] = "";
-    if (0 == exec_cmd(SCRIPT_WIFI("wifi_valid"), result, NULL) ) {
+    if (0 == exec_cmd(SCRIPT_WIFI("wifi_valid"), result, NULL)) {
         if (strcmp(result, "0") == 0) {
-            g_wifiMode = 4; // No wifi module
+            g_wifiMode = 4;  // No wifi module
         }
     }
 

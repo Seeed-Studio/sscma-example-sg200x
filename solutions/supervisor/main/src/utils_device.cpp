@@ -356,6 +356,8 @@ int queryServiceStatus(HttpRequest* req, HttpResponse* resp) {
     response["data"]["sscmaNode"] = sscmaStarting ? SERVICE_STATUS_STARTING : convertStatus(sscmaStatus);
     response["data"]["nodeRed"]   = noderedStarting ? SERVICE_STATUS_STARTING : convertStatus(noderedStatus);
     response["data"]["system"]    = systemStatus;
+    response["data"]["uptime"]    = getUptime();
+    response["data"]["timestamp"] = getTimestamp();
 
     return resp->Json(response);
 }
