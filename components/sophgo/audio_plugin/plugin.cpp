@@ -1,7 +1,6 @@
 #include <alsa/asoundlib.h>
 #include <alsa/pcm_external.h>
 #include <alsa/pcm_plugin.h>
-#if 1
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -134,12 +133,10 @@ struct MyPcmPlugin {
         return 0;
     }
 };
-#endif
 
 // 插件初始化函数
 SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
 {
-#if 1
     MyPcmPlugin* plugin = nullptr;
     snd_config_iterator_t i, next;
     char file_name[256] = "";
@@ -194,7 +191,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
         }
         return -EINVAL;
     }
-#endif
 }
 
+// struct snd_dlsym_link *snd_dlsym_start;
 SND_PCM_PLUGIN_SYMBOL(cvi_audio);
