@@ -705,7 +705,7 @@ std::vector<std::string> parse_line(const std::string& line) {
 }
 
 int getDeviceList(HttpRequest* req, HttpResponse* resp) {
-    const char* cmd = "timeout 5 avahi-browse -arpt";
+    const char* cmd = "timeout 8 avahi-browse -arpt";
     hv::Json response;
     hv::Json data = hv::Json::array();
 
@@ -729,7 +729,7 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
     while (std::getline(ss, line)) {
         auto fields = parse_line(line);
 
-        if (fields.size() >= 8 && fields[0] == "=") {
+        if (fields.size() > 8 && fields[0] == "=") {
             std::string device_name  = fields[3];
             std::string service_name = fields[4];
             std::string ip           = fields[7];
@@ -738,6 +738,9 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
 
             devices_services[{device_name, ip}][service_name] = port;
             devices_services[{device_name, ip}]["type"]       = type;
+            if (fields.size() > 9 && service_name == "_sscma._tcp") {
+                devices_services[{device_name, ip}]["info"] = fields[9];  // extra info
+            }
         }
     }
 
@@ -755,11 +758,14 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
         device_json["device"] = device_name;
         device_json["ip"]     = device_ip;
         device_json["type"]   = device_type;
+        if (device.second.find("info") != device.second.end()) {
+            device_json["info"] = device.second.at("info");
+        }
 
         hv::Json services = hv::Json::object();
 
         for (const auto& service : device.second) {
-            if (service.first != "type") {
+            if (service.first != "type" && service.first != "info") {
                 services[service.first] = service.second;
             }
         }

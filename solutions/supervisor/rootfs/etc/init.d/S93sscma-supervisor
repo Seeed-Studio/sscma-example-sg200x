@@ -11,6 +11,7 @@ SRC_INFO="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.json"
 DST_MODEL="/userdata/MODEL/model.cvimodel"
 DST_INFO="/userdata/MODEL/model.json"
 
+SERVICE_FILE="/etc/avahi/services/sscma.service"
 
 if [ ! -f $DST_FLOW ] || [ ! -s $DEST_FLOW ]; then
     if [ -f $SRC_FLOW ]; then
@@ -30,6 +31,22 @@ if [ -d /userdata/ ] && [ ! -f $DST_MODEL ]; then
         sync
     fi
 fi
+
+sn_value=$(fw_printenv sn | awk -F'=' '{print $NF}')
+
+if [ -z "$sn_value" ]; then
+    sn_value="0000000000000000"
+fi
+
+txt_record="<txt-record>sn=$sn_value</txt-record>"
+
+if ! grep -q "$txt_record" "$SERVICE_FILE"; then
+    sed -i '/<type>_sscma._tcp<\/type>/a \ \ \ \ '"$txt_record" "$SERVICE_FILE"
+fi
+
+/etc/init.d/S50avahi-daemon stop
+sleep 0.1
+/etc/init.d/S50avahi-daemon start
 
 start() {
     printf 'Starting Supervisor Service: '
