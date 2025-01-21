@@ -80,6 +80,7 @@ static int init(cvi_pcm_plugin_t* plugin, const char* filename)
         return -1;
     }
 
+    // cvi_audio_init();
     plugin->frames_count = 44100;
 
     return 0;
@@ -115,7 +116,6 @@ static snd_pcm_sframes_t pointer(snd_pcm_ioplug_t* io)
 static snd_pcm_sframes_t transfer(snd_pcm_ioplug_t* io, const snd_pcm_channel_area_t* areas,
     snd_pcm_uframes_t offset, snd_pcm_uframes_t size)
 {
-#if 0
     // printf("%s,%d: offset=%d, size=%d\n", __FUNCTION__, __LINE__, offset, size);
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
     size_t bytes_per_frame = snd_pcm_format_width(plugin->format) / 8 * plugin->channels;
@@ -142,7 +142,6 @@ static snd_pcm_sframes_t transfer(snd_pcm_ioplug_t* io, const snd_pcm_channel_ar
     sleep(1);
 
     return size;
-#endif
 }
 
 static int close_cb(snd_pcm_ioplug_t* io)
@@ -153,6 +152,7 @@ static int close_cb(snd_pcm_ioplug_t* io)
         fclose(plugin->audio_file);
         plugin->audio_file = NULL;
     }
+    // free(plugin);
 
     return 0;
 }
@@ -230,7 +230,6 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
 
     *pcmp = plugin->io.pcm;
 
-#if 0
     printf("%s,%d: SSSSSSSSSSSSSSSSSSSS\n", __FUNCTION__, __LINE__);
     printf("%s,%d: *pcmp=%p\n", __FUNCTION__, __LINE__, *pcmp);
     printf("%s,%d: buffer_size=%d\n", __FUNCTION__, __LINE__, plugin->io.buffer_size);
@@ -245,7 +244,6 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
     printf("%s,%d: hw_ptr=%d\n", __FUNCTION__, __LINE__, io->hw_ptr);
     printf("%s,%d: pcm_avail=%d\n", __FUNCTION__, __LINE__, pcm_avail);
     printf("%s,%d: +++++++++++++++++++++++++\n", __FUNCTION__, __LINE__);
-#endif
 
     return 0;
 
