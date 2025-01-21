@@ -60,7 +60,7 @@ static CVI_S32 cvi_audio_params(cvi_ain_t* ain)
     pstAudinAttr->enWorkmode = AIO_MODE_I2S_MASTER;
     pstAudinAttr->u32EXFlag = 0;
     pstAudinAttr->u32FrmNum = 10; /* only use in bind mode */
-    pstAudinAttr->u32PtNumPerFrm = SAMPLE_RATE; /* sample_rate/fps */
+    pstAudinAttr->u32PtNumPerFrm = SAMPLE_RATE / 10; /* sample_rate/fps */
     pstAudinAttr->u32ClkSel = 0;
     pstAudinAttr->enI2sType = AIO_I2STYPE_INNERCODEC;
 
