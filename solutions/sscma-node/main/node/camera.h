@@ -106,7 +106,7 @@ private:
     uint32_t count_;
     bool preview_;
     bool websocket_;
-    bool audio_;
+    int audio_;
     int option_;
     int light_;
     Thread* thread_;

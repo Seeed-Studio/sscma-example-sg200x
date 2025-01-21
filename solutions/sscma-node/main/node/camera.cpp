@@ -39,7 +39,7 @@ CameraNode::CameraNode(std::string id)
       light_(0),
       preview_(false),
       websocket_(true),
-      audio_(true),
+      audio_(80),
       option_(0),
       frame_(60),
       thread_(nullptr),
@@ -240,14 +240,17 @@ void CameraNode::threadAudioEntry() {
     unsigned int rate             = SAMPLE_RATE;
     int bits_per_sample           = snd_pcm_format_physical_width(FORMAT);
 
-    system("amixer -D" AUDIO_DEVICE "cset name='ADC Capture Volume' 24");
+    char cmd[256] = {0};
+    snprintf(cmd, sizeof(cmd), "amixer -D" AUDIO_DEVICE " cset name='ADC Capture Volume' %d", audio_ * 24 / 100);
+    
+    system(cmd);
 
     pcm_return = snd_pcm_open(&handle, device_name, SND_PCM_STREAM_CAPTURE, 0);
     if (pcm_return < 0) {
         MA_LOGE(TAG, "Unable to open PCM device: %s", snd_strerror(pcm_return));
         return;
     }
-    MA_LOGI(TAG, "PCM device opened successfully.");
+    MA_LOGI(TAG, "PCM device opened successfully. Volume: %d", audio_);
 
     snd_pcm_hw_params_malloc(&params);
     snd_pcm_hw_params_any(handle, params);
@@ -404,7 +407,17 @@ ma_err_t CameraNode::onCreate(const json& config) {
     }
 
     if (config.contains("audio") && config["audio"].is_boolean()) {
-        audio_ = config["audio"].get<bool>();
+        audio_ = config["audio"].get<bool>() ? 80 : 0;
+    }
+
+    if (config.contains("audio") && config["audio"].is_number()) {
+        audio_ = config["audio"].get<int>();
+        if (audio_ > 100) {
+            audio_ = 100;
+        }
+        if (audio_ < 0) {
+            audio_ = 0;
+        }
     }
 
     if (config.contains("light") && config["light"].is_number()) {
