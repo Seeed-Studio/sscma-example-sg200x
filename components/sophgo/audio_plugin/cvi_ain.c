@@ -1,17 +1,6 @@
 #include <alsa/asoundlib.h>
 
-#include "cvi_audio.h"
-
-#define SAMPLE_RATE 16000
-#define CHANNELS 1
-#define FORMAT SND_PCM_FORMAT_S16_LE
-
-typedef struct cvi_ain {
-    int AiDev;
-    int AiChn;
-    AIO_ATTR_S stAudinAttr;
-    AI_TALKVQE_CONFIG_S stAiVqeTalkAttr;
-} cvi_ain_t;
+#include "cvi_ain.h"
 
 static CVI_BOOL _update_agc_anr_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
 {
@@ -34,7 +23,7 @@ static CVI_BOOL _update_agc_anr_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
     pstAiVqeTalkAttr->stAnrCfg = st_ANR_Setting;
 
     pstAiVqeTalkAttr->para_notch_freq = 0;
-    printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
+    // printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
     return CVI_TRUE;
 }
 
@@ -51,11 +40,11 @@ static CVI_BOOL _update_aec_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
     default_AEC_Setting.para_aes_supp_coeff = 60;
     pstAiVqeTalkAttr->stAecCfg = default_AEC_Setting;
     pstAiVqeTalkAttr->u32OpenMask = LP_AEC_ENABLE | NLP_AES_ENABLE | NR_ENABLE | AGC_ENABLE;
-    printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
+    // printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
     return CVI_FALSE;
 }
 
-CVI_S32 cvi_audio_params(cvi_ain_t* ain)
+static CVI_S32 cvi_audio_params(cvi_ain_t* ain)
 {
     AIO_ATTR_S* pstAudinAttr = &ain->stAudinAttr;
     AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr = &ain->stAiVqeTalkAttr;
@@ -87,6 +76,8 @@ CVI_S32 cvi_audio_params(cvi_ain_t* ain)
 
 CVI_S32 cvi_audio_init(cvi_ain_t* ain)
 {
+    cvi_audio_params(ain);
+
     int AiDev = ain->AiDev;
     int AiChn = ain->AiChn;
     int s32Ret = 0;
