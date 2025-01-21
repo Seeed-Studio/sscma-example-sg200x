@@ -1,8 +1,8 @@
-set(AUDIO_PLUGIN_INC 
+set(AUDIO_PLUGIN_INC
     "${CMAKE_CURRENT_LIST_DIR}/"
 )
 
-file(GLOB AUDIO_PLUGIN_SRC 
+file(GLOB AUDIO_PLUGIN_SRC
     "${CMAKE_CURRENT_LIST_DIR}/cvi_ain.c"
     "${CMAKE_CURRENT_LIST_DIR}/plugin.c"
 )
@@ -24,3 +24,5 @@ set_target_properties(asound_module_pcm_cvi_audio PROPERTIES
     VERSION 1.0.0
     SOVERSION 1
 )
+install(TARGETS asound_module_pcm_cvi_audio DESTINATION /usr/lib/alsa-lib)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/asound.conf DESTINATION /etc/)

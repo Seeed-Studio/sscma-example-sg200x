@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.5.0)
 
-project(audio_demo C CXX)
+project(
+    audio-plugin
+    VERSION 0.0.1
+    LANGUAGES C CXX
+)
+
+set(ENABLE_AUDIO_PLUGIN ON CACHE BOOL "Enable audio plugin")
 
 get_filename_component(PROJECT_DIR ${CMAKE_CURRENT_LIST_DIR} ABSOLUTE)
 message(STATUS "PROJECT_DIR: ${PROJECT_DIR}")

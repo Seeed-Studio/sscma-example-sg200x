@@ -9,8 +9,13 @@ include_directories("${SG200X_SDK_PATH}/cvi_mpi/modules/isp/include/cv181x/")
 link_directories("${SG200X_SDK_PATH}/cvi_mpi/lib/")
 
 include(${CMAKE_CURRENT_LIST_DIR}/audio/CMakeLists.txt)
-include(${CMAKE_CURRENT_LIST_DIR}/audio_plugin/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/video/CMakeLists.txt)
+
+option(ENABLE_AUDIO_PLUGIN "Build audio plugin" OFF)
+
+if(ENABLE_AUDIO_PLUGIN)
+    include(${CMAKE_CURRENT_LIST_DIR}/audio_plugin/CMakeLists.txt)
+endif()
 
 file(GLOB COMMON_SRC "${CMAKE_CURRENT_LIST_DIR}/common/*.c")
 
