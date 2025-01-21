@@ -316,13 +316,16 @@ void CameraNode::threadAudioEntry() {
         return;
     }
 
-    buffer = new uint16_t[chunk_size * bits_per_sample / 8 * 2];
+    buffer = new uint16_t[chunk_size * bits_per_sample / 8 * 2 + 1];
 
     while (started_) {
         pcm_return = snd_pcm_readi(handle, buffer, chunk_size * 2);
         if (pcm_return == -EPIPE) {
             MA_LOGW(TAG, "overrun occurred");
-            snd_pcm_prepare(handle);
+            if (snd_pcm_prepare(handle) < 0) {
+                MA_LOGE(TAG, "prepare failed: %s", snd_strerror(pcm_return));
+                break;
+            }
             continue;
         } else if (pcm_return < 0) {
             MA_LOGE(TAG, "error from read: %s", snd_strerror(pcm_return));
