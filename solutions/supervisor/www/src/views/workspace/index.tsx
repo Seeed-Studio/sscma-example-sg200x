@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Modal, Button, Input, ConfigProvider, Spin, message } from "antd";
-import type { ButtonProps } from "antd";
+// import { useNavigate } from "react-router-dom";
+import {
+  Modal,
+  Button,
+  Input,
+  ConfigProvider,
+  Spin,
+  message,
+  ButtonProps,
+} from "antd";
 import {
   PlusCircleOutlined,
   WifiOutlined,
@@ -12,15 +19,17 @@ import {
   LeftOutlined,
   RightOutlined,
   CloudUploadOutlined,
+  SettingOutlined,
+  FileOutlined,
 } from "@ant-design/icons";
 import {
-  getDeviceInfoApi,
-  queryServiceStatusApi,
+  queryDeviceInfoApi,
+  getDeviceListApi,
   getModelInfoApi,
   uploadModelApi,
 } from "@/api/device";
+import { IIPDevice } from "@/api/device/device";
 import { getWifiStatusApi } from "@/api/network";
-import { WifiConnectStatus } from "@/enum/network";
 import {
   getFlows,
   saveFlows,
@@ -38,7 +47,7 @@ import {
   removeFileApi,
   applyModelApi,
 } from "@/api/sensecraft";
-import { ServiceStatus } from "@/enum";
+import recamera_logo from "@/assets/images/recamera_logo.png";
 import { IAppInfo, IModelData, IActionInfo } from "@/api/sensecraft/sensecraft";
 import { sensecraftAuthorize, parseUrlParam, DefaultFlowData } from "@/utils";
 import usePlatformStore, {
@@ -52,22 +61,20 @@ import { getToken } from "@/store/user";
 import Network from "@/views/network";
 import styles from "./index.module.css";
 
+// 定义 type 优先级
+const typePriority = { eth: 1, usb: 2, wlan: 3 };
+
+// 类型守卫函数
+function isValidType(type: string): type is keyof typeof typePriority {
+  return type in typePriority;
+}
+
 const Workspace = () => {
-  const navigate = useNavigate();
-  const {
-    isLogin,
-    appInfo,
-    nickname,
-    updateAppInfo,
-    updateNickname,
-    updateToken,
-    updateRefreshToken,
-  } = usePlatformStore();
-  const { deviceInfo, updateDeviceInfo, wifiStatus, updateWifiStatus } =
-    useConfigStore();
-  const [serviceStatus, setServiceStatus] = useState<ServiceStatus>(
-    ServiceStatus.STARTING
-  );
+  // const navigate = useNavigate();
+  const { token, appInfo, nickname, updateAppInfo, updateNickname } =
+    usePlatformStore();
+  const { deviceInfo, updateDeviceInfo, updateWifiStatus } = useConfigStore();
+
   const [actionInfo, setActionInfo] = useState<IActionInfo | null>(null);
 
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -76,14 +83,16 @@ const Workspace = () => {
   const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false);
 
   const [applist, setApplist] = useState<IAppInfo[]>([]);
+  const [devicelist, setDevicelist] = useState<IIPDevice[]>([]);
+
   const [isExpand, setIsExpand] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingTip, setLoadingTip] = useState("");
 
-  const [appid, setAppid] = useState("");
+  const [focusAppid, setFocusAppid] = useState("");
+  const [currentDeviceIndex, setCurrentDeviceIndex] = useState<number>(-1);
 
-  const tryCount = useRef<number>(0);
   const inputRef = useRef<string>("");
 
   const [timestamp, setTimestamp] = useState<number>(1);
@@ -111,9 +120,7 @@ const Workspace = () => {
       }
 
       if (token_url && refresh_token) {
-        await getLocalAppInfo();
-        updateToken(token_url);
-        updateRefreshToken(refresh_token);
+        await initPlatformStore(token_url, refresh_token);
         setActionInfo(actionInfo);
         savePlatformInfo();
         const currentUrl = window.location.href;
@@ -136,16 +143,67 @@ const Workspace = () => {
   }, []);
 
   useEffect(() => {
-    const getWifiStatus = async () => {
+    const getStatus = async () => {
       try {
         let { data } = await getWifiStatusApi();
         updateWifiStatus(data.status);
       } catch (error) {
         console.error("Error fetching WiFi status:", error);
       }
+      try {
+        let { data } = await getDeviceListApi();
+        const deviceList = data.deviceList.map((device) => {
+          if (device.info && typeof device.info === "string") {
+            const infoString = device.info.replace(/"/g, "");
+            const infoParts = infoString.split(";"); // 假设键值对用分号分隔
+
+            const infoObject = infoParts.reduce((acc, part) => {
+              const [key, value] = part.split("=");
+              (acc as Record<string, string>)[key] = value;
+              return acc;
+            }, {} as { sn: string; lastSix: string });
+
+            if (infoObject.sn) {
+              infoObject.lastSix = infoObject.sn.slice(-6); // 添加新属性
+            }
+
+            device.info = infoObject; // 更新info为对象
+          }
+          return device;
+        });
+
+        // 过滤掉重复的 sn，并根据 type 优先级进行选择
+        const filteredDeviceList = deviceList.reduce((acc, device) => {
+          const info = device.info as { sn: string; lastSix: string };
+          if (info.sn === deviceInfo?.sn) {
+            return acc; // 跳过当前设备
+          }
+          const existingIndex = acc.findIndex(
+            (d) => (d.info as { sn: string }).sn === info.sn
+          );
+
+          if (existingIndex === -1) {
+            acc.push(device);
+          } else {
+            const existingDevice = acc[existingIndex];
+            const currentType = device.type.replace(/[0-9]/g, ""); // 忽略 type 后的数字
+            const existingType = existingDevice.type.replace(/[0-9]/g, "");
+
+            if (isValidType(currentType) && isValidType(existingType)) {
+              if (typePriority[currentType] < typePriority[existingType]) {
+                acc[existingIndex] = device;
+              }
+            }
+          }
+          return acc;
+        }, [] as typeof deviceList);
+        setDevicelist(filteredDeviceList);
+      } catch (error) {
+        console.error("Error fetching DeviceList status:", error);
+      }
     };
-    getWifiStatus();
-    const intervalId = setInterval(getWifiStatus, 15000);
+    getStatus();
+    const intervalId = setInterval(getStatus, 15000);
     // 移除定时器
     return () => clearInterval(intervalId);
   }, []);
@@ -167,24 +225,12 @@ const Workspace = () => {
     };
   }, []);
 
-  const showNetworkModal = () => {
-    setIsNetworkModalOpen(true);
-  };
-
-  const handleNetworkModalOk = () => {
-    setIsNetworkModalOpen(false);
-  };
-
-  const handleNetworkModalCancel = () => {
-    setIsNetworkModalOpen(false);
-  };
-
   useEffect(() => {
-    if (isLogin && deviceInfo?.ip) {
+    if (token && deviceInfo?.ip) {
       getSensecraftUserInfo();
       getAppList();
     }
-  }, [isLogin, deviceInfo?.ip]);
+  }, [deviceInfo?.ip, token]);
 
   useEffect(() => {
     const initAction = async () => {
@@ -192,33 +238,30 @@ const Workspace = () => {
         const action = actionInfo.action; //new / app / clone / model /normal  action为空默认为normal
         const app_id = actionInfo.app_id; //type为app时才需要传
         const model_id = actionInfo.model_id; //type为model时才需要传
-        const status = await queryServiceStatus();
-        if (status == ServiceStatus.RUNNING) {
-          if (action == "app") {
-            if (app_id) {
-              //打开云端应用
-              viewAppForSensecraft(app_id);
-            }
-          } else if (action == "new") {
-            //新建应用
-            createAppForSensecraft();
-          } else if (action == "clone") {
-            //克隆公开的应用到自己的列表
-            if (app_id) {
-              //克隆公开应用
-              cloneAppForSensecraft(app_id);
-            }
-          } else if (action == "model") {
-            //部署模型
-            if (model_id) {
-              //获取模型详情
-              deployAndCreateAppForSensecraft(model_id);
-            }
-          } else if (action == "normal") {
-            checkAndSyncAppData();
+        if (action == "app") {
+          if (app_id) {
+            //打开云端应用
+            viewAppForSensecraft(app_id);
           }
-          setActionInfo(null);
+        } else if (action == "new") {
+          //新建应用
+          createAppForSensecraft();
+        } else if (action == "clone") {
+          //克隆公开的应用到自己的列表
+          if (app_id) {
+            //克隆公开应用
+            cloneAppForSensecraft(app_id);
+          }
+        } else if (action == "model") {
+          //部署模型
+          if (model_id) {
+            //获取模型详情
+            deployAndCreateAppForSensecraft(model_id);
+          }
+        } else if (action == "normal") {
+          checkAndSyncAppData();
         }
+        setActionInfo(null);
       }
     };
     initAction();
@@ -250,47 +293,9 @@ const Workspace = () => {
     }
   };
 
-  // 从设备supervisor服务查询服务状态
-  const queryServiceStatus = async () => {
-    tryCount.current = 0;
-    setServiceStatus(ServiceStatus.STARTING);
-    setLoading(true);
-    setLoadingTip("Loading");
-    while (tryCount.current < 30) {
-      try {
-        const response = await queryServiceStatusApi();
-        if (response.code === 0 && response.data) {
-          const { sscmaNode, nodeRed, system } = response.data;
-          if (
-            sscmaNode === ServiceStatus.RUNNING &&
-            nodeRed === ServiceStatus.RUNNING &&
-            system === ServiceStatus.RUNNING
-          ) {
-            setServiceStatus(ServiceStatus.RUNNING);
-            setLoading(false);
-            setLoadingTip("");
-            return ServiceStatus.RUNNING;
-          }
-        }
-        tryCount.current++;
-        setServiceStatus(ServiceStatus.STARTING);
-        setLoadingTip("Please wait for Node-red to get start");
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-      } catch (error) {
-        tryCount.current++;
-        console.error("Error querying service status:", error);
-      }
-    }
-
-    setServiceStatus(ServiceStatus.FAILED);
-    setLoading(false);
-    setLoadingTip("");
-    return ServiceStatus.FAILED;
-  };
-
   const queryDeviceInfo = async () => {
     try {
-      const res = await getDeviceInfoApi();
+      const res = await queryDeviceInfoApi();
       if (res.code == 0) {
         updateDeviceInfo(res.data);
       }
@@ -316,6 +321,7 @@ const Workspace = () => {
     }
   };
 
+  //将云端模型上传到设备
   const uploadModel = async (model_data: IModelData) => {
     if (model_data) {
       const url = model_data.arguments?.url;
@@ -388,7 +394,7 @@ const Workspace = () => {
   const getLocalModel = async (flowsData: [] | null) => {
     try {
       //判断flow里面有没有模型积木，如果有模型积木，则需要处理模型文件的下载更新
-      const hasModel = flowsData?.some((item: any) => item.type === "model");
+      const hasModel = flowsData?.some((node: any) => node.type === "model");
       if (hasModel) {
         // 查询设备本地模型信息与模型MD5
         const { model_data: data, model_md5: md5 } = await getModelInfo();
@@ -478,6 +484,7 @@ const Workspace = () => {
             //上传设备本地
             const ret = await uploadModel(model_data);
             if (!ret) {
+              messageApi.error("Clone app failed");
               return;
             }
           }
@@ -558,7 +565,7 @@ const Workspace = () => {
     }
   };
 
-  //检查提示用户当前应用是不是需要保存，如果需要就是保存
+  //检查提示用户当前应用是不是需要保存，如果需要就保存
   const checkAndSaveLocalApp = async () => {
     try {
       // 查询当前应用的云端数据
@@ -613,12 +620,12 @@ const Workspace = () => {
           // 保存当前应用到云端
           if (confirmed) {
             // 给设备当前应用创建app
-            const firstTabItem = localFlowsData?.find(
-              (item: any) => item.type === "tab"
+            const firstTabNode = localFlowsData?.find(
+              (node: any) => node.type === "tab"
             ) as any;
             let app_name;
-            if (firstTabItem) {
-              app_name = firstTabItem.label;
+            if (firstTabNode) {
+              app_name = firstTabNode.label;
             }
             await createAppAndUpdateFlow({
               app_name,
@@ -683,7 +690,7 @@ const Workspace = () => {
       } else {
         // 给设备当前应用创建app
         const firstTabItem = localFlowsData?.find(
-          (item: any) => item.type === "tab"
+          (node: any) => node.type === "tab"
         ) as any;
         let app_name;
         if (firstTabItem) {
@@ -698,14 +705,16 @@ const Workspace = () => {
     } catch (error) {}
   };
 
-  //将云端数据更新到本地
+  //将云端数据同步到本地
   const syncCloudAppToLocal = async (app?: IAppInfo) => {
     if (!app) {
       return;
     }
     try {
       setLoading(true);
-      setLoadingTip("");
+      setLoadingTip(
+        "Syncing SenseCraft Cloud application to Node-red. The flow will be automatically deploy on the device."
+      );
       let ret = true;
       if (app?.model_data) {
         ret = await uploadModel(app.model_data);
@@ -723,6 +732,7 @@ const Workspace = () => {
     }
   };
 
+  // 同步当前应用到云端
   const syncLocalAppToCloud = async ({
     cloudApp,
     flow_data_str,
@@ -734,6 +744,7 @@ const Workspace = () => {
   }) => {
     try {
       setSyncing(true);
+      setLoadingTip("Syncing application with SenseCraft Cloud");
       if (!cloudApp.app_id) {
         setSyncing(false);
         return false;
@@ -850,20 +861,18 @@ const Workspace = () => {
         if (response.code == 0) {
           const data = response.data;
           const list = data.list;
-          if (needUpdateApp) {
-            if (list.length > 0) {
-              const app = list[0];
-              await syncLocalAppToCloud({
-                cloudApp: app,
-                flow_data_str: flow_data,
-                model_data: model_data,
-              });
-              if (needUpdateFlow) {
-                await sendFlow(app.flow_data);
-              }
-              updateAppInfo(app);
-              savePlatformInfo();
+          if (needUpdateApp && list.length > 0) {
+            const app = list[0];
+            await syncLocalAppToCloud({
+              cloudApp: app,
+              flow_data_str: flow_data,
+              model_data: model_data,
+            });
+            if (needUpdateFlow) {
+              await sendFlow(app.flow_data);
             }
+            updateAppInfo(app);
+            savePlatformInfo();
           }
           setApplist(list);
           messageApi.success("Create app successful");
@@ -884,6 +893,49 @@ const Workspace = () => {
     }
   };
 
+  const autoSaveApp = async () => {
+    try {
+      //退出组件的时候，组件里面的变量可能被清掉了，直接取store里面的
+      const { appInfo: currAppInfo } = usePlatformStore.getState();
+      const localAppInfo = await getLocalAppInfo();
+      if (!localAppInfo) {
+        return;
+      }
+      setSyncing(true);
+      // 查询当前应用的本地flow数据
+      const localFlowsData = await getFlows();
+      // 查询当前应用的模型数据
+      const model_data = await getLocalModel(localFlowsData);
+      const localFlowsDataStr = JSON.stringify(localFlowsData);
+
+      await syncLocalAppToCloud({
+        cloudApp: localAppInfo,
+        flow_data_str: localFlowsDataStr,
+        model_data: model_data,
+      });
+      if (currAppInfo?.app_id != localAppInfo.app_id) {
+        setTimestamp(new Date().getTime());
+        getAppList();
+        Modal.info({
+          title: "Flow has been changed",
+          content: (
+            <div>
+              <p>
+                Due to the device limitation, please notice that only one flow
+                can be deployed on the device. The flow has been changed to the
+                current flow that is running on the device at this moment.
+              </p>
+            </div>
+          ),
+        });
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleCreateApp = async () => {
     try {
       inputRef.current = "";
@@ -894,7 +946,7 @@ const Workspace = () => {
             placeholder="Please input application name"
             maxLength={32}
             defaultValue={inputRef.current}
-            onChange={handleChange}
+            onChange={handleInputNameChange}
           />
         ),
       };
@@ -924,7 +976,7 @@ const Workspace = () => {
             placeholder="Please input application name"
             maxLength={32}
             defaultValue={inputRef.current}
-            onChange={handleChange}
+            onChange={handleInputNameChange}
           />
         ),
       };
@@ -995,14 +1047,12 @@ const Workspace = () => {
         return;
       }
       setLoading(true);
-      setLoadingTip("Saving app");
-      setSyncing(true);
+      setLoadingTip("Syncing application with SenseCraft Cloud");
       // 查询当前应用的本地flow数据
       const localFlowsData = await getFlows();
       // 查询当前应用的模型数据
       const model_data = await getLocalModel(localFlowsData);
       const localFlowsDataStr = JSON.stringify(localFlowsData);
-
       const ret = await syncLocalAppToCloud({
         cloudApp: app,
         flow_data_str: localFlowsDataStr,
@@ -1010,82 +1060,23 @@ const Workspace = () => {
       });
 
       if (ret) {
-        messageApi.success("Save successful");
+        messageApi.success("Syncing successful");
       } else {
-        messageApi.error("Save failed");
+        messageApi.error("Syncing failed");
       }
     } catch (error) {
       console.log(error);
-      messageApi.error("Save failed");
+      messageApi.error("Syncing failed");
     } finally {
       setLoading(false);
       setLoadingTip("");
-      setSyncing(false);
-    }
-  };
-
-  const autoSaveApp = async () => {
-    try {
-      //退出组件的时候，组件里面的变量可能被清掉了，直接取store里面的
-      const { appInfo: currAppInfo } = usePlatformStore.getState();
-      const localAppInfo = await getLocalAppInfo();
-      if (!localAppInfo) {
-        return;
-      }
-      setSyncing(true);
-      // 查询当前应用的本地flow数据
-      const localFlowsData = await getFlows();
-      // 查询当前应用的模型数据
-      const model_data = await getLocalModel(localFlowsData);
-      const localFlowsDataStr = JSON.stringify(localFlowsData);
-
-      await syncLocalAppToCloud({
-        cloudApp: localAppInfo,
-        flow_data_str: localFlowsDataStr,
-        model_data: model_data,
-      });
-      if (currAppInfo?.app_id != localAppInfo.app_id) {
-        setTimestamp(new Date().getTime());
-        getAppList();
-        Modal.info({
-          title: "Flow has been changed",
-          content: (
-            <div>
-              <p>
-                Due to the device limitation, please notice that only one flow
-                can be deployed on the device. The flow has been changed to the
-                current flow that is running on the device at this moment.
-              </p>
-            </div>
-          ),
-        });
-      }
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setSyncing(false);
     }
   };
 
   const handleSelectApp = async (app: IAppInfo) => {
     if (app.app_id != appInfo?.app_id) {
-      syncCloudAppToLocal(app);
+      await syncCloudAppToLocal(app);
     }
-  };
-
-  const gotoConfig = () => {
-    navigate("/init");
-  };
-
-  const gotoWiki = () => {
-    window.open(
-      "https://wiki.seeedstudio.com/recamera_getting_started/",
-      "_blank"
-    );
-  };
-
-  const gotoDashboard = () => {
-    navigate("/dashboard");
   };
 
   const handleLogout = async () => {
@@ -1115,80 +1106,198 @@ const Workspace = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     inputRef.current = e.target.value;
   };
 
   const handleFocusApp = async (appId: string) => {
-    setAppid(appId);
+    setFocusAppid(appId);
   };
 
   const handleBlurApp = async () => {
-    setAppid("");
+    setFocusAppid("");
   };
 
   const handleCollapseExpand = () => {
     setIsExpand(!isExpand);
   };
 
+  const handleNetworkModalOk = () => {
+    setIsNetworkModalOpen(false);
+  };
+
+  const handleNetworkModalCancel = () => {
+    setIsNetworkModalOpen(false);
+  };
+
+  const showNetworkModal = () => {
+    setIsNetworkModalOpen(true);
+  };
+
+  //index -1 则代表是当前设备
+  const handleSelectDevice = async (index: number) => {
+    setCurrentDeviceIndex(index);
+  };
+
+  const gotoConfig = () => {
+    // navigate("/init");
+    window.open(`http://${deviceInfo?.ip}/#/init`, "_blank");
+  };
+
+  const gotoOtherDevice = (ip: string) => {
+    // navigate("/init");
+    window.open(`http://${ip}/#/workspace`, "_blank");
+  };
+
+  const gotoWiki = () => {
+    window.open(
+      "https://wiki.seeedstudio.com/recamera_getting_started/",
+      "_blank"
+    );
+  };
+
+  const gotoDashboard = () => {
+    // navigate("/dashboard");
+    window.open(`http://${deviceInfo?.ip}/#/dashboard`, "_blank");
+  };
+
   return (
     <div className="flex h-full">
       <Spin spinning={loading} tip={loadingTip} fullscreen></Spin>
       {isExpand ? (
-        <div className="flex flex-col justify-between w-300 bg-[#F7F9F2] relative p-24 overflow-y-auto">
-          <div className="mb-10">
-            <div>
-              <div className="flex justify-between mb-20">
-                <div className="text-20 font-semibold">
-                  {deviceInfo?.deviceName}
-                </div>
-                {wifiStatus == WifiConnectStatus.Wired ||
-                wifiStatus == WifiConnectStatus.Wireless_Connect ? (
-                  <WifiOutlined
-                    className="text-primary text-20"
-                    onClick={showNetworkModal}
-                  />
+        <div className="flex flex-col justify-between w-300 bg-background relative p-24 overflow-y-auto">
+          {deviceInfo?.ip && (
+            <div className="mb-10">
+              <div className="text-20 font-semibold mb-12">My Device</div>
+              <div className="max-h-400 overflow-y-auto">
+                {currentDeviceIndex == -1 ? (
+                  <div
+                    className="bg-selected rounded-4 p-8 border border-primary mb-12 cursor-pointer"
+                    onClick={() => handleSelectDevice(-1)}
+                  >
+                    <div className="flex items-center">
+                      <img className="w-24 mr-8" src={recamera_logo} />
+                      <div className="text-primary text-18 font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+                        {deviceInfo?.deviceName}
+                      </div>
+                    </div>
+                    <div className="flex pt-6 text-text">
+                      <span className="text-12">IP:</span>
+                      <span className="text-12 ml-6">{deviceInfo?.ip}</span>
+                    </div>
+                    <div className="flex pt-5 text-text">
+                      <span className="text-12">OS:</span>
+                      <span className="text-12 ml-6">
+                        {deviceInfo?.osVersion}
+                      </span>
+                    </div>
+                    <div className="flex pt-5 text-text">
+                      <span className="text-12">S/N:</span>
+                      <span className="text-12 ml-6">{deviceInfo?.sn}</span>
+                    </div>
+                    <div className="flex mt-6">
+                      <Button
+                        className="mx-auto text-primary text-12 rounded-24 h-24"
+                        icon={<SettingOutlined />}
+                        onClick={gotoConfig}
+                      >
+                        Setting
+                      </Button>
+                      <Button
+                        className="mx-auto text-primary text-12 rounded-24 h-24"
+                        icon={<WifiOutlined />}
+                        onClick={showNetworkModal}
+                      >
+                        Network
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
-                  <WifiOutlined
-                    className="text-disable text-20"
-                    onClick={showNetworkModal}
-                  />
+                  <div
+                    className="bg-background rounded-4 p-8 border border-disable mb-12 cursor-pointer"
+                    onClick={() => handleSelectDevice(-1)}
+                  >
+                    <div className="flex items-center mb-6">
+                      <img className="w-24 mr-8" src={recamera_logo} />
+                      <div className="text-14 text-3d overflow-hidden text-ellipsis whitespace-nowrap">
+                        {deviceInfo?.deviceName}
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-12 text-text">
+                      <div>IP: {deviceInfo?.ip}</div>
+                      <div>S/N Last 6: {deviceInfo?.sn?.slice(-6)}</div>
+                    </div>
+                  </div>
                 )}
-              </div>
 
-              <div className="flex pt-5">
-                <span className="text-16">IP:</span>
-                <span className="text-16 ml-10">{deviceInfo?.ip}</span>
-              </div>
-              <div className="flex pt-5">
-                <span className="text-16">OS:</span>
-                <span className="text-16 ml-10">{deviceInfo?.osVersion}</span>
-              </div>
-              <div className="flex pt-5">
-                <span className="text-16">S/N:</span>
-                <span className="text-16 ml-10">{deviceInfo?.sn}</span>
+                {devicelist?.length > 0 &&
+                  devicelist.map((device, index) =>
+                    index == currentDeviceIndex ? (
+                      <div
+                        key={index}
+                        className="flex flex-col bg-selected rounded-4 p-8 border border-primary mb-12 cursor-pointer"
+                        onClick={() => handleSelectDevice(index)}
+                      >
+                        <div className="flex items-center">
+                          <img className="w-24 mr-8" src={recamera_logo} />
+                          <div className="text-primary text-18 font-medium mb-6 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {device.device}
+                          </div>
+                        </div>
+                        <div className="text-12 text-text mb-6">
+                          IP: {device.ip}
+                        </div>
+                        <div className="text-12 text-text mb-6">
+                          S/N:{" "}
+                          {typeof device.info == "object" && device.info.sn}
+                        </div>
+                        <div className="flex">
+                          <Button
+                            className="mx-auto text-12 rounded-24 h-24"
+                            type="primary"
+                            onClick={() => gotoOtherDevice(device.ip)}
+                          >
+                            Open this device
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        key={index}
+                        className="flex flex-col bg-background rounded-4 p-8 border border-disable mb-12 cursor-pointer"
+                        onClick={() => handleSelectDevice(index)}
+                      >
+                        <div className="flex items-center mb-6">
+                          <img className="w-24 mr-8" src={recamera_logo} />
+                          <div className="text-14 text-3d overflow-hidden text-ellipsis whitespace-nowrap">
+                            {device.device}
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-12 text-text">
+                          <div>IP: {device.ip}</div>
+                          <div>
+                            S/N Last 6:{" "}
+                            {typeof device.info == "object" &&
+                              device.info.lastSix}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
               </div>
             </div>
-
-            <Button
-              className="block mt-24 mx-auto text-primary border-primary"
-              onClick={gotoConfig}
-            >
-              Device Setting
-            </Button>
-          </div>
+          )}
           <div className="flex flex-col">
-            <div className="flex justify-between mb-20">
+            <div className="flex justify-between mb-12">
               <div className="text-20 font-semibold">My Application</div>
-              {isLogin && (
+              {token && (
                 <PlusCircleOutlined
                   className="text-primary text-20"
                   onClick={handleCreateApp}
                 />
               )}
             </div>
-
-            {isLogin ? (
+            {token ? (
               <div className="flex flex-col">
                 <div className="max-h-200 overflow-y-auto">
                   {applist?.length > 0 &&
@@ -1196,19 +1305,19 @@ const Workspace = () => {
                       appInfo?.app_id == app.app_id ? (
                         <div key={index} className="flex mb-10 h-40">
                           <div
-                            className="flex flex-1 text-14 text-primary border border-primary rounded-8 p-8"
+                            className="flex flex-1 text-14 text-primary border border-primary rounded-4 p-8"
                             onMouseEnter={() => handleFocusApp(app.app_id)}
                             onMouseLeave={() => handleBlurApp()}
                           >
                             <div
-                              className="flex flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="flex flex-1 font-medium cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
                               onClick={() => handleSelectApp(app)}
                             >
                               {app.app_name}
                             </div>
                             <div
                               className={`flex ${
-                                appid == app.app_id ? "flex" : "hidden"
+                                focusAppid == app.app_id ? "flex" : "hidden"
                               }`}
                             >
                               <EditOutlined
@@ -1239,19 +1348,19 @@ const Workspace = () => {
                       ) : (
                         <div
                           key={index}
-                          className="app flex mb-10 h-40 text-14 text-disable border border-disable rounded-8 p-8"
+                          className="flex mb-10 mr-6 h-30 text-12 bg-background text-text border border-disable rounded-4 px-8"
                           onMouseEnter={() => handleFocusApp(app.app_id)}
                           onMouseLeave={() => handleBlurApp()}
                         >
                           <div
-                            className="flex-1 cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                            className="flex flex-1 items-center cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
                             onClick={() => handleSelectApp(app)}
                           >
                             {app.app_name}
                           </div>
                           <div
                             className={`flex ${
-                              appid == app.app_id ? "flex" : "hidden"
+                              focusAppid == app.app_id ? "flex" : "hidden"
                             }`}
                           >
                             <EditOutlined
@@ -1270,7 +1379,7 @@ const Workspace = () => {
                     )}
                 </div>
                 <div>
-                  <div className="text-[#3C3C434D] text-12 mt-10 mb-10">
+                  <div className="text-text text-12 mt-10 mb-10">
                     reCamera can only run 1 application at a time
                   </div>
                   <div className="flex justify-between items-center">
@@ -1311,21 +1420,26 @@ const Workspace = () => {
           </div>
         </div>
       ) : (
-        <div className="flex justify-center items-center w-40 bg-[#F7F9F2] relative">
+        <div className="flex justify-center items-center w-40 bg-background relative">
           <div className={styles.expand} onClick={handleCollapseExpand}>
             <RightOutlined />
           </div>
         </div>
       )}
       <div className="flex-1">
-        {deviceInfo?.ip && serviceStatus == ServiceStatus.RUNNING ? (
+        {deviceInfo?.ip && (
           <div className="w-full h-full relative overflow-hidden">
             <iframe
               className="w-full h-full"
               src={`http://${deviceInfo?.ip}:1880?timestamp=${timestamp}`}
             />
-            <Button className={styles.wiki} type="primary" onClick={gotoWiki}>
-              Wiki
+            <Button
+              className={styles.wiki}
+              // type="primary"
+              onClick={gotoWiki}
+              icon={<FileOutlined />}
+            >
+              reCamera Wiki
             </Button>
             <Button
               className={styles.dashboard}
@@ -1334,27 +1448,6 @@ const Workspace = () => {
             >
               Dashboard
             </Button>
-          </div>
-        ) : (
-          <div className="w-full h-full flex justify-center items-center">
-            {/* {serviceStatus == ServiceStatus.STARTING && (
-              <Spin tip="Please wait for Node-red to get start">
-                <div className="w-full h-full">
-                  Please wait for Node-red to get start
-                </div>
-              </Spin>
-            )} */}
-            {(serviceStatus == ServiceStatus.ERROR ||
-              serviceStatus == ServiceStatus.FAILED) && (
-              <div className="flex flex-col justify-center items-center">
-                <div className="text-16 mb-10">
-                  Service startup failed, please check your device.
-                </div>
-                <Button type="primary" onClick={queryServiceStatus}>
-                  Refresh
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>

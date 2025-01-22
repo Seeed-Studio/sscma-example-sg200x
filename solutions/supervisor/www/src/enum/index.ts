@@ -22,3 +22,11 @@ export enum ServiceStatus {
   FAILED = 2, //启动失败
   ERROR = 4, //运行异常
 }
+
+export enum UpdateStatus {
+  Check = "Check",
+  NeedUpdate = "NeedUpdate", //有新版本需要更新
+  NoNeedUpdate = "NoNeedUpdate", //不需要更新
+  Updating = "Updating", //更新中
+  UpdateDone = "UpdateDone", //更新完毕
+}

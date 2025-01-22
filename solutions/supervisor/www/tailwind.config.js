@@ -12,10 +12,11 @@ export default {
     extend: {
       colors: {
         primary: "#8fc31f",
-        333: "#333333",
         "3d": "#3d3d3d",
-        93: "#939393",
+        background: "#F2F3F1",
+        selected: "#F7F9F2",
         disable: "#D2D9C3",
+        text: "#878B7E",
         error: "#D54941",
       },
       width: getSizeByNumber(500),

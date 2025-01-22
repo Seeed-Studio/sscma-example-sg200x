@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError } from "axios";
-import { Toast } from "antd-mobile";
+import { message } from "antd";
 import { getToken, refreshToken } from "@/store/user";
 import { isDev } from "@/utils";
 
@@ -26,7 +26,6 @@ interface BaseResponse<T> {
   timestamp?: string;
 }
 interface OtherRequestConfig {
-  loading?: boolean;
   catchs?: boolean;
 }
 
@@ -34,16 +33,10 @@ const createSupervisorRequest = () => {
   return async <T>(
     config: AxiosRequestConfig,
     otherConfig: OtherRequestConfig = {
-      loading: false,
       catchs: false,
     }
   ): Promise<BaseResponse<T>> => {
-    const { loading, catchs } = otherConfig;
-    let toast: any;
-    if (loading) {
-      toast = true;
-      Toast.show({ duration: 0, icon: "loading" });
-    }
+    const { catchs } = otherConfig;
 
     return await new Promise((resolve, reject) => {
       supervisorService.request<BaseResponse<T>>(config).then(
@@ -51,12 +44,8 @@ const createSupervisorRequest = () => {
           if (catchs) {
             resolve(res.data);
           } else {
-            toast && Toast.clear();
             if (res.data.code !== 0 && res.data.code !== "0") {
-              Toast.show({
-                icon: "fail",
-                content: res.data.msg || "请求失败",
-              });
+              message.error(res.data.msg || "request error");
               reject(res.data);
               return;
             }
@@ -70,11 +59,7 @@ const createSupervisorRequest = () => {
             refreshToken();
           } else {
             if (!catchs) {
-              toast && Toast.clear();
-              Toast.show({
-                icon: "fail",
-                content: err.message || "请求失败",
-              });
+              message.error(err.message || "request error");
             }
           }
           reject(err);

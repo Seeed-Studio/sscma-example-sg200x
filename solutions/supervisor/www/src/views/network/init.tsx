@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { CheckCircleFill } from "antd-mobile-icons";
 import useConfigStore from "@/store/config";
 import { getWifiStatusApi } from "@/api/network";
-import { getDeviceInfoApi } from "@/api/device/index";
+import { queryDeviceInfoApi } from "@/api/device/index";
 
 const infoList = [
   {
@@ -10,7 +10,7 @@ const infoList = [
     key: "ip",
   },
   {
-    label: "Wifi IP",
+    label: "Wi-Fi IP",
     key: "wifiIp",
   },
   {
@@ -32,7 +32,7 @@ function Init() {
   const getWifiStatus = async () => {
     let { data } = await getWifiStatusApi();
     updateWifiStatus(data.status);
-    const res = await getDeviceInfoApi();
+    const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
   };
   useEffect(() => {
@@ -57,12 +57,12 @@ function Init() {
         </div>
       </div>
 
-      {deviceInfo.wifiIp && (
+      {deviceInfo.wifiIp && deviceInfo.wifiIp != "-" && (
         <div>
           <div className="text-center flex justify-center py-40">
             <CheckCircleFill fontSize={48} color="#8fc31f" />
           </div>
-          {deviceInfo.wifiIp != "-" && deviceInfo.wifiIp != deviceInfo.ip && (
+          {deviceInfo.wifiIp != deviceInfo.ip && (
             <div className="text-center text-18 px-32  break-all">
               <span>
                 Connect to '{deviceInfo.deviceName}' then you can explore the

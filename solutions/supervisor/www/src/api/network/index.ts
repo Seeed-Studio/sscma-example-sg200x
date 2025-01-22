@@ -11,9 +11,6 @@ export const getDeviceWifiInfoApi = async () =>
       url: "api/wifiMgr/queryWiFiInfo",
       method: "get",
     },
-    {
-      // loading: true,
-    }
   );
 // 获取wifi list
 export const getWifiListApi = async (data: { scanTime: number }) =>
@@ -26,9 +23,6 @@ export const getWifiListApi = async (data: { scanTime: number }) =>
       method: "post",
       data,
     },
-    {
-      // loading: true,
-    }
   );
 // 获取wifi 扫描结果
 export const getWifiResultListApi = async () =>
@@ -40,9 +34,6 @@ export const getWifiResultListApi = async () =>
       url: "api/wifiMgr/getWiFiScanResults",
       method: "get",
     },
-    {
-      // loading: true,
-    }
   );
 // 连接wifi
 export const connectWifiApi = async (data: IConnectParams) =>

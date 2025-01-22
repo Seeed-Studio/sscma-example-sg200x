@@ -256,7 +256,7 @@ function Network() {
                 className="border rounded-6 p-10 pr-6"
                 placeholder=""
                 clearable
-                maxLength={16}
+                maxLength={63}
               />
             </Form.Item>
           </Form>
@@ -264,7 +264,6 @@ function Network() {
       </CommonPopup>
       <Mask
         visible={state.wifiVisible}
-        // style={{ zIndex: 1020 }}
         onMaskClick={() => {
           setStates({
             wifiVisible: false,
@@ -274,7 +273,7 @@ function Network() {
         <div
           className="absolute"
           style={{
-            height: "80%",
+            height: "60%",
             width: "90%",
             left: "50%",
             top: "50%",

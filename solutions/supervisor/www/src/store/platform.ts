@@ -3,7 +3,6 @@ import { getPlatformInfoApi, savePlatformInfoApi } from "@/api/device";
 import { IAppInfo } from "@/api/sensecraft/sensecraft";
 
 type PlatformStoreType = {
-  isLogin: boolean;
   token: string | null;
   refreshToken: string | null;
   nickname: string | null;
@@ -16,20 +15,17 @@ type PlatformStoreType = {
 };
 // Platform
 const usePlatformStore = create<PlatformStoreType>((set) => ({
-  isLogin: false,
   token: null,
   refreshToken: null,
   nickname: null,
   appInfo: null,
-  updateToken: (token: string | null) =>
-    set(() => ({ token, isLogin: token ? true : false })),
+  updateToken: (token: string | null) => set(() => ({ token })),
   updateRefreshToken: (refreshToken: string | null) =>
     set(() => ({ refreshToken })),
   updateNickname: (name: string) => set(() => ({ nickname: name })),
   updateAppInfo: (app: IAppInfo) => set(() => ({ appInfo: app })),
   clearUserInfo: () =>
     set(() => ({
-      isLogin: false,
       token: null,
       refreshToken: null,
       nickname: null,
@@ -56,7 +52,47 @@ export const savePlatformInfo = async () => {
   } catch (error) {}
 };
 
-export const initPlatformStore = async () => {
+export const initPlatformStore = async (
+  token?: string,
+  refreshToken?: string
+) => {
+  try {
+    const resp = await getPlatformInfoApi();
+    if (resp.code == 0) {
+      const data = resp.data;
+      const platform_info = data?.platform_info;
+      if (platform_info) {
+        const platformInfo = JSON.parse(platform_info);
+
+        let tempToken = token;
+        let tempRefreshToken = refreshToken;
+        let nickname = null;
+        if (!tempToken || !tempRefreshToken) {
+          const user_info = platformInfo.user_info;
+          tempToken = user_info.token;
+          tempRefreshToken = user_info.refreshToken;
+          nickname = user_info.nickname;
+        }
+
+        let app_info;
+        try {
+          app_info = JSON.parse(platformInfo.app_info);
+        } catch (error) {
+          app_info = null;
+        }
+
+        usePlatformStore.setState({
+          token: tempToken,
+          refreshToken: tempRefreshToken,
+          nickname: nickname,
+          appInfo: app_info,
+        });
+      }
+    }
+  } catch (error) {}
+};
+
+export const getLocalAppInfo = async () => {
   try {
     const resp = await getPlatformInfoApi();
     if (resp.code == 0) {
@@ -75,40 +111,18 @@ export const initPlatformStore = async () => {
         }
 
         usePlatformStore.setState({
-          isLogin: token ? true : false,
           token: token,
           refreshToken: user_info.refreshToken,
           nickname: user_info.nickname,
           appInfo: app_info,
         });
-      }
-    }
-  } catch (error) {}
-};
-
-export const getLocalAppInfo = async () => {
-  try {
-    const resp = await getPlatformInfoApi();
-    if (resp.code == 0) {
-      const data = resp.data;
-      const platform_info = data?.platform_info;
-      if (platform_info) {
-        const platformInfo = JSON.parse(platform_info);
-
-        let app_info;
-        try {
-          app_info = JSON.parse(platformInfo.app_info);
-        } catch (error) {
-          app_info = null;
-        }
-
-        usePlatformStore.setState({
-          appInfo: app_info,
-        });
         return app_info;
       }
     }
-  } catch (error) {}
+    return null;
+  } catch (error) {
+    return null;
+  }
 };
 
 export const logout = async () => {

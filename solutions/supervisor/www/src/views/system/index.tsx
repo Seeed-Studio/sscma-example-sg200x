@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import EditBlackImg from "@/assets/images/svg/editBlack.svg";
 import ArrowImg from "@/assets/images/svg/downArrow.svg";
 import CommonPopup from "@/components/common-popup";
-import { Form, Input, Button, Picker, ProgressBar, Mask } from "antd-mobile";
+import { Form, Input, Picker, ProgressBar, Mask } from "antd-mobile";
+import { Button } from "antd";
 import moment from "moment";
-import { useData, UpdateStatus } from "./hook";
-import { DeviceChannleMode } from "@/enum";
+import { useData } from "./hook";
+import { DeviceChannleMode, UpdateStatus } from "@/enum";
 import { requiredTrimValidate } from "@/utils/validate";
 import { parseUrlParam } from "@/utils";
+import useConfigStore from "@/store/config";
 
 const channelList = [
   { label: "Self-Host", value: DeviceChannleMode.Self },
@@ -21,8 +23,8 @@ const infoList = [
 ];
 function System() {
   const {
-    state,
-    setStates,
+    // state,
+    // setStates,
     deviceInfo,
     addressFormRef,
     onEditServerAddress,
@@ -36,6 +38,8 @@ function System() {
     onUpdateCheck,
   } = useData();
 
+  const { systemUpdateState, setSystemUpdateState } = useConfigStore();
+
   const [isDisableLayout, setIsDisableLayout] = useState(false);
 
   useEffect(() => {
@@ -45,88 +49,69 @@ function System() {
   }, []);
 
   const channelLable = useMemo(() => {
-    const index = channelList.findIndex((item) => item.value === state.channel);
+    const index = channelList.findIndex(
+      (item) => item.value === systemUpdateState.channel
+    );
     return index > -1 && channelList[index].label;
-  }, [state.channel]);
+  }, [systemUpdateState.channel]);
 
   return (
     <div className="my-8 p-16">
       <div className="font-bold text-18 mb-14">Update</div>
       <div className="bg-white rounded-20 px-24">
         <div className="flex justify-between pt-24">
-          <span className="opacity-60 mr-20">Software Update</span>
+          <span className="opacity-60 self-center mr-20">Software Update</span>
           <div className="flex-1 text-right justify-end flex">
-            {state.status == UpdateStatus.NoNeedUpdate && (
+            {systemUpdateState.status == UpdateStatus.NoNeedUpdate && (
               <span className="self-center ml-12">Up to Date</span>
             )}
-            {state.status == UpdateStatus.Check && (
-              <Button
-                size="mini"
-                style={{
-                  background: "#35353",
-                }}
-                className="self-center ml-12"
-                onClick={() => onUpdateCheck(true)}
-              >
-                Check
+            {systemUpdateState.status == UpdateStatus.Check && (
+              <Button type="primary" onClick={() => onUpdateCheck(true)}>
+                Check Update
               </Button>
             )}
-            {state.status == UpdateStatus.NeedUpdate && (
-              <Button
-                size="mini"
-                style={{
-                  background: "#35353",
-                }}
-                className="self-center ml-12"
-                onClick={onUpdateApply}
-              >
-                Apply
+            {systemUpdateState.status == UpdateStatus.NeedUpdate && (
+              <Button type="primary" onClick={onUpdateApply}>
+                Update
               </Button>
             )}
-            {state.status == UpdateStatus.Updating && (
-              <Button
-                size="mini"
-                style={{
-                  background: "#35353",
-                }}
-                className="self-center ml-12"
-                onClick={onUpdateCancel}
-              >
-                Cancel
-              </Button>
+            {systemUpdateState.status == UpdateStatus.Updating && (
+              <Button onClick={onUpdateCancel}>Cancel</Button>
             )}
-            {state.status == UpdateStatus.UpdateDone && (
-              <Button
-                size="mini"
-                style={{
-                  background: "#35353",
-                }}
-                className="self-center ml-12"
-                onClick={onUpdateRestart}
-              >
-                Restart
+            {systemUpdateState.status == UpdateStatus.UpdateDone && (
+              <Button type="primary" onClick={onUpdateRestart}>
+                Reboot
               </Button>
             )}
           </div>
         </div>
         <div className="flex justify-between py-12 text-3d ">
-          {state.status == UpdateStatus.NoNeedUpdate && (
+          {systemUpdateState.status == UpdateStatus.NoNeedUpdate && (
             <span className="text-12">
               Up to date: last checked a minutes ago
             </span>
           )}
-          {state.status == UpdateStatus.Updating && (
+          {systemUpdateState.status == UpdateStatus.UpdateDone && (
+            <span className="text-12">
+              Please reboot the device to finish the update
+            </span>
+          )}
+          {systemUpdateState.status == UpdateStatus.Updating && (
             <div className="w-full mb-8">
               <div className="flex justify-between mb-4">
-                <span>{state.percent}%</span>
+                <span>{systemUpdateState.percent}%</span>
                 <span>{moment().fromNow()}</span>
               </div>
               <div>
                 <ProgressBar
                   className="w-full"
                   rounded={false}
-                  percent={state.percent}
+                  percent={systemUpdateState.percent}
                 />
+              </div>
+              <div className="mt-8">
+                The update can last several minutes depends on the network
+                condition
               </div>
             </div>
           )}
@@ -145,7 +130,7 @@ function System() {
             <span className="self-center ml-12">
               <img
                 className={`w-24 h-24 ml-6 self-center ${
-                  state.channelVisible && "rotate-180 "
+                  systemUpdateState.channelVisible && "rotate-180 "
                 }`}
                 src={ArrowImg}
                 alt=""
@@ -153,14 +138,14 @@ function System() {
             </span>
           </div>
         </div>
-        {state.channel == DeviceChannleMode.Self && (
+        {systemUpdateState.channel == DeviceChannleMode.Self && (
           <div className="flex justify-between py-24 w-full border-t">
             <span className="opacity-60 mr-20">Server Address</span>
             <div
               className="flex-1 text-right justify-end flex truncate"
               onClick={onEditServerAddress}
             >
-              <span className="truncate ">{state.address}</span>
+              <span className="truncate ">{systemUpdateState.address}</span>
               <img
                 className="w-24 h-24 ml-6 self-center"
                 src={EditBlackImg}
@@ -172,13 +157,13 @@ function System() {
       </div>
       <Picker
         columns={[channelList]}
-        visible={state.channelVisible}
+        visible={systemUpdateState.channelVisible}
         onClose={() => {
-          setStates({
+          setSystemUpdateState({
             channelVisible: false,
           });
         }}
-        value={[state.channel]}
+        value={[systemUpdateState.channel]}
         onConfirm={onConfirm}
       />
 
@@ -210,7 +195,7 @@ function System() {
       )}
 
       <CommonPopup
-        visible={state.visible}
+        visible={systemUpdateState.visible}
         title={"Server Address"}
         onCancel={onCancel}
       >
@@ -220,10 +205,10 @@ function System() {
           requiredMarkStyle="none"
           onFinish={onFinish}
           initialValues={{
-            serverUrl: state.address,
+            serverUrl: systemUpdateState.address,
           }}
           footer={
-            <Button block type="submit" color="primary">
+            <Button block htmlType="submit" type="primary">
               Confirm
             </Button>
           }
@@ -234,9 +219,9 @@ function System() {
         </Form>
       </CommonPopup>
       <Mask
-        visible={state.updateInfoVisible}
+        visible={systemUpdateState.updateInfoVisible}
         onMaskClick={() =>
-          setStates({
+          setSystemUpdateState({
             updateInfoVisible: false,
           })
         }
@@ -255,27 +240,11 @@ function System() {
               </div>
             </div>
             <div className="flex mt-20">
-              <Button
-                size="small"
-                fill="none"
-                style={{
-                  background: "#939393",
-                }}
-                className="flex-1 mr-28"
-                onClick={onUpdateCancel}
-              >
-                <span className="text-14">Cancel</span>
+              <Button className="flex-1 mr-28" onClick={onUpdateCancel}>
+                Cancel
               </Button>
-              <Button
-                size="small"
-                fill="none"
-                style={{
-                  background: "#939393",
-                }}
-                className="flex-1"
-                onClick={onUpdateApply}
-              >
-                <span className="text-14">Apply</span>
+              <Button type="primary" className="flex-1" onClick={onUpdateApply}>
+                Apply
               </Button>
             </div>
           </div>

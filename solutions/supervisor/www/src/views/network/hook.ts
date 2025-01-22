@@ -21,7 +21,8 @@ import {
 import { getSignalStrengthLevel } from "@/utils";
 import { IWifiInfo, IConnectParams } from "@/api/network/network";
 import useConfigStore from "@/store/config";
-import { Toast } from "antd-mobile";
+import { message } from "antd";
+
 interface FormParams {
   password?: string;
 }
@@ -307,9 +308,7 @@ export function useData() {
       onShowWifiItemInfo(wifiItem);
     } else {
       if (state.connectLoading) {
-        Toast.show({
-          content: "The current operation is prohibited",
-        });
+        message.info("The current operation is prohibited");
         return;
       }
       onHandleConnect(item.list, index);

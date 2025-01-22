@@ -58,7 +58,7 @@ function Security() {
         </div>
         <div className="flex justify-center">
           <Button onClick={() => onEdit(IFormTypeEnum.Password)}>
-            <span className="text-333">Change Password</span>
+            <span className="text-3d">Change Password</span>
           </Button>
         </div>
       </div>

@@ -1,12 +1,30 @@
 import { supervisorRequest } from "@/utils/request";
 import { PowerMode, DeviceChannleMode, IsUpgrading } from "@/enum";
-import { IDeviceInfo, IChannelParams, IServiceStatus } from "./device";
+import {
+  IDeviceInfo,
+  IChannelParams,
+  IServiceStatus,
+  IIPDevice,
+} from "./device";
 
 // 获取设备信息
-export const getDeviceInfoApi = async () =>
+export const queryDeviceInfoApi = async () =>
   supervisorRequest<IDeviceInfo>(
     {
       url: "api/deviceMgr/queryDeviceInfo",
+      method: "get",
+    },
+    {
+      catchs: true,
+    }
+  );
+
+export const getDeviceListApi = async () =>
+  supervisorRequest<{
+    deviceList: IIPDevice[];
+  }>(
+    {
+      url: "api/deviceMgr/getDeviceList",
       method: "get",
     },
     {
@@ -81,11 +99,16 @@ export const getSystemUpdateVesionInfoApi = async (data: {
     osVersion: string;
     downloadUrl: string;
     isUpgrading: IsUpgrading;
-  }>({
-    url: "api/deviceMgr/getSystemUpdateVesionInfo",
-    method: "post",
-    data,
-  });
+  }>(
+    {
+      url: "api/deviceMgr/getSystemUpdateVesionInfo",
+      method: "post",
+      data,
+    },
+    {
+      catchs: true,
+    }
+  );
 
 // 获取设备信息
 export const getModelInfoApi = async () =>

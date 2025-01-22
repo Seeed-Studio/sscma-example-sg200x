@@ -5,7 +5,7 @@ import EditImg from "@/assets/images/svg/edit.svg";
 import { Form, Input, Button } from "antd-mobile";
 import { FormInstance } from "antd-mobile/es/components/form";
 import useConfigStore from "@/store/config";
-import { updateDeviceInfoApi, getDeviceInfoApi } from "@/api/device/index";
+import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
 import { getWifiStatusApi } from "@/api/network";
 import { requiredTrimValidate } from "@/utils/validate";
 
@@ -31,7 +31,7 @@ function Header() {
     formRef.current?.resetFields();
   };
   const onQueryDeviceInfo = async () => {
-    const res = await getDeviceInfoApi();
+    const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
   };
   const getWifiStatus = async () => {

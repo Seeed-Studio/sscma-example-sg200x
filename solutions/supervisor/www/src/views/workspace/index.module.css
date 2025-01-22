@@ -27,7 +27,8 @@
     position: absolute;
     top: 8px;
     left: 20px;
-    border-radius: 0;
+    color: #8fc31f;
+    border: none;
 }
 
 .dashboard {

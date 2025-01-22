@@ -15,7 +15,7 @@ type UserStoreType = {
   updateFirstLogin: (firstLogin: boolean) => void;
   updateUserInfo: (userInfo: UserInfo) => void;
   setCurrentSn: (sn: string) => void;
-  getUserInfoBySn: (sn: string) => UserInfo | undefined;
+  // getUserInfoBySn: (sn: string) => UserInfo | undefined;
   updateUserName: (userName: string | null) => void;
   updatePassword: (password: string | null) => void;
   updateToken: (token: string | null) => void;
@@ -40,8 +40,22 @@ const useUserStore = create<UserStoreType>()(
           });
         }
       },
-      setCurrentSn: (sn: string) => set(() => ({ currentSn: sn })),
-      getUserInfoBySn: (sn: string) => get().usersBySn[sn],
+      setCurrentSn: (sn: string) => {
+        const { usersBySn } = get();
+        if (sn) {
+          const currentUser = usersBySn[sn] || {};
+          set({
+            currentSn: sn,
+            usersBySn: {
+              ...usersBySn,
+              [sn]: {
+                ...currentUser,
+              },
+            },
+          });
+        }
+      },
+      // getUserInfoBySn: (sn: string) => get().usersBySn[sn],
       updateUserName: (userName: string | null) => {
         const { currentSn, usersBySn } = get();
         if (currentSn) {
@@ -114,8 +128,8 @@ const useUserStore = create<UserStoreType>()(
   )
 );
 
-export const getUserInfoBySN = (sn: string) =>
-  useUserStore.getState().usersBySn?.[sn] ?? {};
+// export const getUserInfoBySN = (sn: string) =>
+//   useUserStore.getState().usersBySn?.[sn] ?? {};
 
 export const getToken = () => {
   const { currentSn, usersBySn } = useUserStore.getState();

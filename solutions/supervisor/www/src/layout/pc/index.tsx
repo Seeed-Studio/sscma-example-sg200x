@@ -9,7 +9,7 @@ import TerminalImg from "@/assets/images/svg/terminal.svg";
 import SystemImg from "@/assets/images/svg/system.svg";
 import PowerImg from "@/assets/images/svg/power.svg";
 import ApplicationImg from "@/assets/images/svg/application.svg";
-import { updateDeviceInfoApi, getDeviceInfoApi } from "@/api/device/index";
+import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
 import { requiredTrimValidate } from "@/utils/validate";
 import { getWifiStatusApi } from "@/api/network";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -47,7 +47,7 @@ const PCLayout: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();
 
   const onQueryDeviceInfo = async () => {
-    const res = await getDeviceInfoApi();
+    const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
   };
 
