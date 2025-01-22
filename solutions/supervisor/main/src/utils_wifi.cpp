@@ -700,8 +700,8 @@ int connectWiFi(HttpRequest* req, HttpResponse* resp) {
     bool status = true;
     int id = 0, connecting = 0, connectCnt = 0, ipAssignmentCnt = 0;
     FILE* fp;
-    char info[128];
-    char cmd[128] = "";
+    char info[256];
+    char cmd[256] = "";
 
     if (g_wifiConnecting) {
         std::string wifiStatus = getWifiConnectStatus();
