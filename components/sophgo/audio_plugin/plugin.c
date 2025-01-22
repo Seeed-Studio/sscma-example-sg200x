@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cvi_ain.h"
+#include "cvi_aio.h"
 
 typedef struct cvi_pcm_plugin {
     snd_pcm_ioplug_t io;
@@ -28,13 +28,13 @@ static int init(cvi_pcm_plugin_t* plugin) {
 
 static int start(snd_pcm_ioplug_t* io) {
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
-    cvi_audio_init(&plugin->ain);
+    cvi_ain_init(&plugin->ain);
     return 0;
 }
 
 static int stop(snd_pcm_ioplug_t* io) {
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
-    cvi_audio_deinit(&plugin->ain);
+    cvi_ain_deinit(&plugin->ain);
     return 0;
 }
 
@@ -58,8 +58,7 @@ static snd_pcm_sframes_t transfer(snd_pcm_ioplug_t* io, const snd_pcm_channel_ar
     addr += offset * bytes_per_frame;
 
     AUDIO_FRAME_S stFrame;
-    AEC_FRAME_S stAecFrm;
-    if (CVI_SUCCESS == cvi_audio_get_frame(&plugin->ain, &stFrame, &stAecFrm)) {
+    if (CVI_SUCCESS == cvi_ain_get_frame(&plugin->ain, &stFrame)) {
         read_bytes = stFrame.u32Len * plugin->channels * bytes_per_frame;
         // printf("%s,%d: read_bytes=%d\n", __FUNCTION__, __LINE__, read_bytes);
         if (read_bytes > total_bytes) {
