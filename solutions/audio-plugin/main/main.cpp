@@ -4,11 +4,11 @@
 #include <iostream>
 
 #include "audio.h"
+#include "cvi_aio.h"
 
-#define SAMPLE_RATE 16000
-#define CHANNELS 1
-#define FORMAT SND_PCM_FORMAT_S16_LE
-#define DURATION 5
+// #define CHANNELS 1
+// #define SAMPLE_RATE 16000
+// #define PERIOD_SIZE 100 // 100ms
 
 // WAV 文件头结构
 struct WAVHeader {
@@ -28,7 +28,7 @@ struct WAVHeader {
 };
 
 // WAV 文件写入
-void write_wav_header(std::ofstream& file, unsigned int data_size)
+static void write_wav_header(std::ofstream& file, unsigned int data_size)
 {
     WAVHeader header;
     std::memset(&header, 0, sizeof(header));
@@ -51,178 +51,120 @@ void write_wav_header(std::ofstream& file, unsigned int data_size)
     file.write(reinterpret_cast<char*>(&header), sizeof(header));
 }
 
-typedef struct cvi_ain {
-    int AiDev;
-    int AiChn;
-    AIO_ATTR_S stAudinAttr;
-    AI_TALKVQE_CONFIG_S stAiVqeTalkAttr;
-} cvi_ain_t;
-
-static CVI_BOOL _update_agc_anr_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
+static int ain(const char* filename, uint32_t time_ms)
 {
-    if (pstAiVqeTalkAttr == NULL)
-        return CVI_FALSE;
-
-    pstAiVqeTalkAttr->u32OpenMask |= (NR_ENABLE | AGC_ENABLE | DCREMOVER_ENABLE);
-
-    AUDIO_AGC_CONFIG_S st_AGC_Setting;
-    AUDIO_ANR_CONFIG_S st_ANR_Setting;
-
-    st_AGC_Setting.para_agc_max_gain = 0;
-    st_AGC_Setting.para_agc_target_high = 2;
-    st_AGC_Setting.para_agc_target_low = 72;
-    st_AGC_Setting.para_agc_vad_ena = CVI_TRUE;
-    st_ANR_Setting.para_nr_snr_coeff = 15;
-    st_ANR_Setting.para_nr_init_sile_time = 0;
-
-    pstAiVqeTalkAttr->stAgcCfg = st_AGC_Setting;
-    pstAiVqeTalkAttr->stAnrCfg = st_ANR_Setting;
-
-    pstAiVqeTalkAttr->para_notch_freq = 0;
-    printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
-    return CVI_TRUE;
-}
-
-static CVI_BOOL _update_aec_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
-{
-    if (pstAiVqeTalkAttr == NULL)
-        return CVI_FALSE;
-
-    AI_AEC_CONFIG_S default_AEC_Setting;
-
-    memset(&default_AEC_Setting, 0, sizeof(AI_AEC_CONFIG_S));
-    default_AEC_Setting.para_aec_filter_len = 13;
-    default_AEC_Setting.para_aes_std_thrd = 37;
-    default_AEC_Setting.para_aes_supp_coeff = 60;
-    pstAiVqeTalkAttr->stAecCfg = default_AEC_Setting;
-    pstAiVqeTalkAttr->u32OpenMask = LP_AEC_ENABLE | NLP_AES_ENABLE | NR_ENABLE | AGC_ENABLE;
-    printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
-    return CVI_FALSE;
-}
-
-CVI_S32 cvi_audio_params(cvi_ain_t* ain)
-{
-    AIO_ATTR_S* pstAudinAttr = &ain->stAudinAttr;
-    AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr = &ain->stAiVqeTalkAttr;
-
-    ain->AiDev = 0;
-    ain->AiChn = 0;
-
-    // AIO_ATTR_S AudinAttr;
-    pstAudinAttr->enSamplerate = (AUDIO_SAMPLE_RATE_E)SAMPLE_RATE;
-    pstAudinAttr->u32ChnCnt = 3;
-    pstAudinAttr->enSoundmode = AUDIO_SOUND_MODE_MONO;
-    pstAudinAttr->enBitwidth = AUDIO_BIT_WIDTH_16;
-    pstAudinAttr->enWorkmode = AIO_MODE_I2S_MASTER;
-    pstAudinAttr->u32EXFlag = 0;
-    pstAudinAttr->u32FrmNum = 10; /* only use in bind mode */
-    pstAudinAttr->u32PtNumPerFrm = SAMPLE_RATE; /* sample_rate/fps */
-    pstAudinAttr->u32ClkSel = 0;
-    pstAudinAttr->enI2sType = AIO_I2STYPE_INNERCODEC;
-
-    // vqe
-    memset(pstAiVqeTalkAttr, 0, sizeof(AI_TALKVQE_CONFIG_S));
-
-    pstAiVqeTalkAttr->s32WorkSampleRate = SAMPLE_RATE;
-    _update_agc_anr_setting(pstAiVqeTalkAttr);
-    _update_aec_setting(pstAiVqeTalkAttr);
-
-    return 0;
-}
-
-CVI_S32 cvi_audio_init(cvi_ain_t* ain)
-{
-    int AiDev = ain->AiDev;
-    int AiChn = ain->AiChn;
-    int s32Ret = 0;
-
-    s32Ret = CVI_AUDIO_INIT();
-    if (s32Ret != CVI_SUCCESS) {
+    cvi_ain_t ain;
+    CVI_S32 s32Ret = cvi_ain_init(&ain);
+    if (CVI_SUCCESS != s32Ret) {
         printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
+        return s32Ret;
     }
 
-    s32Ret = CVI_AI_SetPubAttr(AiDev, &ain->stAudinAttr);
-    if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
-    }
-    s32Ret = CVI_AI_Enable(AiDev);
-    if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
-    }
+    std::ofstream out_file(filename, std::ios::binary);
+    uint32_t frames = time_ms / ain.period;
+    uint32_t sample_size = ain.ch_cnt * ain.bytes_per_sample;
+    uint32_t data_size = frames * ain.stAudinAttr.u32PtNumPerFrm * sample_size;
 
-    s32Ret = CVI_AI_EnableChn(AiDev, AiChn);
-    if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR2;
-    }
+    write_wav_header(out_file, data_size);
 
-    s32Ret = CVI_AI_SetTalkVqeAttr(AiDev, AiChn, 0, 0, &ain->stAiVqeTalkAttr);
-    if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR1;
+    for (int i = 0; i < frames; i++) {
+        AUDIO_FRAME_S stFrame;
+        if (cvi_ain_get_frame(&ain, &stFrame)) {
+            printf("cvi_audio_get_frame error\n");
+            break;
+        }
+        printf("[%d]stFrame.u32Len:%d\n", i, stFrame.u32Len);
+        out_file.write((const char*)stFrame.u64VirAddr[0], stFrame.u32Len * sample_size);
     }
 
-    s32Ret = CVI_AI_EnableVqe(AiDev, AiChn);
-    if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR1;
-    }
-
-    return 0;
-
-ERROR1:
-    CVI_AI_DisableVqe(AiDev, AiChn);
-    CVI_AI_DisableChn(AiDev, AiChn);
-ERROR2:
-    CVI_AI_Disable(AiDev);
-ERROR3:
-    CVI_AUDIO_DEINIT();
+    out_file.close();
+    cvi_ain_deinit(&ain);
 
     return s32Ret;
 }
 
-CVI_S32 cvi_audio_get_frame(cvi_ain_t* ain, AUDIO_FRAME_S* pstFrame, AEC_FRAME_S* pstAecFrm)
+static int aout(const char* filename)
 {
-    return CVI_AI_GetFrame(ain->AiDev, ain->AiChn, pstFrame, pstAecFrm, -1);
-}
+    cvi_aout_t aout;
+    CVI_S32 s32Ret = cvi_aout_init(&aout);
+    if (CVI_SUCCESS != s32Ret) {
+        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
+        return s32Ret;
+    }
 
-CVI_S32 cvi_audio_deinit(cvi_ain_t* ain)
-{
-    CVI_AI_DisableVqe(ain->AiDev, ain->AiChn);
-    CVI_AI_DisableChn(ain->AiDev, ain->AiChn);
-    CVI_AI_Disable(ain->AiDev);
-    CVI_AUDIO_DEINIT();
+    printf("u32PtNumPerFrm=%d\n", aout.stAudoutAttr.u32PtNumPerFrm);
+    uint32_t sample_bytes = aout.ch_cnt * aout.bytes_per_sample;
+    CVI_S32 frame_bytes = aout.stAudoutAttr.u32PtNumPerFrm * sample_bytes;
+    printf("sample_bytes=%d\n", sample_bytes);
+    printf("frame_bytes=%d\n", frame_bytes);
 
-    return 0;
+    char* pBuffer = NULL;
+    WAVHeader header;
+    uint32_t wav_sample_bytes;
+    uint32_t wav_samples;
+    std::ifstream in_file(filename, std::ios::binary);
+    in_file.read(reinterpret_cast<char*>(&header), sizeof(WAVHeader));
+    if (*(int*)header.wave != 0x45564157) {
+        printf("Not a wav file\n");
+        goto EXIT_AOUT;
+    }
+    wav_sample_bytes = (header.bits_per_sample / 8) * header.num_channels;
+    wav_samples = header.data_size / wav_sample_bytes;
+    printf("wav header.data_size=%d\n", header.data_size);
+    printf("wav_sample_bytes=%d\n", wav_sample_bytes);
+    printf("wav_samples=%d\n", wav_samples);
+
+    pBuffer = (char*)malloc(frame_bytes);
+    if (pBuffer == NULL) {
+        printf("malloc error\n");
+        goto EXIT_AOUT;
+    }
+    for (uint32_t i = 0; i < wav_samples / aout.stAudoutAttr.u32PtNumPerFrm; i++) {
+        memset(pBuffer, 0, frame_bytes);
+        in_file.read(pBuffer, frame_bytes);
+        uint32_t readbytes = static_cast<uint32_t>(in_file.gcount());
+        if (readbytes <= 0)
+            break;
+
+        printf("[%d]readbytes=%d, frame_bytes=%d\n", i, readbytes, frame_bytes);
+
+        AUDIO_FRAME_S stFrame;
+        stFrame.u64VirAddr[0] = (CVI_U8*)pBuffer;
+        stFrame.u32Len = aout.stAudoutAttr.u32PtNumPerFrm;
+        stFrame.u64TimeStamp = 0;
+        stFrame.enSoundmode = aout.stAudoutAttr.enSoundmode;
+        stFrame.enBitwidth = AUDIO_BIT_WIDTH_16;
+        s32Ret = cvi_aout_put_frame(&aout, &stFrame);
+        if (s32Ret != CVI_SUCCESS) {
+            printf("[cvi_info] CVI_AO_SendFrame failed with %#x!\n", s32Ret);
+        }
+    }
+    free(pBuffer);
+
+EXIT_AOUT:
+    in_file.close();
+    cvi_aout_deinit(&aout);
+
+    return s32Ret;
 }
 
 int main(int argc, char* argv[])
 {
-    std::ofstream out_file("cvi_ain.wav", std::ios::binary);
-
-    write_wav_header(out_file, DURATION * SAMPLE_RATE * CHANNELS * 2);
-
-    cvi_ain_t ain;
-    AUDIO_FRAME_S stFrame;
-    AEC_FRAME_S stAecFrm;
-
-    cvi_audio_params(&ain);
-    cvi_audio_init(&ain);
-
-    for (int i = 0; i < DURATION; i++) {
-        if (cvi_audio_get_frame(&ain, &stFrame, &stAecFrm)) {
-            printf("cvi_audio_get_frame error\n");
-            return -1;
-        }
-        printf("stFrame.u32Len:%d\n", stFrame.u32Len);
-        out_file.write((const char*)stFrame.u64VirAddr[0], stFrame.u32Len * CHANNELS * 2);
+    CVI_S32 s32Ret = CVI_AUDIO_INIT();
+    if (s32Ret != CVI_SUCCESS) {
+        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
+        return s32Ret;
     }
 
-    cvi_audio_deinit(&ain);
-    out_file.close();
+    if (argc == 1) {
+        printf("Record: cvi_ain.wav\n");
+        ain("cvi_ain.wav", 5000 /*ms*/);
+    } else {
+        printf("Play: %s\n", argv[1]);
+        aout(argv[1]);
+    }
 
+EXIT:
+    CVI_AUDIO_DEINIT();
     return 0;
 }
