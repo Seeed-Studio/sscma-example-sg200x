@@ -23,8 +23,6 @@ const infoList = [
 ];
 function System() {
   const {
-    // state,
-    // setStates,
     deviceInfo,
     addressFormRef,
     onEditServerAddress,

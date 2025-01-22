@@ -107,7 +107,7 @@ const Loading = ({
               strokeColor={"#8FC31F"}
             />
           )}
-          <div className="text-16 mx-12">
+          <div className="text-16 mx-12 text-center">
             Please wait for node-red service to get start, it takes around 1 and
             an half minutes.
           </div>

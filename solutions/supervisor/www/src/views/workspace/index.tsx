@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-// import { useNavigate } from "react-router-dom";
 import {
   Modal,
   Button,
@@ -29,7 +28,6 @@ import {
   uploadModelApi,
 } from "@/api/device";
 import { IIPDevice } from "@/api/device/device";
-import { getWifiStatusApi } from "@/api/network";
 import {
   getFlows,
   saveFlows,
@@ -70,10 +68,9 @@ function isValidType(type: string): type is keyof typeof typePriority {
 }
 
 const Workspace = () => {
-  // const navigate = useNavigate();
   const { token, appInfo, nickname, updateAppInfo, updateNickname } =
     usePlatformStore();
-  const { deviceInfo, updateDeviceInfo, updateWifiStatus } = useConfigStore();
+  const { deviceInfo, updateDeviceInfo } = useConfigStore();
 
   const [actionInfo, setActionInfo] = useState<IActionInfo | null>(null);
 
@@ -143,13 +140,7 @@ const Workspace = () => {
   }, []);
 
   useEffect(() => {
-    const getStatus = async () => {
-      try {
-        let { data } = await getWifiStatusApi();
-        updateWifiStatus(data.status);
-      } catch (error) {
-        console.error("Error fetching WiFi status:", error);
-      }
+    const getDeviceList = async () => {
       try {
         let { data } = await getDeviceListApi();
         const deviceList = data.deviceList.map((device) => {
@@ -202,11 +193,11 @@ const Workspace = () => {
         console.error("Error fetching DeviceList status:", error);
       }
     };
-    getStatus();
-    const intervalId = setInterval(getStatus, 15000);
+    getDeviceList();
+    const intervalId = setInterval(getDeviceList, 15000);
     // 移除定时器
     return () => clearInterval(intervalId);
-  }, []);
+  }, [deviceInfo?.sn]);
 
   // 自动保存
   useEffect(() => {
