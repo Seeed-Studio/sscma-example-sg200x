@@ -4,12 +4,18 @@
 #include "audio.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define CHANNELS 1
 #define SAMPLE_RATE 16000
+
+#ifdef DEBUG
+#define CVI_AIO_DBG(...) printf(__VA_ARGS__)
+#else
+#define CVI_AIO_DBG(...)
+#endif
+#define CVI_AIO_ERR(...) printf(__VA_ARGS__)
 
 typedef struct cvi_ain {
     int ch_cnt;

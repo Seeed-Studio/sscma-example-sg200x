@@ -49,7 +49,7 @@ static int ain(const char* filename, uint32_t time_ms)
     cvi_ain_t ain;
     CVI_S32 s32Ret = cvi_ain_init(&ain);
     if (CVI_SUCCESS != s32Ret) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
+        CVI_AIO_DBG("[error],[%s],[line:%d],\n", __func__, __LINE__);
         return s32Ret;
     }
 
@@ -63,10 +63,10 @@ static int ain(const char* filename, uint32_t time_ms)
     for (int i = 0; i < frames; i++) {
         AUDIO_FRAME_S stFrame;
         if (cvi_ain_get_frame(&ain, &stFrame)) {
-            printf("cvi_audio_get_frame error\n");
+            CVI_AIO_DBG("cvi_audio_get_frame error\n");
             break;
         }
-        printf("[%d]stFrame.u32Len:%d\n", i, stFrame.u32Len);
+        CVI_AIO_DBG("[%d]stFrame.u32Len:%d\n", i, stFrame.u32Len);
         out_file.write((const char*)stFrame.u64VirAddr[0], stFrame.u32Len * sample_size);
     }
 
@@ -81,7 +81,7 @@ static int aout(const char* filename)
     cvi_aout_t aout;
     CVI_S32 s32Ret = cvi_aout_init(&aout);
     if (CVI_SUCCESS != s32Ret) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
+        CVI_AIO_DBG("[error],[%s],[line:%d],\n", __func__, __LINE__);
         return s32Ret;
     }
 
@@ -91,15 +91,15 @@ static int aout(const char* filename)
     std::ifstream in_file(filename, std::ios::binary);
     in_file.read(reinterpret_cast<char*>(&header), sizeof(WAVHeader));
     if (*(int*)header.wave != 0x45564157) {
-        printf("Not a wav file\n");
+        CVI_AIO_DBG("Not a wav file\n");
         goto EXIT_AOUT;
     }
     wav_sample_bytes = (header.bits_per_sample / 8) * header.num_channels;
     wav_samples = header.data_size / wav_sample_bytes;
-    printf("wav header.data_size=%d\n", header.data_size);
-    printf("wav_sample_bytes=%d\n", wav_sample_bytes);
-    printf("wav_samples=%d\n", wav_samples);
-    printf("frame_size=%d\n", aout.frame_size);
+    CVI_AIO_DBG("wav header.data_size=%d\n", header.data_size);
+    CVI_AIO_DBG("wav_sample_bytes=%d\n", wav_sample_bytes);
+    CVI_AIO_DBG("wav_samples=%d\n", wav_samples);
+    CVI_AIO_DBG("frame_size=%d\n", aout.frame_size);
 
     for (uint32_t i = 0; i < wav_samples / aout.stAudoutAttr.u32PtNumPerFrm; i++) {
         memset(aout.frame_buf, 0, aout.frame_size);
@@ -107,10 +107,10 @@ static int aout(const char* filename)
         uint32_t readbytes = static_cast<uint32_t>(in_file.gcount());
         if (readbytes <= 0)
             break;
-        printf("[%d]readbytes=%d\n", i, readbytes);
+        CVI_AIO_DBG("[%d]readbytes=%d\n", i, readbytes);
         s32Ret = cvi_aout_put_frame(&aout);
         if (s32Ret != CVI_SUCCESS) {
-            printf("[cvi_info] CVI_AO_SendFrame failed with %#x!\n", s32Ret);
+            CVI_AIO_DBG("[cvi_info] CVI_AO_SendFrame failed with %#x!\n", s32Ret);
         }
     }
 
@@ -124,10 +124,10 @@ EXIT_AOUT:
 int main(int argc, char* argv[])
 {
     if (argc == 1) {
-        printf("Record: cvi_ain.wav\n");
+        CVI_AIO_DBG("Record: cvi_ain.wav\n");
         ain("cvi_ain.wav", 5000 /*ms*/);
     } else {
-        printf("Play: %s\n", argv[1]);
+        CVI_AIO_DBG("Play: %s\n", argv[1]);
         aout(argv[1]);
     }
 

@@ -31,16 +31,14 @@ static int init(cvi_pcm_plugin_t* plugin)
 static int start(snd_pcm_ioplug_t* io)
 {
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
-    printf("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
+    CVI_AIO_DBG("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
     if (io->stream == SND_PCM_STREAM_CAPTURE) {
-        printf("%s,%d\n", __FUNCTION__, __LINE__);
         if (CVI_SUCCESS != cvi_ain_init(&plugin->ain)) {
             return -EINVAL;
         }
         plugin->frames_count = plugin->ain.stAudinAttr.u32PtNumPerFrm;
-        printf("%s,%d: frames_count=%d\n", __FUNCTION__, __LINE__, plugin->frames_count);
     } else if (io->stream == SND_PCM_STREAM_PLAYBACK) {
-        // printf("%s,%d\n", __FUNCTION__, __LINE__);
+        // CVI_AIO_DBG("%s,%d\n", __FUNCTION__, __LINE__);
         // if (CVI_SUCCESS != cvi_aout_init(&plugin->aout)) {
         //     return -EINVAL;
         // }
@@ -52,7 +50,7 @@ static int start(snd_pcm_ioplug_t* io)
 static int stop(snd_pcm_ioplug_t* io)
 {
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
-    printf("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
+    CVI_AIO_DBG("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
     if (io->stream == SND_PCM_STREAM_CAPTURE) {
         if (CVI_SUCCESS != cvi_ain_deinit(&plugin->ain)) {
             return -EINVAL;
@@ -69,7 +67,7 @@ static int stop(snd_pcm_ioplug_t* io)
 static snd_pcm_sframes_t pointer(snd_pcm_ioplug_t* io)
 {
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
-    printf("%s,%d: [%s]frames_count=%d\n", __FUNCTION__, __LINE__,
+    CVI_AIO_DBG("%s,%d: [%s]frames_count=%d\n", __FUNCTION__, __LINE__,
         (io->stream == SND_PCM_STREAM_PLAYBACK) ? "play" : "cap", plugin->frames_count);
     return plugin->frames_count;
 }
@@ -80,7 +78,7 @@ static snd_pcm_sframes_t transfer_in(snd_pcm_ioplug_t* io, const snd_pcm_channel
     size_t bytes_per_frame = snd_pcm_format_width(plugin->format) / 8 * plugin->channels;
     size_t total_bytes = frames * bytes_per_frame;
 
-    printf("%s,%d: offset=%d, frames=%d, bytes_per_frame=%d, total_bytes=%d\n", __FUNCTION__, __LINE__,
+    CVI_AIO_DBG("%s,%d: offset=%d, frames=%d, bytes_per_frame=%d, total_bytes=%d\n", __FUNCTION__, __LINE__,
         offset, frames, bytes_per_frame, total_bytes);
 
     size_t read_bytes = 0;
@@ -91,18 +89,18 @@ static snd_pcm_sframes_t transfer_in(snd_pcm_ioplug_t* io, const snd_pcm_channel
     AUDIO_FRAME_S stFrame;
     if (CVI_SUCCESS == cvi_ain_get_frame(&plugin->ain, &stFrame)) {
         read_bytes = stFrame.u32Len * plugin->channels * bytes_per_frame;
-        printf("%s,%d: read_bytes=%d\n", __FUNCTION__, __LINE__, read_bytes);
+        CVI_AIO_DBG("%s,%d: read_bytes=%d\n", __FUNCTION__, __LINE__, read_bytes);
         if (read_bytes > total_bytes) { // ToDo: need fifo
             read_bytes = total_bytes;
         }
         memcpy(addr, stFrame.u64VirAddr[0], read_bytes);
         frames = read_bytes / bytes_per_frame;
-        printf("%s,%d: frames=%d\n", __FUNCTION__, __LINE__, frames);
+        CVI_AIO_DBG("%s,%d: frames=%d\n", __FUNCTION__, __LINE__, frames);
     }
     if (read_bytes < total_bytes) {
         memset(addr + read_bytes, 0, total_bytes - read_bytes);
         frames = total_bytes / bytes_per_frame;
-        printf("%s,%d: frames=%d\n", __FUNCTION__, __LINE__, frames);
+        CVI_AIO_DBG("%s,%d: frames=%d\n", __FUNCTION__, __LINE__, frames);
     }
     plugin->frames_count += frames;
 
@@ -119,7 +117,7 @@ static snd_pcm_sframes_t transfer_out(snd_pcm_ioplug_t* io, const snd_pcm_channe
         return 0;
     }
 
-    printf("%s,%d: offset=%d, frames=%d, bytes_per_frame=%d, total_bytes=%d\n", __FUNCTION__, __LINE__,
+    CVI_AIO_DBG("%s,%d: offset=%d, frames=%d, bytes_per_frame=%d, total_bytes=%d\n", __FUNCTION__, __LINE__,
         offset, frames, bytes_per_frame, total_bytes);
 
     unsigned char* addr = areas[0].addr;
@@ -131,11 +129,11 @@ static snd_pcm_sframes_t transfer_out(snd_pcm_ioplug_t* io, const snd_pcm_channe
     if (total_bytes % write_bytes) {
         count++;
     }
-    printf("%s,%d: write_bytes=%d, count=%d\n", __FUNCTION__, __LINE__, write_bytes, count);
+    CVI_AIO_DBG("%s,%d: write_bytes=%d, count=%d\n", __FUNCTION__, __LINE__, write_bytes, count);
 
     frames = 0;
     for (uint32_t i = 0; i < count; i++) {
-        printf("%s,%d: [%d]write_bytes=%d\n", __FUNCTION__, __LINE__, i, write_bytes);
+        CVI_AIO_DBG("%s,%d: [%d]write_bytes=%d\n", __FUNCTION__, __LINE__, i, write_bytes);
         memset(plugin->aout.frame_buf, 0, write_bytes);
         memcpy(plugin->aout.frame_buf, addr + (i * write_bytes), total_bytes - (i * write_bytes));
         if (cvi_aout_put_frame(&plugin->aout) != CVI_SUCCESS) {
@@ -143,16 +141,15 @@ static snd_pcm_sframes_t transfer_out(snd_pcm_ioplug_t* io, const snd_pcm_channe
         }
         frames += write_bytes / bytes_per_frame;
     }
-    printf("%s,%d: frames=%d\n", __FUNCTION__, __LINE__, frames);
+    CVI_AIO_DBG("%s,%d: frames=%d\n", __FUNCTION__, __LINE__, frames);
     plugin->frames_count += frames;
-    printf("%s,%d\n", __FUNCTION__, __LINE__);
 
     return frames;
 }
 
 static snd_pcm_sframes_t transfer(snd_pcm_ioplug_t* io, const snd_pcm_channel_area_t* areas, snd_pcm_uframes_t offset, snd_pcm_uframes_t frames)
 {
-    printf("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
+    CVI_AIO_DBG("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
     if (io->stream == SND_PCM_STREAM_CAPTURE) {
         return transfer_in(io, areas, offset, frames);
     } else if (io->stream == SND_PCM_STREAM_PLAYBACK) {
@@ -162,7 +159,7 @@ static snd_pcm_sframes_t transfer(snd_pcm_ioplug_t* io, const snd_pcm_channel_ar
 
 static int close_cb(snd_pcm_ioplug_t* io)
 {
-    printf("%s,%d\n", __FUNCTION__, __LINE__);
+    CVI_AIO_DBG("%s,%d\n", __FUNCTION__, __LINE__);
     cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
     free(plugin);
 
@@ -173,7 +170,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
 {
     int err = 0;
 
-    printf("%s,%d: %s\n", __FUNCTION__, __LINE__, __TIME__);
+    CVI_AIO_DBG("%s,%d: %s\n", __FUNCTION__, __LINE__, __TIME__);
     cvi_pcm_plugin_t* plugin = calloc(1, sizeof(*plugin));
     if (!plugin) {
         SNDERR("Failed to allocate memory for plugin");
@@ -202,14 +199,16 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
     io->callback = &callback;
     io->private_data = plugin;
 
-    printf("%s,%d: name=%s, stream=%d, mode=%d\n", __FUNCTION__, __LINE__, name, stream, mode);
+    CVI_AIO_DBG("%s,%d: name=%s, stream=%d, mode=%d\n", __FUNCTION__, __LINE__, name, stream, mode);
     err = snd_pcm_ioplug_create(&plugin->io, name, stream, mode);
     if (stream == SND_PCM_STREAM_CAPTURE) {
         plugin->frames_count = 1600;
     } else {
         plugin->frames_count = 0;
         snd_pcm_ioplug_set_state(&plugin->io, SND_PCM_STATE_RUNNING);
-        if (CVI_SUCCESS != cvi_aout_init(&plugin->aout)) {
+        err = cvi_aout_init(&plugin->aout);
+        if (CVI_SUCCESS != err) {
+            SNDERR("cvi_aout_init, err=%d", err);
             goto exit;
         }
     }
