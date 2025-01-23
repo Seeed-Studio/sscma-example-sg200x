@@ -9,6 +9,7 @@ import {
   queryDeviceInfoApi,
   getSystemUpdateVesionInfoApi,
 } from "@/api/device/index";
+import { parseUrlParam } from "@/utils";
 import useUserStore from "@/store/user";
 import useConfigStore from "@/store/config";
 import { getUserInfoApi } from "@/api/user";
@@ -32,6 +33,13 @@ const App = () => {
   );
   const [isNewVersionModalOpen, setIsNewVersionModalOpen] = useState(false);
   const [newVersion, setNewVersion] = useState("");
+  const [isDisableLayout, setIsDisableLayout] = useState(true);
+
+  useEffect(() => {
+    const param = parseUrlParam(window.location.href);
+    const disablelayout = param.disablelayout;
+    setIsDisableLayout(disablelayout == 1);
+  }, []);
 
   useEffect(() => {
     initUserData();
@@ -121,10 +129,10 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (token && serviceStatus === ServiceStatus.RUNNING) {
+    if (token && serviceStatus === ServiceStatus.RUNNING && !isDisableLayout) {
       checkNewVersion();
     }
-  }, [token, serviceStatus]);
+  }, [token, serviceStatus, isDisableLayout]);
 
   const handleCancel = () => {
     setIsNewVersionModalOpen(false);
@@ -151,7 +159,7 @@ const App = () => {
       <div className="h-full">
         {token ? (
           <div className="h-full">
-            {serviceStatus === ServiceStatus.RUNNING ? (
+            {isDisableLayout || serviceStatus === ServiceStatus.RUNNING ? (
               <RouterProvider router={router} />
             ) : (
               <Loading onServiceStatusChange={handleServiceStatusChange} />
