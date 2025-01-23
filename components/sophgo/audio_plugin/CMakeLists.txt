@@ -3,7 +3,7 @@ set(AUDIO_PLUGIN_INC
 )
 
 file(GLOB AUDIO_PLUGIN_SRC
-    "${CMAKE_CURRENT_LIST_DIR}/cvi_ain.c"
+    "${CMAKE_CURRENT_LIST_DIR}/cvi_aio.c"
     "${CMAKE_CURRENT_LIST_DIR}/plugin.c"
 )
 

@@ -6,11 +6,6 @@
 #include "audio.h"
 #include "cvi_aio.h"
 
-// #define CHANNELS 1
-// #define SAMPLE_RATE 16000
-// #define PERIOD_SIZE 100 // 100ms
-
-// WAV 文件头结构
 struct WAVHeader {
     char riff[4]; // "RIFF"
     unsigned int size; // 4 + (8 + size of subchunks)
@@ -27,7 +22,6 @@ struct WAVHeader {
     unsigned int data_size; // num_samples * num_channels * bytes_per_sample
 };
 
-// WAV 文件写入
 static void write_wav_header(std::ofstream& file, unsigned int data_size)
 {
     WAVHeader header;
@@ -47,7 +41,6 @@ static void write_wav_header(std::ofstream& file, unsigned int data_size)
     std::strcpy(header.data, "data");
     header.data_size = data_size;
 
-    printf("0x%x\n", data_size);
     file.write(reinterpret_cast<char*>(&header), sizeof(header));
 }
 
@@ -92,13 +85,6 @@ static int aout(const char* filename)
         return s32Ret;
     }
 
-    printf("u32PtNumPerFrm=%d\n", aout.stAudoutAttr.u32PtNumPerFrm);
-    uint32_t sample_bytes = aout.ch_cnt * aout.bytes_per_sample;
-    CVI_S32 frame_bytes = aout.stAudoutAttr.u32PtNumPerFrm * sample_bytes;
-    printf("sample_bytes=%d\n", sample_bytes);
-    printf("frame_bytes=%d\n", frame_bytes);
-
-    char* pBuffer = NULL;
     WAVHeader header;
     uint32_t wav_sample_bytes;
     uint32_t wav_samples;
@@ -113,33 +99,20 @@ static int aout(const char* filename)
     printf("wav header.data_size=%d\n", header.data_size);
     printf("wav_sample_bytes=%d\n", wav_sample_bytes);
     printf("wav_samples=%d\n", wav_samples);
+    printf("frame_size=%d\n", aout.frame_size);
 
-    pBuffer = (char*)malloc(frame_bytes);
-    if (pBuffer == NULL) {
-        printf("malloc error\n");
-        goto EXIT_AOUT;
-    }
     for (uint32_t i = 0; i < wav_samples / aout.stAudoutAttr.u32PtNumPerFrm; i++) {
-        memset(pBuffer, 0, frame_bytes);
-        in_file.read(pBuffer, frame_bytes);
+        memset(aout.frame_buf, 0, aout.frame_size);
+        in_file.read((char*)aout.frame_buf, aout.frame_size);
         uint32_t readbytes = static_cast<uint32_t>(in_file.gcount());
         if (readbytes <= 0)
             break;
-
-        printf("[%d]readbytes=%d, frame_bytes=%d\n", i, readbytes, frame_bytes);
-
-        AUDIO_FRAME_S stFrame;
-        stFrame.u64VirAddr[0] = (CVI_U8*)pBuffer;
-        stFrame.u32Len = aout.stAudoutAttr.u32PtNumPerFrm;
-        stFrame.u64TimeStamp = 0;
-        stFrame.enSoundmode = aout.stAudoutAttr.enSoundmode;
-        stFrame.enBitwidth = AUDIO_BIT_WIDTH_16;
-        s32Ret = cvi_aout_put_frame(&aout, &stFrame);
+        printf("[%d]readbytes=%d\n", i, readbytes);
+        s32Ret = cvi_aout_put_frame(&aout);
         if (s32Ret != CVI_SUCCESS) {
             printf("[cvi_info] CVI_AO_SendFrame failed with %#x!\n", s32Ret);
         }
     }
-    free(pBuffer);
 
 EXIT_AOUT:
     in_file.close();
@@ -150,12 +123,6 @@ EXIT_AOUT:
 
 int main(int argc, char* argv[])
 {
-    CVI_S32 s32Ret = CVI_AUDIO_INIT();
-    if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        return s32Ret;
-    }
-
     if (argc == 1) {
         printf("Record: cvi_ain.wav\n");
         ain("cvi_ain.wav", 5000 /*ms*/);
@@ -164,7 +131,5 @@ int main(int argc, char* argv[])
         aout(argv[1]);
     }
 
-EXIT:
-    CVI_AUDIO_DEINIT();
     return 0;
 }

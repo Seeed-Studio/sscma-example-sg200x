@@ -30,6 +30,8 @@ typedef struct cvi_aout {
     int bytes_per_sample;
     int period;
     bool vqe_on;
+    void* frame_buf;
+    uint32_t frame_size;
 
     CVI_S32 AoChn;
     CVI_S32 AoDev;
@@ -42,7 +44,7 @@ CVI_S32 cvi_ain_get_frame(cvi_ain_t* ain, AUDIO_FRAME_S* pstFrame);
 CVI_S32 cvi_ain_deinit(cvi_ain_t* ain);
 
 CVI_S32 cvi_aout_init(cvi_aout_t* aout);
-CVI_S32 cvi_aout_put_frame(cvi_aout_t* aout, const AUDIO_FRAME_S* pstFrame);
+CVI_S32 cvi_aout_put_frame(cvi_aout_t* aout);
 CVI_S32 cvi_aout_deinit(cvi_aout_t* aout);
 
 #ifdef __cplusplus

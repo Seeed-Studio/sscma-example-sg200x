@@ -2,6 +2,18 @@
 
 #include "cvi_aio.h"
 
+static CVI_S32 cvi_audio_init()
+{
+    printf("%s,%d\n", __func__, __LINE__);
+    return CVI_AUDIO_INIT();
+}
+
+static CVI_S32 cvi_audio_deinit()
+{
+    printf("%s,%d\n", __func__, __LINE__);
+    return CVI_AUDIO_DEINIT();
+}
+
 static CVI_BOOL _update_agc_anr_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
 {
     if (pstAiVqeTalkAttr == NULL)
@@ -23,7 +35,7 @@ static CVI_BOOL _update_agc_anr_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
     pstAiVqeTalkAttr->stAnrCfg = st_ANR_Setting;
 
     pstAiVqeTalkAttr->para_notch_freq = 0;
-    printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
+    // printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
     return CVI_TRUE;
 }
 
@@ -40,7 +52,7 @@ static CVI_BOOL _update_aec_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
     default_AEC_Setting.para_aes_supp_coeff = 60;
     pstAiVqeTalkAttr->stAecCfg = default_AEC_Setting;
     pstAiVqeTalkAttr->u32OpenMask = LP_AEC_ENABLE | NLP_AES_ENABLE | NR_ENABLE | AGC_ENABLE;
-    printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
+    // printf("pstAiVqeTalkAttr:u32OpenMask[0x%x]\n", pstAiVqeTalkAttr->u32OpenMask);
     return CVI_FALSE;
 }
 
@@ -77,53 +89,67 @@ static CVI_S32 cvi_ain_params(cvi_ain_t* ain)
     return 0;
 }
 
+static uint8_t _ain_inited = 0;
 CVI_S32 cvi_ain_init(cvi_ain_t* ain)
 {
+    printf("%s,%d: _ain_inited=%d\n", __func__, __LINE__, _ain_inited);
+    if (_ain_inited)
+        return CVI_SUCCESS;
+
     cvi_ain_params(ain);
 
     CVI_S32 AiDev = ain->AiDev;
     CVI_S32 AiChn = ain->AiChn;
-    CVI_S32 s32Ret = 0;
+
+    CVI_S32 s32Ret = cvi_audio_init();
+    if (s32Ret != CVI_SUCCESS) {
+        printf("[error],[%s],[line:%d]cvi_audio_init\n", __func__, __LINE__);
+        return s32Ret;
+    }
 
     s32Ret = CVI_AI_SetPubAttr(AiDev, &ain->stAudinAttr);
     if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
+        printf("[error],[%s],[line:%d]CVI_AI_SetPubAttr\n", __func__, __LINE__);
+        goto ERROR1;
     }
     s32Ret = CVI_AI_Enable(AiDev);
     if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
+        printf("[error],[%s],[line:%d]CVI_AI_Enable\n", __func__, __LINE__);
+        goto ERROR1;
     }
-
     s32Ret = CVI_AI_EnableChn(AiDev, AiChn);
     if (s32Ret != CVI_SUCCESS) {
-        printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
+        printf("[error],[%s],[line:%d]CVI_AI_EnableChn\n", __func__, __LINE__);
         goto ERROR2;
     }
 
     if (ain->vqe_on) {
         s32Ret = CVI_AI_SetTalkVqeAttr(AiDev, AiChn, 0, 0, &ain->stAiVqeTalkAttr);
         if (s32Ret != CVI_SUCCESS) {
-            printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-            goto ERROR1;
+            printf("[error],[%s],[line:%d]CVI_AI_SetTalkVqeAttr\n", __func__, __LINE__);
+            goto ERROR3;
         }
-
         s32Ret = CVI_AI_EnableVqe(AiDev, AiChn);
         if (s32Ret != CVI_SUCCESS) {
-            printf("[error],[%s],[line:%d],\n", __func__, __LINE__);
-            goto ERROR1;
+            printf("[error],[%s],[line:%d]CVI_AI_EnableVqe\n", __func__, __LINE__);
+            goto ERROR3;
         }
     }
 
+    _ain_inited = 1;
     return CVI_SUCCESS;
 
-ERROR1:
-    // CVI_AI_DisableVqe(AiDev, AiChn);
+ERROR4:
+    if (ain->vqe_on) {
+        CVI_AI_DisableVqe(AiDev, AiChn);
+    }
+ERROR3:
     CVI_AI_DisableChn(AiDev, AiChn);
 ERROR2:
     CVI_AI_Disable(AiDev);
-ERROR3:
+ERROR1:
+    cvi_audio_deinit();
+
     return s32Ret;
 }
 
@@ -134,11 +160,17 @@ CVI_S32 cvi_ain_get_frame(cvi_ain_t* ain, AUDIO_FRAME_S* pstFrame)
 
 CVI_S32 cvi_ain_deinit(cvi_ain_t* ain)
 {
+    printf("%s,%d: _ain_inited=%d\n", __func__, __LINE__, _ain_inited);
+    if (!_ain_inited)
+        return CVI_SUCCESS;
+
     if (ain->vqe_on) {
         CVI_AI_DisableVqe(ain->AiDev, ain->AiChn);
     }
     CVI_AI_DisableChn(ain->AiDev, ain->AiChn);
     CVI_AI_Disable(ain->AiDev);
+    cvi_audio_deinit();
+    _ain_inited = 0;
 
     return 0;
 }
@@ -204,7 +236,7 @@ static CVI_S32 cvi_aout_params(cvi_aout_t* aout)
     aout->sample_rate = SAMPLE_RATE;
     aout->bytes_per_sample = 2; // 16-bit
     aout->period = 10; // PERIOD_SIZE;
-    aout->vqe_on = CVI_TRUE;
+    aout->vqe_on = CVI_FALSE;
 
     aout->AoDev = 0;
     aout->AoChn = 0;
@@ -226,67 +258,111 @@ static CVI_S32 cvi_aout_params(cvi_aout_t* aout)
     return 0;
 }
 
+static uint8_t _aout_inited = 0;
 CVI_S32 cvi_aout_init(cvi_aout_t* aout)
 {
+    printf("%s,%d: _aout_inited=%d\n", __func__, __LINE__, _aout_inited);
+    if (_aout_inited)
+        return CVI_SUCCESS;
     cvi_aout_params(aout);
 
     CVI_S32 AoDev = aout->AoDev;
     CVI_S32 AoChn = aout->AoChn;
-    CVI_S32 s32Ret = 0;
+
+    CVI_S32 s32Ret = cvi_audio_init();
+    if (s32Ret != CVI_SUCCESS) {
+        printf("[error],[%s],[line:%d]cvi_audio_init\n", __func__, __LINE__);
+        return s32Ret;
+    }
 
     s32Ret = CVI_AO_SetPubAttr(AoDev, &aout->stAudoutAttr);
     if (s32Ret != CVI_SUCCESS) {
-        printf("[cvi_error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
+        printf("[cvi_error],[%s],[line:%d]CVI_AO_SetPubAttr\n", __func__, __LINE__);
+        goto ERROR1;
     }
     s32Ret = CVI_AO_Enable(AoDev);
     if (s32Ret != CVI_SUCCESS) {
-        printf("[cvi_error],[%s],[line:%d],\n", __func__, __LINE__);
-        goto ERROR3;
+        printf("[cvi_error],[%s],[line:%d]CVI_AO_Enable\n", __func__, __LINE__);
+        goto ERROR1;
     }
-
     s32Ret = CVI_AO_EnableChn(AoDev, AoChn);
     if (s32Ret != CVI_SUCCESS) {
-        printf("[cvi_error],[%s],[line:%d],\n", __func__, __LINE__);
+        printf("[cvi_error],[%s],[line:%d]CVI_AO_EnableChn\n", __func__, __LINE__);
         goto ERROR2;
     }
 
     if (aout->vqe_on) {
         s32Ret = CVI_AO_SetVqeAttr(AoDev, AoChn, &aout->stVqeConfig);
         if (s32Ret != CVI_SUCCESS) {
-            printf("[cvi_error],[%s],[line:%d],\n", __func__, __LINE__);
-            goto ERROR1;
+            printf("[cvi_error],[%s],[line:%d]CVI_AO_SetVqeAttr\n", __func__, __LINE__);
+            goto ERROR3;
         }
         s32Ret = CVI_AO_EnableVqe(AoDev, AoChn);
         if (s32Ret != CVI_SUCCESS) {
-            printf("[cvi_error],[%s],[line:%d],\n", __func__, __LINE__);
-            goto ERROR1;
+            printf("[cvi_error],[%s],[line:%d]CVI_AO_EnableVqe\n", __func__, __LINE__);
+            goto ERROR3;
         }
     }
 
+    aout->frame_size = aout->stAudoutAttr.u32PtNumPerFrm * aout->ch_cnt * aout->bytes_per_sample;
+    printf("frame_size: %d\n", aout->frame_size);
+    aout->frame_buf = malloc(aout->frame_size);
+    if (aout->frame_buf == NULL) {
+        printf("[cvi_error],[%s],[line:%d]malloc frame_buf failed.\n", __func__, __LINE__);
+        s32Ret = CVI_FAILURE;
+        goto ERROR4;
+    }
+
+    _aout_inited = 1;
     return CVI_SUCCESS;
 
-ERROR1:
-    // CVI_AO_DisableVqe(AoDev, AoChn);
+ERROR4:
+    if (aout->vqe_on) {
+        CVI_AO_DisableVqe(AoDev, AoChn);
+    }
+ERROR3:
     CVI_AO_DisableChn(AoDev, AoChn);
 ERROR2:
     CVI_AO_Disable(AoDev);
-ERROR3:
+ERROR1:
+    cvi_audio_deinit();
+
     return s32Ret;
 }
 
-CVI_S32 cvi_aout_put_frame(cvi_aout_t* aout, const AUDIO_FRAME_S* pstFrame)
+CVI_S32 cvi_aout_put_frame(cvi_aout_t* aout)
 {
-    return CVI_AO_SendFrame(aout->AoDev, aout->AoChn, pstFrame, 1000);
+    AUDIO_FRAME_S stFrame;
+    stFrame.u64VirAddr[0] = (CVI_U8*)aout->frame_buf;
+    stFrame.u32Len = aout->stAudoutAttr.u32PtNumPerFrm;
+    stFrame.u64TimeStamp = 0;
+    stFrame.enSoundmode = aout->stAudoutAttr.enSoundmode;
+    stFrame.enBitwidth = AUDIO_BIT_WIDTH_16;
+
+    CVI_S32 s32Ret = CVI_AO_SendFrame(aout->AoDev, aout->AoChn, &stFrame, 1000);
+    if (s32Ret != CVI_SUCCESS)
+        printf("[cvi_info] CVI_AO_SendFrame failed with %#x!\n", s32Ret);
+
+    return s32Ret;
 }
 
 CVI_S32 cvi_aout_deinit(cvi_aout_t* aout)
 {
+    printf("%s,%d: _aout_inited=%d\n", __func__, __LINE__, _aout_inited);
+    if (!_aout_inited)
+        return CVI_SUCCESS;
+
+    if (aout->frame_buf) {
+        free(aout->frame_buf);
+        aout->frame_buf = NULL;
+    }
     if (aout->vqe_on) {
         CVI_AO_DisableVqe(aout->AoDev, aout->AoChn);
     }
     CVI_AO_DisableChn(aout->AoDev, aout->AoChn);
     CVI_AO_Disable(aout->AoDev);
+    cvi_audio_deinit();
+    _aout_inited = 0;
 
     return 0;
 }
