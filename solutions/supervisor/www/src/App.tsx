@@ -33,7 +33,7 @@ const App = () => {
   );
   const [isNewVersionModalOpen, setIsNewVersionModalOpen] = useState(false);
   const [newVersion, setNewVersion] = useState("");
-  const [isDisableLayout, setIsDisableLayout] = useState(true);
+  const [isDisableLayout, setIsDisableLayout] = useState(false);
 
   useEffect(() => {
     const param = parseUrlParam(window.location.href);

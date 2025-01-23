@@ -77,7 +77,7 @@ const refreshToken = async () => {
 
   if (!refresh_token || refresh_token == null || !token || token == null) {
     // 需要登录
-    sensecraftAuthorize();
+    // sensecraftAuthorize();
     return Promise.reject();
   }
   try {

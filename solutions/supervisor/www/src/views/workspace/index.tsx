@@ -202,12 +202,12 @@ const Workspace = () => {
   // 自动保存
   useEffect(() => {
     const intervalId = setInterval(() => {
-      if (!loading && !syncing) {
+      if (!loading && !syncing && token) {
         autoSaveApp();
       }
     }, 15000);
     return () => clearInterval(intervalId);
-  }, [loading, syncing]);
+  }, [loading, syncing, token]);
 
   // 切换路由的时候做一次自动保存
   useEffect(() => {
@@ -225,7 +225,7 @@ const Workspace = () => {
 
   useEffect(() => {
     const initAction = async () => {
-      if (actionInfo?.action) {
+      if (actionInfo?.action && token) {
         const action = actionInfo.action; //new / app / clone / model /normal  action为空默认为normal
         const app_id = actionInfo.app_id; //type为app时才需要传
         const model_id = actionInfo.model_id; //type为model时才需要传
@@ -256,7 +256,7 @@ const Workspace = () => {
       }
     };
     initAction();
-  }, [actionInfo?.action]);
+  }, [actionInfo?.action, token]);
 
   const getSensecraftUserInfo = async () => {
     try {
