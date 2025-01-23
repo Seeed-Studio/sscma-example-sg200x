@@ -1,17 +1,47 @@
 #include <alsa/asoundlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/file.h>
+#include <unistd.h>
 
 #include "cvi_aio.h"
+
+#define LOCK_FILE "/tmp/cvi_audio.lock"
 
 static CVI_S32 cvi_audio_init()
 {
     CVI_AIO_DBG("%s,%d\n", __func__, __LINE__);
+    int fd = open(LOCK_FILE, O_CREAT | O_RDWR, 0666);
+    if (fd == -1) {
+        perror("open");
+        return -1;
+    }
+    if (flock(fd, LOCK_EX | LOCK_NB) == -1) {
+        close(fd);
+        CVI_AIO_DBG("%s,%d: has been locked\n", __func__, __LINE__);
+        return CVI_SUCCESS;
+    }
+
     return CVI_AUDIO_INIT();
 }
 
 static CVI_S32 cvi_audio_deinit()
 {
     CVI_AIO_DBG("%s,%d\n", __func__, __LINE__);
-    return CVI_AUDIO_DEINIT();
+    int fd = open(LOCK_FILE, O_RDWR, 0666);
+    if (fd == -1) {
+        perror("open");
+        return -1;
+    }
+
+    CVI_S32 ret = CVI_AUDIO_DEINIT();
+
+    flock(fd, LOCK_UN);
+    close(fd);
+    CVI_AIO_DBG("%s,%d: has been unlocked\n", __func__, __LINE__);
+
+    return ret;
 }
 
 static CVI_BOOL _update_agc_anr_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
@@ -56,18 +86,18 @@ static CVI_BOOL _update_aec_setting(AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr)
     return CVI_FALSE;
 }
 
-static CVI_S32 cvi_ain_params(cvi_ain_t* ain)
+void cvi_ain_params(cvi_ain_t* ain)
 {
     AIO_ATTR_S* pstAudinAttr = &ain->stAudinAttr;
     AI_TALKVQE_CONFIG_S* pstAiVqeTalkAttr = &ain->stAiVqeTalkAttr;
 
+    ain->AiDev = 0;
+    ain->AiChn = 0;
     ain->ch_cnt = CHANNELS;
     ain->sample_rate = SAMPLE_RATE;
     ain->bytes_per_sample = 2; // 16-bit
-    ain->period = 100; // ms
     ain->vqe_on = CVI_TRUE;
-    ain->AiDev = 0;
-    ain->AiChn = 0;
+    ain->period_size = SAMPLE_RATE / 1000 * 10; // default 10ms
 
     pstAudinAttr->enSamplerate = (AUDIO_SAMPLE_RATE_E)ain->sample_rate;
     pstAudinAttr->u32ChnCnt = 1;
@@ -76,7 +106,7 @@ static CVI_S32 cvi_ain_params(cvi_ain_t* ain)
     pstAudinAttr->enWorkmode = AIO_MODE_I2S_MASTER;
     pstAudinAttr->u32EXFlag = 0;
     pstAudinAttr->u32FrmNum = 10; /* only use in bind mode */
-    pstAudinAttr->u32PtNumPerFrm = (ain->sample_rate / 1000) * ain->period; /* sample_rate/fps */
+    pstAudinAttr->u32PtNumPerFrm = ain->period_size; /* sample_rate/fps */
     pstAudinAttr->u32ClkSel = 0;
     pstAudinAttr->enI2sType = AIO_I2STYPE_INNERCODEC;
 
@@ -85,8 +115,6 @@ static CVI_S32 cvi_ain_params(cvi_ain_t* ain)
     pstAiVqeTalkAttr->s32WorkSampleRate = ain->sample_rate;
     _update_agc_anr_setting(pstAiVqeTalkAttr);
     _update_aec_setting(pstAiVqeTalkAttr);
-
-    return 0;
 }
 
 static uint8_t _ain_inited = 0;
@@ -95,8 +123,6 @@ CVI_S32 cvi_ain_init(cvi_ain_t* ain)
     CVI_AIO_DBG("%s,%d: _ain_inited=%d\n", __func__, __LINE__, _ain_inited);
     if (_ain_inited)
         return CVI_SUCCESS;
-
-    cvi_ain_params(ain);
 
     CVI_S32 AiDev = ain->AiDev;
     CVI_S32 AiChn = ain->AiChn;
@@ -228,18 +254,18 @@ static void _update_down_vqe_setting(cvi_aout_t* aout)
     pstVqeConfig->stDrcExpander = stDrcExpander;
 }
 
-static CVI_S32 cvi_aout_params(cvi_aout_t* aout)
+void cvi_aout_params(cvi_aout_t* aout)
 {
     AIO_ATTR_S* pstAudoutAttr = &aout->stAudoutAttr;
+
+    aout->AoDev = 0;
+    aout->AoChn = 0;
 
     aout->ch_cnt = CHANNELS;
     aout->sample_rate = SAMPLE_RATE;
     aout->bytes_per_sample = 2; // 16-bit
-    aout->period = 10; // PERIOD_SIZE;
     aout->vqe_on = CVI_FALSE;
-
-    aout->AoDev = 0;
-    aout->AoChn = 0;
+    aout->period_size = SAMPLE_RATE / 1000 * 10; // default 10ms
 
     pstAudoutAttr->enSamplerate = (AUDIO_SAMPLE_RATE_E)aout->sample_rate;
     pstAudoutAttr->u32ChnCnt = 1;
@@ -248,14 +274,12 @@ static CVI_S32 cvi_aout_params(cvi_aout_t* aout)
     pstAudoutAttr->enWorkmode = AIO_MODE_I2S_MASTER;
     pstAudoutAttr->u32EXFlag = 0;
     pstAudoutAttr->u32FrmNum = 10; /* only use in bind mode */
-    pstAudoutAttr->u32PtNumPerFrm = (aout->sample_rate / 1000) * aout->period; /* sample_rate/fps */
+    pstAudoutAttr->u32PtNumPerFrm = aout->period_size; /* sample_rate/fps */
     pstAudoutAttr->u32ClkSel = 0;
     pstAudoutAttr->enI2sType = AIO_I2STYPE_INNERCODEC;
 
     // vqe
     _update_down_vqe_setting(aout);
-
-    return 0;
 }
 
 static uint8_t _aout_inited = 0;
@@ -264,7 +288,6 @@ CVI_S32 cvi_aout_init(cvi_aout_t* aout)
     CVI_AIO_DBG("%s,%d: _aout_inited=%d\n", __func__, __LINE__, _aout_inited);
     if (_aout_inited)
         return CVI_SUCCESS;
-    cvi_aout_params(aout);
 
     CVI_S32 AoDev = aout->AoDev;
     CVI_S32 AoChn = aout->AoChn;

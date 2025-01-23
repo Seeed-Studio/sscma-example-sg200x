@@ -30,20 +30,6 @@ static int init(cvi_pcm_plugin_t* plugin)
 
 static int start(snd_pcm_ioplug_t* io)
 {
-    cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
-    CVI_AIO_DBG("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
-    if (io->stream == SND_PCM_STREAM_CAPTURE) {
-        if (CVI_SUCCESS != cvi_ain_init(&plugin->ain)) {
-            return -EINVAL;
-        }
-        plugin->frames_count = plugin->ain.stAudinAttr.u32PtNumPerFrm;
-    } else if (io->stream == SND_PCM_STREAM_PLAYBACK) {
-        // CVI_AIO_DBG("%s,%d\n", __FUNCTION__, __LINE__);
-        // if (CVI_SUCCESS != cvi_aout_init(&plugin->aout)) {
-        //     return -EINVAL;
-        // }
-    }
-
     return 0;
 }
 
@@ -129,7 +115,7 @@ static snd_pcm_sframes_t transfer_out(snd_pcm_ioplug_t* io, const snd_pcm_channe
     if (total_bytes % write_bytes) {
         count++;
     }
-    CVI_AIO_DBG("%s,%d: write_bytes=%d, count=%d\n", __FUNCTION__, __LINE__, write_bytes, count);
+    CVI_AIO_DBG("%s,%d: count=%d\n", __FUNCTION__, __LINE__, count);
 
     frames = 0;
     for (uint32_t i = 0; i < count; i++) {
@@ -166,6 +152,34 @@ static int close_cb(snd_pcm_ioplug_t* io)
     return 0;
 }
 
+static int hw_params(snd_pcm_ioplug_t* io, snd_pcm_hw_params_t* params)
+{
+    CVI_AIO_DBG("%s,%d: io->period_size=%d\n", __FUNCTION__, __LINE__, io->period_size);
+    CVI_AIO_DBG("%s,%d: io->buffer_size=%d\n", __FUNCTION__, __LINE__, io->buffer_size);
+
+    cvi_pcm_plugin_t* plugin = (cvi_pcm_plugin_t*)io;
+    CVI_AIO_DBG("%s,%d: io->stream=%d\n", __FUNCTION__, __LINE__, io->stream);
+    if (io->stream == SND_PCM_STREAM_CAPTURE) {
+        cvi_ain_params(&plugin->ain);
+        plugin->ain.period_size = io->period_size;
+        if (CVI_SUCCESS != cvi_ain_init(&plugin->ain)) {
+            SNDERR("cvi_ain_init, err=%d", CVI_FAILURE);
+            return -EINVAL;
+        }
+        plugin->frames_count = plugin->ain.stAudinAttr.u32PtNumPerFrm;
+    } else if (io->stream == SND_PCM_STREAM_PLAYBACK) {
+        cvi_aout_params(&plugin->aout);
+        plugin->aout.period_size = io->period_size;
+        if (CVI_SUCCESS != cvi_aout_init(&plugin->aout)) {
+            SNDERR("cvi_aout_init, err=%d", CVI_FAILURE);
+            return -EINVAL;
+        }
+        plugin->frames_count = 0;
+    }
+
+    return 0;
+}
+
 SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
 {
     int err = 0;
@@ -188,6 +202,7 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
         .pointer = pointer,
         .transfer = transfer,
         .close = close_cb,
+        .hw_params = hw_params,
     };
 
     snd_pcm_ioplug_t* io = &plugin->io;
@@ -201,17 +216,6 @@ SND_PCM_PLUGIN_DEFINE_FUNC(cvi_audio)
 
     CVI_AIO_DBG("%s,%d: name=%s, stream=%d, mode=%d\n", __FUNCTION__, __LINE__, name, stream, mode);
     err = snd_pcm_ioplug_create(&plugin->io, name, stream, mode);
-    if (stream == SND_PCM_STREAM_CAPTURE) {
-        plugin->frames_count = 1600;
-    } else {
-        plugin->frames_count = 0;
-        snd_pcm_ioplug_set_state(&plugin->io, SND_PCM_STATE_RUNNING);
-        err = cvi_aout_init(&plugin->aout);
-        if (CVI_SUCCESS != err) {
-            SNDERR("cvi_aout_init, err=%d", err);
-            goto exit;
-        }
-    }
     if (err < 0) {
         SNDERR("snd_pcm_ioplug_create, err=%d", err);
         goto exit;

@@ -21,7 +21,7 @@ typedef struct cvi_ain {
     int ch_cnt;
     int sample_rate;
     int bytes_per_sample;
-    int period;
+    int period_size;
     bool vqe_on;
 
     CVI_S32 AiDev;
@@ -34,7 +34,7 @@ typedef struct cvi_aout {
     int ch_cnt;
     int sample_rate;
     int bytes_per_sample;
-    int period;
+    int period_size;
     bool vqe_on;
     void* frame_buf;
     uint32_t frame_size;
@@ -45,10 +45,12 @@ typedef struct cvi_aout {
     AO_VQE_CONFIG_S stVqeConfig;
 } cvi_aout_t;
 
+void cvi_ain_params(cvi_ain_t* ain);
 CVI_S32 cvi_ain_init(cvi_ain_t* ain);
 CVI_S32 cvi_ain_get_frame(cvi_ain_t* ain, AUDIO_FRAME_S* pstFrame);
 CVI_S32 cvi_ain_deinit(cvi_ain_t* ain);
 
+void cvi_aout_params(cvi_aout_t* aout);
 CVI_S32 cvi_aout_init(cvi_aout_t* aout);
 CVI_S32 cvi_aout_put_frame(cvi_aout_t* aout);
 CVI_S32 cvi_aout_deinit(cvi_aout_t* aout);

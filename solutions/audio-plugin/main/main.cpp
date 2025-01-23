@@ -46,7 +46,10 @@ static void write_wav_header(std::ofstream& file, unsigned int data_size)
 
 static int ain(const char* filename, uint32_t time_ms)
 {
+    const int period = 10; // 10ms
+
     cvi_ain_t ain;
+    cvi_ain_params(&ain);
     CVI_S32 s32Ret = cvi_ain_init(&ain);
     if (CVI_SUCCESS != s32Ret) {
         CVI_AIO_DBG("[error],[%s],[line:%d],\n", __func__, __LINE__);
@@ -54,7 +57,7 @@ static int ain(const char* filename, uint32_t time_ms)
     }
 
     std::ofstream out_file(filename, std::ios::binary);
-    uint32_t frames = time_ms / ain.period;
+    uint32_t frames = (time_ms / period);
     uint32_t sample_size = ain.ch_cnt * ain.bytes_per_sample;
     uint32_t data_size = frames * ain.stAudinAttr.u32PtNumPerFrm * sample_size;
 
@@ -79,6 +82,7 @@ static int ain(const char* filename, uint32_t time_ms)
 static int aout(const char* filename)
 {
     cvi_aout_t aout;
+    cvi_aout_params(&aout);
     CVI_S32 s32Ret = cvi_aout_init(&aout);
     if (CVI_SUCCESS != s32Ret) {
         CVI_AIO_DBG("[error],[%s],[line:%d],\n", __func__, __LINE__);
