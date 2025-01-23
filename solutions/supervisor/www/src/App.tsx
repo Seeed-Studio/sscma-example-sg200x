@@ -130,7 +130,11 @@ const App = () => {
 
   useEffect(() => {
     if (token && serviceStatus === ServiceStatus.RUNNING && !isDisableLayout) {
-      checkNewVersion();
+      const timer = setTimeout(() => {
+        checkNewVersion();
+      }, 30000);
+
+      return () => clearTimeout(timer);
     }
   }, [token, serviceStatus, isDisableLayout]);
 
