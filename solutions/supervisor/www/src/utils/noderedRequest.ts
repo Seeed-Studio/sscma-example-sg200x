@@ -9,6 +9,7 @@ const noderedService = axios.create({
   baseURL: `${baseIP}:1880`,
   headers: {
     "Content-Type": "application/json",
+    "Node-RED-API-Version": "v2"
   },
 });
 

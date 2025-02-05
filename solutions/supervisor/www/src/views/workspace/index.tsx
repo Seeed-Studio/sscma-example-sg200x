@@ -17,7 +17,6 @@ import {
   UserOutlined,
   LeftOutlined,
   RightOutlined,
-  CloudUploadOutlined,
   SettingOutlined,
   FileOutlined,
 } from "@ant-design/icons";
@@ -51,12 +50,13 @@ import { sensecraftAuthorize, parseUrlParam, DefaultFlowData } from "@/utils";
 import usePlatformStore, {
   savePlatformInfo,
   initPlatformStore,
-  getLocalAppInfo,
+  getLocalPlatformInfo,
   logout,
 } from "@/store/platform";
 import useConfigStore from "@/store/config";
 import { getToken } from "@/store/user";
 import Network from "@/views/network";
+import NodeRed from "@/views/nodered";
 import styles from "./index.module.css";
 
 // 定义 type 优先级
@@ -89,7 +89,7 @@ const Workspace = () => {
 
   const [focusAppid, setFocusAppid] = useState("");
   const [currentDeviceIndex, setCurrentDeviceIndex] = useState<number>(-1);
-
+  const revRef = useRef<string>("");
   const inputRef = useRef<string>("");
 
   const [timestamp, setTimestamp] = useState<number>(1);
@@ -198,23 +198,6 @@ const Workspace = () => {
     // 移除定时器
     return () => clearInterval(intervalId);
   }, [deviceInfo?.sn]);
-
-  // 自动保存
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (!loading && !syncing && token) {
-        autoSaveApp();
-      }
-    }, 15000);
-    return () => clearInterval(intervalId);
-  }, [loading, syncing, token]);
-
-  // 切换路由的时候做一次自动保存
-  useEffect(() => {
-    return () => {
-      autoSaveApp();
-    };
-  }, []);
 
   useEffect(() => {
     if (token && deviceInfo?.ip) {
@@ -382,7 +365,7 @@ const Workspace = () => {
   };
 
   // 获取本地模型描述文件及模型MD5
-  const getLocalModel = async (flowsData: [] | null) => {
+  const getLocalModel = async (flowsData: [] | null | undefined) => {
     try {
       //判断flow里面有没有模型积木，如果有模型积木，则需要处理模型文件的下载更新
       const hasModel = flowsData?.some((node: any) => node.type === "model");
@@ -405,12 +388,15 @@ const Workspace = () => {
   //往nodered更新flow
   const sendFlow = async (flows?: string) => {
     try {
-      await saveFlows(flows);
-      const response = await getFlowsState();
-      if (response?.state == "stop") {
-        await setFlowsState({ state: "start" });
+      const revision = await saveFlows(flows);
+      if (revision) {
+        revRef.current = revision;
+        const response = await getFlowsState();
+        if (response?.state == "stop") {
+          await setFlowsState({ state: "start" });
+        }
+        setTimestamp(new Date().getTime());
       }
-      setTimestamp(new Date().getTime());
     } catch (error) {
       //
       console.log(error);
@@ -884,27 +870,33 @@ const Workspace = () => {
     }
   };
 
-  const autoSaveApp = async () => {
+  const saveApp = async () => {
     try {
-      //退出组件的时候，组件里面的变量可能被清掉了，直接取store里面的
-      const { appInfo: currAppInfo } = usePlatformStore.getState();
-      const localAppInfo = await getLocalAppInfo();
-      if (!localAppInfo) {
+      const localPlatformData = await getLocalPlatformInfo();
+      if (!localPlatformData) {
         return;
       }
-      setSyncing(true);
-      // 查询当前应用的本地flow数据
-      const localFlowsData = await getFlows();
-      // 查询当前应用的模型数据
-      const model_data = await getLocalModel(localFlowsData);
-      const localFlowsDataStr = JSON.stringify(localFlowsData);
+      const { user_info: localUserInfo, app_info: localAppInfo } =
+        localPlatformData;
 
-      await syncLocalAppToCloud({
-        cloudApp: localAppInfo,
-        flow_data_str: localFlowsDataStr,
-        model_data: model_data,
-      });
-      if (currAppInfo?.app_id != localAppInfo.app_id) {
+      // 当前账号变化
+      if (localUserInfo.token != token) {
+        Modal.info({
+          title: "SenseCraft Account has been changed",
+          content: (
+            <div>
+              <p>
+                It looks like the SenseCraft Account has been changed on this
+                device. The application list is now changed.
+              </p>
+            </div>
+          ),
+        });
+        setTimestamp(new Date().getTime());
+        return;
+      }
+
+      if (appInfo?.app_id != localAppInfo.app_id) {
         setTimestamp(new Date().getTime());
         getAppList();
         Modal.info({
@@ -919,11 +911,36 @@ const Workspace = () => {
             </div>
           ),
         });
+      } else {
+        setSyncing(true);
+        // 查询当前应用的本地flow数据
+        const localFlowsData = await getFlows();
+        // 查询当前应用的模型数据
+        const model_data = await getLocalModel(localFlowsData);
+        const localFlowsDataStr = JSON.stringify(localFlowsData);
+
+        await syncLocalAppToCloud({
+          cloudApp: localAppInfo,
+          flow_data_str: localFlowsDataStr,
+          model_data: model_data,
+        });
+        const app = applist.find((item) => item.app_id === localAppInfo.app_id);
+        if (app) {
+          app.flow_data = localAppInfo.flow_data;
+          app.model_data = localAppInfo.model_data;
+        }
       }
     } catch (error) {
       console.log(error);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const onReceivedDeployData = (revision: string | null | undefined) => {
+    // 如果版本不一样，说明是通过nodered触发的部署
+    if (revRef.current != revision) {
+      saveApp();
     }
   };
 
@@ -1032,38 +1049,6 @@ const Workspace = () => {
     }
   };
 
-  const handleSaveApp = async (app: IAppInfo) => {
-    try {
-      if (!app) {
-        return;
-      }
-      setLoading(true);
-      setLoadingTip("Syncing application with SenseCraft Cloud");
-      // 查询当前应用的本地flow数据
-      const localFlowsData = await getFlows();
-      // 查询当前应用的模型数据
-      const model_data = await getLocalModel(localFlowsData);
-      const localFlowsDataStr = JSON.stringify(localFlowsData);
-      const ret = await syncLocalAppToCloud({
-        cloudApp: app,
-        flow_data_str: localFlowsDataStr,
-        model_data: model_data,
-      });
-
-      if (ret) {
-        messageApi.success("Syncing successful");
-      } else {
-        messageApi.error("Syncing failed");
-      }
-    } catch (error) {
-      console.log(error);
-      messageApi.error("Syncing failed");
-    } finally {
-      setLoading(false);
-      setLoadingTip("");
-    }
-  };
-
   const handleSelectApp = async (app: IAppInfo) => {
     if (app.app_id != appInfo?.app_id) {
       await syncCloudAppToLocal(app);
@@ -1131,12 +1116,10 @@ const Workspace = () => {
   };
 
   const gotoConfig = () => {
-    // navigate("/init");
     window.open(`http://${deviceInfo?.ip}/#/init`, "_blank");
   };
 
   const gotoOtherDevice = (ip: string) => {
-    // navigate("/init");
     window.open(`http://${ip}/#/workspace`, "_blank");
   };
 
@@ -1148,7 +1131,6 @@ const Workspace = () => {
   };
 
   const gotoDashboard = () => {
-    // navigate("/dashboard");
     window.open(`http://${deviceInfo?.ip}/#/dashboard`, "_blank");
   };
 
@@ -1294,7 +1276,7 @@ const Workspace = () => {
                   {applist?.length > 0 &&
                     applist.map((app, index) =>
                       appInfo?.app_id == app.app_id ? (
-                        <div key={index} className="flex mb-10 h-40">
+                        <div key={index} className="flex mb-10 mr-6 h-40">
                           <div
                             className="flex flex-1 text-14 text-primary border border-primary rounded-4 p-8"
                             onMouseEnter={() => handleFocusApp(app.app_id)}
@@ -1324,15 +1306,10 @@ const Workspace = () => {
                             </div>
                           </div>
 
-                          {syncing ? (
+                          {syncing && (
                             <SyncOutlined
                               className="text-disable ml-10 mr-15 text-20"
                               spin
-                            />
-                          ) : (
-                            <CloudUploadOutlined
-                              className="text-disable ml-10 mr-15 text-20"
-                              onClick={() => handleSaveApp(app)}
                             />
                           )}
                         </div>
@@ -1420,13 +1397,13 @@ const Workspace = () => {
       <div className="flex-1">
         {deviceInfo?.ip && (
           <div className="w-full h-full relative overflow-hidden">
-            <iframe
-              className="w-full h-full"
-              src={`http://${deviceInfo?.ip}:1880?timestamp=${timestamp}`}
+            <NodeRed
+              ip={deviceInfo.ip}
+              timestamp={timestamp}
+              onReceivedDeployData={onReceivedDeployData}
             />
             <Button
               className={styles.wiki}
-              // type="primary"
               onClick={gotoWiki}
               icon={<FileOutlined />}
             >
