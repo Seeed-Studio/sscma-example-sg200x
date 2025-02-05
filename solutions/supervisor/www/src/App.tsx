@@ -33,12 +33,12 @@ const App = () => {
   );
   const [isNewVersionModalOpen, setIsNewVersionModalOpen] = useState(false);
   const [newVersion, setNewVersion] = useState("");
-  const [isDisableLayout, setIsDisableLayout] = useState(false);
+  const [isDashboard, setIsDashboard] = useState(false);
 
   useEffect(() => {
     const param = parseUrlParam(window.location.href);
-    const disablelayout = param.disablelayout;
-    setIsDisableLayout(disablelayout == 1);
+    const dashboard = param.dashboard || param.disablelayout;
+    setIsDashboard(dashboard == 1);
   }, []);
 
   useEffect(() => {
@@ -129,14 +129,14 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (token && serviceStatus === ServiceStatus.RUNNING && !isDisableLayout) {
+    if (token && serviceStatus === ServiceStatus.RUNNING && !isDashboard) {
       const timer = setTimeout(() => {
         checkNewVersion();
       }, 30000);
 
       return () => clearTimeout(timer);
     }
-  }, [token, serviceStatus, isDisableLayout]);
+  }, [token, serviceStatus, isDashboard]);
 
   const handleCancel = () => {
     setIsNewVersionModalOpen(false);
@@ -163,7 +163,7 @@ const App = () => {
       <div className="h-full">
         {token ? (
           <div className="h-full">
-            {isDisableLayout || serviceStatus === ServiceStatus.RUNNING ? (
+            {isDashboard || serviceStatus === ServiceStatus.RUNNING ? (
               <RouterProvider router={router} />
             ) : (
               <Loading onServiceStatusChange={handleServiceStatusChange} />

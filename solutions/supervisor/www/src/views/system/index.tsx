@@ -3,6 +3,10 @@ import EditBlackImg from "@/assets/images/svg/editBlack.svg";
 import ArrowImg from "@/assets/images/svg/downArrow.svg";
 import CommonPopup from "@/components/common-popup";
 import { Form, Input, Picker, ProgressBar, Mask } from "antd-mobile";
+import {
+  PickerValue,
+  PickerValueExtend,
+} from "antd-mobile/es/components/picker";
 import { Button } from "antd";
 import moment from "moment";
 import { useData } from "./hook";
@@ -38,12 +42,11 @@ function System() {
 
   const { systemUpdateState, setSystemUpdateState } = useConfigStore();
 
-  const [isDisableLayout, setIsDisableLayout] = useState(false);
-
+  const [isDashboard, setIsDashboard] = useState(false);
   useEffect(() => {
     const param = parseUrlParam(window.location.href);
-    const disablelayout = param.disablelayout;
-    setIsDisableLayout(disablelayout == 1);
+    const dashboard = param.dashboard || param.disablelayout;
+    setIsDashboard(dashboard == 1);
   }, []);
 
   const channelLable = useMemo(() => {
@@ -161,11 +164,13 @@ function System() {
             channelVisible: false,
           });
         }}
-        value={[systemUpdateState.channel]}
-        onConfirm={onConfirm}
+        value={[systemUpdateState.channel] as PickerValue[]}
+        onConfirm={
+          onConfirm as (value: PickerValue[], extend: PickerValueExtend) => void
+        }
       />
 
-      {!isDisableLayout && (
+      {!isDashboard && (
         <div>
           <div className="font-bold text-18 mb-14 my-24"> System Info</div>
           <div className="bg-white rounded-20 px-24">

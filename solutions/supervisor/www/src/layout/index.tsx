@@ -10,17 +10,17 @@ interface Props {
 
 const ConfigLayout: React.FC<Props> = ({ children }) => {
   const isMobile = useMediaQuery({ maxWidth: 767 });
-  const [isDisableLayout, setIsDisableLayout] = useState(false);
+  const [isDashboard, setIsDashboard] = useState(false);
 
   useEffect(() => {
     const param = parseUrlParam(window.location.href);
-    const disablelayout = param.disablelayout;
-    setIsDisableLayout(disablelayout == 1);
+    const dashboard = param.dashboard || param.disablelayout;
+    setIsDashboard(dashboard == 1);
   }, []);
 
   return (
     <div className="flex flex-col w-full h-full">
-      {isDisableLayout ? (
+      {isDashboard ? (
         <div className="w-full h-full">{children}</div>
       ) : isMobile ? (
         // 移动端布局
