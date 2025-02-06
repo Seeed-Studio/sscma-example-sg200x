@@ -15,12 +15,15 @@ const Main: React.FC<Props> = ({ children }) => {
   );
   const [isNewVersionModalOpen, setIsNewVersionModalOpen] = useState(false);
   const [newVersion, setNewVersion] = useState("");
-  const { setSystemUpdateState } = useConfigStore();
+  const { systemUpdateState, setSystemUpdateState } = useConfigStore();
   const { deviceInfo } = useConfigStore();
 
   const checkNewVersion = async () => {
     try {
-      if (deviceInfo.channel == DeviceChannleMode.Official) {
+      if (
+        deviceInfo.channel == DeviceChannleMode.Official &&
+        systemUpdateState.status != UpdateStatus.NeedUpdate
+      ) {
         const response = await fetch(
           "https://api.github.com/repos/seeed-Studio/recamera-os/releases/latest"
         );
@@ -47,7 +50,7 @@ const Main: React.FC<Props> = ({ children }) => {
 
       return () => clearTimeout(timer);
     }
-  }, [serviceStatus, deviceInfo?.osVersion]);
+  }, [serviceStatus, deviceInfo?.osVersion, systemUpdateState.status]);
 
   const handleServiceStatusChange = (serviceStatus: ServiceStatus) => {
     setServiceStatus(serviceStatus);
