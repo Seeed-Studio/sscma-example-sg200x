@@ -14,16 +14,20 @@ const Dashboard = () => {
   }, []);
 
   const queryDashboard = async () => {
-    const dashboardRes = await fetch(dashboardURL);
-    if (
-      dashboardRes.ok &&
-      (dashboardRes.status == 200 || dashboardRes.status == 204)
-    ) {
-      const localFlowsData = await getFlows();
-      let hasUINode =
-        localFlowsData?.some((node: any) => node.type === "ui-base") ?? false;
-      setHasDashboard(hasUINode);
-    } else {
+    try {
+      const dashboardRes = await fetch(dashboardURL);
+      if (
+        dashboardRes.ok &&
+        (dashboardRes.status == 200 || dashboardRes.status == 204)
+      ) {
+        const localFlowsData = await getFlows();
+        let hasUINode =
+          localFlowsData?.some((node: any) => node.type === "ui-base") ?? false;
+        setHasDashboard(hasUINode);
+      } else {
+        setHasDashboard(false);
+      }
+    } catch (error) {
       setHasDashboard(false);
     }
   };
