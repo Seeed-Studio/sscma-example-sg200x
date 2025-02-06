@@ -21,7 +21,6 @@ import {
   FileOutlined,
 } from "@ant-design/icons";
 import {
-  queryDeviceInfoApi,
   getDeviceListApi,
   getModelInfoApi,
   uploadModelApi,
@@ -70,7 +69,7 @@ function isValidType(type: string): type is keyof typeof typePriority {
 const Workspace = () => {
   const { token, appInfo, nickname, updateAppInfo, updateNickname } =
     usePlatformStore();
-  const { deviceInfo, updateDeviceInfo } = useConfigStore();
+  const { deviceInfo } = useConfigStore();
 
   const [actionInfo, setActionInfo] = useState<IActionInfo | null>(null);
 
@@ -135,9 +134,9 @@ const Workspace = () => {
     initPlatform();
   }, []);
 
-  useEffect(() => {
-    queryDeviceInfo();
-  }, []);
+  // useEffect(() => {
+  //   queryDeviceInfo();
+  // }, []);
 
   useEffect(() => {
     const getDeviceList = async () => {
@@ -265,15 +264,6 @@ const Workspace = () => {
     } catch (error) {
       setApplist([]);
     }
-  };
-
-  const queryDeviceInfo = async () => {
-    try {
-      const res = await queryDeviceInfoApi();
-      if (res.code == 0) {
-        updateDeviceInfo(res.data);
-      }
-    } catch (error) {}
   };
 
   const getModelInfo = async () => {

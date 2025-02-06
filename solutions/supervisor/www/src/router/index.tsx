@@ -8,20 +8,27 @@ import System from "@/views/system";
 import Power from "@/views/power";
 import Workspace from "@/views/workspace";
 import Dashboard from "@/views/dashboard";
-import ConfigLayout from "@/layout";
+import ConfigLayout from "@/layout/config";
+import MainLayout from "@/layout/main";
 
 const Routes = [
   {
     path: "/",
-    element: <Dashboard />, // Default route
-  },
-  {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
-    path: "/workspace",
-    element: <Workspace />,
+    element: (
+      <MainLayout>
+        <Outlet />
+      </MainLayout>
+    ),
+    children: [
+      {
+        path: "/dashboard",
+        element: <Dashboard />,
+      },
+      {
+        path: "/workspace",
+        element: <Workspace />,
+      },
+    ],
   },
   {
     path: "/",

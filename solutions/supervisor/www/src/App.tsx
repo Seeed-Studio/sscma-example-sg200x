@@ -1,19 +1,12 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import Routes from "@/router";
 import Login from "@/views/login";
-import Loading from "@/components/loading";
-import { ConfigProvider, Modal, Button } from "antd";
-import { IsUpgrading, UpdateStatus, DeviceChannleMode } from "@/enum";
-import {
-  queryDeviceInfoApi,
-  getSystemUpdateVesionInfoApi,
-} from "@/api/device/index";
-import { parseUrlParam } from "@/utils";
+import { ConfigProvider } from "antd";
+import { queryDeviceInfoApi } from "@/api/device/index";
 import useUserStore from "@/store/user";
 import useConfigStore from "@/store/config";
 import { getUserInfoApi } from "@/api/user";
-import { ServiceStatus } from "@/enum";
 
 const router = createHashRouter(Routes);
 
@@ -26,20 +19,7 @@ const App = () => {
     clearCurrentUserInfo,
   } = useUserStore();
 
-  const { setSystemUpdateState } = useConfigStore();
-
-  const [serviceStatus, setServiceStatus] = useState<ServiceStatus>(
-    ServiceStatus.STARTING
-  );
-  const [isNewVersionModalOpen, setIsNewVersionModalOpen] = useState(false);
-  const [newVersion, setNewVersion] = useState("");
-  const [isDashboard, setIsDashboard] = useState(false);
-
-  useEffect(() => {
-    const param = parseUrlParam(window.location.href);
-    const dashboard = param.dashboard || param.disablelayout;
-    setIsDashboard(dashboard == 1);
-  }, []);
+  const { updateDeviceInfo } = useConfigStore();
 
   useEffect(() => {
     initUserData();
@@ -52,8 +32,10 @@ const App = () => {
   const initUserData = async () => {
     try {
       const response = await queryDeviceInfoApi();
+      const deviceInfo = response.data;
       // 查询设备信息，获取sn
-      const sn = response.data.sn;
+      updateDeviceInfo(deviceInfo);
+      const sn = deviceInfo.sn;
       setCurrentSn(sn);
       if (sn) {
         // 查询设备是否第一次登录，第一次登录，直接进登录页
@@ -93,64 +75,6 @@ const App = () => {
     }
   };
 
-  const checkNewVersion = async () => {
-    try {
-      const response = await queryDeviceInfoApi();
-      const deviceInfo = response.data;
-      const url =
-        deviceInfo.channel == DeviceChannleMode.Official
-          ? deviceInfo.officialUrl
-          : deviceInfo.serverUrl;
-
-      const { code, data } = await getSystemUpdateVesionInfoApi({
-        channel: deviceInfo.channel,
-        url: url,
-      });
-
-      if (code == 0) {
-        if (data.isUpgrading === IsUpgrading.Yes) {
-          return;
-        }
-        if (!data.osName || !data.osVersion) {
-          return;
-        }
-        if (
-          deviceInfo.osName != data.osName ||
-          deviceInfo.osVersion != data.osVersion
-        ) {
-          setNewVersion(data.osVersion);
-          setSystemUpdateState({
-            status: UpdateStatus.NeedUpdate,
-          });
-          setIsNewVersionModalOpen(true);
-        }
-      }
-    } catch (error) {}
-  };
-
-  useEffect(() => {
-    if (token && serviceStatus === ServiceStatus.RUNNING && !isDashboard) {
-      const timer = setTimeout(() => {
-        checkNewVersion();
-      }, 30000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [token, serviceStatus, isDashboard]);
-
-  const handleCancel = () => {
-    setIsNewVersionModalOpen(false);
-  };
-
-  const handleOk = () => {
-    setIsNewVersionModalOpen(false);
-    window.location.href = `${window.location.origin}/#/system`;
-  };
-
-  const handleServiceStatusChange = (serviceStatus: ServiceStatus) => {
-    setServiceStatus(serviceStatus);
-  };
-
   return (
     <ConfigProvider
       theme={{
@@ -160,42 +84,8 @@ const App = () => {
         },
       }}
     >
-      <div className="h-full">
-        {token ? (
-          <div className="h-full">
-            {isDashboard || serviceStatus === ServiceStatus.RUNNING ? (
-              <RouterProvider router={router} />
-            ) : (
-              <Loading onServiceStatusChange={handleServiceStatusChange} />
-            )}
-          </div>
-        ) : (
-          <Login />
-        )}
-        <Modal
-          title="New Version Release"
-          open={isNewVersionModalOpen}
-          onCancel={handleCancel}
-          footer={
-            <Button type="primary" onClick={handleOk}>
-              Go to update
-            </Button>
-          }
-        >
-          <p style={{ marginBottom: "6px" }}>
-            reCamera is now on version {newVersion} now. Check update details
-            here:
-          </p>
-          <a
-            href="https://github.com/Seeed-Studio/reCamera-OS/releases"
-            style={{
-              color: "#4096ff",
-            }}
-            target="_blank"
-          >
-            https://github.com/Seeed-Studio/reCamera-OS/releases
-          </a>
-        </Modal>
+      <div className="w-full h-full">
+        {token ? <RouterProvider router={router} /> : <Login />}
       </div>
     </ConfigProvider>
   );

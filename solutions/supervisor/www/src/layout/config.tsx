@@ -8,7 +8,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-const ConfigLayout: React.FC<Props> = ({ children }) => {
+const Config: React.FC<Props> = ({ children }) => {
   const isMobile = useMediaQuery({ maxWidth: 767 });
   const [isDashboard, setIsDashboard] = useState(false);
 
@@ -33,4 +33,4 @@ const ConfigLayout: React.FC<Props> = ({ children }) => {
   );
 };
 
-export default ConfigLayout;
+export default Config;

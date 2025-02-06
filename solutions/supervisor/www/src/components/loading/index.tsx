@@ -20,24 +20,26 @@ const Loading = ({
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus>(
     ServiceStatus.STARTING
   );
+  const serviceStatusRef = useRef(ServiceStatus.STARTING);
   const [currentGifIndex, setCurrentGifIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const tryCount = useRef<number>(0);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let timer: number;
-
     const fetchGifInfo = async () => {
-      if (serviceStatus != ServiceStatus.STARTING) {
+      if (serviceStatusRef.current !== ServiceStatus.STARTING) {
+        if (timerRef.current !== null) {
+          clearTimeout(timerRef.current);
+        }
         return;
       }
       try {
         const gifParse = new GifParse(gifs[currentGifIndex]);
         const gifInfo = await gifParse.getInfo();
         const duration = gifInfo.duration;
-
         // 设置定时器，按顺序切换到下一个 GIF
-        timer = window.setTimeout(() => {
+        timerRef.current = window.setTimeout(() => {
           setCurrentGifIndex((prevIndex) => (prevIndex + 1) % gifs.length);
         }, duration);
       } catch (error) {
@@ -48,9 +50,11 @@ const Loading = ({
     fetchGifInfo();
 
     return () => {
-      clearTimeout(timer); // 清理定时器
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+      }
     };
-  }, [currentGifIndex, serviceStatus]);
+  }, [currentGifIndex]);
 
   useEffect(() => {
     onServiceStatusChange?.(serviceStatus);
@@ -63,6 +67,7 @@ const Loading = ({
   const queryServiceStatus = async () => {
     tryCount.current = 0;
     setServiceStatus(ServiceStatus.STARTING);
+    serviceStatusRef.current = ServiceStatus.STARTING;
 
     while (tryCount.current < 30) {
       try {
@@ -76,6 +81,7 @@ const Loading = ({
           ) {
             setProgress(100);
             setServiceStatus(ServiceStatus.RUNNING);
+            serviceStatusRef.current = ServiceStatus.RUNNING;
             return;
           } else {
             let percentage = (uptime / totalDuration) * 100;
@@ -85,6 +91,7 @@ const Loading = ({
         }
         tryCount.current++;
         setServiceStatus(ServiceStatus.STARTING);
+        serviceStatusRef.current = ServiceStatus.STARTING;
         await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (error) {
         tryCount.current++;
@@ -93,6 +100,7 @@ const Loading = ({
     }
 
     setServiceStatus(ServiceStatus.FAILED);
+    serviceStatusRef.current = ServiceStatus.FAILED;
   };
 
   return (

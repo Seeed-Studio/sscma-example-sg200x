@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Form, Input, Modal } from "antd";
 import useConfigStore from "@/store/config";
 import EditImg from "@/assets/images/svg/edit.svg";
@@ -11,7 +11,6 @@ import PowerImg from "@/assets/images/svg/power.svg";
 import ApplicationImg from "@/assets/images/svg/application.svg";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
 import { requiredTrimValidate } from "@/utils/validate";
-import { getWifiStatusApi } from "@/api/network";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface Props {
@@ -38,7 +37,7 @@ const menuList = [
 ];
 
 const PCLayout: React.FC<Props> = ({ children }) => {
-  const { deviceInfo, updateDeviceInfo, updateWifiStatus } = useConfigStore();
+  const { deviceInfo, updateDeviceInfo } = useConfigStore();
   const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const location = useLocation();
@@ -50,16 +49,6 @@ const PCLayout: React.FC<Props> = ({ children }) => {
     const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
   };
-
-  const getWifiStatus = async () => {
-    let { data } = await getWifiStatusApi();
-    updateWifiStatus(data.status);
-  };
-
-  useEffect(() => {
-    getWifiStatus();
-    onQueryDeviceInfo();
-  }, []);
 
   const handleEditNameOk = async () => {
     const fieldsValue = form.getFieldsValue();
