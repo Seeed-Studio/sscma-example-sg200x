@@ -492,7 +492,6 @@ Response:
 | storage | int | Storage address<br/>0: Local device<br/>1: External storage |
 | duration | int | Duration. 0 for continuous, in seconds |
 | slice | int | Slicing time, in seconds |
-| start | bool | Whether to create and start |
 
 #### Response Parameters
 | Parameter | Type | Description |
@@ -508,10 +507,9 @@ Request: `sscma/v0/recamera/node/in/12345`
     "data": {
         "type": "save",
         "config":{
-            "storage": 0,
-            "duration": 0,
+            "storage": "local",
+            "duration": -1,
             "slice": 120,
-            "start": true
         }
     },
 }
