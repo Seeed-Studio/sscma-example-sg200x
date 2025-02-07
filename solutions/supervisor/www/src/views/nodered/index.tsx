@@ -10,6 +10,9 @@ const NodeRed = ({
   onReceivedDeployData?: (revision: string | null | undefined) => void;
 }) => {
   const onReceivedDeployDataRef = useRef(onReceivedDeployData);
+  const isConnectedRef = useRef(false);
+  const isUnmountedRef = useRef(false);
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     onReceivedDeployDataRef.current = onReceivedDeployData;
@@ -18,7 +21,6 @@ const NodeRed = ({
   const onReceivedMessage = (data: any) => {
     try {
       const message = JSON.parse(data);
-      // console.log("Received message:", message);
       // 查找topic为"notification/runtime-deploy"的消息
       const deployData =
         message.find(
@@ -30,14 +32,20 @@ const NodeRed = ({
         const revision = deployData.revision;
         onReceivedDeployDataRef.current?.(revision);
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error("Error parsing message:", error);
+    }
   };
 
-  useEffect(() => {
+  const connect = () => {
+    if (isUnmountedRef.current) return;
+
     const socket = new WebSocket(`ws://${ip}:1880/comms`);
+    socketRef.current = socket;
 
     socket.onopen = () => {
       console.log("WebSocket connection established");
+      isConnectedRef.current = true;
     };
 
     socket.onmessage = (event) => {
@@ -46,15 +54,33 @@ const NodeRed = ({
 
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
+      isConnectedRef.current = false;
     };
 
     socket.onclose = () => {
       console.log("WebSocket connection closed");
+      isConnectedRef.current = false;
+    };
+  };
+
+  useEffect(() => {
+    connect();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && !isConnectedRef.current) {
+        console.log("Nodered visible, Retry connection");
+        connect();
+      }
     };
 
-    // Clean up the WebSocket connection when the component is unmounted
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
-      socket.close();
+      isUnmountedRef.current = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
     };
   }, [ip]);
 
