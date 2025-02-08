@@ -44,7 +44,7 @@ const NodeRed = ({
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log("WebSocket connection established");
+      console.log("Nodered ws connection established");
       isConnectedRef.current = true;
     };
 
@@ -53,12 +53,12 @@ const NodeRed = ({
     };
 
     socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.error("Nodered ws error:", error);
       isConnectedRef.current = false;
     };
 
     socket.onclose = () => {
-      console.log("WebSocket connection closed");
+      console.log("Nodered ws connection closed");
       isConnectedRef.current = false;
     };
   };
@@ -68,7 +68,7 @@ const NodeRed = ({
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && !isConnectedRef.current) {
-        console.log("Nodered visible, Retry connection");
+        console.log("Nodered ws connection retry");
         connect();
       }
     };

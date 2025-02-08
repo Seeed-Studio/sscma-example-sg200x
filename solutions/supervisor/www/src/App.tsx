@@ -1,12 +1,13 @@
 import { useEffect, useMemo } from "react";
+import { ConfigProvider } from "antd";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import Routes from "@/router";
 import Login from "@/views/login";
-import { ConfigProvider } from "antd";
 import { queryDeviceInfoApi } from "@/api/device/index";
+import { getUserInfoApi } from "@/api/user";
 import useUserStore from "@/store/user";
 import useConfigStore from "@/store/config";
-import { getUserInfoApi } from "@/api/user";
+import { Version } from "@/utils";
 
 const router = createHashRouter(Routes);
 
@@ -22,6 +23,7 @@ const App = () => {
   const { updateDeviceInfo } = useConfigStore();
 
   useEffect(() => {
+    console.log(`%cVersion: ${Version}`, "font-weight: bold");
     initUserData();
   }, []);
 
@@ -44,27 +46,6 @@ const App = () => {
           const data = response.data;
           const firstLogin = data.firstLogin;
           updateFirstLogin(firstLogin);
-          // if (!firstLogin) {
-          //   // 根据sn获取本地存储账号信息
-          //   const userInfo = getUserInfoBySN(sn);
-          //   if (userInfo?.userName && userInfo?.password) {
-          //     // 根据本地账号信息自动登录获取token
-          //     const response = await loginApi({
-          //       userName: userInfo.userName,
-          //       password: userInfo.password,
-          //     });
-          //     if (response.code == 0) {
-          //       const token = response.data.token;
-          //       updateToken(token);
-          //     } else {
-          //       clearCurrentUserInfo();
-          //     }
-          //   } else {
-          //     clearCurrentUserInfo();
-          //   }
-          // } else {
-          //   clearCurrentUserInfo();
-          // }
           if (firstLogin) {
             clearCurrentUserInfo();
           }

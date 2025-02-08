@@ -15,7 +15,6 @@
     "antd-mobile": "^5.36.0",
     "axios": "^1.6.8",
     "crypto-js": "^4.2.0",
-    "gif-parser-web": "^1.0.5",
     "jmuxer": "^2.0.5",
     "moment": "^2.30.1",
     "path": "^0.12.7",

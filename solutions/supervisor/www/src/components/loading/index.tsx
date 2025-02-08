@@ -1,16 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { ServiceStatus } from "@/enum";
 import { Progress, Alert } from "antd";
-import GifParse from "gif-parser-web";
 import { queryServiceStatusApi } from "@/api/device";
-import gif1 from "@/assets/gif/gif1.gif";
-import gif2 from "@/assets/gif/gif2.gif";
-import gif3 from "@/assets/gif/gif3.gif";
-import gif4 from "@/assets/gif/gif4.gif";
-import gif5 from "@/assets/gif/gif5.gif";
+import gif from "@/assets/gif/loading.gif";
 
-const gifs = [gif1, gif2, gif3, gif4, gif5];
-const totalDuration = 100 * 1000; // 100秒
+const totalDuration = 90 * 1000; // 100秒
 
 const Loading = ({
   onServiceStatusChange,
@@ -21,40 +15,8 @@ const Loading = ({
     ServiceStatus.STARTING
   );
   const serviceStatusRef = useRef(ServiceStatus.STARTING);
-  const [currentGifIndex, setCurrentGifIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const tryCount = useRef<number>(0);
-  const timerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const fetchGifInfo = async () => {
-      if (serviceStatusRef.current !== ServiceStatus.STARTING) {
-        if (timerRef.current !== null) {
-          clearTimeout(timerRef.current);
-        }
-        return;
-      }
-      try {
-        const gifParse = new GifParse(gifs[currentGifIndex]);
-        const gifInfo = await gifParse.getInfo();
-        const duration = gifInfo.duration;
-        // 设置定时器，按顺序切换到下一个 GIF
-        timerRef.current = window.setTimeout(() => {
-          setCurrentGifIndex((prevIndex) => (prevIndex + 1) % gifs.length);
-        }, duration);
-      } catch (error) {
-        console.error("parse gif error:", error);
-      }
-    };
-
-    fetchGifInfo();
-
-    return () => {
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, [currentGifIndex]);
 
   useEffect(() => {
     onServiceStatusChange?.(serviceStatus);
@@ -80,8 +42,15 @@ const Loading = ({
             system === ServiceStatus.RUNNING
           ) {
             setProgress(100);
-            setServiceStatus(ServiceStatus.RUNNING);
-            serviceStatusRef.current = ServiceStatus.RUNNING;
+            if (tryCount.current == 0) {
+              setServiceStatus(ServiceStatus.RUNNING);
+              serviceStatusRef.current = ServiceStatus.RUNNING;
+            } else {
+              setTimeout(() => {
+                setServiceStatus(ServiceStatus.RUNNING);
+                serviceStatusRef.current = ServiceStatus.RUNNING;
+              }, 1000);
+            }
             return;
           } else {
             let percentage = (uptime / totalDuration) * 100;
@@ -98,7 +67,6 @@ const Loading = ({
         console.error("Error querying service status:", error);
       }
     }
-
     setServiceStatus(ServiceStatus.FAILED);
     serviceStatusRef.current = ServiceStatus.FAILED;
   };
@@ -107,7 +75,7 @@ const Loading = ({
     <div className="flex justify-center items-center absolute left-0 top-0 right-0 bottom-0 z-100 bg-[#f1f3f5]">
       {serviceStatus == ServiceStatus.STARTING && (
         <div className="w-1/2">
-          <img src={gifs[currentGifIndex]} />
+          <img className="w-full" src={gif} />
           {progress > 0 && (
             <Progress
               className="p-12 mt-36"
