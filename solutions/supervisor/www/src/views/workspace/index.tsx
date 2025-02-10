@@ -141,7 +141,7 @@ const Workspace = () => {
   useEffect(() => {
     const getDeviceList = async () => {
       try {
-        let { data } = await getDeviceListApi();
+        const { data } = await getDeviceListApi();
         const deviceList = data.deviceList.map((device) => {
           if (device.info && typeof device.info === "string") {
             const infoString = device.info.replace(/"/g, "");
@@ -272,7 +272,7 @@ const Workspace = () => {
       if (response.code == 0) {
         const data = response.data;
         if (data?.model_info) {
-          let model_data = JSON.parse(data.model_info);
+          const model_data = JSON.parse(data.model_info);
           return {
             model_data: model_data as IModelData,
             model_md5: data.model_md5,
@@ -362,7 +362,7 @@ const Workspace = () => {
       if (hasModel) {
         // 查询设备本地模型信息与模型MD5
         const { model_data: data, model_md5: md5 } = await getModelInfo();
-        let model_data = data;
+        const model_data = data;
         if (model_data) {
           model_data.model_md5 = md5;
         }
@@ -962,7 +962,7 @@ const Workspace = () => {
 
   const handleEditApp = async (appId: string) => {
     try {
-      let currApp = applist.find((app) => app.app_id == appId);
+      const currApp = applist.find((app) => app.app_id == appId);
       if (!currApp) {
         return;
       }
@@ -1018,7 +1018,7 @@ const Workspace = () => {
     if (confirmed) {
       const response = await deleteAppApi({ app_id: app.app_id });
       if (response.code == 0) {
-        let model_data = app.model_data;
+        const model_data = app.model_data;
         //如果是本地模型。则把本地模型在云端的存储也删掉
         if (model_data.model_id == "0") {
           const model_name = model_data.model_name;
@@ -1145,17 +1145,17 @@ const Workspace = () => {
                       </div>
                     </div>
                     <div className="flex pt-6 text-text">
-                      <span className="text-12">IP:</span>
+                      <span className="w-24 text-12">IP:</span>
                       <span className="text-12 ml-6">{deviceInfo?.ip}</span>
                     </div>
                     <div className="flex pt-5 text-text">
-                      <span className="text-12">OS:</span>
+                      <span className="w-24 text-12">OS:</span>
                       <span className="text-12 ml-6">
                         {deviceInfo?.osVersion}
                       </span>
                     </div>
                     <div className="flex pt-5 text-text">
-                      <span className="text-12">S/N:</span>
+                      <span className="w-24 text-12">S/N:</span>
                       <span className="text-12 ml-6">{deviceInfo?.sn}</span>
                     </div>
                     <div className="flex mt-6">
