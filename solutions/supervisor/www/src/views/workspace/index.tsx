@@ -1345,7 +1345,9 @@ const Workspace = () => {
                       <div className="flex justify-center items-center w-48 h-48 bg-primary rounded-24">
                         <UserOutlined className="text-white text-28" />
                       </div>
-                      <div className="ml-10">{nickname}</div>
+                      <div className="ml-10 max-w-98 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {nickname}
+                      </div>
                     </div>
 
                     <ConfigProvider
