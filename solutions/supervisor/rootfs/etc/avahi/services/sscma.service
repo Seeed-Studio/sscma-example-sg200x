@@ -12,4 +12,8 @@
         <type>_sscma._tcp</type>
         <port>1883</port>
     </service>
+        <service>
+    <type>_nodered._tcp</type>
+        <port>1880</port>
+    </service>
 </service-group>

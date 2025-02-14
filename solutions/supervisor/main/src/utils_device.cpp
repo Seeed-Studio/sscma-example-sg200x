@@ -704,8 +704,9 @@ std::vector<std::string> parse_line(const std::string& line) {
     return fields;
 }
 
+// need async
 int getDeviceList(HttpRequest* req, HttpResponse* resp) {
-    const char* cmd = "timeout 8 avahi-browse -arpt";
+    const char* cmd = "timeout 8 avahi-browse -arptc";
     hv::Json response;
     hv::Json data = hv::Json::array();
 
@@ -746,7 +747,7 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
 
     for (const auto& device : devices_services) {
 
-        if (device.second.find("_sscma._tcp") == device.second.end()) {
+        if (device.second.find("_sscma._tcp") == device.second.end() && device.second.find("_ws._tcp") == device.second.end()) {
             continue;
         }
 
