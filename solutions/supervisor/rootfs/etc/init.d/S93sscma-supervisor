@@ -4,6 +4,7 @@ DAEMON=supervisor
 DAEMON_PATH=/usr/local/bin
 
 SRC_FLOW="/usr/share/supervisor/flows.json"
+SRC_FLOW_GIMBAL="/usr/share/supervisor/flows_gimbal.json"
 DST_FLOW="/home/recamera/.node-red/flows.json"
 
 SRC_MODEL="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.cvimodel"
@@ -14,6 +15,13 @@ DST_INFO="/userdata/MODEL/model.json"
 SERVICE_FILE="/etc/avahi/services/sscma.service"
 
 if [ ! -f $DST_FLOW ] || [ ! -s $DEST_FLOW ]; then
+    check_can=$(ifconfig can0 2>/dev/null | grep "HWaddr")
+    if [ ! -z "$check_can" ]; then
+        if [ -f $SRC_FLOW_GIMBAL ]; then
+            SRC_FLOW=$SRC_FLOW_GIMBAL
+        fi
+    fi
+
     if [ -f $SRC_FLOW ]; then
         mkdir -p /userdata/MODEL
         cp $SRC_FLOW $DST_FLOW
