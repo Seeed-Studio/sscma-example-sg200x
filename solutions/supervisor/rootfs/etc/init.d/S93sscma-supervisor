@@ -14,7 +14,7 @@ DST_INFO="/userdata/MODEL/model.json"
 
 SERVICE_FILE="/etc/avahi/services/sscma.service"
 
-if [ ! -f $DST_FLOW ] || [ ! -s $DEST_FLOW ]; then
+if [ ! -f $DST_FLOW ] || [ ! -s $DST_FLOW ]; then
     check_can=$(ifconfig can0 2>/dev/null | grep "HWaddr")
     if [ ! -z "$check_can" ]; then
         if [ -f $SRC_FLOW_GIMBAL ]; then
