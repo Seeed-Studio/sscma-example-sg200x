@@ -1,12 +1,14 @@
 #include <iostream>
-#include <string>
-#include <unistd.h>
 #include <signal.h>
+#include <string>
 #include <syslog.h>
+#include <unistd.h>
 
-#include "hv/hlog.h"
-#include "http.h"
+#include "version.h"
+
 #include "daemon.h"
+#include "http.h"
+#include "hv/hlog.h"
 
 static void exitHandle(int signo) {
     stopDaemon();
@@ -34,10 +36,14 @@ static void initSupervisor() {
 int main(int argc, char** argv) {
 
     printf("Build Time: %s %s\n", __DATE__, __TIME__);
+    if (argc > 1 && std::string(argv[1]) == "-v") {
+        printf("Version: %s\n", PROJECT_VERSION);
+    }
 
     initSupervisor();
 
-    while(1) sleep(1000);
+    while (1)
+        sleep(1000);
 
     system(SCRIPT_WIFI_STOP);
     deinitHttpd();

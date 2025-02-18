@@ -747,7 +747,7 @@ int getDeviceList(HttpRequest* req, HttpResponse* resp) {
 
     for (const auto& device : devices_services) {
 
-        if (device.second.find("_sscma._tcp") == device.second.end() && device.second.find("_ws._tcp") == device.second.end()) {
+        if (device.second.find("_sscma._tcp") == device.second.end() || device.second.find("_ws._tcp") == device.second.end()) {
             continue;
         }
 
