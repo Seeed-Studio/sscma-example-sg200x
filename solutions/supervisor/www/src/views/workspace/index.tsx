@@ -17,6 +17,8 @@ import {
   UserOutlined,
   LeftOutlined,
   RightOutlined,
+  UpOutlined,
+  DownOutlined,
   SettingOutlined,
   FileOutlined,
 } from "@ant-design/icons";
@@ -82,12 +84,13 @@ const Workspace = () => {
   const [devicelist, setDevicelist] = useState<IIPDevice[]>([]);
 
   const [isExpand, setIsExpand] = useState(true);
+  const [showDeviceList, setShowDeviceList] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingTip, setLoadingTip] = useState("");
 
   const [focusAppid, setFocusAppid] = useState("");
-  const [currentDeviceIndex, setCurrentDeviceIndex] = useState<number>(-1);
   const revRef = useRef<string>("");
   const inputRef = useRef<string>("");
 
@@ -134,68 +137,65 @@ const Workspace = () => {
     initPlatform();
   }, []);
 
-  // useEffect(() => {
-  //   queryDeviceInfo();
-  // }, []);
+  const handleRefreshDeviceList = async () => {
+    try {
+      setRefreshing(true);
+      const { data } = await getDeviceListApi();
+      const deviceList = data.deviceList.map((device) => {
+        if (device.info && typeof device.info === "string") {
+          const infoString = device.info.replace(/"/g, "");
+          const infoParts = infoString.split(";");
+
+          const infoObject = infoParts.reduce((acc, part) => {
+            const [key, value] = part.split("=");
+            (acc as Record<string, string>)[key] = value;
+            return acc;
+          }, {} as { sn: string; lastSix: string });
+
+          if (infoObject.sn) {
+            infoObject.lastSix = infoObject.sn.slice(-6);
+          }
+
+          device.info = infoObject;
+        }
+        return device;
+      });
+
+      const filteredDeviceList = deviceList.reduce((acc, device) => {
+        const info = device.info as { sn: string; lastSix: string };
+        if (info.sn === deviceInfo?.sn) {
+          return acc;
+        }
+        const existingIndex = acc.findIndex(
+          (d) => (d.info as { sn: string }).sn === info.sn
+        );
+
+        if (existingIndex === -1) {
+          acc.push(device);
+        } else {
+          const existingDevice = acc[existingIndex];
+          const currentType = device.type.replace(/[0-9]/g, "");
+          const existingType = existingDevice.type.replace(/[0-9]/g, "");
+
+          if (isValidType(currentType) && isValidType(existingType)) {
+            if (typePriority[currentType] < typePriority[existingType]) {
+              acc[existingIndex] = device;
+            }
+          }
+        }
+        return acc;
+      }, [] as typeof deviceList);
+      setDevicelist(filteredDeviceList);
+      setRefreshing(false);
+      setShowDeviceList(filteredDeviceList.length > 0);
+    } catch (error) {
+      setRefreshing(false);
+      console.error("Error fetching DeviceList status:", error);
+    }
+  };
 
   useEffect(() => {
-    const getDeviceList = async () => {
-      try {
-        const { data } = await getDeviceListApi();
-        const deviceList = data.deviceList.map((device) => {
-          if (device.info && typeof device.info === "string") {
-            const infoString = device.info.replace(/"/g, "");
-            const infoParts = infoString.split(";"); // 假设键值对用分号分隔
-
-            const infoObject = infoParts.reduce((acc, part) => {
-              const [key, value] = part.split("=");
-              (acc as Record<string, string>)[key] = value;
-              return acc;
-            }, {} as { sn: string; lastSix: string });
-
-            if (infoObject.sn) {
-              infoObject.lastSix = infoObject.sn.slice(-6); // 添加新属性
-            }
-
-            device.info = infoObject; // 更新info为对象
-          }
-          return device;
-        });
-
-        // 过滤掉重复的 sn，并根据 type 优先级进行选择
-        const filteredDeviceList = deviceList.reduce((acc, device) => {
-          const info = device.info as { sn: string; lastSix: string };
-          if (info.sn === deviceInfo?.sn) {
-            return acc; // 跳过当前设备
-          }
-          const existingIndex = acc.findIndex(
-            (d) => (d.info as { sn: string }).sn === info.sn
-          );
-
-          if (existingIndex === -1) {
-            acc.push(device);
-          } else {
-            const existingDevice = acc[existingIndex];
-            const currentType = device.type.replace(/[0-9]/g, ""); // 忽略 type 后的数字
-            const existingType = existingDevice.type.replace(/[0-9]/g, "");
-
-            if (isValidType(currentType) && isValidType(existingType)) {
-              if (typePriority[currentType] < typePriority[existingType]) {
-                acc[existingIndex] = device;
-              }
-            }
-          }
-          return acc;
-        }, [] as typeof deviceList);
-        setDevicelist(filteredDeviceList);
-      } catch (error) {
-        console.error("Error fetching DeviceList status:", error);
-      }
-    };
-    getDeviceList();
-    const intervalId = setInterval(getDeviceList, 15000);
-    // 移除定时器
-    return () => clearInterval(intervalId);
+    handleRefreshDeviceList();
   }, [deviceInfo?.sn]);
 
   useEffect(() => {
@@ -1088,6 +1088,14 @@ const Workspace = () => {
     setIsExpand(!isExpand);
   };
 
+  const handleShowDeviceList = () => {
+    if (!showDeviceList) {
+      handleRefreshDeviceList();
+    } else {
+      setShowDeviceList(false);
+    }
+  };
+
   const handleNetworkModalOk = () => {
     setIsNetworkModalOpen(false);
   };
@@ -1098,11 +1106,6 @@ const Workspace = () => {
 
   const showNetworkModal = () => {
     setIsNetworkModalOpen(true);
-  };
-
-  //index -1 则代表是当前设备
-  const handleSelectDevice = async (index: number) => {
-    setCurrentDeviceIndex(index);
   };
 
   const gotoConfig = () => {
@@ -1128,125 +1131,96 @@ const Workspace = () => {
     <div className="flex h-full">
       <Spin spinning={loading} tip={loadingTip} fullscreen></Spin>
       {isExpand ? (
-        <div className="flex flex-col justify-between w-300 bg-background relative p-24 overflow-y-auto">
+        <div className="flex flex-col justify-between w-320 bg-background relative p-24 pr-30 overflow-y-auto">
           {deviceInfo?.ip && (
             <div className="mb-10">
               <div className="text-20 font-semibold mb-12">My Device</div>
               <div className="max-h-400 overflow-y-auto">
-                {currentDeviceIndex == -1 ? (
-                  <div
-                    className="bg-selected rounded-4 p-8 border border-primary mb-12 cursor-pointer"
-                    onClick={() => handleSelectDevice(-1)}
-                  >
-                    <div className="flex items-center">
-                      <img className="w-24 mr-8" src={recamera_logo} />
-                      <div className="text-primary text-18 font-medium overflow-hidden text-ellipsis whitespace-nowrap">
-                        {deviceInfo?.deviceName}
-                      </div>
-                    </div>
-                    <div className="flex pt-6 text-text">
-                      <span className="w-24 text-12">IP:</span>
-                      <span className="text-12 ml-6">{deviceInfo?.ip}</span>
-                    </div>
-                    <div className="flex pt-5 text-text">
-                      <span className="w-24 text-12">OS:</span>
-                      <span className="text-12 ml-6">
-                        {deviceInfo?.osVersion}
-                      </span>
-                    </div>
-                    <div className="flex pt-5 text-text">
-                      <span className="w-24 text-12">S/N:</span>
-                      <span className="text-12 ml-6">{deviceInfo?.sn}</span>
-                    </div>
-                    <div className="flex mt-6">
-                      <Button
-                        className="mx-auto text-primary text-12 rounded-24 h-24"
-                        icon={<SettingOutlined />}
-                        onClick={gotoConfig}
-                      >
-                        Setting
-                      </Button>
-                      <Button
-                        className="mx-auto text-primary text-12 rounded-24 h-24"
-                        icon={<WifiOutlined />}
-                        onClick={showNetworkModal}
-                      >
-                        Network
-                      </Button>
+                <div className="bg-selected rounded-4 p-8 border border-primary mb-12">
+                  <div className="flex items-center">
+                    <img className="w-24 mr-8" src={recamera_logo} />
+                    <div className="text-primary text-18 font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+                      {deviceInfo?.deviceName}
                     </div>
                   </div>
-                ) : (
-                  <div
-                    className="bg-background rounded-4 p-8 border border-disable mb-12 cursor-pointer"
-                    onClick={() => handleSelectDevice(-1)}
-                  >
-                    <div className="flex items-center mb-6">
-                      <img className="w-24 mr-8" src={recamera_logo} />
-                      <div className="text-14 text-3d overflow-hidden text-ellipsis whitespace-nowrap">
-                        {deviceInfo?.deviceName}
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-12 text-text">
-                      <div>IP: {deviceInfo?.ip}</div>
-                      <div>S/N Last 6: {deviceInfo?.sn?.slice(-6)}</div>
-                    </div>
+                  <div className="flex pt-6 text-text">
+                    <span className="w-24 text-12">IP:</span>
+                    <span className="text-12 ml-6">{deviceInfo?.ip}</span>
                   </div>
-                )}
+                  <div className="flex pt-5 text-text">
+                    <span className="w-24 text-12">OS:</span>
+                    <span className="text-12 ml-6">
+                      {deviceInfo?.osVersion}
+                    </span>
+                  </div>
+                  <div className="flex pt-5 text-text">
+                    <span className="w-24 text-12">S/N:</span>
+                    <span className="text-12 ml-6">{deviceInfo?.sn}</span>
+                  </div>
+                  <div className="flex mt-6">
+                    <Button
+                      className="mx-auto text-primary text-12 rounded-24 h-24"
+                      icon={<SettingOutlined />}
+                      onClick={gotoConfig}
+                    >
+                      Setting
+                    </Button>
+                    <Button
+                      className="mx-auto text-primary text-12 rounded-24 h-24"
+                      icon={<WifiOutlined />}
+                      onClick={showNetworkModal}
+                    >
+                      Network
+                    </Button>
+                  </div>
+                </div>
 
-                {devicelist?.length > 0 &&
-                  devicelist.map((device, index) =>
-                    index == currentDeviceIndex ? (
+                <Spin spinning={refreshing}>
+                  <div className="rounded-4 p-8 border border-disable">
+                    <div className="flex justify-between items-center text-12 text-primary">
+                      <div>View device under same network</div>
                       <div
-                        key={index}
-                        className="flex flex-col bg-selected rounded-4 p-8 border border-primary mb-12 cursor-pointer"
-                        onClick={() => handleSelectDevice(index)}
+                        className="cursor-pointer"
+                        onClick={handleShowDeviceList}
                       >
-                        <div className="flex items-center">
-                          <img className="w-24 mr-8" src={recamera_logo} />
-                          <div className="text-primary text-18 font-medium mb-6 overflow-hidden text-ellipsis whitespace-nowrap">
-                            {device.device}
-                          </div>
-                        </div>
-                        <div className="text-12 text-text mb-6">
-                          IP: {device.ip}
-                        </div>
-                        <div className="text-12 text-text mb-6">
-                          S/N:{" "}
-                          {typeof device.info == "object" && device.info.sn}
-                        </div>
-                        <div className="flex">
-                          <Button
-                            className="mx-auto text-12 rounded-24 h-24"
-                            type="primary"
+                        {showDeviceList ? <UpOutlined /> : <DownOutlined />}
+                      </div>
+                    </div>
+                    {showDeviceList && devicelist?.length > 0 && (
+                      <div className="max-h-200 overflow-y-auto mt-8">
+                        {devicelist.map((device, index) => (
+                          <div
+                            key={index}
+                            className="bg-background mb-8 p-4 hover:bg-selected cursor-pointer"
                             onClick={() => gotoOtherDevice(device.ip)}
                           >
-                            Open this device
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        key={index}
-                        className="flex flex-col bg-background rounded-4 p-8 border border-disable mb-12 cursor-pointer"
-                        onClick={() => handleSelectDevice(index)}
-                      >
-                        <div className="flex items-center mb-6">
-                          <img className="w-24 mr-8" src={recamera_logo} />
-                          <div className="text-14 text-3d overflow-hidden text-ellipsis whitespace-nowrap">
-                            {device.device}
+                            <div className="text-14 text-3d overflow-hidden text-ellipsis whitespace-nowrap mb-4">
+                              {device.device}
+                            </div>
+                            <div className="flex justify-between text-12 text-text">
+                              <div>IP: {device.ip}</div>
+                              <div>
+                                S/N Last 6:{" "}
+                                {typeof device.info == "object" &&
+                                  device.info.lastSix}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex justify-between text-12 text-text">
-                          <div>IP: {device.ip}</div>
-                          <div>
-                            S/N Last 6:{" "}
-                            {typeof device.info == "object" &&
-                              device.info.lastSix}
-                          </div>
-                        </div>
+                        ))}
                       </div>
-                    )
-                  )}
+                    )}
+                  </div>
+                </Spin>
+                <div className="flex mt-10">
+                  <Button
+                    className="mx-auto text-12 rounded-24 h-24"
+                    type="primary"
+                    disabled={refreshing}
+                    onClick={handleRefreshDeviceList}
+                  >
+                    Refresh
+                  </Button>
+                </div>
               </div>
             </div>
           )}
