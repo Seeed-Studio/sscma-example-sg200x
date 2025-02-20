@@ -1549,8 +1549,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 351.4286003112793,
-        "y": 280.0000190734863,
+        "x": 370,
+        "y": 280,
         "wires": [
             [
                 "968bf19f1a58b202"
@@ -1569,7 +1569,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 320,
+        "x": 340,
         "y": 200,
         "wires": [
             [
@@ -1665,7 +1665,7 @@
         "type": "function",
         "z": "5924433263ceb70d",
         "name": "get_target_box",
-        "func": "const TRACK_TARGETS = {\n    PERSON: 0,\n    CAT: 15,\n    DOG: 16,\n    BOTTLE: 39,\n    CUP: 41,\n    CELLPHONE: 67\n};\nconst trackEnabled = global.get('trackEnabled');\nif (!trackEnabled) {\n    return null;\n}\nlet currentTarget = global.get(\"trackTarget\");\nif (currentTarget === undefined) {\n    currentTarget = TRACK_TARGETS.PERSON\n}\n\n// check current topic and payload\nconst topic = msg.topic;\nconst payload = msg.payload;\n\n// get all the boxes\nlet boxes = payload.data?.boxes;\n\n// check if all boxes and not null\nif (!boxes || boxes.length === 0) {\n    payload.selectedBox = false; // if no boxes detected，set selectedBox to false\n    return msg;\n}\n// filtered out the desired detecting object with options\nlet filteredBoxes = boxes.filter(box => box[5] === parseInt(currentTarget)); // box[5] is the class ID\n\nif (filteredBoxes.length === 0) {\n    payload.selectedBox = false; \n    return msg;\n}\n\n// Calculate box area and select max box\nlet maxAreaBox = filteredBoxes.reduce((maxBox, currentBox) => {\n    // calculate current box area\n    let currentArea = currentBox[2] * currentBox[3]; // box[2] is width，box[3] is height\n    let maxArea = maxBox[2] * maxBox[3]; // maxBox's area\n\n    return currentArea > maxArea ? currentBox : maxBox; // comparison area\n}, filteredBoxes[0]);\n\n// parse info for after process in the next node\nmsg.payload.selectedBox = maxAreaBox;\n\n\nreturn msg;\n",
+        "func": "const TRACK_TARGETS = {\n    PERSON: 0,\n    CAT: 15,\n    DOG: 16,\n    BOTTLE: 39,\n    CUP: 41,\n    CELLPHONE: 67\n};\nconst trackEnabled = global.get('trackEnabled');\nif (!trackEnabled) {\n    return null;\n}\nlet currentTarget = global.get(\"trackTarget\");\nif (currentTarget === undefined) {\n    currentTarget = TRACK_TARGETS.PERSON\n}\n\n// check current topic and payload\nconst topic = msg.topic;\nconst payload = msg.payload;\n\n// get all the boxes\nlet boxes = payload.data?.boxes;\n\n// check if all boxes and not null\nif (!boxes || boxes.length === 0) {\n    payload.selectedBox = false; // if no boxes detected，set selectedBox to false\n    return msg;\n}\n// filtered out the desired detecting object with options\nlet filteredBoxes = boxes.filter(box => box[5] === parseInt(currentTarget)); // box[5] is the class ID\n\nif (filteredBoxes.length === 0) {\n    payload.selectedBox = false; \n    return msg;\n}\n\n// Calculate box area and select max box\nlet maxAreaBox = filteredBoxes.reduce((maxBox, currentBox) => {\n    // calculate current box area\n    let currentArea = currentBox[2] * currentBox[3]; // box[2] is width，box[3] is height\n    let maxArea = maxBox[2] * maxBox[3]; // maxBox's area\n\n    return currentArea > maxArea ? currentBox : maxBox; // comparison area\n}, filteredBoxes[0]);\n\n// parse info for after process in the next node\nmsg.payload.selectedBox = maxAreaBox;\nmsg.payload.resolution = payload.data?.resolution;\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -1697,7 +1697,7 @@
         "drop": true,
         "allowrate": false,
         "outputs": 1,
-        "x": 330,
+        "x": 350,
         "y": 460,
         "wires": [
             [
@@ -1737,7 +1737,7 @@
         ],
         "topic": "topic",
         "topicType": "msg",
-        "x": 370,
+        "x": 350,
         "y": 620,
         "wires": [
             [
@@ -1959,13 +1959,13 @@
         "width": 0,
         "height": 0,
         "passthru": true,
-        "outs": "all",
+        "outs": "end",
         "topic": "yaw",
         "topicType": "msg",
         "thumbLabel": "true",
         "showTicks": "true",
         "min": "1",
-        "max": "355",
+        "max": "349",
         "step": 1,
         "className": "",
         "iconPrepend": "",
@@ -1995,7 +1995,7 @@
         "width": 0,
         "height": 0,
         "passthru": true,
-        "outs": "all",
+        "outs": "end",
         "topic": "pitch",
         "topicType": "msg",
         "thumbLabel": "true",
@@ -2031,7 +2031,7 @@
         "width": 0,
         "height": 0,
         "passthru": true,
-        "outs": "all",
+        "outs": "end",
         "topic": "speed",
         "topicType": "msg",
         "thumbLabel": "true",
@@ -2082,7 +2082,7 @@
         "z": "5924433263ceb70d",
         "name": "",
         "client": "1c58e9752c4bdfcb",
-        "x": 640,
+        "x": 620,
         "y": 1020,
         "wires": []
     },
@@ -2095,11 +2095,12 @@
         "input-type": "msg",
         "output": "0",
         "outputs": 1,
-        "x": 460,
+        "x": 420,
         "y": 980,
         "wires": [
             [
-                "dd117be66b38f9b0"
+                "dd117be66b38f9b0",
+                "6391b4dbf3ec8afe"
             ]
         ]
     },
@@ -2110,9 +2111,9 @@
         "name": "Set Pitch Angle",
         "input": "payload",
         "input-type": "msg",
-        "output": "2",
+        "output": "3",
         "outputs": 1,
-        "x": 460,
+        "x": 420,
         "y": 1040,
         "wires": [
             [
@@ -2127,9 +2128,9 @@
         "name": "Set Yaw Speed",
         "input": "payload",
         "input-type": "msg",
-        "output": "1",
+        "output": "2",
         "outputs": 0,
-        "x": 460,
+        "x": 420,
         "y": 1100,
         "wires": []
     },
@@ -2140,9 +2141,9 @@
         "name": "Set Pitch Speed",
         "input": "payload",
         "input-type": "msg",
-        "output": "3",
+        "output": "5",
         "outputs": 0,
-        "x": 460,
+        "x": 420,
         "y": 1160,
         "wires": []
     },
@@ -2170,7 +2171,7 @@
         "name": "Set Pitch Angle",
         "input": "payload.pitch_angle",
         "input-type": "msg",
-        "output": "2",
+        "output": "3",
         "outputs": 1,
         "x": 1300,
         "y": 1060,
@@ -2184,10 +2185,10 @@
         "id": "8ed9939e194a81f1",
         "type": "motor-config",
         "z": "5924433263ceb70d",
-        "name": "Set Yaw Angle",
-        "input": "payload.yaw_angle",
+        "name": "Set Yaw Offset",
+        "input": "payload.yaw_offset",
         "input-type": "msg",
-        "output": "0",
+        "output": "1",
         "outputs": 1,
         "x": 960,
         "y": 460,
@@ -2204,7 +2205,7 @@
         "name": "Set Yaw Speed",
         "input": "payload.yaw_speed",
         "input-type": "msg",
-        "output": "1",
+        "output": "2",
         "outputs": 0,
         "x": 960,
         "y": 580,
@@ -2214,10 +2215,10 @@
         "id": "eff04f88aa68f420",
         "type": "motor-config",
         "z": "5924433263ceb70d",
-        "name": "Set Pitch Angle",
-        "input": "payload.pitch_angle",
+        "name": "Set Pitch Offset",
+        "input": "payload.pitch_offset",
         "input-type": "msg",
-        "output": "2",
+        "output": "4",
         "outputs": 1,
         "x": 960,
         "y": 520,
@@ -2234,7 +2235,7 @@
         "name": "Set Pitch Speed",
         "input": "payload.pitch_speed",
         "input-type": "msg",
-        "output": "3",
+        "output": "5",
         "outputs": 0,
         "x": 960,
         "y": 640,
@@ -2313,7 +2314,7 @@
         "width": "0",
         "height": "0",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"joystick-container\" class=\"joystick-container\" />\n  </div>\n</template>\n\n<script>\n  export default {\n  name: 'JoystickControl',\n  \n  data() {\n    return {\n      // 电机角度范围常量\n      YAW_MIN_ANGLE: 0,\n      YAW_MAX_ANGLE: 355,\n      YAW_MID_ANGLE: 177.5,\n      PITCH_MIN_ANGLE: 0,\n      PITCH_MAX_ANGLE: 175,\n      PITCH_MID_ANGLE: 87.5,\n      // 速度相关常量\n      MAX_DISTANCE: 48,\n      MAX_SPEED: 90,\n      // 节流时间间隔（毫秒）\n      THROTTLE_INTERVAL: 100,  // 1秒10次 = 100ms间隔\n      lastSendTime: 0\n    }\n  },\n\n  mounted() {\n    this.loadNippleJS();\n  },\n\n  methods: {\n    loadNippleJS() {\n      const script = document.createElement('script');\n      script.src = 'https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js';\n      script.onload = this.initializeJoystick;\n      document.head.appendChild(script);\n    },\n\n    initializeJoystick() {\n      const joystickContainer = document.getElementById('joystick-container');\n      if (!joystickContainer) return;\n\n      const joystick = nipplejs.create({\n        zone: joystickContainer,\n        mode: 'static',\n        position: { left: '50%', top: '50%' },\n        color: 'green',\n        size: 96\n      });\n\n      joystick.on('move', this.throttledMove);\n    },\n\n    clampAngle(angle, minAngle, maxAngle) {\n      return Math.max(minAngle, Math.min(maxAngle, angle));\n    },\n\n    calculateSpeed(distance) {\n      const speedRatio = Math.min(distance / this.MAX_DISTANCE, 1);\n      return Math.round(speedRatio * this.MAX_SPEED);\n    },\n\n    calculateAngles(vector) {\n      return {\n        yaw: Math.round(this.YAW_MID_ANGLE + (vector.x * this.YAW_MID_ANGLE)),\n        pitch: Math.round(this.PITCH_MID_ANGLE + (-vector.y * this.PITCH_MID_ANGLE))\n      };\n    },\n\n    // 节流函数\n    throttledMove(evt, data) {\n      const now = Date.now();\n      if (now - this.lastSendTime >= this.THROTTLE_INTERVAL) {\n        this.handleMove(evt, data);\n        this.lastSendTime = now;\n      }\n    },\n\n    handleMove(evt, data) {\n      if (!data?.vector) return;\n\n      const angles = this.calculateAngles(data.vector);\n      const speed = this.calculateSpeed(data.distance || 0);\n      console.log(angles,speed)\n      this.send({\n        payload: {\n          yaw_angle: this.clampAngle(angles.yaw, this.YAW_MIN_ANGLE, this.YAW_MAX_ANGLE),\n          pitch_angle: this.clampAngle(angles.pitch, this.PITCH_MIN_ANGLE, this.PITCH_MAX_ANGLE),\n          yaw_speed: speed,\n          pitch_speed: speed\n        }\n      });\n    }\n  }\n};\n</script>\n\n<style scoped>\n  .joystick-container {\n    width: 100px;\n    height: 100px;\n    position: relative;\n    margin: auto;\n    border: 0px solid #0094CE;\n    background-color: #ffffff;\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"joystick-container\" class=\"joystick-container\" />\n  </div>\n</template>\n\n<script>\n  export default {\n    name: 'JoystickControl',\n    \n    data() {\n      return {\n        // 电机角度范围常量\n        YAW_MIN_ANGLE: -177.5,    // 相对于中心的最小偏移\n        YAW_MAX_ANGLE: 177.5,     // 相对于中心的最大偏移\n        PITCH_MIN_ANGLE: -87.5,   // 相对于中心的最小偏移\n        PITCH_MAX_ANGLE: 87.5,    // 相对于中心的最大偏移\n        // 速度相关常量\n        MAX_DISTANCE: 48,\n        // 节流时间间隔（毫秒）\n        THROTTLE_INTERVAL: 200,\n        lastSendTime: 0\n      }\n    },\n\n    mounted() {\n      this.loadNippleJS();\n    },\n\n    methods: {\n      loadNippleJS() {\n        const script = document.createElement('script');\n        script.src = 'https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js';\n        script.onload = this.initializeJoystick;\n        document.head.appendChild(script);\n      },\n\n      initializeJoystick() {\n        const joystickContainer = document.getElementById('joystick-container');\n        if (!joystickContainer) return;\n\n        nipplejs.create({\n          zone: joystickContainer,\n          mode: 'static',\n          position: { left: '50%', top: '50%' },\n          color: 'green',\n          size: 96\n        }).on('move', this.throttledMove);\n      },\n\n      clampAngle(angle, minAngle, maxAngle) {\n        return Math.max(minAngle, Math.min(maxAngle, angle));\n      },\n\n      calculateOffsets(vector) {\n        return {\n          yaw: Math.round(vector.x * Math.abs(this.YAW_MAX_ANGLE)),\n          pitch: Math.round(-vector.y * Math.abs(this.PITCH_MAX_ANGLE))\n        };\n      },\n\n      throttledMove(evt, data) {\n        const now = Date.now();\n        if (now - this.lastSendTime >= this.THROTTLE_INTERVAL) {\n          this.handleMove(evt, data);\n          this.lastSendTime = now;\n        }\n      },\n\n      handleMove(evt, data) {\n        if (!data?.vector) return;\n        const offsets = this.calculateOffsets(data.vector);\n        const payload = {\n          yaw_offset: this.clampAngle(offsets.yaw, this.YAW_MIN_ANGLE, this.YAW_MAX_ANGLE),\n          pitch_offset: this.clampAngle(offsets.pitch, this.PITCH_MIN_ANGLE, this.PITCH_MAX_ANGLE)\n        };\n        this.send({ payload });\n      }\n    }\n  };\n</script>\n\n<style scoped>\n  .joystick-container {\n    width: 100px;\n    height: 100px;\n    position: relative;\n    margin: auto;\n    border: 0px solid #0094CE;\n    background-color: #ffffff;\n    border-radius: 50%;\n    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n  }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
@@ -2325,10 +2326,7 @@
             [
                 "614bfa4961c5c326",
                 "6eeacf15b570e832",
-                "463d3b9d4fcf1b9e",
-                "9c39149589ecd239",
-                "45d7334c4a7d3a34",
-                "07c3fd04801eae01"
+                "45d7334c4a7d3a34"
             ]
         ]
     },
@@ -2338,69 +2336,43 @@
         "z": "5924433263ceb70d",
         "name": "",
         "client": "1c58e9752c4bdfcb",
-        "x": 640,
-        "y": 1240,
+        "x": 620,
+        "y": 1280,
         "wires": []
     },
     {
         "id": "614bfa4961c5c326",
         "type": "motor-config",
         "z": "5924433263ceb70d",
-        "name": "Set Yaw Angle",
-        "input": "payload.yaw_angle",
+        "name": "Set Yaw Offset",
+        "input": "payload.yaw_offset",
         "input-type": "msg",
-        "output": "0",
+        "output": "1",
         "outputs": 1,
-        "x": 460,
-        "y": 1220,
+        "x": 420,
+        "y": 1240,
         "wires": [
             [
                 "a9be4cfdc49cf45a"
             ]
         ]
-    },
-    {
-        "id": "463d3b9d4fcf1b9e",
-        "type": "motor-config",
-        "z": "5924433263ceb70d",
-        "name": "Set Yaw Speed",
-        "input": "payload.yaw_speed",
-        "input-type": "msg",
-        "output": "1",
-        "outputs": 0,
-        "x": 460,
-        "y": 1340,
-        "wires": []
     },
     {
         "id": "6eeacf15b570e832",
         "type": "motor-config",
         "z": "5924433263ceb70d",
-        "name": "Set Pitch Angle",
-        "input": "payload.pitch_angle",
+        "name": "Set Pitch Offset",
+        "input": "payload.pitch_offset",
         "input-type": "msg",
-        "output": "2",
+        "output": "4",
         "outputs": 1,
-        "x": 460,
-        "y": 1280,
+        "x": 420,
+        "y": 1320,
         "wires": [
             [
                 "a9be4cfdc49cf45a"
             ]
         ]
-    },
-    {
-        "id": "9c39149589ecd239",
-        "type": "motor-config",
-        "z": "5924433263ceb70d",
-        "name": "Set Pitch Speed",
-        "input": "payload.pitch_speed",
-        "input-type": "msg",
-        "output": "3",
-        "outputs": 0,
-        "x": 460,
-        "y": 1400,
-        "wires": []
     },
     {
         "id": "95d8a68a011bdc6c",
@@ -2414,7 +2386,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 400,
+        "x": 380,
         "y": 700,
         "wires": [
             []
@@ -2432,7 +2404,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 350,
+        "x": 370,
         "y": 540,
         "wires": [
             [
@@ -2486,7 +2458,7 @@
         "type": "function",
         "z": "5924433263ceb70d",
         "name": "control_motor",
-        "func": "\nconst THROTTLE_INTERVAL = 80; //Minimum sending interval (ms)\n\n// Get last send time from context\nlet lastSendTime = context.get('lastSendTime') || 0;\n\n// Get selected bounding box\nlet selectedBox = msg.payload.selectedBox;\nif (selectedBox === false) {\n    return null;\n}\n\n// Constant definitions\nconst IMAGE_CENTER_X = 320;\nconst IMAGE_CENTER_Y = 321;\nconst SPEED_CONFIG = {\n    MAX_SPEED: 20,\n    MIN_SPEED: 1,\n    MAX_ERROR: 320\n};\n\n// Calculate center point error of the target box\nconst boxCenterX = selectedBox[0];\nconst boxCenterY = selectedBox[1];\nconst errorX = boxCenterX - IMAGE_CENTER_X;\nconst errorY = boxCenterY - IMAGE_CENTER_Y;\n\nconst calculateSpeed = (error) => {\n    const { MAX_SPEED, MIN_SPEED, MAX_ERROR } = SPEED_CONFIG;\n\n    // Use square function to reduce speed when error is small\n    let speed = Math.round((Math.pow(Math.abs(error), 2) / Math.pow(MAX_ERROR, 2)) * (MAX_SPEED - MIN_SPEED)) + MIN_SPEED;\n    \n    // Clamp speed between MIN_SPEED and MAX_SPEED\n    return Math.min(Math.max(speed, MIN_SPEED), MAX_SPEED);\n};\n\n// Generate control command\nconst generateControl = () => {\n    const speedX = calculateSpeed(errorX);\n    const speedY = calculateSpeed(errorY);\n\n    // Calculate yaw angle\n    let yaw_angle;\n    if (errorX < -8) {\n        //if object is on the left, gimbal needs to go right\n        yaw_angle = 260;\n    } else if (errorX > 8) {\n        //if object is on the right, gimbal needs to go left\n        yaw_angle = 80;\n    } else {\n        //gimbal remains in the middle\n        yaw_angle = 180;\n    }\n\n    // Calculate pitch angle\n    let pitch_angle;\n    if (speedY < -3) {\n        //if object is on the top, gimbal needs to go up\n        pitch_angle = 10;\n    } else if (speedY > 3) {\n        //if object is on the botttom, gimbal needs to go down\n        pitch_angle = 170;\n    } else {\n        //gimbal remains in the middle\n        pitch_angle = 90;\n    }\n    //this is a really rought example just to demonstrate the effect,\n    //you can use better tracking algorithm to play with gimbal.\n\n    return {\n        yaw_angle,\n        yaw_speed: speedX,\n        pitch_angle,\n        pitch_speed: speedY\n    };\n};\n\n// Check if ready to send\nconst now = Date.now();\nif (now - lastSendTime >= THROTTLE_INTERVAL) {\n    // Update send timestamp\n    context.set('lastSendTime', now);\n    \n    // Generate and send control command\n    const control = generateControl();\n    return { payload: control };\n} else {\n    // Command dropped due to throttle interval\n    node.warn(`Command dropped, time since last send: ${now - lastSendTime}ms`);\n    return null;\n}",
+        "func": "// 常量定义\nconst DEFAULT_CENTER_X = 320;   // 默认中心点X坐标\nconst DEFAULT_CENTER_Y = 320;   // 默认中心点Y坐标\nconst THROTTLE_INTERVAL = 1000; // 1000ms\nconst DEAD_ZONE = 8;            // 死区范围（像素）\n\n// 相机参数 - 调整FOV使运动更平缓\nconst HORIZONTAL_FOV = 45;  // 降低水平视场角（度）\nconst VERTICAL_FOV = 30;    // 降低垂直视场角（度）\nconst ANGLE_SCALE = 0.5;    // 添加额外的缩放因子来减小角度\n\n// 获取选中的边界框\nlet selectedBox = msg.payload.selectedBox;\nif (selectedBox === false) {\n    return null;\n}\n\n// 计算图像中心点\nlet imageCenterX = DEFAULT_CENTER_X;\nlet imageCenterY = DEFAULT_CENTER_Y;\n\n// 如果传入了分辨率，更新中心点坐标\nconst resolution = msg.payload.resolution;\nif (Array.isArray(resolution) && resolution.length >= 2) {\n    imageCenterX = Math.round(resolution[0] / 2);\n    imageCenterY = Math.round(resolution[1] / 2);\n}\n\n// 计算目标框的中心点相对于图像中心的偏移量\nconst boxCenterX = selectedBox[0];\nconst boxCenterY = selectedBox[1];\nconst offsetX = boxCenterX - imageCenterX;\nconst offsetY = boxCenterY - imageCenterY;\n\n// 计算像素偏移到角度的转换\nfunction pixelToAngle(pixelOffset, fov, resolution) {\n    // 将角度转换为弧度\n    const fovRadians = (fov * Math.PI) / 180;\n    // 计算偏移角度（弧度）\n    const angleRadians = Math.atan(pixelOffset * 2 * Math.tan(fovRadians/2) / resolution);\n    // 转换为角度并应用缩放因子\n    return (angleRadians * 180 / Math.PI) * ANGLE_SCALE;\n}\n\nconst calculateSpeed = (offset) => {\n    const MAX_SPEED = 80;\n    const MIN_SPEED = 10;\n    const MAX_OFFSET = imageCenterX; // 使用实际中心点作为最大偏移\n    \n    // 使用平方函数在偏移量小时减小速度\n    let speed = Math.round((Math.pow(Math.abs(offset), 2) / Math.pow(MAX_OFFSET, 2)) * (MAX_SPEED - MIN_SPEED)) + MIN_SPEED;\n    return Math.min(Math.max(speed, MIN_SPEED), MAX_SPEED);\n};\n\nconst generateControl = () => {\n    const speedX = calculateSpeed(offsetX);\n    const speedY = calculateSpeed(offsetY);\n\n    // 计算角度偏移量（考虑死区）\n    let yaw_offset = 0;\n    if (Math.abs(offsetX) > DEAD_ZONE) {\n        yaw_offset = -pixelToAngle(offsetX, HORIZONTAL_FOV, resolution ? resolution[0] : DEFAULT_CENTER_X * 2);\n        // 限制最大角度\n        yaw_offset = Math.max(-5, Math.min(5, yaw_offset));  // 限制最大偏移角度为5度\n    }\n\n    let pitch_offset = 0;\n    if (Math.abs(offsetY) > DEAD_ZONE) {\n        pitch_offset = pixelToAngle(offsetY, VERTICAL_FOV, resolution ? resolution[1] : DEFAULT_CENTER_Y * 2);\n        // 限制最大角度\n        pitch_offset = Math.max(-3, Math.min(3, pitch_offset));  // 限制最大偏移角度为3度\n    }\n\n\n    return {\n        yaw_offset: Math.round(yaw_offset * 100) / 100,\n        yaw_speed: speedX,\n        pitch_offset: Math.round(pitch_offset * 100) / 100,\n        pitch_speed: speedY\n    };\n};\n\n// 检查是否可以发送\nconst now = Date.now();\nlet lastSendTime = context.get('lastSendTime') || 0;\n\nif (now - lastSendTime >= THROTTLE_INTERVAL) {\n    context.set('lastSendTime', now);\n    const control = generateControl();\n    return { payload: control };\n} else {\n    return null;\n}",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -2536,7 +2508,7 @@
         "classes": "person,bicycle,car,motorcycle,airplane,bus,train,truck,boat,traffic light,fire hydrant,stop sign,parking meter,bench,bird,cat,dog,horse,sheep,cow,elephant,bear,zebra,giraffe,backpack,umbrella,handbag,tie,suitcase,frisbee,skis,snowboard,sports ball,kite,baseball bat,baseball glove,skateboard,surfboard,tennis racket,bottle,wine glass,cup,fork,knife,spoon,bowl,banana,apple,sandwich,orange,broccoli,carrot,hot dog,pizza,donut,cake,chair,couch,potted plant,bed,dining table,toilet,tv,laptop,mouse,remote,keyboard,cell phone,microwave,oven,toaster,sink,refrigerator,book,clock,vase,scissors,teddy bear,hair drier,toothbrush",
         "splitter": "0,0,0,0",
         "client": "b97fc673d9180980",
-        "x": 310,
+        "x": 330,
         "y": 380,
         "wires": [
             [
@@ -2549,7 +2521,7 @@
         "id": "45d7334c4a7d3a34",
         "type": "function",
         "z": "5924433263ceb70d",
-        "name": "Disable Auto Tracking",
+        "name": "disable_auto_tracking",
         "func": "//When manually controlling gimbal, de-select auto tracking.\n\nglobal.set('trackDisabled', false);\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
@@ -2557,7 +2529,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 400,
+        "x": 380,
         "y": 760,
         "wires": [
             [
@@ -2606,28 +2578,6 @@
         "wires": []
     },
     {
-        "id": "07c3fd04801eae01",
-        "type": "function",
-        "z": "5924433263ceb70d",
-        "name": "Sync Joystick with Slider",
-        "func": "// 获取 Joystick 的输出值\nconst yawAngle = msg.payload.yaw_angle;\nconst pitchAngle = msg.payload.pitch_angle;\nconst speed = msg.payload.yaw_speed;\n\n// 创建三个消息对象，分别对应 Yaw、Pitch 和 Speed Slider\nconst yawMsg = { topic: \"yaw\", payload: yawAngle };\nconst pitchMsg = { topic: \"pitch\", payload: pitchAngle };\nconst speedMsg = { topic: \"speed\", payload: speed };\n\n// 返回多个消息对象\nreturn [yawMsg, pitchMsg, speedMsg];",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 170,
-        "y": 1220,
-        "wires": [
-            [
-                "141a718c4aca75ea",
-                "45dd35115125460f",
-                "1528e53340ceac14"
-            ]
-        ]
-    },
-    {
         "id": "a8516ce533be8ea5",
         "type": "comment",
         "z": "5924433263ceb70d",
@@ -2635,6 +2585,22 @@
         "info": "This is the basic webs of reCamera gimbal\nsuch as Wi-Fi, ssh, or terminal.\n\nYou can delete this two subflows if you \ndo not need them to show in the dashboard.",
         "x": 160,
         "y": 1480,
+        "wires": []
+    },
+    {
+        "id": "6391b4dbf3ec8afe",
+        "type": "debug",
+        "z": "5924433263ceb70d",
+        "name": "debug 8",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 380,
+        "y": 920,
         "wires": []
     }
 ]
