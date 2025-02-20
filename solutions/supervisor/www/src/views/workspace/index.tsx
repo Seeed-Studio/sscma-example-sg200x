@@ -1191,7 +1191,7 @@ const Workspace = () => {
                         {devicelist.map((device, index) => (
                           <div
                             key={index}
-                            className="bg-background mb-8 p-4 hover:bg-selected cursor-pointer"
+                            className="bg-background mb-8 p-4 rounded-4 hover:bg-selected cursor-pointer"
                             onClick={() => gotoOtherDevice(device.ip)}
                           >
                             <div className="text-14 text-3d overflow-hidden text-ellipsis whitespace-nowrap mb-4">
