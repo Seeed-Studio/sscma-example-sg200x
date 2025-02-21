@@ -1388,6 +1388,7 @@ const Workspace = () => {
       <Modal
         title="Network"
         open={isNetworkModalOpen}
+        destroyOnClose
         onCancel={handleNetworkModalCancel}
         footer={
           <Button type="primary" onClick={handleNetworkModalOk}>

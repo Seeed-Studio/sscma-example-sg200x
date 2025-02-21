@@ -43,7 +43,7 @@ const initialWifiList = [
     list: [],
   },
 ];
-let timeGap = 30000;
+const timeGap = 30000;
 let timer: NodeJS.Timeout | null = null;
 let resultTimer: NodeJS.Timeout | null = null;
 let resultTotalCount = 0;
@@ -367,7 +367,7 @@ export function useData() {
   };
   // 刷新wifi状态
   const refreshWifiStatus = async () => {
-    let { data } = await getWifiStatusApi();
+    const { data } = await getWifiStatusApi();
     updateWifiStatus(data.status);
   };
   const onHandleOperate = async (type: OperateType) => {
