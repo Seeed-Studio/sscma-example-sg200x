@@ -88,6 +88,13 @@ export const initPlatformStore = async (
           appInfo: app_info,
         });
       }
+    } else {
+      if (token && refreshToken) {
+        usePlatformStore.setState({
+          token,
+          refreshToken,
+        });
+      }
     }
   } catch (error) {}
 };
