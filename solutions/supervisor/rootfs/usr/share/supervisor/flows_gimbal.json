@@ -1842,8 +1842,8 @@
         "color": "#717171",
         "wrapText": false,
         "className": "",
-        "x": 140,
-        "y": 920,
+        "x": 340,
+        "y": 1220,
         "wires": []
     },
     {
@@ -1864,8 +1864,8 @@
         "color": "#717171",
         "wrapText": false,
         "className": "",
-        "x": 840,
-        "y": 920,
+        "x": 140,
+        "y": 980,
         "wires": []
     },
     {
@@ -1874,7 +1874,7 @@
         "z": "5924433263ceb70d",
         "name": "",
         "x": 350,
-        "y": 1520,
+        "y": 1320,
         "wires": []
     },
     {
@@ -1883,7 +1883,7 @@
         "z": "5924433263ceb70d",
         "name": "",
         "x": 130,
-        "y": 1520,
+        "y": 1320,
         "wires": []
     },
     {
@@ -1903,8 +1903,8 @@
         "className": "",
         "icon": "",
         "iconPosition": "left",
-        "payload": "",
-        "payloadType": "str",
+        "payload": "{\"yaw_angle\":180,\"pitch_angle\":175}",
+        "payloadType": "json",
         "topic": "topic",
         "topicType": "msg",
         "buttonColor": "",
@@ -1917,33 +1917,13 @@
         "enablePointerup": false,
         "pointerupPayload": "",
         "pointerupPayloadType": "str",
-        "x": 810,
-        "y": 980,
+        "x": 110,
+        "y": 1020,
         "wires": [
             [
-                "c3a9da7d7a5a2746",
-                "45d7334c4a7d3a34"
-            ]
-        ]
-    },
-    {
-        "id": "c3a9da7d7a5a2746",
-        "type": "function",
-        "z": "5924433263ceb70d",
-        "name": "sleep_angle",
-        "func": "msg.payload = {\n    yaw_angle: 180,\n    pitch_angle: 175\n}\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1030,
-        "y": 980,
-        "wires": [
-            [
-                "991e22b67a81b078",
-                "e87995bc13f50329"
+                "45d7334c4a7d3a34",
+                "c0ce6c46488c2304",
+                "0179ce259b46775f"
             ]
         ]
     },
@@ -1958,14 +1938,14 @@
         "order": 3,
         "width": 0,
         "height": 0,
-        "passthru": true,
+        "passthru": false,
         "outs": "end",
-        "topic": "yaw",
+        "topic": "topic",
         "topicType": "msg",
         "thumbLabel": "true",
         "showTicks": "true",
         "min": "1",
-        "max": "349",
+        "max": "340",
         "step": 1,
         "className": "",
         "iconPrepend": "",
@@ -1974,12 +1954,12 @@
         "colorTrack": "",
         "colorThumb": "",
         "showTextField": true,
-        "x": 110,
-        "y": 980,
+        "x": 510,
+        "y": 880,
         "wires": [
             [
-                "a646cd3459196008",
-                "45d7334c4a7d3a34"
+                "45d7334c4a7d3a34",
+                "a646cd3459196008"
             ]
         ]
     },
@@ -1994,14 +1974,14 @@
         "order": 4,
         "width": 0,
         "height": 0,
-        "passthru": true,
+        "passthru": false,
         "outs": "end",
-        "topic": "pitch",
+        "topic": "topic",
         "topicType": "msg",
         "thumbLabel": "true",
         "showTicks": "true",
         "min": "1",
-        "max": "180",
+        "max": "175",
         "step": 1,
         "className": "",
         "iconPrepend": "",
@@ -2010,8 +1990,8 @@
         "colorTrack": "",
         "colorThumb": "",
         "showTextField": true,
-        "x": 110,
-        "y": 1040,
+        "x": 510,
+        "y": 940,
         "wires": [
             [
                 "91f5df07f39d7f9c",
@@ -2032,7 +2012,7 @@
         "height": 0,
         "passthru": true,
         "outs": "end",
-        "topic": "speed",
+        "topic": "topic",
         "topicType": "msg",
         "thumbLabel": "true",
         "showTicks": "true",
@@ -2046,13 +2026,12 @@
         "colorTrack": "",
         "colorThumb": "",
         "showTextField": false,
-        "x": 110,
-        "y": 1100,
+        "x": 510,
+        "y": 1220,
         "wires": [
             [
                 "88b1ceb3c6ddfd23",
-                "30d2fe6d5fa334fa",
-                "45d7334c4a7d3a34"
+                "30d2fe6d5fa334fa"
             ]
         ]
     },
@@ -2063,17 +2042,7 @@
         "name": "",
         "client": "1c58e9752c4bdfcb",
         "x": 1160,
-        "y": 460,
-        "wires": []
-    },
-    {
-        "id": "1dca133b04f8d0db",
-        "type": "can-write",
-        "z": "5924433263ceb70d",
-        "name": "",
-        "client": "1c58e9752c4bdfcb",
-        "x": 1500,
-        "y": 1040,
+        "y": 480,
         "wires": []
     },
     {
@@ -2082,8 +2051,8 @@
         "z": "5924433263ceb70d",
         "name": "",
         "client": "1c58e9752c4bdfcb",
-        "x": 620,
-        "y": 1020,
+        "x": 940,
+        "y": 1060,
         "wires": []
     },
     {
@@ -2095,12 +2064,11 @@
         "input-type": "msg",
         "output": "0",
         "outputs": 1,
-        "x": 420,
-        "y": 980,
+        "x": 720,
+        "y": 1020,
         "wires": [
             [
-                "dd117be66b38f9b0",
-                "6391b4dbf3ec8afe"
+                "dd117be66b38f9b0"
             ]
         ]
     },
@@ -2113,8 +2081,8 @@
         "input-type": "msg",
         "output": "3",
         "outputs": 1,
-        "x": 420,
-        "y": 1040,
+        "x": 720,
+        "y": 1100,
         "wires": [
             [
                 "dd117be66b38f9b0"
@@ -2130,8 +2098,8 @@
         "input-type": "msg",
         "output": "2",
         "outputs": 0,
-        "x": 420,
-        "y": 1100,
+        "x": 720,
+        "y": 1180,
         "wires": []
     },
     {
@@ -2143,43 +2111,9 @@
         "input-type": "msg",
         "output": "5",
         "outputs": 0,
-        "x": 420,
-        "y": 1160,
+        "x": 720,
+        "y": 1240,
         "wires": []
-    },
-    {
-        "id": "991e22b67a81b078",
-        "type": "motor-config",
-        "z": "5924433263ceb70d",
-        "name": "Set Yaw Angle",
-        "input": "payload.yaw_angle",
-        "input-type": "msg",
-        "output": "0",
-        "outputs": 1,
-        "x": 1300,
-        "y": 1000,
-        "wires": [
-            [
-                "1dca133b04f8d0db"
-            ]
-        ]
-    },
-    {
-        "id": "e87995bc13f50329",
-        "type": "motor-config",
-        "z": "5924433263ceb70d",
-        "name": "Set Pitch Angle",
-        "input": "payload.pitch_angle",
-        "input-type": "msg",
-        "output": "3",
-        "outputs": 1,
-        "x": 1300,
-        "y": 1060,
-        "wires": [
-            [
-                "1dca133b04f8d0db"
-            ]
-        ]
     },
     {
         "id": "8ed9939e194a81f1",
@@ -2258,8 +2192,8 @@
         "className": "",
         "icon": "",
         "iconPosition": "left",
-        "payload": "1_180_90+2_90_90",
-        "payloadType": "str",
+        "payload": "{\"yaw_angle\":180,\"pitch_angle\":90}",
+        "payloadType": "json",
         "topic": "topic",
         "topicType": "msg",
         "buttonColor": "",
@@ -2272,33 +2206,13 @@
         "enablePointerup": false,
         "pointerupPayload": "",
         "pointerupPayloadType": "str",
-        "x": 820,
-        "y": 1080,
+        "x": 120,
+        "y": 1100,
         "wires": [
             [
-                "016abb5e9eec282c",
-                "45d7334c4a7d3a34"
-            ]
-        ]
-    },
-    {
-        "id": "016abb5e9eec282c",
-        "type": "function",
-        "z": "5924433263ceb70d",
-        "name": "standby_angle",
-        "func": "msg.payload = {\n    yaw_angle: 180,\n    pitch_angle: 90\n}\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1040,
-        "y": 1080,
-        "wires": [
-            [
-                "991e22b67a81b078",
-                "e87995bc13f50329"
+                "45d7334c4a7d3a34",
+                "c0ce6c46488c2304",
+                "0179ce259b46775f"
             ]
         ]
     },
@@ -2314,14 +2228,14 @@
         "width": "0",
         "height": "0",
         "head": "",
-        "format": "<template>\n  <div>\n    <div id=\"joystick-container\" class=\"joystick-container\" />\n  </div>\n</template>\n\n<script>\n  export default {\n    name: 'JoystickControl',\n    \n    data() {\n      return {\n        // 电机角度范围常量\n        YAW_MIN_ANGLE: -177.5,    // 相对于中心的最小偏移\n        YAW_MAX_ANGLE: 177.5,     // 相对于中心的最大偏移\n        PITCH_MIN_ANGLE: -87.5,   // 相对于中心的最小偏移\n        PITCH_MAX_ANGLE: 87.5,    // 相对于中心的最大偏移\n        // 速度相关常量\n        MAX_DISTANCE: 48,\n        // 节流时间间隔（毫秒）\n        THROTTLE_INTERVAL: 200,\n        lastSendTime: 0\n      }\n    },\n\n    mounted() {\n      this.loadNippleJS();\n    },\n\n    methods: {\n      loadNippleJS() {\n        const script = document.createElement('script');\n        script.src = 'https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js';\n        script.onload = this.initializeJoystick;\n        document.head.appendChild(script);\n      },\n\n      initializeJoystick() {\n        const joystickContainer = document.getElementById('joystick-container');\n        if (!joystickContainer) return;\n\n        nipplejs.create({\n          zone: joystickContainer,\n          mode: 'static',\n          position: { left: '50%', top: '50%' },\n          color: 'green',\n          size: 96\n        }).on('move', this.throttledMove);\n      },\n\n      clampAngle(angle, minAngle, maxAngle) {\n        return Math.max(minAngle, Math.min(maxAngle, angle));\n      },\n\n      calculateOffsets(vector) {\n        return {\n          yaw: Math.round(vector.x * Math.abs(this.YAW_MAX_ANGLE)),\n          pitch: Math.round(-vector.y * Math.abs(this.PITCH_MAX_ANGLE))\n        };\n      },\n\n      throttledMove(evt, data) {\n        const now = Date.now();\n        if (now - this.lastSendTime >= this.THROTTLE_INTERVAL) {\n          this.handleMove(evt, data);\n          this.lastSendTime = now;\n        }\n      },\n\n      handleMove(evt, data) {\n        if (!data?.vector) return;\n        const offsets = this.calculateOffsets(data.vector);\n        const payload = {\n          yaw_offset: this.clampAngle(offsets.yaw, this.YAW_MIN_ANGLE, this.YAW_MAX_ANGLE),\n          pitch_offset: this.clampAngle(offsets.pitch, this.PITCH_MIN_ANGLE, this.PITCH_MAX_ANGLE)\n        };\n        this.send({ payload });\n      }\n    }\n  };\n</script>\n\n<style scoped>\n  .joystick-container {\n    width: 100px;\n    height: 100px;\n    position: relative;\n    margin: auto;\n    border: 0px solid #0094CE;\n    background-color: #ffffff;\n    border-radius: 50%;\n    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n  }\n</style>",
+        "format": "<template>\n  <div>\n    <div id=\"joystick-container\" class=\"joystick-container\" />\n  </div>\n</template>\n\n<script>\n  export default {\n  name: 'JoystickControl',\n  \n  data() {\n    return {\n      // Motor angle range constants\n      YAW_MIN_ANGLE: -50,    // Min yaw angle offset from center\n      YAW_MAX_ANGLE: 50,     // Max yaw angle offset from center \n      PITCH_MIN_ANGLE: -30,  // Min pitch angle offset from center\n      PITCH_MAX_ANGLE: 30,   // Max pitch angle offset from center\n      MAX_DISTANCE: 48,      // Max joystick distance\n      joystick: null         // Joystick instance\n    }\n  },\n\n  mounted() {\n    this.loadNippleJS();\n  },\n\n  methods: {\n    loadNippleJS() {\n      const script = document.createElement('script');\n      script.src = 'https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js';\n      script.onload = this.initializeJoystick;\n      document.head.appendChild(script);\n    },\n\n    initializeJoystick() {\n      const container = document.getElementById('joystick-container');\n      if (!container) return;\n\n      this.joystick = nipplejs.create({\n        zone: container,\n        mode: 'static',\n        position: { left: '50%', top: '50%' },\n        color: 'green',\n        size: 96,\n        lockX: false,\n        lockY: false\n      });\n\n      this.joystick.on('end', this.handleEnd);\n    },\n\n    clampAngle(angle, minAngle, maxAngle) {\n      return Math.max(minAngle, Math.min(maxAngle, angle));\n    },\n\n    calculateOffsets(vector) {\n      if (!vector) return { yaw: 0, pitch: 0 };\n\n      return {\n        yaw: Math.round(vector.x * Math.abs(this.YAW_MAX_ANGLE)),\n        pitch: Math.round(-vector.y * Math.abs(this.PITCH_MAX_ANGLE))\n      };\n    },\n\n    handleEnd(evt, data) {\n      if (!data?.frontPosition) return;\n\n      const vector = {\n        x: data.frontPosition.x / this.MAX_DISTANCE,\n        y: data.frontPosition.y / this.MAX_DISTANCE\n      };\n\n      const offsets = this.calculateOffsets(vector);\n\n      this.send({\n        payload: {\n          yaw_offset: this.clampAngle(offsets.yaw, this.YAW_MIN_ANGLE, this.YAW_MAX_ANGLE),\n          pitch_offset: -this.clampAngle(offsets.pitch, this.PITCH_MIN_ANGLE, this.PITCH_MAX_ANGLE)\n        }\n      });\n    },\n\n    beforeDestroy() {\n      this.joystick?.destroy();\n    }\n  }\n};\n</script>\n\n<style scoped>\n  .joystick-container {\n    width: 100px;\n    height: 100px;\n    position: relative;\n    margin: auto;\n    border: 0px solid #0094CE;\n    background-color: #ffffff;\n    border-radius: 50%;\n    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n  }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
         "templateScope": "local",
         "className": "",
-        "x": 120,
-        "y": 1300,
+        "x": 700,
+        "y": 880,
         "wires": [
             [
                 "614bfa4961c5c326",
@@ -2336,8 +2250,8 @@
         "z": "5924433263ceb70d",
         "name": "",
         "client": "1c58e9752c4bdfcb",
-        "x": 620,
-        "y": 1280,
+        "x": 1160,
+        "y": 840,
         "wires": []
     },
     {
@@ -2349,8 +2263,8 @@
         "input-type": "msg",
         "output": "1",
         "outputs": 1,
-        "x": 420,
-        "y": 1240,
+        "x": 960,
+        "y": 820,
         "wires": [
             [
                 "a9be4cfdc49cf45a"
@@ -2366,8 +2280,8 @@
         "input-type": "msg",
         "output": "4",
         "outputs": 1,
-        "x": 420,
-        "y": 1320,
+        "x": 960,
+        "y": 880,
         "wires": [
             [
                 "a9be4cfdc49cf45a"
@@ -2386,8 +2300,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 380,
-        "y": 700,
+        "x": 600,
+        "y": 620,
         "wires": [
             []
         ]
@@ -2458,7 +2372,7 @@
         "type": "function",
         "z": "5924433263ceb70d",
         "name": "control_motor",
-        "func": "// 常量定义\nconst DEFAULT_CENTER_X = 320;   // 默认中心点X坐标\nconst DEFAULT_CENTER_Y = 320;   // 默认中心点Y坐标\nconst THROTTLE_INTERVAL = 1000; // 1000ms\nconst DEAD_ZONE = 8;            // 死区范围（像素）\n\n// 相机参数 - 调整FOV使运动更平缓\nconst HORIZONTAL_FOV = 45;  // 降低水平视场角（度）\nconst VERTICAL_FOV = 30;    // 降低垂直视场角（度）\nconst ANGLE_SCALE = 0.5;    // 添加额外的缩放因子来减小角度\n\n// 获取选中的边界框\nlet selectedBox = msg.payload.selectedBox;\nif (selectedBox === false) {\n    return null;\n}\n\n// 计算图像中心点\nlet imageCenterX = DEFAULT_CENTER_X;\nlet imageCenterY = DEFAULT_CENTER_Y;\n\n// 如果传入了分辨率，更新中心点坐标\nconst resolution = msg.payload.resolution;\nif (Array.isArray(resolution) && resolution.length >= 2) {\n    imageCenterX = Math.round(resolution[0] / 2);\n    imageCenterY = Math.round(resolution[1] / 2);\n}\n\n// 计算目标框的中心点相对于图像中心的偏移量\nconst boxCenterX = selectedBox[0];\nconst boxCenterY = selectedBox[1];\nconst offsetX = boxCenterX - imageCenterX;\nconst offsetY = boxCenterY - imageCenterY;\n\n// 计算像素偏移到角度的转换\nfunction pixelToAngle(pixelOffset, fov, resolution) {\n    // 将角度转换为弧度\n    const fovRadians = (fov * Math.PI) / 180;\n    // 计算偏移角度（弧度）\n    const angleRadians = Math.atan(pixelOffset * 2 * Math.tan(fovRadians/2) / resolution);\n    // 转换为角度并应用缩放因子\n    return (angleRadians * 180 / Math.PI) * ANGLE_SCALE;\n}\n\nconst calculateSpeed = (offset) => {\n    const MAX_SPEED = 80;\n    const MIN_SPEED = 10;\n    const MAX_OFFSET = imageCenterX; // 使用实际中心点作为最大偏移\n    \n    // 使用平方函数在偏移量小时减小速度\n    let speed = Math.round((Math.pow(Math.abs(offset), 2) / Math.pow(MAX_OFFSET, 2)) * (MAX_SPEED - MIN_SPEED)) + MIN_SPEED;\n    return Math.min(Math.max(speed, MIN_SPEED), MAX_SPEED);\n};\n\nconst generateControl = () => {\n    const speedX = calculateSpeed(offsetX);\n    const speedY = calculateSpeed(offsetY);\n\n    // 计算角度偏移量（考虑死区）\n    let yaw_offset = 0;\n    if (Math.abs(offsetX) > DEAD_ZONE) {\n        yaw_offset = -pixelToAngle(offsetX, HORIZONTAL_FOV, resolution ? resolution[0] : DEFAULT_CENTER_X * 2);\n        // 限制最大角度\n        yaw_offset = Math.max(-5, Math.min(5, yaw_offset));  // 限制最大偏移角度为5度\n    }\n\n    let pitch_offset = 0;\n    if (Math.abs(offsetY) > DEAD_ZONE) {\n        pitch_offset = pixelToAngle(offsetY, VERTICAL_FOV, resolution ? resolution[1] : DEFAULT_CENTER_Y * 2);\n        // 限制最大角度\n        pitch_offset = Math.max(-3, Math.min(3, pitch_offset));  // 限制最大偏移角度为3度\n    }\n\n\n    return {\n        yaw_offset: Math.round(yaw_offset * 100) / 100,\n        yaw_speed: speedX,\n        pitch_offset: Math.round(pitch_offset * 100) / 100,\n        pitch_speed: speedY\n    };\n};\n\n// 检查是否可以发送\nconst now = Date.now();\nlet lastSendTime = context.get('lastSendTime') || 0;\n\nif (now - lastSendTime >= THROTTLE_INTERVAL) {\n    context.set('lastSendTime', now);\n    const control = generateControl();\n    return { payload: control };\n} else {\n    return null;\n}",
+        "func": "// Constants\nconst DEFAULT_CENTER_X = 320;   // Default center X coordinate\nconst DEFAULT_CENTER_Y = 320;   // Default center Y coordinate\nconst THROTTLE_INTERVAL = 200;  // Throttle interval in ms\nconst DEAD_ZONE = 8;           // Dead zone in pixels\nconst MAX_SPEED = 80;          // Maximum movement speed\nconst MIN_SPEED = 10;          // Minimum movement speed\n\n// Camera parameters for smoother motion\nconst HORIZONTAL_FOV = 45;     // Horizontal field of view in degrees\nconst VERTICAL_FOV = 30;       // Vertical field of view in degrees\nconst ANGLE_SCALE = 0.5;       // Additional scale factor to reduce angle\nconst MAX_ANGLE = 20;          // Maximum angle offset in degrees\n\n// Convert pixel offset to angle\nconst pixelToAngle = (pixelOffset, fov, resolution) => {\n    const fovRadians = (fov * Math.PI) / 180;\n    const angleRadians = Math.atan(pixelOffset * 2 * Math.tan(fovRadians / 2) / resolution);\n    return (angleRadians * 180 / Math.PI) * ANGLE_SCALE;\n};\n\n// Calculate speed based on offset\nconst calculateSpeed = (offset, maxOffset) => {\n    const speed = Math.round((Math.pow(Math.abs(offset), 2) / Math.pow(maxOffset, 2)) * (MAX_SPEED - MIN_SPEED)) + MIN_SPEED;\n    return Math.min(Math.max(speed, MIN_SPEED), MAX_SPEED);\n};\n\n// Calculate angle offset with dead zone and limits\nconst calculateAngleOffset = (offset, fov, resolution) => {\n    if (Math.abs(offset) <= DEAD_ZONE) return 0;\n    \n    const angle = pixelToAngle(offset, fov, resolution);\n    return Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, angle));\n};\n\n// Get selected bounding box\nconst selectedBox = msg.payload.selectedBox;\nif (!selectedBox) return null;\n\n// Get resolution or use defaults\nconst resolution = msg.payload.resolution || [DEFAULT_CENTER_X * 2, DEFAULT_CENTER_Y * 2];\nconst [imageCenterX, imageCenterY] = resolution.map(dim => Math.round(dim / 2));\n\n// Calculate center point offsets\nconst [boxCenterX, boxCenterY] = selectedBox;\nconst offsetX = boxCenterX - imageCenterX;\nconst offsetY = boxCenterY - imageCenterY;\n\n// Generate control data\nconst generateControl = () => ({\n    yaw_offset: Math.round(-calculateAngleOffset(offsetX, HORIZONTAL_FOV, resolution[0]) * 100) / 100,\n    yaw_speed: calculateSpeed(offsetX, imageCenterX),\n    pitch_offset: Math.round(calculateAngleOffset(offsetY, VERTICAL_FOV, resolution[1]) * 100) / 100,\n    pitch_speed: calculateSpeed(offsetY, imageCenterY)\n});\n\n// Throttle control output\nconst now = Date.now();\nconst lastSendTime = context.get('lastSendTime') || 0;\n\nif (now - lastSendTime >= THROTTLE_INTERVAL) {\n    context.set('lastSendTime', now);\n    return { payload: generateControl() };\n}\n\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -2522,15 +2436,15 @@
         "type": "function",
         "z": "5924433263ceb70d",
         "name": "disable_auto_tracking",
-        "func": "//When manually controlling gimbal, de-select auto tracking.\n\nglobal.set('trackDisabled', false);\nreturn msg;",
+        "func": "//When manually controlling gimbal, de-select auto tracking.\n\nglobal.set('trackEnabled', false);\nmsg.payload = false;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 380,
-        "y": 760,
+        "x": 740,
+        "y": 720,
         "wires": [
             [
                 "16faeb961ec1bf39"
@@ -2554,7 +2468,7 @@
         "name": "Auto tracking with Detection",
         "info": "This part is in charge of the auto tracking\nwith the detection.\n\nUsing the output box width and height to get\nthe center of the detection object, then\nask gimbal to move accordingly.",
         "x": 620,
-        "y": 540,
+        "y": 580,
         "wires": []
     },
     {
@@ -2563,8 +2477,8 @@
         "z": "5924433263ceb70d",
         "name": "Manual Control",
         "info": "This part demonstrates an example of using\nslider widget to control the gimbal.\n\nPlease noted once manually control the gimbal,\nthe auto tracking will stop.",
-        "x": 140,
-        "y": 880,
+        "x": 340,
+        "y": 1180,
         "wires": []
     },
     {
@@ -2573,8 +2487,8 @@
         "z": "5924433263ceb70d",
         "name": "Short cut move",
         "info": "This part demonstrates an example of using\nbuttons to control the gimbal movement.\n\nStandby means the angle position is\n(180,90) to locate in the middle.\n\nPlease noted once manually control the gimbal,\nthe auto tracking will stop.",
-        "x": 840,
-        "y": 880,
+        "x": 140,
+        "y": 940,
         "wires": []
     },
     {
@@ -2584,23 +2498,135 @@
         "name": "Can delete if no needs",
         "info": "This is the basic webs of reCamera gimbal\nsuch as Wi-Fi, ssh, or terminal.\n\nYou can delete this two subflows if you \ndo not need them to show in the dashboard.",
         "x": 160,
-        "y": 1480,
+        "y": 1280,
         "wires": []
     },
     {
-        "id": "6391b4dbf3ec8afe",
-        "type": "debug",
+        "id": "c0ce6c46488c2304",
+        "type": "function",
         "z": "5924433263ceb70d",
-        "name": "debug 8",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 380,
-        "y": 920,
-        "wires": []
+        "name": "sync_yaw_angle",
+        "func": "msg.payload = msg.payload.yaw_angle\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 1020,
+        "wires": [
+            [
+                "a646cd3459196008",
+                "1528e53340ceac14"
+            ]
+        ]
+    },
+    {
+        "id": "0179ce259b46775f",
+        "type": "function",
+        "z": "5924433263ceb70d",
+        "name": "sync_pitch_angle",
+        "func": "msg.payload = msg.payload.pitch_angle\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 1100,
+        "wires": [
+            [
+                "91f5df07f39d7f9c",
+                "45dd35115125460f"
+            ]
+        ]
+    },
+    {
+        "id": "a11af1f4ba1e42bd",
+        "type": "can-read",
+        "z": "5924433263ceb70d",
+        "name": "Read Yaw Angle",
+        "client": "1c58e9752c4bdfcb",
+        "filter": true,
+        "canId": "141",
+        "rules": [
+            {
+                "index": "0",
+                "value": "94"
+            }
+        ],
+        "outputs": 1,
+        "x": 140,
+        "y": 760,
+        "wires": [
+            [
+                "90e226f8b4bb6ddd"
+            ]
+        ]
+    },
+    {
+        "id": "90e226f8b4bb6ddd",
+        "type": "function",
+        "z": "5924433263ceb70d",
+        "name": "parse_yaw",
+        "func": "// 解析电机当前位置\nconst response = msg.payload;\n\n// 检查响应数据格式\nif (!response || !response.data || !Array.isArray(response.data)) {\n    node.error(\"Invalid response format\");\n    return null;\n}\n\n// 获取角度值的两个字节（第5和第6个字节）并反转顺序\nconst angleBytes = response.data.slice(4, 6).reverse();\n// 组合成16进制字符串\nconst angleHex = angleBytes.join(\"\");\n// 转换为10进制\nlet currentAngle = parseInt(angleHex, 16);\n// 转换为实际角度（除以100并取整）\nconst actualAngle = Math.round(currentAngle / 100);\nif (actualAngle==0)\nreturn null\n// 返回结果\nmsg.payload = actualAngle;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 760,
+        "wires": [
+            [
+                "1528e53340ceac14"
+            ]
+        ]
+    },
+    {
+        "id": "4b450d813b2088af",
+        "type": "can-read",
+        "z": "5924433263ceb70d",
+        "name": "Read Pitch Angle",
+        "client": "1c58e9752c4bdfcb",
+        "filter": true,
+        "canId": "142",
+        "rules": [
+            {
+                "index": "0",
+                "value": "94"
+            }
+        ],
+        "outputs": 1,
+        "x": 140,
+        "y": 820,
+        "wires": [
+            [
+                "c2c502144df37426"
+            ]
+        ]
+    },
+    {
+        "id": "c2c502144df37426",
+        "type": "function",
+        "z": "5924433263ceb70d",
+        "name": "parse_pitch",
+        "func": "// 解析电机当前位置\nconst response = msg.payload;\n\n// 检查响应数据格式\nif (!response || !response.data || !Array.isArray(response.data)) {\n    node.error(\"Invalid response format\");\n    return null;\n}\n\n// 获取角度值的两个字节（第5和第6个字节）并反转顺序\nconst angleBytes = response.data.slice(4, 6).reverse();\n// 组合成16进制字符串\nconst angleHex = angleBytes.join(\"\");\n// 转换为10进制\nlet currentAngle = parseInt(angleHex, 16);\n// 转换为实际角度（除以100并取整）\nconst actualAngle = Math.round(currentAngle / 100);\nif (actualAngle==0)\nreturn null\n// 返回结果\nmsg.payload = actualAngle;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 820,
+        "wires": [
+            [
+                "45dd35115125460f"
+            ]
+        ]
     }
 ]
