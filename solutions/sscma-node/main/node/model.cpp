@@ -146,7 +146,7 @@ void ModelNode::threadEntry() {
             for (auto& result : _results) {
                 reply["data"]["classes"].push_back({static_cast<int8_t>(result.score * 100), result.target});
                 if (labels_.size() > result.target) {
-                    reply["data"]["labels"].push_back(result.target);
+                    reply["data"]["labels"].push_back(labels_[result.target]);
                 } else {
                     reply["data"]["labels"].push_back(std::string("N/A-" + std::to_string(result.target)));
                 }
