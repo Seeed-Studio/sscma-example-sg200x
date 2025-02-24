@@ -706,7 +706,7 @@ std::vector<std::string> parse_line(const std::string& line) {
 
 // need async
 int getDeviceList(HttpRequest* req, HttpResponse* resp) {
-    const char* cmd = "timeout 8 avahi-browse -arpt";
+    const char* cmd = "timeout 15 avahi-browse -arpt";
     hv::Json response;
     hv::Json data = hv::Json::array();
 
