@@ -56,13 +56,14 @@ def args_parser():
     parser.add_argument(
         '--dataset',
         type=str,
+        required=True,
         help='Path to the dataset.'
     )
     
     parser.add_argument(
         '--test_input',
         type=str,
-        default=os.path.dirname(os.path.realpath(__file__)) + '/../image/bus.jpg',
+        default=os.path.dirname(os.path.realpath(__file__)) + '/../images/bus.jpg',
         help='Path to the test image.'
     )
 
