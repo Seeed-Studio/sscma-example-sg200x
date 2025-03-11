@@ -60,13 +60,12 @@ const Login = () => {
     }
   };
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: { username: string; password: string }) => {
     const userName = values.username;
     const password = values.password;
 
     const ret = await loginAction(userName, password);
-    if (ret) {
-    } else {
+    if (!ret) {
       messageApi.error("Login failed");
     }
   };
@@ -79,7 +78,7 @@ const Login = () => {
         starts right here. Let reCamera redefine your vision of possibilities.
       </div>
       <Form
-        className="w-360"
+        className="w-400"
         name="login"
         labelCol={{ span: 6 }}
         wrapperCol={{ span: 18 }}
@@ -103,7 +102,12 @@ const Login = () => {
           name="password"
           label="Password"
           rules={[requiredTrimValidate()]}
-          extra={`* First time login password is "recamera"`}
+          extra={
+            <>
+              * First time login password is{" "}
+              <span className="font-bold text-primary">"recamera"</span>
+            </>
+          }
         >
           <Input.Password
             prefix={<LockOutlined />}

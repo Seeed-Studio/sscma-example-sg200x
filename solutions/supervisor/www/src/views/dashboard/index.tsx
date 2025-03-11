@@ -21,8 +21,10 @@ const Dashboard = () => {
         (dashboardRes.status == 200 || dashboardRes.status == 204)
       ) {
         const localFlowsData = await getFlows();
-        let hasUINode =
-          localFlowsData?.some((node: any) => node.type === "ui-base") ?? false;
+        const hasUINode =
+          localFlowsData?.some(
+            (node: { type: string }) => node.type === "ui-base"
+          ) ?? false;
         setHasDashboard(hasUINode);
       } else {
         setHasDashboard(false);
@@ -58,19 +60,19 @@ const Dashboard = () => {
         ) : (
           <div className="flex flex-col justify-center items-center">
             <div className="text-16 mb-10">
-              Something went wrong with dashboard, please check your palette and
-              flow
+              It looks like this application does not included dashboard
+              application.
             </div>
+            <Button type="primary" onClick={gotoWorkspace}>
+              Go to Workspace
+            </Button>
+            <div className="text-16 mt-16 mb-10">or</div>
             <Button
               style={{ fontSize: "16px" }}
               type="link"
               onClick={gotoSensecraft}
             >
-              Download dashboard flow
-            </Button>
-            <div className="text-16 mb-10">or</div>
-            <Button type="primary" onClick={gotoWorkspace}>
-              Go to Workspace
+              Clone our Dashboard Demo
             </Button>
           </div>
         )}
