@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, FloatButton } from "antd";
+import { Button, FloatButton, Tooltip } from "antd";
 import { baseIP } from "@/utils/noderedRequest";
 import DashboardImg from "@/assets/images/svg/dashboard.svg";
 import { getFlows } from "@/api/nodered";
@@ -51,11 +51,13 @@ const Dashboard = () => {
         {hasDashboard ? (
           <div className="w-full h-full relative overflow-hidden">
             <iframe className="w-full h-full" src={dashboardURL} />
-            <FloatButton
-              type="primary"
-              icon={<img src={DashboardImg} />}
-              onClick={gotoWorkspace}
-            />
+            <Tooltip title="Workspace" placement="left" color={"#8fc31f"}>
+              <FloatButton
+                type="primary"
+                icon={<img src={DashboardImg} />}
+                onClick={gotoWorkspace}
+              />
+            </Tooltip>
           </div>
         ) : (
           <div className="flex flex-col justify-center items-center">

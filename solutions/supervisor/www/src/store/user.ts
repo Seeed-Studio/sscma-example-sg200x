@@ -152,6 +152,8 @@ export const refreshToken = async () => {
       } else {
         clearCurrentUserInfo();
       }
+    } else {
+      clearCurrentUserInfo();
     }
   }
 };
