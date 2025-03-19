@@ -1,64 +1,132 @@
-# sscma-supervisor
+# Supervisor Solution  
 
-`sscma-supervisor` is a software supervisor application designed for recameraOS. It manages various services and functionalities related to the camera system, ensuring smooth operation and system stability.
+## Overview  
 
-## Features
-- Supervises and controls the services of recameraOS.
-- Manages device states, logs, and other essential functionalities.
-- Provides a centralized management interface for monitoring and interacting with the system.
+**Supervisor** is a built-in service for **ReCamera-OS** that provides:  
 
-## Compilation Instructions
+- An **HTTP service** for remote communication.  
+- A **Web UI** for device management and monitoring.  
+- **System status monitoring** to ensure stable device operation.  
 
-To compile `sscma-supervisor`, follow the steps below:
+## Getting Started  
 
-### 1. Clone the Repository
-First, clone the repository and initialize the submodules:
+Before building this solution, ensure that you have set up the **ReCamera-OS** environment as described in the main project documentation:  
+
+🔗 **[SSCMA Example for SG200X - Main README](../../README.md)**  
+
+This includes:  
+
+- Setting up **ReCamera-OS**  
+- Configuring the SDK path  
+- Preparing the necessary toolchain  
+
+If you haven't completed these steps, follow the instructions in the main project README before proceeding.
+
+## Building & Installing  
+
+### 1. Navigate to the `supervisor` Solution  
+
 ```bash
-git clone https://github.com/Seeed-Studio/sscma-example-sg200x
-cd sscma-example-sg200x
-git submodule update --init
 cd solutions/supervisor
 ```
 
-### 2. Configure the Build Options
+### 2. Build the Application  
 
-The build process includes several configurable options:
+By default, the application is built **without** the Web UI.  
 
-- **WEB**: Default is `OFF`. To enable the web interface, set `WEB=ON`.
-- **STAGING**: Default is `OFF`. To enable the staging (test) web interface, set `STAGING=ON`.
-- **SG200X_SDK_PATH**: The path to the SG200X camera SDK. You need to replace this path with the location on your system.
-
-### 3. Build the Project
-
-After configuring your build options, use `cmake` to set up the build environment:
-
-If you need the web interface or staging features, run:
 ```bash
-cmake -DCMAKE_BUILD_TYPE=Release -DWEB=ON -DSG200X_SDK_PATH=/path/to/your/sg200x_sdk -G Ninja ..
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
 ```
 
-For a build without the web interface or staging features, run:
+#### ⚙️ Enabling Web UI  
+
+If you want to include the Web UI, enable the `WEB` option before building. This will:  
+
+1. Recompile the front-end project in `www/`.  
+2. Copy the output to `rootfs/usr/share/supervisor/www/`.  
+
+To enable Web UI:  
+
 ```bash
-cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DWEB=ON .
+cmake --build build
 ```
 
-### 4. Compile the Application
+**Note:** The Web UI build process requires **Node.js** to be installed.
 
-Once the configuration is complete, compile the application with:
-```bash
-ninja
-```
+### 3. Package the Application  
 
-### 5. Package the Application
-
-To package the application, navigate to the build directory and use `cpack`:
 ```bash
 cd build && cpack
 ```
 
-### 6. Install the Application
+This will generate an `.ipk` package for installation.
 
-After packaging, transfer the `.deb` package to your device and install it using the `opkg` package manager:
+## Deploying & Running  
+
+### 1. Transfer the Package to Your Device  
+
+Copy the package to the ReCamera device using `scp`:  
+
 ```bash
-opkg install supervisor-x.x.x.deb
+scp build/supervisor-1.0.0-1.ipk recamera@192.168.42.1:/tmp/
+```
+
+Replace `recamera@192.168.42.1` with your device's IP address.
+
+### 2. Install the Package  
+
+SSH into the device and install the package:  
+
+```bash
+ssh recamera@192.168.42.1
+sudo opkg install /tmp/supervisor-1.0.0-1.ipk
+```
+
+### 3. Run the Supervisor Service  
+
+Once installed, start the service:  
+
+```bash
+supervisor
+```
+
+If running correctly, the HTTP server should be accessible.
+
+### 4. Access the Web UI  
+
+If built with Web UI enabled, open a browser and visit:  
+
+```
+http://<device-ip>:<port>
+```
+
+Replace `<device-ip>` with the actual IP of your ReCamera device.
+
+## Disabling the Supervisor Service  
+
+If you want to **disable** the `supervisor` service from running automatically on startup, remove or move the init script:  
+
+```bash
+mv /etc/init.d/S93sscma-supervisor /etc/init.d/S93sscma-supervisor.bak
+```
+
+To **reenable** it, move it back:  
+
+```bash
+mv /etc/init.d/S93sscma-supervisor.bak /etc/init.d/S93sscma-supervisor
+```
+
+## Directory Structure  
+
+```
+supervisor/
+├── CMakeLists.txt    # CMake build configuration
+├── control           # OPKG packaging script
+├── main              # Source code directory
+├── README.md         # This README file
+├── rootfs            # Resource files (installed to system root)
+│   └── usr/share/supervisor/www  # Web UI files (if enabled)
+└── www               # Web UI source code (requires Node.js)
 ```

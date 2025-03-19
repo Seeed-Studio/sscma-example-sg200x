@@ -162,7 +162,6 @@ static void set_params(snd_pcm_t* handle) {
     buffer_frames = buffer_size; /* for position test */
 }
 
-// 主程序：录音并保存为 WAV 文件
 int main() {
     const char* device = "hw:0,0";  // 指定设备
     int pcm, size;
@@ -170,8 +169,6 @@ int main() {
     short* buffer;
     std::ofstream out_file("test.wav", std::ios::binary);
 
-
-    // 打开 ALSA 设备
     pcm = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, 0);
     if (pcm < 0) {
         std::cerr << "Error opening PCM device: " << snd_strerror(pcm) << std::endl;
@@ -182,12 +179,11 @@ int main() {
 
     printf("frames: %d\n", frames);
 
-    // 写 WAV 文件头
     write_wav_header(out_file, DURATION * SAMPLE_RATE * CHANNELS * 2);
     frames = chunk_bytes * 8 / bits_per_sample;
-    // frames = 320;
+
     printf("frames: %d\n", frames);
-    // 录音并保存
+
     for (int i = 0; i < (SAMPLE_RATE * DURATION) / frames; ++i) {
         pcm = snd_pcm_readi(handle, audiobuf, frames);
         printf("i: %d %d\n", i, pcm);
@@ -195,11 +191,10 @@ int main() {
             std::cerr << "Error reading from PCM device: " << snd_strerror(pcm) << std::endl;
             break;
         }
-        out_file.write(reinterpret_cast<char*>(audiobuf), pcm * 2);  // 写入 16-bit 数据
+        out_file.write(reinterpret_cast<char*>(audiobuf), pcm * 2);  
     }
 
 
-    // 清理并关闭
     snd_pcm_close(handle);
     out_file.close();
 
