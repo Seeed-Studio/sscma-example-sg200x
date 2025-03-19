@@ -17,7 +17,8 @@ static constexpr char TAG[] = "ma::node::model";
 ModelNode::ModelNode(std::string id)
     : Node("model", id),
       uri_(""),
-      debug_(true),
+      debug_(false),
+      output_(false),
       trace_(false),
       counting_(false),
       count_(0),
@@ -27,6 +28,8 @@ ModelNode::ModelNode(std::string id)
       thread_(nullptr),
       raw_frame_(1),
       jpeg_frame_(1),
+      websocket_(true),
+      transport_(nullptr),
       camera_(nullptr) {}
 
 ModelNode::~ModelNode() {
@@ -238,10 +241,16 @@ void ModelNode::threadEntry() {
             reply["data"]["image"] = "";
         }
 
+        if (websocket_) {
+            transport_->send(reinterpret_cast<const char*>(reply.dump().c_str()), reply.dump().size());
+        }
+        if (!output_) {
+            reply["data"]["image"] = "";
+        }
         server_->response(id_, reply);
 
         ma_tick_t end = Tick::current();
-        if (debug_ && (end - start < Tick::fromMilliseconds(100))) {
+        if (output_ && (end - start < Tick::fromMilliseconds(100))) {
             Thread::sleep(Tick::fromMilliseconds(100) - (end - start));
         }
 
@@ -327,7 +336,13 @@ ma_err_t ModelNode::onCreate(const json& config) {
                 model_->setConfig(MA_MODEL_CFG_OPT_TOPK, config["tiou"].get<float>());
             }
             if (config.contains("debug")) {
-                debug_ = config["debug"].get<bool>();
+                output_ = config["debug"].get<bool>();
+            }
+            if (config.contains("websocket") && config["websocket"].is_boolean()) {
+                websocket_ = config["websocket"].get<bool>();
+            }
+            if (websocket_ || output_) {
+                debug_ = true;
             }
             if (config.contains("trace")) {
                 trace_ = config["trace"].get<bool>();
@@ -338,6 +353,18 @@ ma_err_t ModelNode::onCreate(const json& config) {
             if (config.contains("splitter") && config["splitter"].is_array()) {
                 counter_.setSplitter(config["splitter"].get<std::vector<int16_t>>());
             }
+        }
+
+        if (websocket_) {
+            TransportWebSocket::Config ws_config = {.port = 8090};
+            MA_STORAGE_GET_POD(server_->getStorage(), MA_STORAGE_KEY_WS_PORT, ws_config.port, 8090);
+            transport_ = new TransportWebSocket();
+            if (transport_ != nullptr) {
+                transport_->init(&ws_config);
+            }
+            MA_LOGI(TAG, "camera websocket server started on port %d", ws_config.port);
+        } else {
+            transport_ = nullptr;
         }
 
         thread_ = new Thread((type_ + "#" + id_).c_str(), &ModelNode::threadEntryStub, this);
@@ -450,6 +477,12 @@ ma_err_t ModelNode::onDestroy() {
             camera_->detach(CHN_JPEG, &jpeg_frame_);
         }
     }
+    if (transport_ != nullptr) {
+        transport_->deInit();
+        delete transport_;
+        transport_ = nullptr;
+    }
+
 
     created_ = false;
 

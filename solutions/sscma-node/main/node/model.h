@@ -46,6 +46,9 @@ protected:
     CameraNode* camera_;
     MessageBox raw_frame_;
     MessageBox jpeg_frame_;
+    bool websocket_;
+    bool output_;
+    TransportWebSocket* transport_;
 };
 
 
