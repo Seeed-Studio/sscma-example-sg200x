@@ -8,6 +8,35 @@
 - A **Web UI** for device management and monitoring.  
 - **System status monitoring** to ensure stable device operation.  
 
+
+![](../../images/recam_OS_structure.png)
+
+The foundational system service providing:
+- System Services:
+    - Device management: Identify and configure connected devices, storage devices, etc.
+    - User Management: Manage user accounts, credentials, and SSH keys.
+    - Network configuration: Configure wired and wireless network connections.
+    - File system operations: Manage device files.
+    - Device Discovery: Uses mDNS to broadcast device information. The device hostname is recamera.local.When a web interface sends a request, the recamera device scans the local network for other recamera devices via mDNS, generates a list of discovered devices, formats the data, and returns it to the web interface. (Note: Currently, only one device’s information is returned.)
+
+- Update Service:
+    - Package/firmware download management
+    - Security verification
+    - Installation automation
+
+- Daemon Service:
+    - System health monitoring
+    - Automatic application recovery
+
+- Logging Service:
+    - Runtime status tracking
+    - Error diagnostics
+
+- Application Service:
+    - Application Deployment
+    - Application Packaging
+
+
 ## Getting Started  
 
 Before building this solution, ensure that you have set up the **ReCamera-OS** environment as described in the main project documentation:  
@@ -89,7 +118,7 @@ sudo opkg install /tmp/supervisor-1.0.0-1.ipk
 Once installed, start the service:  
 
 ```bash
-supervisor
+sudo supervisor
 ```
 
 If running correctly, the HTTP server should be accessible.

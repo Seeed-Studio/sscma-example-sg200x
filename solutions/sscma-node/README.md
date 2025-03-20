@@ -42,10 +42,14 @@ make
 To run the application, use the following command:
 
 ```bash
-./sscma-node
+sudo ./sscma-node --start
 ```
 
+<a href="url"><img src="../../images/vision_inference.png" height="auto" width="auto" style="border-radius:40px"></a>
+
+
 ## Available Nodes and Functionalities
+
 
 1. **Camera Node**
    - **Functionality**: Allows users to create, manage, and control camera instances. This node can handle video capture and processing tasks.
@@ -74,6 +78,10 @@ To run the application, use the following command:
      - Create a saving instance with options for storage type and duration.
      - Destroy the saving instance when it is no longer needed.
      - Enable or disable saving functionality.
+
+
+If you are not familiar with Node-Red, you can watch this [tutorial](https://www.youtube.com/watch?v=DFNv91TTt68) to learn how to use nodes to achieve different functions and building UI.
+
 
 ## Conclusion
 
