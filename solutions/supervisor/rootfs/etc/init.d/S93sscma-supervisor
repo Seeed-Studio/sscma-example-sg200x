@@ -7,6 +7,10 @@ SRC_FLOW="/usr/share/supervisor/flows.json"
 SRC_FLOW_GIMBAL="/usr/share/supervisor/flows_gimbal.json"
 DST_FLOW="/home/recamera/.node-red/flows.json"
 
+JOYSTICK_SRC="/usr/share/supervisor/nipplejs.min.js"
+JOYSTICK_DIR="/home/recamera/.node-red/public"
+JOYSTICK="$JOYSTICK_DIR/nipplejs.min.js"
+
 SRC_MODEL="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.cvimodel"
 SRC_INFO="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.json"
 DST_MODEL="/userdata/MODEL/model.cvimodel"
@@ -24,11 +28,16 @@ if [ ! -f $DST_FLOW ] || [ ! -s $DST_FLOW ]; then
 
     if [ -f $SRC_FLOW ]; then
         mkdir -p /userdata/MODEL
-        cp $SRC_FLOW $DST_FLOW
-        cp $SRC_MODEL $DST_MODEL
-        cp $SRC_INFO $DST_INFO
+        cp -f $SRC_FLOW $DST_FLOW
+        cp -f $SRC_MODEL $DST_MODEL
+        cp -f $SRC_INFO $DST_INFO
         sync
     fi
+fi
+
+if [ -f $JOYSTICK_SRC ]; then
+    mkdir -p $JOYSTICK_DIR
+    cp -f $JOYSTICK_SRC $JOYSTICK
 fi
 
 if [ -d /userdata/ ] && [ ! -f $DST_MODEL ]; then
