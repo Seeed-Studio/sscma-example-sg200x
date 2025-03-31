@@ -250,7 +250,7 @@ void ModelNode::threadEntry() {
         server_->response(id_, reply);
 
         ma_tick_t end = Tick::current();
-        if (output_ && (end - start < Tick::fromMilliseconds(100))) {
+        if (debug_ && (end - start < Tick::fromMilliseconds(100))) {
             Thread::sleep(Tick::fromMilliseconds(100) - (end - start));
         }
 

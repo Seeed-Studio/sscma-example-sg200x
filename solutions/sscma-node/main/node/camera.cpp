@@ -430,31 +430,31 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1280;
             channels_[CHN_H264].height = 1080;
-            channels_[CHN_H264].fps    = 30;
+            channels_[CHN_H264].fps    = 15;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
             channels_[CHN_JPEG].height = 640;
-            channels_[CHN_JPEG].fps    = 30;
+            channels_[CHN_JPEG].fps    = 15;
             break;
         case 2:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 640;
             channels_[CHN_H264].height = 480;
-            channels_[CHN_H264].fps    = 30;
+            channels_[CHN_H264].fps    = 15;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
             channels_[CHN_JPEG].height = 640;
-            channels_[CHN_JPEG].fps    = 30;
+            channels_[CHN_JPEG].fps    = 15;
             break;
         default:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1920;
             channels_[CHN_H264].height = 1080;
-            channels_[CHN_H264].fps    = 30;
+            channels_[CHN_H264].fps    = 15;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
             channels_[CHN_JPEG].height = 640;
-            channels_[CHN_JPEG].fps    = 30;
+            channels_[CHN_JPEG].fps    = 15;
             break;
     }
 
