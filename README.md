@@ -29,6 +29,13 @@ git clone https://github.com/Seeed-Studio/reCamera-OS.git
 cd reCamera-OS
 # Follow the setup instructions in the repository
 ```  
+Setup Environment Variables:
+
+   ```bash
+   export SG200X_SDK_PATH=<PATH_TO_RECAMERA-OS>/output/sg2002_recamera_emmc/
+   export PATH=<PATH_TO_RECAMERA-OS>/host-tools/gcc/riscv64-linux-musl-x86_64/bin:$PATH
+   ```  
+
 
 ### 2. Use a Prebuilt SDK (Optional)  
 
@@ -54,16 +61,7 @@ cd sscma-example-sg200x
 git submodule update --init
 ```  
 
-### 2. Configure Environment  
-
-Set up the required paths before building the application:  
-
-```bash
-export SG200X_SDK_PATH=<PATH_TO_RECAMERA-OS>/output/sg2002_recamera_emmc/
-export PATH=<PATH_TO_RECAMERA-OS>/host-tools/gcc/riscv64-linux-musl-x86_64/bin:$PATH
-```  
-
-### 3. Build the Application  
+### 2. Build the Application  
 
 Navigate to the project directory and compile:  
 
@@ -75,7 +73,7 @@ cmake --build build
 
 If the build process completes successfully, the executable binary should be available in the `build` directory.  
 
-### 4. Package the Application  
+### 3. Package the Application  
 
 To prepare the application for distribution, package it using `cpack`:  
 
