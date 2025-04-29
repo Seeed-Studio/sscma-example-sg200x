@@ -147,7 +147,7 @@ const Login = () => {
           extra={
             !passwordErrorMsg && (
               <>
-                * First time login password is{" "}
+                * First time login password is&nbsp;
                 <span className="font-bold text-primary">"recamera"</span>
               </>
             )
@@ -303,6 +303,12 @@ const Login = () => {
             name="oldpassword"
             label="Old Password"
             rules={[requiredTrimValidate()]}
+            extra={
+              <>
+                For first time login, default password is&nbsp;
+                <span className="font-bold text-primary">"recamera"</span>
+              </>
+            }
           >
             <Input.Password placeholder="recamera" visibilityToggle />
           </Form.Item>
