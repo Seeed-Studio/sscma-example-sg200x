@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <unordered_set>
 #include <vector>
+#include <time.h>
 
 #include "global_cfg.h"
 #include "hv/HttpServer.h"
@@ -261,6 +262,30 @@ static std::string generateToken(const std::string& username) {
     return std::string(token);
 }
 
+int setSShStatus(HttpRequest* req, HttpResponse* resp) {
+    hv::Json response;
+
+    int ret = 0;
+    FILE* fp;
+    char cmd[128]  = SCRIPT_DEVICE_ENABLE_SSHD;
+
+    strcat(cmd, req->GetString("enabled").c_str());
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        syslog(LOG_ERR, "Failed to run `%s`(%s)\n", cmd, strerror(errno));
+        ret = -1;
+        goto exit;
+    }
+    pclose(fp);
+
+exit:
+    response["code"] = ret;
+    response["msg"]  = "";
+    response["data"] = hv::Json({});
+
+    return resp->Json(response);
+}
+
 int queryUserInfo(HttpRequest* req, HttpResponse* resp) {
     hv::Json User;
     User["code"] = 0;
@@ -276,6 +301,13 @@ int queryUserInfo(HttpRequest* req, HttpResponse* resp) {
         data["firstLogin"] = true;
     } else {
         data["firstLogin"] = false;
+    }
+
+    if (access(PATH_SSHD, F_OK) == 0) {
+        data["sshEnabled"] = true;
+    }
+    else {
+        data["sshEnabled"] = false;
     }
 
     FILE* fp;
@@ -355,7 +387,6 @@ int updatePassword(HttpRequest* req, HttpResponse* resp) {
         User["data"] = hv::Json({});
         return resp->Json(User);
     }
-
 
     // if (req->GetString("oldPassword") == req->GetString("newPassword")) {
     //     hv::Json User;
@@ -495,6 +526,7 @@ int authorization(HttpRequest* req, HttpResponse* resp) {
                                                                   "/api/userMgr/login",
                                                                   "/api/userMgr/updatePassword",
                                                                   "/api/userMgr/queryUserInfo",
+                                                                  "/api/userMgr/setSShStatus",
                                                                   "/api/deviceMgr/queryDeviceInfo",
                                                                   "/api/deviceMgr/getDeviceList",
                                                                   "/api/deviceMgr/getModelList",
@@ -536,6 +568,8 @@ int authorization(HttpRequest* req, HttpResponse* resp) {
 }
 
 
+static int retryCount = 5;
+static struct timespec tsLastFailed;
 int login(HttpRequest* req, HttpResponse* resp) {
     hv::Json res;
     std::string username = req->GetString("userName");
@@ -564,11 +598,26 @@ int login(HttpRequest* req, HttpResponse* resp) {
     }
 
     if (verifyPasswd(plaintext) != 0) {
+        if (retryCount != 5) {
+            struct timespec ts;
+            timespec_get(&ts, TIME_UTC);
+            if (ts.tv_sec - tsLastFailed.tv_sec > 60) {
+                retryCount = 5;
+            }
+        }
+        if (retryCount > 0) {
+            retryCount--;
+        }
+        timespec_get(&tsLastFailed, TIME_UTC);
+
         res["code"] = -1;
         res["msg"]  = "Incorrect password";
-        res["data"] = hv::Json({});
+        res["data"] = hv::Json({
+            {"retryCount", retryCount},
+         });
         return resp->Json(res);
     }
+    retryCount = 5;
 
     // generate token randomly
     std::string token = generateToken(username);

@@ -37,6 +37,7 @@
 #define PATH_SERVER_KEY            "/etc/cert/server.key"
 
 #define PATH_FIRST_LOGIN           "/etc/.first_login"
+#define PATH_SSHD                  "/etc/init.d/S50sshd"
 
 #define PATH_WLAN0_MAC             "/sys/class/net/wlan0/address"
 
@@ -100,5 +101,6 @@
 #define SCRIPT_DEVICE_GETFILEMD5      SCRIPT_DEVICE(getFileMd5)
 #define SCRIPT_DEVICE_RESTARTNODERED  SCRIPT_DEVICE(restartNodered)
 #define SCRIPT_DEVICE_RESTARTSSCMA    SCRIPT_DEVICE(restartSscma)
+#define SCRIPT_DEVICE_ENABLE_SSHD     SCRIPT_DEVICE(enableSshd)
 
 #endif

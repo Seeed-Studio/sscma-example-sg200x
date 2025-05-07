@@ -77,6 +77,7 @@ static void registerUserApi(HttpService& router) {
     API_POST(userMgr, updatePassword);
     API_POST(userMgr, addSShkey);
     API_POST(userMgr, deleteSShkey);
+    API_POST(userMgr, setSShStatus);
 }
 
 static void registerWiFiApi(HttpService& router) {

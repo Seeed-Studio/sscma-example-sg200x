@@ -16,5 +16,6 @@ int addSShkey(HttpRequest* req, HttpResponse* resp);
 int deleteSShkey(HttpRequest* req, HttpResponse* resp);
 int login(HttpRequest* req, HttpResponse* resp);
 int authorization(HttpRequest* req, HttpResponse* resp);
+int setSShStatus(HttpRequest* req, HttpResponse* resp);
 
 #endif

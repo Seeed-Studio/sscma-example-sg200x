@@ -97,4 +97,25 @@ restartSscma)
     restartApp $sscma
     ;;
 
+enableSshd)
+    dir="/etc/init.d"
+    dir_disabled="$dir/disabled"
+    sshd="S*sshd"
+
+    if [ "$2" = "false" ]; then
+        path=$(ls $dir/$sshd 2>/dev/null)
+        if [ -n "$path" ] && [ -f $path ]; then
+            mkdir -p $dir_disabled
+            $path stop >/dev/null 2>&1
+            mv -v $path $dir_disabled/
+        fi
+    else
+        path=$(ls $dir_disabled/$sshd 2>/dev/null)
+        if [ -n "$path" ] && [ -f $path ]; then
+            $path restart >/dev/null 2>&1
+            mv -v $path $dir/
+        fi
+    fi
+    ;;
+
 esac
