@@ -4,17 +4,19 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "version.h"
 #include "HttpServer.h"
+#include "version.h"
 
 static int s_signum = 0;
-void signal_handler(int signum) {
+void signal_handler(int signum)
+{
     syslog(LOG_INFO, "Received signal %d", signum);
     signal(signum, signal_handler);
     s_signum = signum;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     printf("Build Time: %s %s\n", __DATE__, __TIME__);
     if (argc > 1 && std::string(argv[1]) == "-v") {
         printf("Version: %s\n", PROJECT_VERSION);
@@ -35,7 +37,7 @@ int main(int argc, char** argv) {
         sleep(1);
     }
 
-    printf("exited\n");
+    printf("%s,%d: exited\n", __func__, __LINE__);
 
     return 0;
 }

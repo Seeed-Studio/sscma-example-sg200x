@@ -2,35 +2,85 @@
 #define HTTP_H
 
 #include <atomic>
+#include <memory>
+#include <mutex>
+#include <string>
 #include <thread>
-#include <string.h>
+#include <vector>
 
 #include "mongoose.h"
+
+typedef void (*HttpMethod)(mg_connection* c, mg_http_message* hm);
+
+class HttpRouter {
+private:
+    static std::vector<HttpRouter*> _routes;
+    static std::mutex _routes_mutex;
+
+    const bool _no_auth;
+    const char* _uri;
+    const HttpMethod _method;
+
+public:
+    HttpRouter(const char* uri, HttpMethod method, bool no_auth = false)
+        : _uri(uri)
+        , _method(method)
+        , _no_auth(no_auth)
+    {
+        printf("%s,%d: %s\n", __func__, __LINE__, _uri);
+        std::lock_guard<std::mutex> lock(_routes_mutex);
+        _routes.emplace_back(this);
+    }
+
+    ~HttpRouter()
+    {
+        printf("%s,%d: %s\n", __func__, __LINE__, _uri);
+    }
+
+    static void handler(mg_connection* c, mg_http_message* hm)
+    {
+        printf("%s,%d\n", __func__, __LINE__);
+
+        std::lock_guard<std::mutex> lock(_routes_mutex);
+        for (auto& route : _routes) {
+            printf("%s,%d: %s\n", __func__, __LINE__, route->_uri);
+
+            if (mg_match(hm->uri, mg_str(route->_uri), NULL)) {
+                if (!route->_method)
+                    continue;
+                route->_method(c, hm);
+                return;
+            }
+        }
+        mg_http_reply(c, 404, "Content-Type: text/plain\r\n", "Not Found\n");
+    }
+};
+
+#define HTTP_ROUTE(uri, method, no_auth) \
+    const HttpRouter __http_route_##method(uri, method, no_auth)
 
 class HttpServer {
 private:
     const char* _cert;
     const char* _key;
+    const char* _root_dir;
+
     mg_mgr mgr;
-    mg_connection *http_conn = nullptr;
-    mg_connection *https_conn = nullptr;
-    mg_http_serve_opts opts{};
-    std::atomic<bool> running{false};
+    mg_connection* http_conn = nullptr;
+    mg_connection* https_conn = nullptr;
+    std::atomic<bool> running { false };
     std::thread worker;
 
-    static void event_handler(mg_connection *c, int ev, void *ev_data) {
-        switch (ev) {
-        case MG_EV_HTTP_MSG:
-        {
-            printf("ev: MG_EV_HTTP_MSG\n");
-            mg_http_message *hm = (mg_http_message *)ev_data;
-            mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"status\":\"OK\"}");
-        }
-        break;
+    static void event_handler(mg_connection* c, int ev, void* ev_data)
+    {
+        if (ev == MG_EV_HTTP_MSG) {
+            mg_http_message* hm = (mg_http_message*)ev_data;
+            HttpRouter::handler(c, hm);
         }
     }
 
-    static void https_event_handler(mg_connection *c, int ev, void *ev_data) {
+    static void https_event_handler(mg_connection* c, int ev, void* ev_data)
+    {
         HttpServer* server = static_cast<HttpServer*>(c->fn_data);
         if (ev == MG_EV_ACCEPT) {
             printf("ev: MG_EV_ACCEPT\n");
@@ -39,13 +89,14 @@ private:
             opts.cert = mg_str(server->_cert);
             opts.key = mg_str(server->_key);
             mg_tls_init(c, &opts);
-        }
-        else {
+        } else {
             event_handler(c, ev, ev_data);
         }
     }
 
-    void poll_loop() {
+    void poll_loop()
+    {
+        running = true;
         while (running) {
             mg_mgr_poll(&mgr, 50);
         }
@@ -53,26 +104,32 @@ private:
     }
 
 public:
-    HttpServer(const char *root_dir = "www", const char* cert = nullptr, const char* key = nullptr) 
-        : _cert(cert), _key(key), opts{.root_dir = root_dir} {
+    HttpServer(const char* root_dir = "www", const char* cert = nullptr, const char* key = nullptr)
+        : _cert(cert)
+        , _key(key)
+        , _root_dir(root_dir)
+    {
         mg_mgr_init(&mgr);
-        opts.extra_headers = "Cache-Control: no-cache\r\n";
     }
 
-    ~HttpServer() {
+    ~HttpServer()
+    {
         stop();
     }
 
-    bool start(const char *http_port = nullptr, const char *https_port = nullptr) {
+    bool start(const char* http_port = nullptr, const char* https_port = nullptr)
+    {
         if (http_port && strlen(http_port) > 0) {
             http_conn = mg_http_listen(&mgr, http_port, event_handler, this);
-            if (!http_conn) return false;
+            if (!http_conn)
+                return false;
             printf("HTTP server started on %s\n", http_port);
         }
 
         if (https_port && *https_port) {
             https_conn = mg_http_listen(&mgr, https_port, https_event_handler, this);
-            if (!https_conn) return false;
+            if (!https_conn)
+                return false;
             printf("HTTPS server started on %s\n", https_port);
         }
 
@@ -81,19 +138,22 @@ public:
             return false;
         }
 
-        running = true;
         worker = std::thread(&HttpServer::poll_loop, this);
         return true;
     }
 
-    void stop() {
-        printf("Stopping server\n");
+    void stop()
+    {
+        printf("%s,%d: Stopping server\n", __func__, __LINE__);
         if (running) {
             running = false;
-            if (worker.joinable()) worker.join();
+            if (worker.joinable()) {
+                worker.join();
+                printf("%s,%d: Worker thread stopped\n", __func__, __LINE__);
+            }
             mg_mgr_free(&mgr);
-            printf("Server stopped\n");
         }
+        printf("%s,%d: Server stopped\n", __func__, __LINE__);
     }
 };
 
