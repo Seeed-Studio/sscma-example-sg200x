@@ -10,56 +10,13 @@
 
 #include "mongoose.h"
 
-typedef void (*HttpMethod)(mg_connection* c, mg_http_message* hm);
+#include "api_device.h"
+#include "api_file.h"
+#include "api_led.h"
+#include "api_user.h"
+#include "api_wifi.h"
 
-class HttpRouter {
-private:
-    static std::vector<HttpRouter*> _routes;
-    static std::mutex _routes_mutex;
-
-    const bool _no_auth;
-    const char* _uri;
-    const HttpMethod _method;
-
-public:
-    HttpRouter(const char* uri, HttpMethod method, bool no_auth = false)
-        : _uri(uri)
-        , _method(method)
-        , _no_auth(no_auth)
-    {
-        printf("%s,%d: %s\n", __func__, __LINE__, _uri);
-        std::lock_guard<std::mutex> lock(_routes_mutex);
-        _routes.emplace_back(this);
-    }
-
-    ~HttpRouter()
-    {
-        printf("%s,%d: %s\n", __func__, __LINE__, _uri);
-    }
-
-    static void handler(mg_connection* c, mg_http_message* hm)
-    {
-        printf("%s,%d\n", __func__, __LINE__);
-
-        std::lock_guard<std::mutex> lock(_routes_mutex);
-        for (auto& route : _routes) {
-            printf("%s,%d: %s\n", __func__, __LINE__, route->_uri);
-
-            if (mg_match(hm->uri, mg_str(route->_uri), NULL)) {
-                if (!route->_method)
-                    continue;
-                route->_method(c, hm);
-                return;
-            }
-        }
-        mg_http_reply(c, 404, "Content-Type: text/plain\r\n", "Not Found\n");
-    }
-};
-
-#define HTTP_ROUTE(uri, method, no_auth) \
-    const HttpRouter __http_route_##method(uri, method, no_auth)
-
-class HttpServer {
+class http_server {
 private:
     const char* _cert;
     const char* _key;
@@ -68,20 +25,29 @@ private:
     mg_mgr mgr;
     mg_connection* http_conn = nullptr;
     mg_connection* https_conn = nullptr;
-    std::atomic<bool> running { false };
-    std::thread worker;
+    atomic<bool> running { false };
+    thread worker;
+
+    vector<unique_ptr<api_base>> apis;
 
     static void event_handler(mg_connection* c, int ev, void* ev_data)
     {
         if (ev == MG_EV_HTTP_MSG) {
             mg_http_message* hm = (mg_http_message*)ev_data;
-            HttpRouter::handler(c, hm);
+            http_server* server = static_cast<http_server*>(c->fn_data);
+
+            for (auto& api : server->apis) {
+                if (api->handler(c, hm))
+                    return;
+            }
+
+            mg_http_reply(c, 404, "Content-Type: text/plain\r\n", "Not Found\n");
         }
     }
 
     static void https_event_handler(mg_connection* c, int ev, void* ev_data)
     {
-        HttpServer* server = static_cast<HttpServer*>(c->fn_data);
+        http_server* server = static_cast<http_server*>(c->fn_data);
         if (ev == MG_EV_ACCEPT) {
             printf("ev: MG_EV_ACCEPT\n");
             struct mg_tls_opts opts;
@@ -104,15 +70,20 @@ private:
     }
 
 public:
-    HttpServer(const char* root_dir = "www", const char* cert = nullptr, const char* key = nullptr)
+    http_server(const char* root_dir = "www", const char* cert = nullptr, const char* key = nullptr)
         : _cert(cert)
         , _key(key)
         , _root_dir(root_dir)
     {
+        apis.emplace_back(make_unique<api_device>());
+        apis.emplace_back(make_unique<api_file>());
+        apis.emplace_back(make_unique<api_led>());
+        apis.emplace_back(make_unique<api_user>());
+        apis.emplace_back(make_unique<api_wifi>());
         mg_mgr_init(&mgr);
     }
 
-    ~HttpServer()
+    ~http_server()
     {
         stop();
     }
@@ -138,7 +109,7 @@ public:
             return false;
         }
 
-        worker = std::thread(&HttpServer::poll_loop, this);
+        worker = thread(&http_server::poll_loop, this);
         return true;
     }
 

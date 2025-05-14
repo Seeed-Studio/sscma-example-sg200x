@@ -1,6 +1,7 @@
 file(GLOB_RECURSE srcs
     ${CMAKE_CURRENT_LIST_DIR}/*.c
-    ${CMAKE_CURRENT_LIST_DIR}/*.cpp)
+    ${CMAKE_CURRENT_LIST_DIR}/*.cpp
+)
 
 set(incs ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/include

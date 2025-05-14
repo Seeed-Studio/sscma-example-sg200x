@@ -4,7 +4,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "HttpServer.h"
+#include "http_server.h"
 #include "version.h"
 
 static int s_signum = 0;
@@ -26,8 +26,7 @@ int main(int argc, char** argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    HttpServer server;
-
+    http_server server;
     if (!server.start(":8000")) {
         printf("Failed: server.start()\n");
         return 1;
