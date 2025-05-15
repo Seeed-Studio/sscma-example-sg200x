@@ -29,3 +29,18 @@ api_status_t api_device::queryDeviceInfo(const json& request, json& response)
 
     return API_STATUS_OK;
 }
+
+api_status_t api_device::queryServiceStatus(const json& request, json& response)
+{
+    response["code"] = 0;
+    response["msg"] = "";
+    response["data"] = json({
+        {"sscmaNode", 0},
+        {"nodeRed", 0},
+        {"system", 0},
+        {"uptime", 100},
+        {"timestamp", 100},
+    });
+
+    return API_STATUS_OK;
+}

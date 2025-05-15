@@ -5,7 +5,7 @@
 #include "api_user.h"
 #include "mongoose.h"
 
-void gen_token(json& response)
+void api_user::gen_token(json& response)
 {
     std::time_t now = std::time(nullptr);
     char token[128] = { 0 };
@@ -36,57 +36,59 @@ void gen_token(json& response)
     response["code"] = 0;
     response["msg"] = "";
     response["data"]["token"] = token;
-    response["data"]["expires"] = TOKEN_EXPIRATION_TIME;
+    response["data"]["expire"] = TOKEN_EXPIRATION_TIME;
 }
 
-// api_status_t api_user::login(json &json)//(mg_connection* c, mg_http_message* hm)
-// {
-//     printf("%s,%d\n", __func__, __LINE__);
+api_status_t api_user::login(const json& request, json& response)
+{
+    string username;
+    string password;
 
-//     if (hm->body.len == 0) {
-//         mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-//             "{\"code\":-1,\"msg\":\"Empty request body\"}");
-//         return API_STATUS_OK;
-//     }
+    json body = request["body"];
+    printf("%s,%d: %s\n", __func__, __LINE__, body.dump().c_str());
+    if (body.empty()) {
+        goto pwd_error;
+    }
 
-//     string name = mg_json_get_str(hm->body, "$.userName");
-//     string pwd = mg_json_get_str(hm->body, "$.password");
+    username = body["userName"];
+    password = body["password"];
+    printf("%s,%d: username=%s, password=%s\n", __func__, __LINE__, username.c_str(), password.c_str());
+    if (username.empty() || password.empty()) {
+        goto pwd_error;
+    }
 
-//     if (name.empty() || pwd.empty()) {
-//         mg_http_reply(c, 400, "Content-Type: application/json\r\n",
-//             "{\"code\":-1,\"msg\":\"Missing required fields\"}");
-//         return API_STATUS_OK;
-//     }
+    if (username == "recamera") {
+        gen_token(response);
+        printf("%s,%d: %s\n", __func__, __LINE__, response.dump().c_str());
+        return API_STATUS_AUTHORIZED;
+    }
 
-//     printf("userName: %s, password: %s\n", name.c_str(), pwd.c_str());
+pwd_error:
+    response["code"] = -1;
+    response["msg"] = "Incorrect password";
+    response["data"] = json({
+        {"retryCount", 1},
+    });
 
-//     if (name != "recamera") {
-//         return API_STATUS_UNAUTHORIZED;
-//     }
+    printf("%s,%d: %s\n", __func__, __LINE__, response.dump().c_str());
 
-//     return API_STATUS_AUTHORIZED;
-// }
+    return API_STATUS_OK;
+}
 
-// api_status_t api_user::queryUserInfo(json &json);//(mg_connection* c, mg_http_message* hm)
-// {
-//     json data;
+api_status_t api_user::queryUserInfo(const json& request, json& response)
+{
+    json data;
 
-//     data["userName"] = "recamera";
-//     data["firstLogin"] = false;
-//     data["sshEnabled"] = true;
+    data["userName"] = "recamera";
+    data["firstLogin"] = false;
+    data["sshEnabled"] = true;
 
-//     vector<json> ssh_key_list;
-//     data["sshKeyList"] = ssh_key_list;
+    vector<json> ssh_key_list;
+    data["sshKeyList"] = ssh_key_list;
 
-//     json resp;
-//     resp["code"] = 0;
-//     resp["msg"]  = "";
-//     resp["data"] = data;
+    response["code"] = 0;
+    response["msg"]  = "";
+    response["data"] = data;
 
-//     // response(c, resp);
-//     return API_STATUS_OK;
-// }
-
-//     // response(c, resp);
-//     return API_STATUS_OK;
-// }
+    return API_STATUS_OK;
+}

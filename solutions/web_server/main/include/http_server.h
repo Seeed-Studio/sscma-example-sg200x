@@ -16,6 +16,14 @@
 #include "api_wifi.h"
 #include "mongoose.h"
 
+// template<typename K, typename V>
+// void print_map(std::unordered_map<K, V> const &m)
+// {
+//     for (auto it = m.cbegin(); it != m.cend(); ++it) {
+//         std::cout << "{" << (*it).first << ": " << (*it).second << "}\n";
+//     }
+// }
+
 class http_server {
 private:
     const char* _cert;
@@ -36,18 +44,17 @@ private:
     bool check_token(string token)
     {
         std::lock_guard<std::mutex> lock(_token_mutex);
+
         auto it = _tokens.find(token);
         if (it != _tokens.end()) {
             std::time_t now = std::time(nullptr);
             if (now - it->second < TOKEN_EXPIRATION_TIME) {
-                printf("token is valid\n");
                 return true;
             } else {
                 _tokens.erase(it);
             }
         }
 
-        printf("token is invalid\n");
         return false;
     }
 
@@ -59,7 +66,6 @@ private:
 
         for (auto& _api : _apis) {
             const string group = "/api/" + _api->_group;
-
             if (request_uri.compare(0, group.length(), group) != 0) {
                 continue;
             }
@@ -78,12 +84,14 @@ private:
         if (found_api && found_api->_handler) {
             if (!found_api->_no_auth) {
                 mg_str* token = mg_http_get_header(hm, "Authorization");
-                if (!token || !check_token(token->buf)) {
+                if (!token || !check_token(string(token->buf, token->len))) {
                     return API_STATUS_UNAUTHORIZED;
                 }
             }
 
             json request;
+            request["uri"] = string(hm->uri.buf, hm->uri.len);
+            request["body"] = (hm->body.len) ? json::parse(hm->body.buf) : "";
             status = found_api->_handler(request, response);
         }
 
@@ -102,17 +110,16 @@ private:
             http_server* server = static_cast<http_server*>(c->fn_data);
             mg_http_message* hm = (mg_http_message*)ev_data;
 
-            printf("\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
-            printf("\n%s,%d: uri=[%d]%s", __func__, __LINE__, hm->uri.len, hm->uri.buf);
-            printf("\n%s,%d: head=[%d]%s", __func__, __LINE__, hm->head.len, hm->head.buf);
-            printf("\n%s,%d: body=[%d]%s", __func__, __LINE__, hm->body.len, hm->body.buf);
-            printf("\n%s,%d: message=[%d]%s", __func__, __LINE__, hm->message.len, hm->message.buf);
-            printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+            // printf("\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+            // printf("\n%s,%d: uri=[%d]%s", __func__, __LINE__, hm->uri.len, hm->uri.buf);
+            // printf("\n%s,%d: head=[%d]%s", __func__, __LINE__, hm->head.len, hm->head.buf);
+            // printf("\n%s,%d: body=[%d]%s", __func__, __LINE__, hm->body.len, hm->body.buf);
+            // printf("\n%s,%d: message=[%d]%s", __func__, __LINE__, hm->message.len, hm->message.buf);
+            // printf("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
             api_status_t status = API_STATUS_NEXT;
             json response;
             status = server->api_handler(hm, response);
-            printf("%s,%d: status=%d\n", __func__, __LINE__, status);
             if (status == API_STATUS_OK) {
                 mg_http_reply(c, 200, "Content-Type: application/json\r\n", response.dump().c_str());
                 return;
