@@ -5,13 +5,14 @@
 
 class api_device : public api_base {
 private:
-    static api_status_t queryDeviceInfo(const json &request, json &response);
+    static api_status_t queryDeviceInfo(const json& request, json& response);
 
 public:
     api_device()
         : api_base("deviceMgr")
     {
         printf("%s,%d\n", __func__, __LINE__);
+        REG_API_FULL("", queryDeviceInfo, true);
         REG_API_NO_AUTH(queryDeviceInfo);
     }
 

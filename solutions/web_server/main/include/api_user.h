@@ -3,9 +3,10 @@
 
 #include "api_base.h"
 
+#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3 // 3 days
+
 class api_user : public api_base {
 private:
-
 public:
     api_user()
         : api_base("userMgr")

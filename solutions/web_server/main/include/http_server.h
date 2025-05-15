@@ -2,10 +2,8 @@
 #define HTTP_SERVER_H
 
 #include <atomic>
-#include <iomanip>
 #include <memory>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -17,8 +15,6 @@
 #include "api_user.h"
 #include "api_wifi.h"
 #include "mongoose.h"
-
-#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3  // 3 days
 
 class http_server {
 private:
@@ -35,9 +31,11 @@ private:
 
     vector<unique_ptr<api_base>> _apis;
     unordered_map<string, time_t> _tokens;
+    std::mutex _token_mutex;
 
     bool check_token(string token)
     {
+        std::lock_guard<std::mutex> lock(_token_mutex);
         auto it = _tokens.find(token);
         if (it != _tokens.end()) {
             std::time_t now = std::time(nullptr);
@@ -53,36 +51,40 @@ private:
         return false;
     }
 
-    static bool match(const string &req_uri, const string &api_uri)
-    {
-        printf("req_uri=%s, api_uri=%s\n", req_uri.c_str(), api_uri.c_str());
-        return mg_match(mg_str(req_uri.c_str()), mg_str(api_uri.c_str()), NULL);
-    }
-
-    api_status_t api_handler(mg_http_message* hm, json &response)
+    api_status_t api_handler(mg_http_message* hm, json& response)
     {
         api_status_t status = API_STATUS_NEXT;
-        if (!mg_match(hm->uri, mg_str("/api/#"), NULL)) {
-            return status;
+        rest_api* found_api = nullptr;
+        string request_uri(hm->uri.buf, hm->uri.len);
+
+        for (auto& _api : _apis) {
+            const string group = "/api/" + _api->_group;
+
+            if (request_uri.compare(0, group.length(), group) != 0) {
+                continue;
+            }
+
+            for (auto& li : _api->get_list()) {
+                const string full_uri = li->_uri.empty() ? group : group + "/" + li->_uri;
+
+                if (mg_match(hm->uri, mg_str(full_uri.c_str()), nullptr)) {
+                    found_api = li.get();
+                    goto api_found;
+                }
+            }
         }
 
-        rest_api* api = nullptr;
-        for (auto& _api : _apis) {
-            string hm_uri(hm->uri.buf, hm->uri.len);
-            api = _api->get(hm_uri, match);
-            if (api)
-                break;
-        }
-        if (api && api->_handler) {
-            if (!api->_no_auth) {
-                mg_str *token = mg_http_get_header(hm, "Authorization");
+    api_found:
+        if (found_api && found_api->_handler) {
+            if (!found_api->_no_auth) {
+                mg_str* token = mg_http_get_header(hm, "Authorization");
                 if (!token || !check_token(token->buf)) {
                     return API_STATUS_UNAUTHORIZED;
                 }
             }
 
             json request;
-            status = api->_handler(request, response);
+            status = found_api->_handler(request, response);
         }
 
         if (status == API_STATUS_AUTHORIZED) {
@@ -100,7 +102,13 @@ private:
             http_server* server = static_cast<http_server*>(c->fn_data);
             mg_http_message* hm = (mg_http_message*)ev_data;
 
-            printf("\n\n%s,%d: uri=%s\n", __func__, __LINE__, hm->uri.buf);
+            printf("\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+            printf("\n%s,%d: uri=[%d]%s", __func__, __LINE__, hm->uri.len, hm->uri.buf);
+            printf("\n%s,%d: head=[%d]%s", __func__, __LINE__, hm->head.len, hm->head.buf);
+            printf("\n%s,%d: body=[%d]%s", __func__, __LINE__, hm->body.len, hm->body.buf);
+            printf("\n%s,%d: message=[%d]%s", __func__, __LINE__, hm->message.len, hm->message.buf);
+            printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+
             api_status_t status = API_STATUS_NEXT;
             json response;
             status = server->api_handler(hm, response);
@@ -117,7 +125,7 @@ private:
             }
 
             // Serve web root directory
-            struct mg_http_serve_opts opts = {0};
+            struct mg_http_serve_opts opts = { 0 };
             opts.root_dir = server->_root_dir;
             // opts.ssi_pattern = server->_ssi_pattern;
             mg_http_serve_dir(c, hm, &opts);

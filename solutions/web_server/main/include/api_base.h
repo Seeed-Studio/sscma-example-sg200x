@@ -1,10 +1,11 @@
 #ifndef API_BASE_H
 #define API_BASE_H
 
+#include <random>
 #include <string>
 
-#include "logger.hpp"
 #include "json.hpp"
+#include "logger.hpp"
 
 using namespace std;
 using json = nlohmann::json;
@@ -17,8 +18,7 @@ typedef enum {
     API_STATUS_UNAUTHORIZED,
 } api_status_t;
 
-typedef api_status_t (*api_handler_t)(const json &request, json &response);
-typedef bool (*api_match_t)(const string &req_uri, const string &api_uri);
+typedef api_status_t (*api_handler_t)(const json& request, json& response);
 
 class rest_api {
 public:
@@ -42,7 +42,6 @@ public:
 
 class api_base {
 protected:
-    const string _group;
     vector<unique_ptr<rest_api>> list;
 
     void register_api(string uri, api_handler_t handler, bool no_auth = false)
@@ -51,41 +50,17 @@ protected:
     }
 
 public:
+    const string _group;
+
     api_base(string group = "")
         : _group(group)
     {
         printf("%s,%d: _group=%s\n", __func__, __LINE__, _group.c_str());
     }
 
-    rest_api* get(string &req_uri, api_match_t match)
+    vector<unique_ptr<rest_api>>& get_list()
     {
-        string uri = "/api/" + _group;
-        int len = uri.length();
-
-        if (req_uri.length() < len) {
-            return nullptr;
-        }
-        if (0 != uri.compare(0, len, req_uri.c_str(), 0, len)) {
-            return nullptr;
-        }
-
-        if (match) {
-            for (auto& li : list) {
-                string _uri = uri + "/" + li->_uri;
-                if (match) {
-                    if (match(req_uri, _uri)) {
-                        return li.get();
-                    }
-                }
-                else {
-                    if (req_uri == _uri) {
-                        return li.get();
-                    }
-                }
-            }
-        }
-
-        return nullptr;
+        return list;
     }
 };
 

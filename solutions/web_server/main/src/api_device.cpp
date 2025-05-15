@@ -1,6 +1,6 @@
 #include "api_device.h"
 
-api_status_t api_device::queryDeviceInfo(const json &request, json &response)
+api_status_t api_device::queryDeviceInfo(const json& request, json& response)
 {
     json data;
 
