@@ -1,26 +1,31 @@
-#ifndef HTTP_H
-#define HTTP_H
+#ifndef HTTP_SERVER_H
+#define HTTP_SERVER_H
 
 #include <atomic>
+#include <iomanip>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
-
-#include "mongoose.h"
 
 #include "api_device.h"
 #include "api_file.h"
 #include "api_led.h"
 #include "api_user.h"
 #include "api_wifi.h"
+#include "mongoose.h"
+
+#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3  // 3 days
 
 class http_server {
 private:
     const char* _cert;
     const char* _key;
     const char* _root_dir;
+    const char* _ssi_pattern = "#.html";
 
     mg_mgr mgr;
     mg_connection* http_conn = nullptr;
@@ -28,20 +33,94 @@ private:
     atomic<bool> running { false };
     thread worker;
 
-    vector<unique_ptr<api_base>> apis;
+    vector<unique_ptr<api_base>> _apis;
+    unordered_map<string, time_t> _tokens;
+
+    bool check_token(string token)
+    {
+        auto it = _tokens.find(token);
+        if (it != _tokens.end()) {
+            std::time_t now = std::time(nullptr);
+            if (now - it->second < TOKEN_EXPIRATION_TIME) {
+                printf("token is valid\n");
+                return true;
+            } else {
+                _tokens.erase(it);
+            }
+        }
+
+        printf("token is invalid\n");
+        return false;
+    }
+
+    static bool match(const string &req_uri, const string &api_uri)
+    {
+        printf("req_uri=%s, api_uri=%s\n", req_uri.c_str(), api_uri.c_str());
+        return mg_match(mg_str(req_uri.c_str()), mg_str(api_uri.c_str()), NULL);
+    }
+
+    api_status_t api_handler(mg_http_message* hm, json &response)
+    {
+        api_status_t status = API_STATUS_NEXT;
+        if (!mg_match(hm->uri, mg_str("/api/#"), NULL)) {
+            return status;
+        }
+
+        rest_api* api = nullptr;
+        for (auto& _api : _apis) {
+            string hm_uri(hm->uri.buf, hm->uri.len);
+            api = _api->get(hm_uri, match);
+            if (api)
+                break;
+        }
+        if (api && api->_handler) {
+            if (!api->_no_auth) {
+                mg_str *token = mg_http_get_header(hm, "Authorization");
+                if (!token || !check_token(token->buf)) {
+                    return API_STATUS_UNAUTHORIZED;
+                }
+            }
+
+            json request;
+            status = api->_handler(request, response);
+        }
+
+        if (status == API_STATUS_AUTHORIZED) {
+            string token = response["data"]["token"];
+            _tokens[token] = std::time(nullptr);
+            status = API_STATUS_OK;
+        }
+
+        return status;
+    }
 
     static void event_handler(mg_connection* c, int ev, void* ev_data)
     {
         if (ev == MG_EV_HTTP_MSG) {
-            mg_http_message* hm = (mg_http_message*)ev_data;
             http_server* server = static_cast<http_server*>(c->fn_data);
+            mg_http_message* hm = (mg_http_message*)ev_data;
 
-            for (auto& api : server->apis) {
-                if (api->handler(c, hm))
-                    return;
+            printf("\n\n%s,%d: uri=%s\n", __func__, __LINE__, hm->uri.buf);
+            api_status_t status = API_STATUS_NEXT;
+            json response;
+            status = server->api_handler(hm, response);
+            printf("%s,%d: status=%d\n", __func__, __LINE__, status);
+            if (status == API_STATUS_OK) {
+                mg_http_reply(c, 200, "Content-Type: application/json\r\n", response.dump().c_str());
+                return;
+            } else if (status == API_STATUS_UNAUTHORIZED) {
+                mg_http_reply(c, 401, "Content-Type: text/plain\r\n", "Unauthorized");
+                return;
+            } else if (status != API_STATUS_NEXT) {
+                mg_http_reply(c, 500, "Content-Type: text/plain\r\n", "Internal Server Error");
+                return;
             }
 
-            mg_http_reply(c, 404, "Content-Type: text/plain\r\n", "Not Found\n");
+            // Serve web root directory
+            struct mg_http_serve_opts opts = {0};
+            opts.root_dir = server->_root_dir;
+            // opts.ssi_pattern = server->_ssi_pattern;
+            mg_http_serve_dir(c, hm, &opts);
         }
     }
 
@@ -49,7 +128,6 @@ private:
     {
         http_server* server = static_cast<http_server*>(c->fn_data);
         if (ev == MG_EV_ACCEPT) {
-            printf("ev: MG_EV_ACCEPT\n");
             struct mg_tls_opts opts;
             memset(&opts, 0, sizeof(opts));
             opts.cert = mg_str(server->_cert);
@@ -75,11 +153,11 @@ public:
         , _key(key)
         , _root_dir(root_dir)
     {
-        apis.emplace_back(make_unique<api_device>());
-        apis.emplace_back(make_unique<api_file>());
-        apis.emplace_back(make_unique<api_led>());
-        apis.emplace_back(make_unique<api_user>());
-        apis.emplace_back(make_unique<api_wifi>());
+        _apis.emplace_back(make_unique<api_device>());
+        _apis.emplace_back(make_unique<api_file>());
+        _apis.emplace_back(make_unique<api_led>());
+        _apis.emplace_back(make_unique<api_user>());
+        _apis.emplace_back(make_unique<api_wifi>());
         mg_mgr_init(&mgr);
     }
 
@@ -128,4 +206,4 @@ public:
     }
 };
 
-#endif
+#endif // HTTP_SERVER_H

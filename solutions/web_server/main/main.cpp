@@ -7,6 +7,9 @@
 #include "http_server.h"
 #include "version.h"
 
+#define ROOT_DIR "/usr/share/supervisor/www/"
+#define HTTP_PORT ":8000"
+
 static int s_signum = 0;
 void signal_handler(int signum)
 {
@@ -26,8 +29,8 @@ int main(int argc, char** argv)
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    http_server server;
-    if (!server.start(":8000")) {
+    http_server server(ROOT_DIR);
+    if (!server.start(HTTP_PORT)) {
         printf("Failed: server.start()\n");
         return 1;
     }

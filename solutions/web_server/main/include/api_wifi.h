@@ -1,3 +1,6 @@
+#ifndef API_WIFI_H
+#define API_WIFI_H
+
 #include "api_base.h"
 
 class api_wifi : public api_base {
@@ -6,17 +9,12 @@ public:
         : api_base("wifiMgr")
     {
         printf("%s,%d\n", __func__, __LINE__);
-        list.emplace_back(REST_API(wifi_api1));
     }
 
     ~api_wifi()
     {
         printf("%s,%d\n", __func__, __LINE__);
     }
-
-    static void wifi_api1(mg_connection* c, mg_http_message* hm)
-    {
-        printf("%s,%d\n", __func__, __LINE__);
-        mg_http_reply(c, 200, "Content-Type: text/plain\r\n", "%s\n", __func__);
-    }
 };
+
+#endif // API_WIFI_H
