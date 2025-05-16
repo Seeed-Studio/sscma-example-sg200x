@@ -8,19 +8,19 @@ public:
     api_led()
         : api_base("led")
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
         REG_API_FULL("#/#", led, true);
     }
 
     ~api_led()
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 
 private:
     static api_status_t led(const json& request, json& response)
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
         return API_STATUS_OK;
     }
 };

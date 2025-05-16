@@ -15,14 +15,14 @@ public:
     api_user()
         : api_base("userMgr")
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
         REG_API_NO_AUTH(login);
         REG_API_NO_AUTH(queryUserInfo);
     }
 
     ~api_user()
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 };
 

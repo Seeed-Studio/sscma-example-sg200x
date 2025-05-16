@@ -8,12 +8,12 @@ public:
     api_file()
         : api_base("fileMgr")
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 
     ~api_file()
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 };
 

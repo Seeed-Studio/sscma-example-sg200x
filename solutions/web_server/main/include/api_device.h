@@ -12,14 +12,14 @@ public:
     api_device()
         : api_base("deviceMgr")
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
         REG_API_NO_AUTH(queryDeviceInfo);
         REG_API(queryServiceStatus);
     }
 
     ~api_device()
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 };
 

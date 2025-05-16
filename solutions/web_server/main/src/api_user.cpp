@@ -31,7 +31,7 @@ void api_user::gen_token(json& response)
     mg_base64_encode(reinterpret_cast<const unsigned char*>(ss.str().c_str()),
         ss.str().size(), token, sizeof(token));
 
-    printf("%s,%d: token: %s\n", __func__, __LINE__, token);
+    MA_LOGV("%s", token);
 
     response["code"] = 0;
     response["msg"] = "";
@@ -45,21 +45,21 @@ api_status_t api_user::login(const json& request, json& response)
     string password;
 
     json body = request["body"];
-    printf("%s,%d: %s\n", __func__, __LINE__, body.dump().c_str());
+    MA_LOGV("%s", body.dump().c_str());
     if (body.empty()) {
         goto pwd_error;
     }
 
     username = body["userName"];
     password = body["password"];
-    printf("%s,%d: username=%s, password=%s\n", __func__, __LINE__, username.c_str(), password.c_str());
+    MA_LOGV("username=%s, password=%s", username.c_str(), password.c_str());
     if (username.empty() || password.empty()) {
         goto pwd_error;
     }
 
     if (username == "recamera") {
         gen_token(response);
-        printf("%s,%d: %s\n", __func__, __LINE__, response.dump().c_str());
+        MA_LOGV("%s", response.dump().c_str());
         return API_STATUS_AUTHORIZED;
     }
 
@@ -67,10 +67,9 @@ pwd_error:
     response["code"] = -1;
     response["msg"] = "Incorrect password";
     response["data"] = json({
-        {"retryCount", 1},
+        { "retryCount", 1 },
     });
-
-    printf("%s,%d: %s\n", __func__, __LINE__, response.dump().c_str());
+    MA_LOGV("%s", response.dump().c_str());
 
     return API_STATUS_OK;
 }
@@ -87,7 +86,7 @@ api_status_t api_user::queryUserInfo(const json& request, json& response)
     data["sshKeyList"] = ssh_key_list;
 
     response["code"] = 0;
-    response["msg"]  = "";
+    response["msg"] = "";
     response["data"] = data;
 
     return API_STATUS_OK;

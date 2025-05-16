@@ -7,7 +7,7 @@ api_status_t api_device::queryDeviceInfo(const json& request, json& response)
     data["appName"] = "supervisor";
     data["deviceName"] = "reCamera"; // readFile(PATH_DEVICE_NAME);
     data["sn"] = "123456789"; // sn;
-    data["ip"] = "192.168.111.181"; // getDeviceIp(req->client_addr.ip);
+    data["ip"] = "192.168.111.136"; // getDeviceIp(req->client_addr.ip);
 
     data["dns"] = "-";
 
@@ -35,11 +35,11 @@ api_status_t api_device::queryServiceStatus(const json& request, json& response)
     response["code"] = 0;
     response["msg"] = "";
     response["data"] = json({
-        {"sscmaNode", 0},
-        {"nodeRed", 0},
-        {"system", 0},
-        {"uptime", 100},
-        {"timestamp", 100},
+        { "sscmaNode", 0 },
+        { "nodeRed", 0 },
+        { "system", 0 },
+        { "uptime", 100 },
+        { "timestamp", 100 },
     });
 
     return API_STATUS_OK;

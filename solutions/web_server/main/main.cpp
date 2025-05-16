@@ -5,10 +5,11 @@
 #include <unistd.h>
 
 #include "http_server.h"
+#include "logger.hpp"
 #include "version.h"
 
 #define ROOT_DIR "/usr/share/supervisor/www/"
-#define HTTP_PORT ":8000"
+#define HTTP_PORT "8000"
 
 static int s_signum = 0;
 void signal_handler(int signum)
@@ -20,9 +21,11 @@ void signal_handler(int signum)
 
 int main(int argc, char** argv)
 {
-    printf("Build Time: %s %s\n", __DATE__, __TIME__);
+    MA_LOG_INIT("web_server", LOG_PID | LOG_CONS, LOG_USER);
+
     if (argc > 1 && std::string(argv[1]) == "-v") {
-        printf("Version: %s\n", PROJECT_VERSION);
+        cout << "Build Time: " << __DATE__ << " " << __TIME__ << endl;
+        cout << PROJECT_NAME << " V" << PROJECT_VERSION << endl;
     }
 
     signal(SIGPIPE, SIG_IGN);
@@ -31,7 +34,7 @@ int main(int argc, char** argv)
 
     http_server server(ROOT_DIR);
     if (!server.start(HTTP_PORT)) {
-        printf("Failed: server.start()\n");
+        MA_LOGE("Failed: server.start()\n");
         return 1;
     }
 
@@ -39,7 +42,8 @@ int main(int argc, char** argv)
         sleep(1);
     }
 
-    printf("%s,%d: exited\n", __func__, __LINE__);
+    MA_LOGV("exited\n");
+    MA_LOG_DEINIT();
 
     return 0;
 }

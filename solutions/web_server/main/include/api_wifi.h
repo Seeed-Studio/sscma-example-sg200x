@@ -8,12 +8,12 @@ public:
     api_wifi()
         : api_base("wifiMgr")
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 
     ~api_wifi()
     {
-        printf("%s,%d\n", __func__, __LINE__);
+        MA_LOGV("");
     }
 };
 

@@ -110,12 +110,12 @@ private:
             http_server* server = static_cast<http_server*>(c->fn_data);
             mg_http_message* hm = (mg_http_message*)ev_data;
 
-            // printf("\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
-            // printf("\n%s,%d: uri=[%d]%s", __func__, __LINE__, hm->uri.len, hm->uri.buf);
-            // printf("\n%s,%d: head=[%d]%s", __func__, __LINE__, hm->head.len, hm->head.buf);
-            // printf("\n%s,%d: body=[%d]%s", __func__, __LINE__, hm->body.len, hm->body.buf);
-            // printf("\n%s,%d: message=[%d]%s", __func__, __LINE__, hm->message.len, hm->message.buf);
-            // printf("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+            MA_LOGV("\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+            MA_LOGV("\nuri=[%d]%s", hm->uri.len, hm->uri.buf);
+            MA_LOGV("\nhead=[%d]%s", hm->head.len, hm->head.buf);
+            MA_LOGV("\nbody=[%d]%s", hm->body.len, hm->body.buf);
+            MA_LOGV("\nmessage=[%d]%s", hm->message.len, hm->message.buf);
+            MA_LOGV("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
             api_status_t status = API_STATUS_NEXT;
             json response;
@@ -159,7 +159,7 @@ private:
         while (running) {
             mg_mgr_poll(&mgr, 50);
         }
-        printf("poll_loop exit\n");
+        MA_LOGV("poll_loop exit");
     }
 
 public:
@@ -181,24 +181,26 @@ public:
         stop();
     }
 
-    bool start(const char* http_port = nullptr, const char* https_port = nullptr)
+    bool start(const string& http_port = "80", const string& https_port = "")
     {
-        if (http_port && strlen(http_port) > 0) {
-            http_conn = mg_http_listen(&mgr, http_port, event_handler, this);
+        if (!http_port.empty()) {
+            http_conn = mg_http_listen(&mgr, string(":" + http_port).c_str(),
+                event_handler, this);
             if (!http_conn)
                 return false;
-            printf("HTTP server started on %s\n", http_port);
+            MA_LOGV("HTTP server started on %s", http_port.c_str());
         }
 
-        if (https_port && *https_port) {
-            https_conn = mg_http_listen(&mgr, https_port, https_event_handler, this);
+        if (!https_port.empty()) {
+            https_conn = mg_http_listen(&mgr, string(":" + https_port).c_str(),
+                https_event_handler, this);
             if (!https_conn)
                 return false;
-            printf("HTTPS server started on %s\n", https_port);
+            MA_LOGV("HTTPS server started on %s", https_port.c_str());
         }
 
         if (!http_conn && !https_conn) {
-            printf("Error: At least one valid port required\n");
+            MA_LOGV("Error: At least one valid port required");
             return false;
         }
 
@@ -208,16 +210,16 @@ public:
 
     void stop()
     {
-        printf("%s,%d: Stopping server\n", __func__, __LINE__);
+        MA_LOGV("Stopping server");
         if (running) {
             running = false;
             if (worker.joinable()) {
                 worker.join();
-                printf("%s,%d: Worker thread stopped\n", __func__, __LINE__);
+                MA_LOGV("Worker thread stopped");
             }
             mg_mgr_free(&mgr);
         }
-        printf("%s,%d: Server stopped\n", __func__, __LINE__);
+        MA_LOGV("Server stopped");
     }
 };
 
