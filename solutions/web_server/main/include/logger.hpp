@@ -1,38 +1,40 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#include <string>
+#include <atomic>
+#include <chrono>
+#include <ctime>
+#include <mutex>
+#include <sstream>
 #include <syslog.h>
+#include <thread>
 
-extern int log_to_std_mask;
-extern std::string format_log(const char* format, ...);
+#ifndef MA_LOG_MASK
+#define MA_LOG_MASK (LOG_UPTO(LOG_DEBUG))
+#endif
 
 #define MA_LOG_INIT(_id, _opt, _fac) \
     do {                             \
         openlog(_id, _opt, _fac);    \
+        setlogmask(MA_LOG_MASK);     \
     } while (0)
 
-#define MA_LOG_MASK(_mask)       \
-    do {                         \
-        log_to_std_mask = _mask; \
-        setlogmask(_mask);       \
+#define MA_LOG_DEINIT() \
+    do {                \
+        closelog();     \
     } while (0)
 
-#define MA_LOG_DEINIT()      \
-    do {                     \
-        log_to_std_mask = 0; \
-        closelog();          \
-    } while (0)
-
-#define MA_LOG(_text, _type, _tag, _fmt, ...)                                                   \
-    do {                                                                                        \
-        std::string msg;                                                                        \
-        msg = format_log("[%s] " _fmt, _tag, ##__VA_ARGS__);                                    \
-        if (log_to_std_mask & (1 << _type)) {                                                   \
-            std::string prefix = std::string(__func__) + "," + std::to_string(__LINE__) + ": "; \
-            std::cout << _text << prefix << msg << std::endl;                                   \
-        }                                                                                       \
-        syslog(_type, "%s", msg.c_str());                                                       \
+#define MA_LOG(_text, _lvl, _tag, _fmt, ...)                               \
+    do {                                                                   \
+        static std::mutex log_mutex;                                       \
+        std::lock_guard<std::mutex> lock(log_mutex);                       \
+        std::ostringstream oss;                                            \
+        oss << "[" << __func__ << ":" << __LINE__ << "][" << _tag << "] "; \
+        oss << _fmt;                                                       \
+        if (MA_LOG_MASK & (1 << _lvl)) {                                   \
+            std::cout << oss.str() << std::endl;                           \
+        }                                                                  \
+        syslog(_lvl, "%s", oss.str().c_str());                             \
     } while (0)
 
 #define MA_LOGE(_tag, _fmt, ...) MA_LOG("[E]", LOG_ERR, _tag, _fmt, ##__VA_ARGS__)
