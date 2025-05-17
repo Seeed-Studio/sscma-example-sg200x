@@ -65,14 +65,17 @@ private:
         string request_uri(hm->uri.buf, hm->uri.len);
 
         for (auto& _api : _apis) {
-            const string group = "/api/" + _api->_group;
+            string group = "/api/" + _api->_group;
             if (request_uri.compare(0, group.length(), group) != 0) {
                 continue;
             }
 
+            if (_api->_group.empty()) {
+                group = "/api";
+            }
+
             for (auto& li : _api->get_list()) {
                 const string full_uri = li->_uri.empty() ? group : group + "/" + li->_uri;
-
                 if (mg_match(hm->uri, mg_str(full_uri.c_str()), nullptr)) {
                     found_api = li.get();
                     goto api_found;
@@ -110,12 +113,12 @@ private:
             http_server* server = static_cast<http_server*>(c->fn_data);
             mg_http_message* hm = (mg_http_message*)ev_data;
 
-            MA_LOGV("\n\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            MA_LOGV("\nuri=[%d]%s", hm->uri.len, hm->uri.buf);
-            MA_LOGV("\nhead=[%d]%s", hm->head.len, hm->head.buf);
-            MA_LOGV("\nbody=[%d]%s", hm->body.len, hm->body.buf);
-            MA_LOGV("\nmessage=[%d]%s", hm->message.len, hm->message.buf);
-            MA_LOGV("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
+            MA_LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+            MA_LOGV("---> uri=[%d]%s", hm->uri.len, hm->uri.buf);
+            MA_LOGV("---> head=[%d]%s", hm->head.len, hm->head.buf);
+            MA_LOGV("---> body=[%d]%s\n", hm->body.len, hm->body.buf);
+            MA_LOGV("---> message=[%d]%s", hm->message.len, hm->message.buf);
+            MA_LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
 
             api_status_t status = API_STATUS_NEXT;
             json response;
@@ -173,6 +176,7 @@ public:
         _apis.emplace_back(make_unique<api_led>());
         _apis.emplace_back(make_unique<api_user>());
         _apis.emplace_back(make_unique<api_wifi>());
+        _apis.emplace_back(make_unique<api_base>());
         mg_mgr_init(&mgr);
     }
 

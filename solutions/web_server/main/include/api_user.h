@@ -7,17 +7,25 @@
 
 class api_user : public api_base {
 private:
-    static void gen_token(json& response);
+    static api_status_t addSShkey(const json& request, json& response);
+    static api_status_t deleteSShkey(const json& request, json& response);
     static api_status_t login(const json& request, json& response);
     static api_status_t queryUserInfo(const json& request, json& response);
+    static api_status_t setSShStatus(const json& request, json& response);
+    static api_status_t updatePassword(const json& request, json& response);
 
 public:
     api_user()
         : api_base("userMgr")
     {
         MA_LOGV("");
+
+        REG_API(addSShkey);
+        REG_API(deleteSShkey);
         REG_API_NO_AUTH(login);
-        REG_API_NO_AUTH(queryUserInfo);
+        REG_API(queryUserInfo); // fixed: no auth
+        REG_API(setSShStatus); // fixed: no auth
+        REG_API(updatePassword); // fixed: no auth
     }
 
     ~api_user()

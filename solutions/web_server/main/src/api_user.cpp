@@ -5,7 +5,7 @@
 #include "api_user.h"
 #include "mongoose.h"
 
-void api_user::gen_token(json& response)
+static string gen_token(void)
 {
     std::time_t now = std::time(nullptr);
     char token[128] = { 0 };
@@ -33,10 +33,27 @@ void api_user::gen_token(json& response)
 
     MA_LOGV("%s", token);
 
+    return string(token);
+}
+
+api_status_t api_user::addSShkey(const json& request, json& response)
+{
     response["code"] = 0;
     response["msg"] = "";
-    response["data"]["token"] = token;
-    response["data"]["expire"] = TOKEN_EXPIRATION_TIME;
+    response["data"] = json(
+        "");
+
+    return API_STATUS_OK;
+}
+
+api_status_t api_user::deleteSShkey(const json& request, json& response)
+{
+    response["code"] = 0;
+    response["msg"] = "";
+    response["data"] = json(
+        "");
+
+    return API_STATUS_OK;
 }
 
 api_status_t api_user::login(const json& request, json& response)
@@ -58,7 +75,12 @@ api_status_t api_user::login(const json& request, json& response)
     }
 
     if (username == "recamera") {
-        gen_token(response);
+        response["code"] = 0;
+        response["msg"] = "";
+        response["data"] = json({
+            { "token", gen_token() },
+            { "expire", TOKEN_EXPIRATION_TIME },
+        });
         MA_LOGV("%s", response.dump().c_str());
         return API_STATUS_AUTHORIZED;
     }
@@ -88,6 +110,26 @@ api_status_t api_user::queryUserInfo(const json& request, json& response)
     response["code"] = 0;
     response["msg"] = "";
     response["data"] = data;
+
+    return API_STATUS_OK;
+}
+
+api_status_t api_user::setSShStatus(const json& request, json& response)
+{
+    response["code"] = 0;
+    response["msg"] = "";
+    response["data"] = json(
+        "");
+
+    return API_STATUS_OK;
+}
+
+api_status_t api_user::updatePassword(const json& request, json& response)
+{
+    response["code"] = 0;
+    response["msg"] = "";
+    response["data"] = json(
+        "");
 
     return API_STATUS_OK;
 }

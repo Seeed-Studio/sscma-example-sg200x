@@ -18,6 +18,7 @@
 
 #include "json.hpp"
 #include "logger.hpp"
+#include "version.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -66,16 +67,22 @@ private:
 
 public:
     const string _group;
+    vector<unique_ptr<rest_api>>& get_list() { return list; }
 
     api_base(string group = "")
         : _group(group)
     {
         MA_LOGV("%s", _group.c_str());
-    }
 
-    vector<unique_ptr<rest_api>>& get_list()
-    {
-        return list;
+        if (_group.empty()) {
+            register_api("version", [](const json& request, json& response) {
+                response["code"] = 0;
+                response["msg"] = "";
+                response["data"] = PROJECT_VERSION;
+                response["uptime"] = 1234;
+                response["timestamp"] = 9999;
+                return API_STATUS_OK; }, true);
+        }
     }
 
     static string script(const string& cmd, const string& args = "", int timeout_sec = 30)
