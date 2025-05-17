@@ -76,6 +76,7 @@ public:
 
         if (_group.empty()) {
             register_api("version", [](const json& request, json& response) {
+                MA_LOGV("%s", request.dump().c_str());
                 response["code"] = 0;
                 response["msg"] = "";
                 response["data"] = PROJECT_VERSION;

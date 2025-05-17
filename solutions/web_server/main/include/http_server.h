@@ -62,11 +62,12 @@ private:
     {
         api_status_t status = API_STATUS_NEXT;
         rest_api* found_api = nullptr;
-        string request_uri(hm->uri.buf, hm->uri.len);
+        string req_uri(hm->uri.buf, hm->uri.len);
+        string group;
 
         for (auto& _api : _apis) {
-            string group = "/api/" + _api->_group;
-            if (request_uri.compare(0, group.length(), group) != 0) {
+            group = "/api/" + _api->_group;
+            if (req_uri.compare(0, group.length(), group) != 0) {
                 continue;
             }
 
@@ -93,7 +94,8 @@ private:
             }
 
             json request;
-            request["uri"] = string(hm->uri.buf, hm->uri.len);
+            req_uri.erase(0, group.length() + 1);
+            request["uri"] = req_uri;
             request["body"] = (hm->body.len) ? json::parse(hm->body.buf) : "";
             status = found_api->_handler(request, response);
         }
