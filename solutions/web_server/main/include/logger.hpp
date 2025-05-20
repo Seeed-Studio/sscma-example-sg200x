@@ -41,7 +41,7 @@
     do {                                                                                \
         static std::mutex log_mutex;                                                    \
         std::lock_guard<std::mutex> lock(log_mutex);                                    \
-        char buf[512];                                                                  \
+        char buf[10240];                                                                \
         snprintf(buf, sizeof(buf), "[%s:%d] " _fmt, __func__, __LINE__, ##__VA_ARGS__); \
         if (MA_LOG_MASK & (1 << _lvl)) {                                                \
             std::cout << _prefix << buf << std::endl;                                   \

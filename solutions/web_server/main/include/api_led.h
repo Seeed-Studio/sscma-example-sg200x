@@ -11,22 +11,31 @@
 
 class api_led : public api_base {
 private:
-    static api_status_t led(const json& request, json& response)
+    static api_status_t led(request_t req, response_t res)
     {
-        MA_LOGV("req: %s", request.dump().c_str());
+        MA_LOGV("");
 
-        response["code"] = 0;
-        response["msg"] = "";
-        response["data"] = json("");
+        res["code"] = 0;
+        res["msg"] = "";
+        res["data"] = json("");
 
         do {
-            string uri = request["uri"].get<string>();
-            size_t pos = uri.find("/");
-            if (pos == string::npos) {
-                return API_STATUS_NEXT;
+            string uri = get_uri(req);
+            size_t pos_e = uri.rfind('/');
+            if (pos_e == string::npos) {
+                res["code"] = -1;
+                res["msg"] = "Invalid path format";
+                break;
             }
-            string led = uri.substr(0, pos);
-            string val = uri.substr(pos + 1);
+            size_t pos_s = uri.rfind('/', pos_e - 1);
+            if (pos_s == string::npos) {
+                pos_s = 0;
+            }
+
+            string led = uri.substr(pos_s + 1, pos_e - pos_s - 1);
+            string val = uri.substr(pos_e + 1);
+
+            MA_LOGV("led=%s, val=%s", led.c_str(), val.c_str());
 
             int value = 0;
             if (val == "on") {
@@ -35,9 +44,9 @@ private:
 
             ofstream ofs("/sys/class/leds/" + led + "/brightness");
             if (!ofs.is_open()) {
-                response["code"] = -1;
-                response["msg"] = "Open led(" + led + ") failed.";
-                MA_LOGE("%s", response["msg"].get<string>().c_str());
+                res["code"] = -1;
+                res["msg"] = "Open led(" + led + ") failed.";
+                MA_LOGE("%s", res["msg"].get<string>().c_str());
                 break;
             }
             ofs << value;

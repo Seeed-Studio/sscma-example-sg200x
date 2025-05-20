@@ -20,6 +20,8 @@
 #include "logger.hpp"
 #include "version.h"
 
+#include "mongoose.h"
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -31,7 +33,11 @@ typedef enum {
     API_STATUS_UNAUTHORIZED,
 } api_status_t;
 
-typedef api_status_t (*api_handler_t)(const json& request, json& response);
+// typedef const json& request_t;
+typedef const mg_http_message* request_t;
+typedef json& response_t;
+
+typedef api_status_t (*api_handler_t)(request_t req, response_t res);
 
 class rest_api {
 public:
@@ -53,6 +59,13 @@ public:
     }
 };
 
+typedef struct {
+    string name;
+    string filename;
+    size_t len;
+    char* buf;
+} form_t;
+
 class api_base {
 protected:
     vector<unique_ptr<rest_api>> list;
@@ -62,8 +75,96 @@ protected:
         list.emplace_back(make_unique<rest_api>(uri, handler, no_auth));
     }
 
-private:
-    static constexpr char TAG[] = "api_base";
+    static string get_uri(request_t req)
+    {
+        return string(req->uri.buf, req->uri.len);
+    }
+
+    static bool is_path_valid(string& path)
+    {
+        return mg_path_is_sane(mg_str(path.c_str()));
+    }
+
+    static string get_param(request_t req, string name)
+    {
+        struct mg_str v = mg_http_var(req->query, mg_str(name.c_str()));
+        return (v.len == 0) ? "" : string(v.buf, v.len);
+    }
+
+    static string get_header_var(request_t req, const char* name)
+    {
+        mg_str* hdr = mg_http_get_header((mg_http_message*)req, name);
+        return (hdr) ? string(hdr->buf, hdr->len) : "";
+    }
+
+    static bool is_multipart(request_t req)
+    {
+        string type = get_header_var(req, "Content-Type");
+        return (type.find("multipart/form-data") != string::npos);
+    }
+
+    static json get_body(request_t req)
+    {
+        return (req->body.len) ? json::parse(req->body.buf) : json();
+    }
+
+    static bool get_form(request_t req, form_t& form, string name, string filename = "")
+    {
+        size_t pos = 0;
+        struct mg_http_part part;
+
+        while ((pos = mg_http_next_multipart(req->body, pos, &part)) > 0) {
+            string _name = string(part.name.buf, part.name.len);
+            string _fname = string(part.filename.buf, part.filename.len);
+
+            if (_name == name) {
+                if (!filename.empty() && _fname != filename) {
+                    continue;
+                }
+
+                form.name = _name;
+                form.filename = _fname;
+                form.len = part.body.len;
+                form.buf = part.body.buf;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static api_status_t save_file(request_t req, string param,
+        string dir = "", string force_name = "")
+    {
+        string fname = get_param(req, param);
+        char* data = req->body.buf;
+        size_t len = req->body.len;
+
+        if (is_multipart(req)) {
+            form_t form;
+            if (get_form(req, form, param)) {
+                fname = form.filename;
+                data = form.buf;
+                len = form.len;
+            }
+        }
+
+        if (!force_name.empty()) {
+            fname = force_name;
+        }
+        if (fname.empty()) {
+            return API_STATUS_ERROR;
+        }
+
+        string path = dir + fname;
+        if (!is_path_valid(path)) {
+            return API_STATUS_ERROR;
+        }
+        if (!write_file(path, data, len)) {
+            return API_STATUS_ERROR;
+        }
+
+        return API_STATUS_OK;
+    }
 
 public:
     const string _group;
@@ -75,13 +176,13 @@ public:
         MA_LOGV("%s", _group.c_str());
 
         if (_group.empty()) {
-            register_api("version", [](const json& request, json& response) {
-                MA_LOGV("%s", request.dump().c_str());
-                response["code"] = 0;
-                response["msg"] = "";
-                response["data"] = PROJECT_VERSION;
-                response["uptime"] = 1234;
-                response["timestamp"] = 9999;
+            register_api("version", [](request_t req, response_t res) {
+                MA_LOGV("");
+                res["code"] = 0;
+                res["msg"] = "";
+                res["data"] = PROJECT_VERSION;
+                res["uptime"] = 1234;
+                res["timestamp"] = 9999;
                 return API_STATUS_OK; }, true);
         }
     }
@@ -161,6 +262,44 @@ public:
         return result;
     }
 
+    static bool delete_file(const string& path)
+    {
+        namespace fs = std::filesystem;
+        try {
+            fs::path file_path(path);
+            if (!fs::exists(file_path)) {
+                MA_LOGE("File not found: %s", path.c_str());
+                return false;
+            }
+            fs::remove(file_path);
+            MA_LOGD("Successfully deleted %s", path.c_str());
+            return true;
+        } catch (const std::exception& e) {
+            MA_LOGE("File delete error: %s - %s", path.c_str(), e.what());
+            return false;
+        }
+    }
+
+    static bool get_folder(const string& path, vector<string>& files)
+    {
+        namespace fs = std::filesystem;
+        try {
+            fs::path dir_path(path);
+            if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
+                MA_LOGE("Directory not found: %s", path.c_str());
+                return false;
+            }
+            for (const auto& entry : fs::directory_iterator(dir_path)) {
+                files.push_back(entry.path().filename());
+            }
+            MA_LOGD("Found %zu files in %s", files.size(), path.c_str());
+            return true;
+        } catch (const std::exception& e) {
+            MA_LOGE("Directory read error: %s - %s", path.c_str(), e.what());
+            return false;
+        }
+    }
+
     static string read_file(const string& path, const string& default_str = "")
     {
         namespace fs = std::filesystem;
@@ -191,6 +330,24 @@ public:
         } catch (const std::exception& e) {
             MA_LOGE("File read error: %s - %s", path.c_str(), e.what());
             return default_str;
+        }
+    }
+
+    static bool write_file(const string& path, char* buf, size_t len)
+    {
+        namespace fs = std::filesystem;
+        try {
+            fs::path file_path(path);
+            fs::create_directories(file_path.parent_path());
+            std::ofstream ofs(file_path, std::ios::binary);
+            ofs.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+            ofs.write(buf, len);
+            ofs.close();
+            MA_LOGD("Successfully wrote %zu bytes to %s", len, path.c_str());
+            return true;
+        } catch (const std::exception& e) {
+            MA_LOGE("File write error: %s - %s", path.c_str(), e.what());
+            return false;
         }
     }
 };

@@ -5,15 +5,15 @@
 
 class api_wifi : public api_base {
 private:
-    static api_status_t autoConnectWiFi(const json& request, json& response);
-    static api_status_t connectWiFi(const json& request, json& response);
-    static api_status_t disconnectWiFi(const json& request, json& response);
-    static api_status_t forgetWiFi(const json& request, json& response);
-    static api_status_t getWiFiScanResults(const json& request, json& response);
-    static api_status_t getWifiStatus(const json& request, json& response);
-    static api_status_t queryWiFiInfo(const json& request, json& response);
-    static api_status_t scanWiFi(const json& request, json& response);
-    static api_status_t switchWiFi(const json& request, json& response);
+    static api_status_t autoConnectWiFi(request_t req, response_t res);
+    static api_status_t connectWiFi(request_t req, response_t res);
+    static api_status_t disconnectWiFi(request_t req, response_t res);
+    static api_status_t forgetWiFi(request_t req, response_t res);
+    static api_status_t getWiFiScanResults(request_t req, response_t res);
+    static api_status_t getWifiStatus(request_t req, response_t res);
+    static api_status_t queryWiFiInfo(request_t req, response_t res);
+    static api_status_t scanWiFi(request_t req, response_t res);
+    static api_status_t switchWiFi(request_t req, response_t res);
 
 public:
     api_wifi()

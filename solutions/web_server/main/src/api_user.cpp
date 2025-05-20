@@ -3,7 +3,6 @@
 #include <sstream>
 
 #include "api_user.h"
-#include "mongoose.h"
 
 static string gen_token(void)
 {
@@ -36,32 +35,32 @@ static string gen_token(void)
     return string(token);
 }
 
-api_status_t api_user::addSShkey(const json& request, json& response)
+api_status_t api_user::addSShkey(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_user::deleteSShkey(const json& request, json& response)
+api_status_t api_user::deleteSShkey(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_user::login(const json& request, json& response)
+api_status_t api_user::login(request_t req, response_t res)
 {
     string username;
     string password;
 
-    json body = request["body"];
+    json body; // req["body"];
     MA_LOGV("%s", body.dump().c_str());
     if (body.empty()) {
         goto pwd_error;
@@ -75,28 +74,28 @@ api_status_t api_user::login(const json& request, json& response)
     }
 
     if (username == "recamera") {
-        response["code"] = 0;
-        response["msg"] = "";
-        response["data"] = json({
+        res["code"] = 0;
+        res["msg"] = "";
+        res["data"] = json({
             { "token", gen_token() },
             { "expire", TOKEN_EXPIRATION_TIME },
         });
-        MA_LOGV("%s", response.dump().c_str());
+        MA_LOGV("%s", res.dump().c_str());
         return API_STATUS_AUTHORIZED;
     }
 
 pwd_error:
-    response["code"] = -1;
-    response["msg"] = "Incorrect password";
-    response["data"] = json({
+    res["code"] = -1;
+    res["msg"] = "Incorrect password";
+    res["data"] = json({
         { "retryCount", 1 },
     });
-    MA_LOGV("%s", response.dump().c_str());
+    MA_LOGV("%s", res.dump().c_str());
 
     return API_STATUS_OK;
 }
 
-api_status_t api_user::queryUserInfo(const json& request, json& response)
+api_status_t api_user::queryUserInfo(request_t req, response_t res)
 {
     json data;
 
@@ -107,28 +106,28 @@ api_status_t api_user::queryUserInfo(const json& request, json& response)
     vector<json> ssh_key_list;
     data["sshKeyList"] = ssh_key_list;
 
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = data;
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = data;
 
     return API_STATUS_OK;
 }
 
-api_status_t api_user::setSShStatus(const json& request, json& response)
+api_status_t api_user::setSShStatus(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_user::updatePassword(const json& request, json& response)
+api_status_t api_user::updatePassword(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;

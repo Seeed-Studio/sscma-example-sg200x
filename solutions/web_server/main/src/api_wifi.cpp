@@ -4,91 +4,91 @@
 
 #include "api_wifi.h"
 
-api_status_t api_wifi::autoConnectWiFi(const json& request, json& response)
+api_status_t api_wifi::autoConnectWiFi(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::connectWiFi(const json& request, json& response)
+api_status_t api_wifi::connectWiFi(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::disconnectWiFi(const json& request, json& response)
+api_status_t api_wifi::disconnectWiFi(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::forgetWiFi(const json& request, json& response)
+api_status_t api_wifi::forgetWiFi(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::getWiFiScanResults(const json& request, json& response)
+api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::getWifiStatus(const json& request, json& response)
+api_status_t api_wifi::getWifiStatus(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::queryWiFiInfo(const json& request, json& response)
+api_status_t api_wifi::queryWiFiInfo(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::scanWiFi(const json& request, json& response)
+api_status_t api_wifi::scanWiFi(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::switchWiFi(const json& request, json& response)
+api_status_t api_wifi::switchWiFi(request_t req, response_t res)
 {
-    response["code"] = 0;
-    response["msg"] = "";
-    response["data"] = json(
+    res["code"] = 0;
+    res["msg"] = "";
+    res["data"] = json(
         "");
 
     return API_STATUS_OK;

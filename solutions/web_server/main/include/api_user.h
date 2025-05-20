@@ -7,12 +7,12 @@
 
 class api_user : public api_base {
 private:
-    static api_status_t addSShkey(const json& request, json& response);
-    static api_status_t deleteSShkey(const json& request, json& response);
-    static api_status_t login(const json& request, json& response);
-    static api_status_t queryUserInfo(const json& request, json& response);
-    static api_status_t setSShStatus(const json& request, json& response);
-    static api_status_t updatePassword(const json& request, json& response);
+    static api_status_t addSShkey(request_t req, response_t res);
+    static api_status_t deleteSShkey(request_t req, response_t res);
+    static api_status_t login(request_t req, response_t res);
+    static api_status_t queryUserInfo(request_t req, response_t res);
+    static api_status_t setSShStatus(request_t req, response_t res);
+    static api_status_t updatePassword(request_t req, response_t res);
 
 public:
     api_user()

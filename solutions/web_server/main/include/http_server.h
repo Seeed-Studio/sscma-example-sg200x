@@ -86,18 +86,15 @@ private:
 
     api_found:
         if (found_api && found_api->_handler) {
-            if (!found_api->_no_auth) {
+            // if (!found_api->_no_auth) {
+            if (0) { // for testing
                 mg_str* token = mg_http_get_header(hm, "Authorization");
                 if (!token || !check_token(string(token->buf, token->len))) {
                     return API_STATUS_UNAUTHORIZED;
                 }
             }
 
-            json request;
-            req_uri.erase(0, group.length() + 1);
-            request["uri"] = req_uri;
-            request["body"] = (hm->body.len) ? json::parse(hm->body.buf) : "";
-            status = found_api->_handler(request, response);
+            status = found_api->_handler(hm, response);
         }
 
         if (status == API_STATUS_AUTHORIZED) {
@@ -116,10 +113,17 @@ private:
             mg_http_message* hm = (mg_http_message*)ev_data;
 
             MA_LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            MA_LOGV("---> uri=[%d]%s", hm->uri.len, hm->uri.buf);
-            MA_LOGV("---> head=[%d]%s", hm->head.len, hm->head.buf);
-            MA_LOGV("---> body=[%d]%s\n", hm->body.len, hm->body.buf);
-            MA_LOGV("---> message=[%d]%s", hm->message.len, hm->message.buf);
+            MA_LOGV("---> uri=%s", string(hm->uri.buf, hm->uri.len).c_str());
+            MA_LOGV("---> query=%s", string(hm->query.buf, hm->query.len).c_str());
+            for (int i = 0; i < 10; i++) {
+                MA_LOGV("---> headers[%d]: name: %s, [%d]value: %s", i,
+                    string(hm->headers[i].name.buf, hm->headers[i].name.len).c_str(),
+                    hm->headers[i].value.len,
+                    string(hm->headers[i].value.buf, hm->headers[i].value.len).c_str());
+            }
+            MA_LOGV("---> head=%s", string(hm->head.buf, hm->head.len).c_str());
+            // MA_LOGV("---> body=%s\n", string(hm->body.buf, hm->body.len).c_str());
+            // MA_LOGV("---> message=%s", string(hm->message.buf, hm->message.len).c_str());
             MA_LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
 
             api_status_t status = API_STATUS_NEXT;
@@ -174,7 +178,7 @@ public:
         , _root_dir(root_dir)
     {
         _apis.emplace_back(make_unique<api_device>());
-        _apis.emplace_back(make_unique<api_file>());
+        _apis.emplace_back(make_unique<api_file>("filePath", "/userdata/app/"));
         _apis.emplace_back(make_unique<api_led>());
         _apis.emplace_back(make_unique<api_user>());
         _apis.emplace_back(make_unique<api_wifi>());

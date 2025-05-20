@@ -5,26 +5,27 @@
 
 class api_device : public api_base {
 private:
-    static api_status_t cancelUpdate(const json& request, json& response);
-    static api_status_t getAppInfo(const json& request, json& response);
-    static api_status_t getDeviceInfo(const json& request, json& response);
-    static api_status_t getDeviceList(const json& request, json& response);
-    static api_status_t getModelFile(const json& request, json& response);
-    static api_status_t getModelInfo(const json& request, json& response);
-    static api_status_t getModelList(const json& request, json& response);
-    static api_status_t getPlatformInfo(const json& request, json& response);
-    static api_status_t getSystemStatus(const json& request, json& response);
-    static api_status_t getSystemUpdateVesionInfo(const json& request, json& response);
-    static api_status_t getUpdateProgress(const json& request, json& response);
-    static api_status_t queryDeviceInfo(const json& request, json& response);
-    static api_status_t queryServiceStatus(const json& request, json& response);
-    static api_status_t savePlatformInfo(const json& request, json& response);
-    static api_status_t setPower(const json& request, json& response);
-    static api_status_t updateChannel(const json& request, json& response);
-    static api_status_t updateDeviceName(const json& request, json& response);
-    static api_status_t updateSystem(const json& request, json& response);
-    static api_status_t uploadApp(const json& request, json& response);
-    static api_status_t uploadModel(const json& request, json& response);
+    static api_status_t cancelUpdate(request_t req, response_t res);
+    static api_status_t getAppInfo(request_t req, response_t res);
+    static api_status_t getCameraWebsocketUrl(request_t req, response_t res);
+    static api_status_t getDeviceInfo(request_t req, response_t res);
+    static api_status_t getDeviceList(request_t req, response_t res);
+    static api_status_t getModelFile(request_t req, response_t res);
+    static api_status_t getModelInfo(request_t req, response_t res);
+    static api_status_t getModelList(request_t req, response_t res);
+    static api_status_t getPlatformInfo(request_t req, response_t res);
+    static api_status_t getSystemStatus(request_t req, response_t res);
+    static api_status_t getSystemUpdateVesionInfo(request_t req, response_t res);
+    static api_status_t getUpdateProgress(request_t req, response_t res);
+    static api_status_t queryDeviceInfo(request_t req, response_t res);
+    static api_status_t queryServiceStatus(request_t req, response_t res);
+    static api_status_t savePlatformInfo(request_t req, response_t res);
+    static api_status_t setPower(request_t req, response_t res);
+    static api_status_t updateChannel(request_t req, response_t res);
+    static api_status_t updateDeviceName(request_t req, response_t res);
+    static api_status_t updateSystem(request_t req, response_t res);
+    static api_status_t uploadApp(request_t req, response_t res);
+    static api_status_t uploadModel(request_t req, response_t res);
 
 public:
     api_device()
@@ -34,6 +35,7 @@ public:
 
         REG_API(cancelUpdate);
         REG_API(getAppInfo);
+        REG_API(getCameraWebsocketUrl);
         REG_API(getDeviceInfo);
         REG_API_NO_AUTH(getDeviceList);
         REG_API(getModelFile);
