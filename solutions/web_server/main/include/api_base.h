@@ -50,12 +50,12 @@ public:
         , _handler(handler)
         , _no_auth(no_auth)
     {
-        MA_LOGV("%s", _uri.c_str());
+        MA_LOGV(_uri);
     }
 
     ~rest_api()
     {
-        MA_LOGV("%s", _uri.c_str());
+        MA_LOGV(_uri);
     }
 };
 
@@ -68,6 +68,11 @@ typedef struct {
 
 class api_base {
 protected:
+    static inline const string STR_OK = "OK";
+    static inline const json EMPTY_JSON = json::object();
+
+public:
+protected:
     vector<unique_ptr<rest_api>> list;
 
     void register_api(string uri, api_handler_t handler, bool no_auth = false)
@@ -78,11 +83,6 @@ protected:
     static string get_uri(request_t req)
     {
         return string(req->uri.buf, req->uri.len);
-    }
-
-    static bool is_path_valid(string& path)
-    {
-        return mg_path_is_sane(mg_str(path.c_str()));
     }
 
     static string get_param(request_t req, string name)
@@ -97,15 +97,21 @@ protected:
         return (hdr) ? string(hdr->buf, hdr->len) : "";
     }
 
+    static bool is_path_valid(string& path)
+    {
+        return mg_path_is_sane(mg_str(path.c_str()));
+    }
+
     static bool is_multipart(request_t req)
     {
         string type = get_header_var(req, "Content-Type");
         return (type.find("multipart/form-data") != string::npos);
     }
 
-    static json get_body(request_t req)
+    static bool get_body(request_t req, json& body)
     {
-        return (req->body.len) ? json::parse(req->body.buf) : json();
+        body = (req->body.len) ? json::parse(req->body.buf) : json();
+        return body.empty()? false : true;
     }
 
     static bool get_form(request_t req, form_t& form, string name, string filename = "")
@@ -167,17 +173,18 @@ protected:
     }
 
 public:
+    inline static string _script;
     const string _group;
     vector<unique_ptr<rest_api>>& get_list() { return list; }
 
-    api_base(string group = "")
+    api_base(string group = "", string script = "")
         : _group(group)
     {
-        MA_LOGV("%s", _group.c_str());
-
         if (_group.empty()) {
+            _script = script + " ";
+            MA_LOGV(_group, ", ", _script);
+
             register_api("version", [](request_t req, response_t res) {
-                MA_LOGV("");
                 res["code"] = 0;
                 res["msg"] = "";
                 res["data"] = PROJECT_VERSION;
@@ -187,21 +194,34 @@ public:
         }
     }
 
-    static string script(const string& cmd, const string& args = "", int timeout_sec = 30)
+    static void response(response_t res, int code, 
+        const string& msg = STR_OK, const json& data = EMPTY_JSON)
     {
-        if (system(("which " + cmd + " > /dev/null 2>&1").c_str()) != 0) {
-            MA_LOGE("Command not found: %s", cmd.c_str());
-            throw std::runtime_error("Command not available: " + cmd);
-        }
+        res["code"] = code;
+        res["msg"] = msg;
+        res["data"] = data;
+    }
 
-        string full_cmd = cmd;
-        full_cmd += " " + args;
+    static string genToken(void)
+    {
+        return script(__func__);
+    }
+
+    template<typename... Args>
+    static string script(const string& cmd, Args&&... args)
+    {
+        int timeout_sec = 30;
+        std::stringstream ss;
+        ((ss << std::forward<Args>(args) << " "), ...);
+        string args_str = ss.str();
+        if (!args_str.empty()) args_str.pop_back();
+        string full_cmd = _script + cmd + (args_str.empty() ? "" : " " + args_str);
+
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);
-        MA_LOGD("Executing: %s", full_cmd.c_str());
+        MA_LOGV("Executing: ", full_cmd);
 
         if (!pipe) {
-            MA_LOGE("popen() failed: %s (errno=%d %s)",
-                full_cmd.c_str(), errno, strerror(errno));
+            MA_LOGE("popen() failed: ", full_cmd, "errno=", errno, ", strerror=", strerror(errno));
             throw std::runtime_error("popen() failed for: " + full_cmd);
         }
 
@@ -216,8 +236,7 @@ public:
 
         while (true) {
             if (time(nullptr) - start_time > timeout_sec) {
-                MA_LOGE("Command timeout after %d seconds: %s",
-                    timeout_sec, full_cmd.c_str());
+                MA_LOGE("Command timeout after ", timeout_sec, " seconds: ", full_cmd);
                 throw std::runtime_error("Command execution timeout: " + full_cmd);
             }
 
@@ -228,8 +247,7 @@ public:
                 break; // EOF
             } else {
                 if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    MA_LOGE("read() error: %s (errno=%d)",
-                        strerror(errno), errno);
+                    MA_LOGE("read() error: ", strerror(errno), ", errno=", errno);
                     throw std::runtime_error("read() error during command execution");
                 }
                 usleep(100000); // 100ms
@@ -241,11 +259,10 @@ public:
         if (WIFEXITED(status)) {
             int exit_status = WEXITSTATUS(status);
             if (exit_status != 0) {
-                MA_LOGE("Command exited with status %d: %s",
-                    exit_status, full_cmd.c_str());
+                MA_LOGE("Command exited with status ", exit_status);
             }
         } else {
-            MA_LOGE("Command terminated abnormally: %s", full_cmd.c_str());
+            MA_LOGE("Command terminated abnormally: ", full_cmd);
         }
 
         // Strip trailing newlines
@@ -258,7 +275,7 @@ public:
             }
         }
 
-        MA_LOGD("Execution completed. Output size: %zu bytes", result.size());
+        MA_LOGV("Completed: [", result.size(), "] ", result);
         return result;
     }
 
@@ -268,14 +285,13 @@ public:
         try {
             fs::path file_path(path);
             if (!fs::exists(file_path)) {
-                MA_LOGE("File not found: %s", path.c_str());
+                MA_LOGE("File not found: ", path);
                 return false;
             }
             fs::remove(file_path);
-            MA_LOGD("Successfully deleted %s", path.c_str());
             return true;
         } catch (const std::exception& e) {
-            MA_LOGE("File delete error: %s - %s", path.c_str(), e.what());
+            MA_LOGE("File delete error: ", path, " - ", e.what());
             return false;
         }
     }
@@ -286,16 +302,15 @@ public:
         try {
             fs::path dir_path(path);
             if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) {
-                MA_LOGE("Directory not found: %s", path.c_str());
+                MA_LOGE("Directory not found: ", path);
                 return false;
             }
             for (const auto& entry : fs::directory_iterator(dir_path)) {
                 files.push_back(entry.path().filename());
             }
-            MA_LOGD("Found %zu files in %s", files.size(), path.c_str());
             return true;
         } catch (const std::exception& e) {
-            MA_LOGE("Directory read error: %s - %s", path.c_str(), e.what());
+            MA_LOGE("Directory read error: ", path, " - ", e.what());
             return false;
         }
     }
@@ -307,7 +322,7 @@ public:
             fs::path file_path(path);
 
             if (!fs::exists(file_path)) {
-                MA_LOGE("File not found: %s", path.c_str());
+                MA_LOGE("File not found: ", path);
                 return default_str;
             }
 
@@ -320,15 +335,13 @@ public:
 
             ifs.read(&buffer[0], file_size);
             if (ifs.gcount() != static_cast<std::streamsize>(file_size)) {
-                MA_LOGE("Partial read: %s (expected:%zu actual:%d)",
-                    path.c_str(), file_size, ifs.gcount());
+                MA_LOGE("Partial read: ", path, " (expected:", file_size, "actual: ", ifs.gcount(), ")");
                 return default_str;
             }
 
-            MA_LOGD("Successfully read %zu bytes from %s", file_size, path.c_str());
             return buffer;
         } catch (const std::exception& e) {
-            MA_LOGE("File read error: %s - %s", path.c_str(), e.what());
+            MA_LOGE("File read error: ", path, " - ", e.what());
             return default_str;
         }
     }
@@ -343,10 +356,9 @@ public:
             ofs.exceptions(std::ofstream::failbit | std::ofstream::badbit);
             ofs.write(buf, len);
             ofs.close();
-            MA_LOGD("Successfully wrote %zu bytes to %s", len, path.c_str());
             return true;
         } catch (const std::exception& e) {
-            MA_LOGE("File write error: %s - %s", path.c_str(), e.what());
+            MA_LOGE("File write error: ", path, " - ", e.what());
             return false;
         }
     }

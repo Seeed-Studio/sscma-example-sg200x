@@ -16,6 +16,8 @@
 #include "api_wifi.h"
 #include "mongoose.h"
 
+#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3 // 3 days
+
 // template<typename K, typename V>
 // void print_map(std::unordered_map<K, V> const &m)
 // {
@@ -48,6 +50,7 @@ private:
         auto it = _tokens.find(token);
         if (it != _tokens.end()) {
             std::time_t now = std::time(nullptr);
+            MA_LOGV(now - it->second);
             if (now - it->second < TOKEN_EXPIRATION_TIME) {
                 return true;
             } else {
@@ -58,7 +61,7 @@ private:
         return false;
     }
 
-    api_status_t api_handler(mg_http_message* hm, json& response)
+    api_status_t api_handler(mg_http_message* hm, json& res)
     {
         api_status_t status = API_STATUS_NEXT;
         rest_api* found_api = nullptr;
@@ -94,11 +97,12 @@ private:
                 }
             }
 
-            status = found_api->_handler(hm, response);
+            status = found_api->_handler(hm, res);
         }
 
         if (status == API_STATUS_AUTHORIZED) {
-            string token = response["data"]["token"];
+            string token = res["data"]["token"];
+            res["data"]["expire"] = TOKEN_EXPIRATION_TIME;
             _tokens[token] = std::time(nullptr);
             status = API_STATUS_OK;
         }
@@ -113,24 +117,18 @@ private:
             mg_http_message* hm = (mg_http_message*)ev_data;
 
             MA_LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            MA_LOGV("---> uri=%s", string(hm->uri.buf, hm->uri.len).c_str());
-            MA_LOGV("---> query=%s", string(hm->query.buf, hm->query.len).c_str());
-            for (int i = 0; i < 10; i++) {
-                MA_LOGV("---> headers[%d]: name: %s, [%d]value: %s", i,
-                    string(hm->headers[i].name.buf, hm->headers[i].name.len).c_str(),
-                    hm->headers[i].value.len,
-                    string(hm->headers[i].value.buf, hm->headers[i].value.len).c_str());
-            }
-            MA_LOGV("---> head=%s", string(hm->head.buf, hm->head.len).c_str());
-            // MA_LOGV("---> body=%s\n", string(hm->body.buf, hm->body.len).c_str());
-            // MA_LOGV("---> message=%s", string(hm->message.buf, hm->message.len).c_str());
+            MA_LOGV("---> uri=", string(hm->uri.buf, hm->uri.len));
+            MA_LOGV("---> query=", string(hm->query.buf, hm->query.len));
+            MA_LOGV("---> head=", string(hm->head.buf, hm->head.len));
+            // MA_LOGV("---> body=", string(hm->body.buf, hm->body.len));
+            // MA_LOGV(string(hm->message.buf, hm->message.len));
             MA_LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
 
             api_status_t status = API_STATUS_NEXT;
-            json response;
-            status = server->api_handler(hm, response);
+            json res;
+            status = server->api_handler(hm, res);
             if (status == API_STATUS_OK) {
-                mg_http_reply(c, 200, "Content-Type: application/json\r\n", response.dump().c_str());
+                mg_http_reply(c, 200, "Content-Type: application/json\r\n", res.dump().c_str());
                 return;
             } else if (status == API_STATUS_UNAUTHORIZED) {
                 mg_http_reply(c, 401, "Content-Type: text/plain\r\n", "Unauthorized");
@@ -178,11 +176,11 @@ public:
         , _root_dir(root_dir)
     {
         _apis.emplace_back(make_unique<api_device>());
-        _apis.emplace_back(make_unique<api_file>("filePath", "/userdata/app/"));
+        _apis.emplace_back(make_unique<api_file>("/userdata/app/"));
         _apis.emplace_back(make_unique<api_led>());
         _apis.emplace_back(make_unique<api_user>());
         _apis.emplace_back(make_unique<api_wifi>());
-        _apis.emplace_back(make_unique<api_base>());
+        _apis.emplace_back(make_unique<api_base>("", "/userdata/main.sh"));
         mg_mgr_init(&mgr);
     }
 
@@ -198,7 +196,7 @@ public:
                 event_handler, this);
             if (!http_conn)
                 return false;
-            MA_LOGV("HTTP server started on %s", http_port.c_str());
+            MA_LOGV("HTTP server started on ", http_port);
         }
 
         if (!https_port.empty()) {
@@ -206,7 +204,7 @@ public:
                 https_event_handler, this);
             if (!https_conn)
                 return false;
-            MA_LOGV("HTTPS server started on %s", https_port.c_str());
+            MA_LOGV("HTTPS server started on ", https_port);
         }
 
         if (!http_conn && !https_conn) {

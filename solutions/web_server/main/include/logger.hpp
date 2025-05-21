@@ -37,23 +37,31 @@
         closelog();     \
     } while (0)
 
-#define MA_LOG(_prefix, _lvl, _fmt, ...)                                                \
-    do {                                                                                \
-        static std::mutex log_mutex;                                                    \
-        std::lock_guard<std::mutex> lock(log_mutex);                                    \
-        char buf[10240];                                                                \
-        snprintf(buf, sizeof(buf), "[%s:%d] " _fmt, __func__, __LINE__, ##__VA_ARGS__); \
-        if (MA_LOG_MASK & (1 << _lvl)) {                                                \
-            std::cout << _prefix << buf << std::endl;                                   \
-        }                                                                               \
-        syslog(_lvl, "%s", buf);                                                        \
+template <typename... Args>
+inline void format_helper(std::stringstream& ss, Args&&... args)
+{
+    ((ss << std::forward<Args>(args)), ...);
+}
+
+#define MA_LOG(_prefix, _lvl, ...)                        \
+    do {                                                  \
+        static std::mutex log_mutex;                      \
+        std::lock_guard<std::mutex> lock(log_mutex);      \
+        std::stringstream ss;                             \
+        ss << "[" << __func__ << ":" << __LINE__ << "] "; \
+        format_helper(ss, __VA_ARGS__);                   \
+        const std::string message = ss.str();             \
+        if (MA_LOG_MASK & (1 << _lvl)) {                  \
+            std::cout << _prefix << message << std::endl; \
+        }                                                 \
+        syslog(_lvl, "%s", message.c_str());              \
     } while (0)
 
-#define MA_LOGE(_fmt, ...) MA_LOG("[E]", LOG_ERR, _fmt, ##__VA_ARGS__)
-#define MA_LOGW(_fmt, ...) MA_LOG("[W]", LOG_WARNING, _fmt, ##__VA_ARGS__)
-#define MA_LOGI(_fmt, ...) MA_LOG("[I]", LOG_INFO, _fmt, ##__VA_ARGS__)
-#define MA_LOGD(_fmt, ...) MA_LOG("[D]", LOG_DEBUG, _fmt, ##__VA_ARGS__)
-#define MA_LOGV(_fmt, ...) MA_LOG("[V]", LOG_USER, _fmt, ##__VA_ARGS__)
+#define MA_LOGE(...) MA_LOG("[E]", LOG_ERR, __VA_ARGS__)
+#define MA_LOGW(...) MA_LOG("[W]", LOG_WARNING, __VA_ARGS__)
+#define MA_LOGI(...) MA_LOG("[I]", LOG_INFO, __VA_ARGS__)
+#define MA_LOGD(...) MA_LOG("[D]", LOG_DEBUG, __VA_ARGS__)
+#define MA_LOGV(...) MA_LOG("[V]", LOG_USER, __VA_ARGS__)
 #define MA_ASSERT(expr)                              \
     do {                                             \
         if (!(expr)) {                               \

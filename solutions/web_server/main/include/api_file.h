@@ -5,21 +5,17 @@
 
 class api_file : public api_base {
 private:
-    inline static string _param;
     inline static string _def_dir;
+    inline static string _param;
 
     static api_status_t deleteFile(request_t req, response_t res)
     {
         string fname = get_param(req, _param);
 
         if (delete_file(_def_dir + fname)) {
-            res["code"] = 0;
-            res["msg"] = "Remove file successfully.";
-            res["data"] = json("");
+            response(res, 0, STR_OK);
         } else {
-            res["code"] = -1;
-            res["msg"] = "Remove file failed.";
-            res["data"] = json("");
+            response(res, -1, "Remove file failed.");
         }
 
         return API_STATUS_OK;
@@ -30,13 +26,9 @@ private:
         std::vector<std::string> files;
 
         if (get_folder(_def_dir, files)) {
-            res["code"] = 0;
-            res["msg"] = "Get file list successfully.";
-            res["data"]["fileList"] = json(files);
+            response(res, 0, STR_OK, json(files));
         } else {
-            res["code"] = -1;
-            res["msg"] = "Get file list failed";
-            res["data"] = json("");
+            response(res, -1, "Get file list failed.");
         }
 
         return API_STATUS_OK;
@@ -44,13 +36,11 @@ private:
 
     static api_status_t uploadFile(request_t req, response_t res)
     {
-        MA_LOGV("%s", _def_dir.c_str());
+        MA_LOGV(_def_dir);
         if (API_STATUS_OK == save_file(req, _param, _def_dir)) {
-            res["code"] = 0;
-            res["msg"] = "Upload file successfully.";
+            response(res, 0, STR_OK);
         } else {
-            res["code"] = -1;
-            res["msg"] = "Upload file failed.";
+            response(res, -1, "Upload file failed.");
         }
         res["data"] = json("");
 
@@ -58,12 +48,12 @@ private:
     }
 
 public:
-    api_file(string param, string dir)
+    api_file(string dir, string param = "filePath")
         : api_base("fileMgr")
     {
-        _param = param;
         _def_dir = dir;
-        MA_LOGV("%s, %s", _param.c_str(), _def_dir.c_str());
+        _param = param;
+        MA_LOGV(_param, ", ", _def_dir);
 
         REG_API(deleteFile);
         REG_API(queryFileList);

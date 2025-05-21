@@ -4,93 +4,72 @@
 
 #include "api_user.h"
 
-static string gen_token(void)
-{
-    std::time_t now = std::time(nullptr);
-    char token[128] = { 0 };
-    constexpr size_t RAND_SIZE = 32;
-    constexpr size_t MIN_LENGTH = 48;
-    char random_bytes[RAND_SIZE];
-
-    std::generate_n(random_bytes, RAND_SIZE, [] {
-        static std::mt19937 gen(std::random_device {}());
-        return static_cast<char>(gen() & 0xFF);
-    });
-
-    std::stringstream ss;
-    ss.write(random_bytes, RAND_SIZE);
-    ss << now << "recamera";
-
-    if (ss.str().size() < MIN_LENGTH) {
-        ss.seekp(0, std::ios_base::end);
-        const size_t remaining = MIN_LENGTH - ss.str().size();
-        ss.write(random_bytes, std::min(remaining, RAND_SIZE));
-    }
-
-    mg_base64_encode(reinterpret_cast<const unsigned char*>(ss.str().c_str()),
-        ss.str().size(), token, sizeof(token));
-
-    MA_LOGV("%s", token);
-
-    return string(token);
-}
-
 api_status_t api_user::addSShkey(request_t req, response_t res)
 {
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json(
-        "");
+    string result;
+    json body;
+    int code = 0;
+    if (!get_body(req, body)) {
+        result = "Format error.";
+        goto exit;
+    }
 
+    result = script(__func__, body["name"], body["time"], body["value"]);
+    if (result != STR_OK) {
+        code = -1;
+    }
+
+exit:
+    response(res, code, result);
     return API_STATUS_OK;
 }
 
 api_status_t api_user::deleteSShkey(request_t req, response_t res)
 {
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json(
-        "");
-
+    response(res, 0);
     return API_STATUS_OK;
 }
 
 api_status_t api_user::login(request_t req, response_t res)
 {
-    string username;
-    string password;
+    string username, password;
+    json body;
 
-    json body; // req["body"];
-    MA_LOGV("%s", body.dump().c_str());
-    if (body.empty()) {
-        goto pwd_error;
+    int code = 0;
+    string msg = STR_OK;
+
+    if (!get_body(req, body)) {
+        code = -1;
+        msg = "Format error.";
+        goto exit;
     }
+    MA_LOGV(body);
 
     username = body["userName"];
     password = body["password"];
-    MA_LOGV("username=%s, password=%s", username.c_str(), password.c_str());
+    MA_LOGV("username=", username);
+    MA_LOGV("password=", password);
     if (username.empty() || password.empty()) {
-        goto pwd_error;
+        code = -1;
+        msg = "Username or password is empty.";
+        goto exit;
     }
 
     if (username == "recamera") {
-        res["code"] = 0;
-        res["msg"] = "";
-        res["data"] = json({
-            { "token", gen_token() },
-            { "expire", TOKEN_EXPIRATION_TIME },
-        });
-        MA_LOGV("%s", res.dump().c_str());
+        response(res, 0, STR_OK, json({
+            { "token", genToken() },
+            { "expire", 0 },
+        }));
+
         return API_STATUS_AUTHORIZED;
     }
 
-pwd_error:
-    res["code"] = -1;
-    res["msg"] = "Incorrect password";
-    res["data"] = json({
+    msg = "Incorrect password";
+
+exit:
+    response(res, code, msg, json({
         { "retryCount", 1 },
-    });
-    MA_LOGV("%s", res.dump().c_str());
+    }));
 
     return API_STATUS_OK;
 }
@@ -106,29 +85,21 @@ api_status_t api_user::queryUserInfo(request_t req, response_t res)
     vector<json> ssh_key_list;
     data["sshKeyList"] = ssh_key_list;
 
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = data;
+    response(res, 0, STR_OK, data);
 
     return API_STATUS_OK;
 }
 
 api_status_t api_user::setSShStatus(request_t req, response_t res)
 {
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json(
-        "");
+    response(res, 0);
 
     return API_STATUS_OK;
 }
 
 api_status_t api_user::updatePassword(request_t req, response_t res)
 {
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json(
-        "");
+    response(res, 0);
 
     return API_STATUS_OK;
 }

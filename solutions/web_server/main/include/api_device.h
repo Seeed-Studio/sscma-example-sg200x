@@ -35,7 +35,7 @@ public:
 
         REG_API(cancelUpdate);
         REG_API(getAppInfo);
-        REG_API(getCameraWebsocketUrl);
+        REG_API(getCameraWebsocketUrl); 
         REG_API(getDeviceInfo);
         REG_API_NO_AUTH(getDeviceList);
         REG_API(getModelFile);
