@@ -15,44 +15,22 @@ private:
     {
         MA_LOGV("");
 
-        int code = 0;
-        string msg = STR_OK;
-        json data = EMPTY_JSON;
+        string uri = get_uri(req);
+        size_t pos_e = uri.rfind('/');
+        if (pos_e == string::npos) {
+            response(res, -1, "Invalid path format");
+            return API_STATUS_OK;
+        }
+        size_t pos_s = uri.rfind('/', pos_e - 1);
+        if (pos_s == string::npos) {
+            pos_s = 0;
+        }
 
-        do {
-            string uri = get_uri(req);
-            size_t pos_e = uri.rfind('/');
-            if (pos_e == string::npos) {
-                code = -1;
-                msg = "Invalid path format";
-                break;
-            }
-            size_t pos_s = uri.rfind('/', pos_e - 1);
-            if (pos_s == string::npos) {
-                pos_s = 0;
-            }
+        string led = uri.substr(pos_s + 1, pos_e - pos_s - 1);
+        string val = uri.substr(pos_e + 1);
+        MA_LOGV("led=,", led, "val=", val);
 
-            string led = uri.substr(pos_s + 1, pos_e - pos_s - 1);
-            string val = uri.substr(pos_e + 1);
-            MA_LOGV("led=,", led, "val=", val);
-
-            int value = 0;
-            if (val == "on") {
-                value = 100;
-            }
-
-            ofstream ofs("/sys/class/leds/" + led + "/brightness");
-            if (!ofs.is_open()) {
-                code = -1;
-                msg = "Open led(" + led + ") failed.";
-                MA_LOGE(res["msg"].dump());
-                break;
-            }
-            ofs << value;
-            ofs.close();
-        } while (0);
-
-        response(res, code, msg, data);
+        response(res, 0, script(__func__, led, val));
         return API_STATUS_OK;
     }
 

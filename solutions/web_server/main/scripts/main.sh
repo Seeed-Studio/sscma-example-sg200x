@@ -68,7 +68,7 @@ function addSShkey()
 
     _is_key_valid $key > /dev/null
     if [ $? -ne 0 ]; then
-        echo "invalid"
+        echo "Invalid"
         exit 1
     fi
 
@@ -81,7 +81,7 @@ function addSShkey()
 
     _is_key_exist $key
     if [ 0 -eq $? ]; then
-        echo "exist"
+        echo "Exist"
         exit 1
     fi
 
@@ -96,13 +96,13 @@ function deleteSShkey()
     local line="$2"
 
     if ! [[ "$line" =~ ^[0-9]+$ ]]; then
-        echo "invalid id=$line"
+        echo "Invalid id=$line"
         exit 1
     fi
 
     total_lines=$(wc -l < "$SSH_KEY_FILE" 2>/dev/null || echo 0)
     if [ "$line" -lt 1 ] || [ "$line" -gt "$total_lines" ]; then
-        echo "invalid id=$line"
+        echo "Invalid id=$line"
         exit 1
     fi
 
@@ -111,6 +111,26 @@ function deleteSShkey()
     # _update_sshkey
 
     echo "OK"
+}
+
+function led()
+{
+    local led=$2
+    local value=$3
+    local path="/sys/class/leds/${led}/brightness"
+    
+    if [ ! -f $path ]; then
+        echo "Invalid led=$led"
+        exit 1
+    fi
+    if [ "$value" == "on" ]; then
+        echo 1 > $path
+    elif [ "$value" == "off" ]; then
+        echo 0 > $path
+    else
+        echo "Invalid value=$value"
+        exit 1
+    fi
 }
 
 function login()
@@ -187,5 +207,5 @@ fi
 if [ "$(type $1)"  == "$1 is a function" ]; then
     $1 $@
 else
-    echo "$1 not found"
+    echo "Not found: $1"
 fi
