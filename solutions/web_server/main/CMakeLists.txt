@@ -13,5 +13,5 @@ component_register(
     COMPONENT_NAME main
     SRCS ${srcs}
     INCLUDE_DIRS ${incs}
-    PRIVATE_REQUIREDS mongoose
+    PRIVATE_REQUIREDS mongoose crypto
 )

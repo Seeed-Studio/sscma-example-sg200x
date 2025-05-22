@@ -111,7 +111,7 @@ protected:
     static bool get_body(request_t req, json& body)
     {
         body = (req->body.len) ? json::parse(req->body.buf) : json();
-        return body.empty()? false : true;
+        return body.empty() ? false : true;
     }
 
     static bool get_form(request_t req, form_t& form, string name, string filename = "")
@@ -194,7 +194,7 @@ public:
         }
     }
 
-    static void response(response_t res, int code, 
+    static void response(response_t res, int code,
         const string& msg = STR_OK, const json& data = EMPTY_JSON)
     {
         res["code"] = code;
@@ -202,19 +202,15 @@ public:
         res["data"] = data;
     }
 
-    static string genToken(void)
-    {
-        return script(__func__);
-    }
-
-    template<typename... Args>
+    template <typename... Args>
     static string script(const string& cmd, Args&&... args)
     {
         int timeout_sec = 30;
         std::stringstream ss;
         ((ss << std::forward<Args>(args) << " "), ...);
         string args_str = ss.str();
-        if (!args_str.empty()) args_str.pop_back();
+        if (!args_str.empty())
+            args_str.pop_back();
         string full_cmd = _script + cmd + (args_str.empty() ? "" : " " + args_str);
 
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);

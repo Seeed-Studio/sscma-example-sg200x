@@ -16,8 +16,6 @@
 #include "api_wifi.h"
 #include "mongoose.h"
 
-#define TOKEN_EXPIRATION_TIME 60 * 60 * 24 * 3 // 3 days
-
 // template<typename K, typename V>
 // void print_map(std::unordered_map<K, V> const &m)
 // {
@@ -170,6 +168,8 @@ private:
     }
 
 public:
+    static inline const int TOKEN_EXPIRATION_TIME = 60 * 60 * 24 * 3; // 3 days
+
     http_server(const char* root_dir = "www", const char* cert = nullptr, const char* key = nullptr)
         : _cert(cert)
         , _key(key)
