@@ -95,7 +95,13 @@ private:
                 }
             }
 
-            status = found_api->_handler(hm, res);
+            try {
+                status = found_api->_handler(hm, res);
+            } catch (const std::exception& e) {
+                MA_LOGV("API handler error: ", e.what());
+                api_base::response(res, -1, e.what());
+                status = API_STATUS_OK;
+            }
         }
 
         if (status == API_STATUS_AUTHORIZED) {
@@ -131,7 +137,28 @@ private:
             } else if (status == API_STATUS_UNAUTHORIZED) {
                 mg_http_reply(c, 401, "Content-Type: text/plain\r\n", "Unauthorized");
                 return;
-            } else if (status != API_STATUS_NEXT) {
+            } else if (status == API_STATUS_REPLY_FILE) {
+                string file_path = "";
+                if (res.contains("data") && res["data"].is_object()) {
+                    auto& data = res["data"];
+                    if (data.contains("file") && data["file"].is_string()) {
+                        file_path = data["file"];
+                    }
+                }
+                MA_LOGV(file_path);
+                if (!file_path.empty()) {
+                    struct mg_http_serve_opts opts = {
+                        .mime_types = "*=application/octet-stream,json=application/json",
+                    };
+                    mg_http_serve_file(c, hm, file_path.c_str(), &opts);
+                    return;
+                }
+                api_base::response(res, -1, "File is invalid.");
+                mg_http_reply(c, 200, "Content-Type: application/json\r\n", res.dump().c_str());
+                return;
+            }
+
+            if (status != API_STATUS_NEXT) {
                 mg_http_reply(c, 500, "Content-Type: text/plain\r\n", "Internal Server Error");
                 return;
             }
@@ -176,7 +203,7 @@ public:
         , _root_dir(root_dir)
     {
         _apis.emplace_back(make_unique<api_device>());
-        _apis.emplace_back(make_unique<api_file>("/userdata/app/"));
+        _apis.emplace_back(make_unique<api_file>());
         _apis.emplace_back(make_unique<api_led>());
         _apis.emplace_back(make_unique<api_user>());
         _apis.emplace_back(make_unique<api_wifi>());
