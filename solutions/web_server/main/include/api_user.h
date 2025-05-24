@@ -38,22 +38,6 @@ public:
 private:
     static inline const string KEY_AES_128 = "zqCwT7H7!rNdP3wL";
 
-    static void string_split(string s, const char delimiter, vector<string>& output)
-    {
-        size_t start = 0;
-        size_t end = s.find_first_of(delimiter);
-
-        while (end <= string::npos) {
-            output.emplace_back(s.substr(start, end - start));
-
-            if (end == string::npos)
-                break;
-
-            start = end + 1;
-            end = s.find_first_of(delimiter, start);
-        }
-    }
-
     static string get_username(void)
     {
         return script(__func__);

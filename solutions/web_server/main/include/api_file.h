@@ -5,56 +5,58 @@
 
 class api_file : public api_base {
 private:
-    inline static string _def_dir;
-    inline static string _param;
-
     static api_status_t deleteFile(request_t req, response_t res)
     {
-        string fname = get_param(req, _param);
-
-        if (delete_file(_def_dir + fname)) {
-            response(res, 0, STR_OK);
-        } else {
-            response(res, -1, "Remove file failed.");
+        string fname = get_param(req, "filePath");
+        if (fname.empty()) {
+            auto&& body = parse_body(req);
+            if (body.contains("filePath")) {
+                fname = body.value("filePath", "");
+            }
         }
-
+        const string& result = script(__func__, fname);
+        response(res, (result == STR_OK) ? 0 : -1, result);
         return API_STATUS_OK;
     }
 
     static api_status_t queryFileList(request_t req, response_t res)
     {
-        std::vector<std::string> files;
-
-        if (get_folder(_def_dir, files)) {
-            response(res, 0, STR_OK, json(files));
-        } else {
-            response(res, -1, "Get file list failed.");
-        }
-
+        auto&& list = json::parse(script(__func__));
+        MA_LOGV(list.dump(4));
+        response(res, 0, STR_OK, list);
         return API_STATUS_OK;
     }
 
     static api_status_t uploadFile(request_t req, response_t res)
     {
-        MA_LOGV(_def_dir);
-        if (API_STATUS_OK == save_file(req, _param, _def_dir)) {
-            response(res, 0, STR_OK);
-        } else {
-            response(res, -1, "Upload file failed.");
+        string dir = script(__func__);
+        if (access(dir.c_str(), F_OK) != 0) {
+            response(res, -1, "Directory is not accessible.");
+            return API_STATUS_OK;
         }
-        res["data"] = json("");
 
+        auto&& parts = get_multiparts(req);
+        for (auto& part : parts) {
+            if (part.filename.empty() || part.len == 0) {
+                continue;
+            }
+
+            ofstream file(dir + "/" + part.filename, ios::binary);
+            if (!file.is_open()) {
+                continue;
+            }
+            file.write(part.data, part.len);
+            file.close();
+        }
+
+        response(res);
         return API_STATUS_OK;
     }
 
 public:
-    api_file(string dir, string param = "filePath")
+    api_file()
         : api_base("fileMgr")
     {
-        _def_dir = dir;
-        _param = param;
-        MA_LOGV(_param, ", ", _def_dir);
-
         REG_API(deleteFile);
         REG_API(queryFileList);
         REG_API(uploadFile);

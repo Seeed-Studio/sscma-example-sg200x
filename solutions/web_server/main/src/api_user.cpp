@@ -4,39 +4,19 @@
 
 #include "api_user.h"
 
-#define JSON_BODY()                         \
-    json body;                              \
-    if (!get_body(req, body)) {             \
-        response(res, -1, "Format error."); \
-        return API_STATUS_OK;               \
-    }
-
 api_status_t api_user::addSShkey(request_t req, response_t res)
 {
-    JSON_BODY();
-
-    int code = 0;
-    string result = script(__func__,
+    auto&& body = parse_body(req);
+    const auto& result = script(__func__,
         body.value("name", ""), body.value("time", ""), body.value("value", ""));
-    if (result != STR_OK) {
-        code = -1;
-    }
-
-    response(res, code, result);
+    response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }
 
 api_status_t api_user::deleteSShkey(request_t req, response_t res)
 {
-    JSON_BODY();
-
-    string result = script(__func__, body.value("id", ""));
-    if (result != STR_OK) {
-        response(res, -1, result);
-        return API_STATUS_OK;
-    }
-
-    response(res, 0, result);
+    auto&& body = parse_body(req);
+    response(res, 0, script(__func__, body.value("id", "")));
     return API_STATUS_OK;
 }
 
@@ -45,10 +25,9 @@ api_status_t api_user::login(request_t req, response_t res)
     static int retryCount = 5;
     static struct timespec tsLastFailed;
 
-    JSON_BODY();
-
-    string username = body.value("userName", "");
-    string password = body.value("password", "");
+    auto&& body = parse_body(req);
+    const auto& username = body.value("userName", "");
+    const auto& password = body.value("password", "");
 
     if (username.empty() || password.empty()) {
         response(res, -1, "Username or password is empty.");
@@ -78,8 +57,7 @@ api_status_t api_user::login(request_t req, response_t res)
     }
     retryCount = 5;
 
-    script(__func__);
-
+    script(__func__); // remove first login record
     response(res, 0, STR_OK,
         json({
             { "token", gen_token() },
@@ -91,10 +69,8 @@ api_status_t api_user::login(request_t req, response_t res)
 
 api_status_t api_user::queryUserInfo(request_t req, response_t res)
 {
-    string result = script(__func__);
-    json data = json::parse(result);
-
-    string fname = data.value("sshKeyFile", "");
+    auto&& data = json::parse(script(__func__));
+    const auto& fname = data.value("sshKeyFile", "");
     if (fname.empty()) {
         response(res, -1, "SSH key file not found.");
         return API_STATUS_OK;
@@ -109,8 +85,6 @@ api_status_t api_user::queryUserInfo(request_t req, response_t res)
     // parse file
     vector<json> ssh_key_list;
     string line;
-    int cnt = 0;
-
     while (getline(file, line)) {
         if (line.empty())
             continue;
@@ -134,25 +108,17 @@ api_status_t api_user::queryUserInfo(request_t req, response_t res)
 
 api_status_t api_user::setSShStatus(request_t req, response_t res)
 {
-    JSON_BODY();
-
-    string result = script(__func__, body.value("enabled", true));
-    if (result != STR_OK) {
-        response(res, -1, result);
-        return API_STATUS_OK;
-    }
-
-    response(res, 0, result);
+    auto&& body = parse_body(req);
+    response(res, 0, script(__func__, body.value("enabled", true)));
     return API_STATUS_OK;
 }
 
 api_status_t api_user::updatePassword(request_t req, response_t res)
 {
-    JSON_BODY();
-
+    auto&& body = parse_body(req);
+    
     string old_pwd = body.value("oldPassword", "");
     string new_pwd = body.value("newPassword", "");
-
     if (old_pwd.empty() || new_pwd.empty()) {
         response(res, -1, "Old password or new password is empty.");
         return API_STATUS_OK;
@@ -169,6 +135,7 @@ api_status_t api_user::updatePassword(request_t req, response_t res)
     }
 
     new_pwd = aes_decrypt(new_pwd);
-    response(res, 0, script(__func__, old_pwd, new_pwd));
+    const auto& result = script(__func__, old_pwd, new_pwd);
+    response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }

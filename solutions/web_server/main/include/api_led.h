@@ -13,9 +13,7 @@ class api_led : public api_base {
 private:
     static api_status_t led(request_t req, response_t res)
     {
-        MA_LOGV("");
-
-        string uri = get_uri(req);
+        auto&& uri = get_uri(req);
         size_t pos_e = uri.rfind('/');
         if (pos_e == string::npos) {
             response(res, -1, "Invalid path format");
@@ -26,11 +24,10 @@ private:
             pos_s = 0;
         }
 
-        string led = uri.substr(pos_s + 1, pos_e - pos_s - 1);
-        string val = uri.substr(pos_e + 1);
-        MA_LOGV("led=,", led, "val=", val);
-
-        response(res, 0, script(__func__, led, val));
+        const auto& led = uri.substr(pos_s + 1, pos_e - pos_s - 1);
+        const auto& val = uri.substr(pos_e + 1);
+        const auto& result = script(__func__, led, val);
+        response(res, (result == STR_OK) ? 0 : -1, result);
         return API_STATUS_OK;
     }
 
