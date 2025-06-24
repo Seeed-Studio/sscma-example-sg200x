@@ -36,7 +36,7 @@ public:
         : api_base("led")
     {
         MA_LOGV("");
-        REG_API_FULL("#/#", led, false); // fixed: no auth
+        REG_API_FULL("", led, false); // fixed: no auth
     }
 
     ~api_led()

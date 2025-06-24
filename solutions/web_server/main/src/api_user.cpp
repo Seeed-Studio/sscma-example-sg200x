@@ -58,10 +58,13 @@ api_status_t api_user::login(request_t req, response_t res)
     retryCount = 5;
 
     script(__func__); // remove first login record
+
+    string token = gen_token();
+    save_token(token);
     response(res, 0, STR_OK,
         json({
-            { "token", gen_token() },
-            { "expire", 0 },
+            { "token", token },
+            { "expire", TOKEN_EXPIRATION_TIME },
         }));
 
     return API_STATUS_AUTHORIZED;
@@ -116,7 +119,6 @@ api_status_t api_user::setSShStatus(request_t req, response_t res)
 api_status_t api_user::updatePassword(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
-    
     string old_pwd = body.value("oldPassword", "");
     string new_pwd = body.value("newPassword", "");
     if (old_pwd.empty() || new_pwd.empty()) {

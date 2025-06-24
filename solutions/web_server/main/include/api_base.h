@@ -1,26 +1,23 @@
 #ifndef API_BASE_H
 #define API_BASE_H
 
-#include <array>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
-#include <functional>
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unistd.h>
+#include <unordered_map>
 #include <vector>
 
 #include "json.hpp"
 #include "logger.hpp"
-#include "version.h"
-
 #include "mongoose.h"
+#include "version.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -33,32 +30,41 @@ typedef enum {
     API_STATUS_AUTHORIZED,
     API_STATUS_UNAUTHORIZED,
 } api_status_t;
-typedef const mg_http_message* request_t;
+typedef const struct mg_http_message* request_t;
 typedef json& response_t;
 typedef api_status_t (*api_handler_t)(request_t req, response_t res);
 
 class rest_api {
 public:
-    const bool _no_auth;
-    const string _uri;
-    const api_handler_t _handler;
-
-    rest_api(const string uri, api_handler_t handler, bool no_auth = false)
-        : _uri(uri)
-        , _handler(handler)
+    rest_api(const api_handler_t handler, bool no_auth = false)
+        : _handler(handler)
         , _no_auth(no_auth)
     {
-        MA_LOGV(_uri);
     }
+    ~rest_api() = default;
 
-    ~rest_api()
-    {
-        MA_LOGV(_uri);
-    }
+    api_status_t operator()(request_t req, response_t res) { return _handler(req, res); }
+
+    inline bool no_auth() const { return _no_auth; }
+
+private:
+    const api_handler_t _handler;
+    const bool _no_auth;
 };
 
 class http_interface {
 public:
+    static inline const string STR_OK = "OK";
+    static inline const string STR_FAILED = "Failed";
+
+    static void response(response_t res, int code = 0,
+        const string& msg = STR_OK, const json& data = json({}))
+    {
+        res["code"] = code;
+        res["msg"] = msg;
+        res["data"] = data;
+    }
+
     static string get_uri(request_t req)
     {
         return string(req->uri.buf, req->uri.len);
@@ -67,7 +73,6 @@ public:
     static string get_host(request_t req, bool ip_only = true)
     {
         string host = get_header_var(req, "Host");
-
         if (ip_only) {
             size_t pos = host.find(':');
             if (pos != string::npos) {
@@ -131,7 +136,6 @@ public:
         if (type.find("multipart/form-data") != string::npos) {
             size_t pos = 0;
             struct mg_http_part part;
-
             while ((pos = mg_http_next_multipart(req->body, pos, &part)) > 0) {
                 multipart_t mp;
                 mp.name = string(part.name.buf, part.name.len);
@@ -153,27 +157,6 @@ public:
 
         return parts;
     }
-
-    static uint64_t uptime(void)
-    {
-        uint64_t uptime = 0;
-        std::ifstream uptime_file("/proc/uptime");
-        if (uptime_file.is_open()) {
-            double uptime_seconds;
-            uptime_file >> uptime_seconds;
-            uptime = static_cast<uint64_t>(uptime_seconds * 1000);
-            uptime_file.close();
-        }
-        return uptime;
-    }
-
-    static auto timestamp()
-    {
-        using namespace std::chrono;
-        auto now = system_clock::now();
-        auto timestamp = duration_cast<seconds>(now.time_since_epoch());
-        return timestamp.count();
-    }
 };
 
 #define REG_API_FULL(__uri, __handler, __no_auth) \
@@ -183,31 +166,8 @@ public:
 #define REG_API_NO_AUTH(__handler) \
     REG_API_FULL(#__handler, __handler, true)
 
-class api_base : protected http_interface {
-protected:
-    static inline const string STR_OK = "OK";
-    static inline const string STR_FAILED = "Failed";
-
-    vector<unique_ptr<rest_api>> list;
-    void register_api(string uri, api_handler_t handler, bool no_auth = false)
-    {
-        list.emplace_back(make_unique<rest_api>(uri, handler, no_auth));
-    }
-
-private:
-    static api_status_t version(request_t req, response_t res)
-    {
-        res["uptime"] = uptime();
-        res["timestamp"] = timestamp();
-        response(res, 0, STR_OK, PROJECT_VERSION);
-        return API_STATUS_OK;
-    }
-
+class api_base : public http_interface {
 public:
-    inline static string _script;
-    const string _group;
-    vector<unique_ptr<rest_api>>& get_list() { return list; }
-
     api_base(string group = "", string script = "")
         : _group(group)
     {
@@ -219,26 +179,38 @@ public:
         }
     }
 
-    static void response(response_t res, int code = 0,
-        const string& msg = STR_OK, const json& data = json({}))
+    void register_api(std::string uri, api_handler_t handler, bool no_auth = false)
     {
-        res["code"] = code;
-        res["msg"] = msg;
-        res["data"] = data;
+        _api_map[_group.empty() ? uri : _group + "/" + uri] = make_unique<rest_api>(handler, no_auth);
     }
 
-    static void string_split(string s, const char delimiter, vector<string>& output)
+    static api_status_t api_handler(request_t req, response_t res)
     {
-        size_t start = 0;
-        size_t end = s.find_first_of(delimiter);
-
-        while (end <= string::npos) {
-            output.emplace_back(s.substr(start, end - start));
-            if (end == string::npos)
-                break;
-            start = end + 1;
-            end = s.find_first_of(delimiter, start);
+        std::string uri = get_uri(req);
+        auto pos = uri.find("/api/");
+        if (pos == string::npos) {
+            return API_STATUS_NEXT;
         }
+        uri = uri.substr(pos + 5);
+
+        auto api = _api_map.find(uri);
+        if (api == _api_map.end()) {
+            for (auto& [key, value] : _api_map) {
+                if (uri.find(key) == 0) {
+                    return (*value)(req, res);
+                }
+            }
+            MA_LOGE("API not implemented: ", uri);
+            return API_STATUS_NEXT;
+        }
+        if (!api->second->no_auth()) {
+            string token = get_header_var(req, "Authorization");
+            if (token.empty() || !check_token(token)) {
+                MA_LOGE("Unauthorized: ", uri);
+                return API_STATUS_UNAUTHORIZED;
+            }
+        }
+        return (*api->second)(req, res);
     }
 
     template <typename... Args>
@@ -265,14 +237,15 @@ public:
         int flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
-        std::vector<char> buffer(4096);
+        std::vector<char> buffer(512);
         string result;
         time_t start_time = time(nullptr);
 
         while (true) {
             if (time(nullptr) - start_time > timeout_sec) {
                 MA_LOGE("Command timeout after ", timeout_sec, " seconds: ", full_cmd);
-                throw std::runtime_error("Command execution timeout: " + full_cmd);
+                // throw std::runtime_error("Command execution timeout: " + full_cmd);
+                break;
             }
 
             ssize_t bytes_read = read(fd, buffer.data(), buffer.size());
@@ -283,7 +256,8 @@ public:
             } else {
                 if (errno != EAGAIN && errno != EWOULDBLOCK) {
                     MA_LOGE("read() error: ", strerror(errno), ", errno=", errno);
-                    throw std::runtime_error("read() error during command execution");
+                    // throw std::runtime_error("read() error during command execution");
+                    break;
                 }
                 usleep(1000); // 1ms
             }
@@ -312,6 +286,80 @@ public:
 
         MA_LOGV("Completed: [", result.size(), "] ", result);
         return result;
+    }
+
+protected:
+    static constexpr uint32_t TOKEN_EXPIRATION_TIME = 3 * 60 * 60 * 24; // 3 days
+
+    static void save_token(string& token)
+    {
+        _tokens[token] = time(nullptr);
+        MA_LOGV("save_token: ", token, ", time: ", _tokens[token]);
+    }
+
+    static bool check_token(string& token)
+    {
+        if (_tokens.find(token) == _tokens.end()) {
+            MA_LOGV("check_token: not found");
+            return false;
+        }
+        if (_tokens[token] + TOKEN_EXPIRATION_TIME < time(nullptr)) {
+            MA_LOGV("check_token: expired");
+            _tokens.erase(token);
+            return false;
+        }
+        MA_LOGV("check_token: ok");
+        return true;
+    }
+
+    // utils
+    static void string_split(string s, const char delimiter, vector<string>& output)
+    {
+        size_t start = 0;
+        size_t end = s.find_first_of(delimiter);
+
+        while (end <= string::npos) {
+            output.emplace_back(s.substr(start, end - start));
+            if (end == string::npos)
+                break;
+            start = end + 1;
+            end = s.find_first_of(delimiter, start);
+        }
+    }
+
+    static uint64_t uptime(void)
+    {
+        uint64_t uptime = 0;
+        std::ifstream uptime_file("/proc/uptime");
+        if (uptime_file.is_open()) {
+            double uptime_seconds;
+            uptime_file >> uptime_seconds;
+            uptime = static_cast<uint64_t>(uptime_seconds * 1000);
+            uptime_file.close();
+        }
+        return uptime;
+    }
+
+    static auto timestamp()
+    {
+        using namespace std::chrono;
+        auto now = system_clock::now();
+        auto timestamp = duration_cast<seconds>(now.time_since_epoch());
+        return timestamp.count();
+    }
+
+private:
+    static inline std::unordered_map<std::string, std::unique_ptr<rest_api>> _api_map;
+    static inline std::unordered_map<string, time_t> _tokens;
+    static inline std::string _script;
+    const string _group;
+
+    static api_status_t version(request_t req, response_t res)
+    {
+        res["uptime"] = uptime();
+        res["timestamp"] = timestamp();
+        response(res, 0, STR_OK, PROJECT_VERSION);
+        return API_STATUS_OK;
     }
 };
 

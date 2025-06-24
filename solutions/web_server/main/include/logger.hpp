@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <ctime>
+#include <iostream>
 #include <mutex>
 #include <sstream>
 #include <syslog.h>
