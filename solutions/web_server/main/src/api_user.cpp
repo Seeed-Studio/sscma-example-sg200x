@@ -59,7 +59,7 @@ api_status_t api_user::login(request_t req, response_t res)
 
     script(__func__); // remove first login record
 
-    string token = gen_token();
+    std::string token = gen_token();
     save_token(token);
     response(res, 0, STR_OK,
         json({
@@ -79,20 +79,20 @@ api_status_t api_user::queryUserInfo(request_t req, response_t res)
         return API_STATUS_OK;
     }
 
-    ifstream file(fname);
+    std::ifstream file(fname);
     if (!file.is_open()) {
         response(res, -1, "SSH key file open failed.");
         return API_STATUS_OK;
     }
 
     // parse file
-    vector<json> ssh_key_list;
-    string line;
+    std::vector<json> ssh_key_list;
+    std::string line;
     while (getline(file, line)) {
         if (line.empty())
             continue;
 
-        vector<string> parts;
+        std::vector<std::string> parts;
         string_split(line, ' ', parts);
 
         json sshkey;
@@ -119,8 +119,8 @@ api_status_t api_user::setSShStatus(request_t req, response_t res)
 api_status_t api_user::updatePassword(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
-    string old_pwd = body.value("oldPassword", "");
-    string new_pwd = body.value("newPassword", "");
+    std::string old_pwd = body.value("oldPassword", "");
+    std::string new_pwd = body.value("newPassword", "");
     if (old_pwd.empty() || new_pwd.empty()) {
         response(res, -1, "Old password or new password is empty.");
         return API_STATUS_OK;

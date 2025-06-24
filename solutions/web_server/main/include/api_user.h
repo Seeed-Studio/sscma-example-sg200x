@@ -36,28 +36,28 @@ public:
     }
 
 private:
-    static inline const string KEY_AES_128 = "zqCwT7H7!rNdP3wL";
+    static inline const std::string KEY_AES_128 = "zqCwT7H7!rNdP3wL";
 
-    static string get_username(void)
+    static std::string get_username(void)
     {
         return script(__func__);
     }
 
-    static string gen_token(void)
+    static std::string gen_token(void)
     {
         return script(__func__);
     }
 
-    static string toHex(const unsigned char* data, size_t len)
+    static std::string toHex(const unsigned char* data, size_t len)
     {
-        stringstream ss;
-        ss << hex << setfill('0');
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0');
         for (size_t i = 0; i < len; ++i)
-            ss << setw(2) << static_cast<int>(data[i]);
+            ss << std::setw(2) << static_cast<int>(data[i]);
         return ss.str();
     }
 
-    static bool fromHex(const string& hexStr, unsigned char* data, size_t& len)
+    static bool fromHex(const std::string& hexStr, unsigned char* data, size_t& len)
     {
         if (hexStr.length() % 2 != 0)
             return false;
@@ -73,17 +73,17 @@ private:
         return true;
     }
 
-    static string aes_encrypt(const string& plaintext)
+    static std::string aes_encrypt(const std::string& plaintext)
     {
         AES_KEY encryptKey;
         AES_set_encrypt_key((const unsigned char*)KEY_AES_128.c_str(), 128, &encryptKey);
 
         size_t len = plaintext.size();
         size_t paddedLen = (len / AES_BLOCK_SIZE + 1) * AES_BLOCK_SIZE;
-        vector<unsigned char> input(paddedLen, 0);
+        std::vector<unsigned char> input(paddedLen, 0);
         memcpy(input.data(), plaintext.c_str(), len);
 
-        vector<unsigned char> output(paddedLen);
+        std::vector<unsigned char> output(paddedLen);
         for (size_t i = 0; i < paddedLen; i += AES_BLOCK_SIZE) {
             AES_encrypt(input.data() + i, output.data() + i, &encryptKey);
         }
@@ -91,10 +91,10 @@ private:
         return toHex(output.data(), paddedLen);
     }
 
-    static string aes_decrypt(const string& ciphertextHex)
+    static std::string aes_decrypt(const std::string& ciphertextHex)
     {
         size_t len = ciphertextHex.length() / 2;
-        vector<unsigned char> ciphertext(len);
+        std::vector<unsigned char> ciphertext(len);
         if (!fromHex(ciphertextHex, ciphertext.data(), len)) {
             return "";
         }
@@ -102,24 +102,24 @@ private:
         AES_KEY decryptKey;
         AES_set_decrypt_key((const unsigned char*)KEY_AES_128.c_str(), 128, &decryptKey);
 
-        vector<unsigned char> decryptedText(len);
+        std::vector<unsigned char> decryptedText(len);
         for (size_t i = 0; i < len; i += AES_BLOCK_SIZE) {
             if (i + AES_BLOCK_SIZE > len)
                 break;
             AES_decrypt(ciphertext.data() + i, decryptedText.data() + i, &decryptKey);
         }
 
-        string decryptedStr(reinterpret_cast<char*>(decryptedText.data()), len);
+        std::string decryptedStr(reinterpret_cast<char*>(decryptedText.data()), len);
 
         size_t pos = decryptedStr.find_last_not_of('\0');
-        if (pos != string::npos) {
+        if (pos != std::string::npos) {
             decryptedStr = decryptedStr.substr(0, pos + 1);
         }
 
         return decryptedStr;
     }
 
-    static bool verify_pwd(const string& user, const string& password)
+    static bool verify_pwd(const std::string& user, const std::string& password)
     {
         if (geteuid() != 0) {
             MA_LOGE("Require root privileges for password verification");

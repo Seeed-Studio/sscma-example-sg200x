@@ -15,12 +15,12 @@ private:
     {
         auto&& uri = get_uri(req);
         size_t pos_e = uri.rfind('/');
-        if (pos_e == string::npos) {
+        if (pos_e == std::string::npos) {
             response(res, -1, "Invalid path format");
             return API_STATUS_OK;
         }
         size_t pos_s = uri.rfind('/', pos_e - 1);
-        if (pos_s == string::npos) {
+        if (pos_s == std::string::npos) {
             pos_s = 0;
         }
 

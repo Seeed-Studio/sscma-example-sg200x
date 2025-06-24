@@ -19,7 +19,6 @@
 #include "mongoose.h"
 #include "version.h"
 
-using namespace std;
 using json = nlohmann::json;
 
 typedef enum {
@@ -54,65 +53,65 @@ private:
 
 class http_interface {
 public:
-    static inline const string STR_OK = "OK";
-    static inline const string STR_FAILED = "Failed";
+    static inline const std::string STR_OK = "OK";
+    static inline const std::string STR_FAILED = "Failed";
 
     static void response(response_t res, int code = 0,
-        const string& msg = STR_OK, const json& data = json({}))
+        const std::string& msg = STR_OK, const json& data = json({}))
     {
         res["code"] = code;
         res["msg"] = msg;
         res["data"] = data;
     }
 
-    static string get_uri(request_t req)
+    static std::string get_uri(request_t req)
     {
-        return string(req->uri.buf, req->uri.len);
+        return std::string(req->uri.buf, req->uri.len);
     }
 
-    static string get_host(request_t req, bool ip_only = true)
+    static std::string get_host(request_t req, bool ip_only = true)
     {
-        string host = get_header_var(req, "Host");
+        std::string host = get_header_var(req, "Host");
         if (ip_only) {
             size_t pos = host.find(':');
-            if (pos != string::npos) {
+            if (pos != std::string::npos) {
                 host = host.substr(0, pos);
             }
         }
         return host;
     }
 
-    static string get_port(request_t req)
+    static std::string get_port(request_t req)
     {
-        string hdr = get_header_var(req, "Host");
+        std::string hdr = get_header_var(req, "Host");
         size_t pos = hdr.find(':');
-        return (pos != string::npos && pos < hdr.length() - 1)
+        return (pos != std::string::npos && pos < hdr.length() - 1)
             ? hdr.substr(pos + 1)
             : "";
     }
 
-    static string get_http_var(request_t req, string param)
+    static std::string get_http_var(request_t req, std::string param)
     {
         struct mg_str v = mg_http_var(req->query, mg_str(param.c_str()));
-        return string(v.buf, v.len);
+        return std::string(v.buf, v.len);
     }
 
-    static string get_header_var(request_t req, const char* name)
+    static std::string get_header_var(request_t req, const char* name)
     {
         mg_str* hdr = mg_http_get_header((mg_http_message*)req, name);
-        return (hdr == nullptr) ? "" : string(hdr->buf, hdr->len);
+        return (hdr == nullptr) ? "" : std::string(hdr->buf, hdr->len);
     }
 
     static json parse_body(request_t req)
     {
-        string type = get_header_var(req, "Content-Type");
-        if (type.find("application/json") == string::npos) {
+        std::string type = get_header_var(req, "Content-Type");
+        if (type.find("application/json") == std::string::npos) {
             return json();
         }
         return (req->body.len == 0) ? json() : json::parse(req->body.buf, req->body.buf + req->body.len);
     }
 
-    static string get_param(request_t req, string param)
+    static std::string get_param(request_t req, std::string param)
     {
         auto&& val = get_http_var(req, param);
         if (!val.empty()) {
@@ -122,24 +121,24 @@ public:
     }
 
     typedef struct {
-        string name;
-        string filename;
+        std::string name;
+        std::string filename;
         char* data;
         size_t len;
     } multipart_t;
 
-    static vector<multipart_t> get_multiparts(request_t req, const string& param = "")
+    static std::vector<multipart_t> get_multiparts(request_t req, const std::string& param = "")
     {
-        vector<multipart_t> parts;
+        std::vector<multipart_t> parts;
         auto&& type = get_header_var(req, "Content-Type");
 
-        if (type.find("multipart/form-data") != string::npos) {
+        if (type.find("multipart/form-data") != std::string::npos) {
             size_t pos = 0;
             struct mg_http_part part;
             while ((pos = mg_http_next_multipart(req->body, pos, &part)) > 0) {
                 multipart_t mp;
-                mp.name = string(part.name.buf, part.name.len);
-                mp.filename = string(part.filename.buf, part.filename.len);
+                mp.name = std::string(part.name.buf, part.name.len);
+                mp.filename = std::string(part.filename.buf, part.filename.len);
                 mp.data = part.body.buf;
                 mp.len = part.body.len;
                 parts.emplace_back(mp);
@@ -168,7 +167,7 @@ public:
 
 class api_base : public http_interface {
 public:
-    api_base(string group = "", string script = "")
+    api_base(std::string group = "", std::string script = "")
         : _group(group)
     {
         if (_group.empty()) {
@@ -181,14 +180,15 @@ public:
 
     void register_api(std::string uri, api_handler_t handler, bool no_auth = false)
     {
-        _api_map[_group.empty() ? uri : _group + "/" + uri] = make_unique<rest_api>(handler, no_auth);
+        _api_map[_group.empty() ? uri : _group + "/" + uri] =
+            std::make_unique<rest_api>(handler, no_auth);
     }
 
     static api_status_t api_handler(request_t req, response_t res)
     {
         std::string uri = get_uri(req);
         auto pos = uri.find("/api/");
-        if (pos == string::npos) {
+        if (pos == std::string::npos) {
             return API_STATUS_NEXT;
         }
         uri = uri.substr(pos + 5);
@@ -204,7 +204,7 @@ public:
             return API_STATUS_NEXT;
         }
         if (!api->second->no_auth()) {
-            string token = get_header_var(req, "Authorization");
+            std::string token = get_header_var(req, "Authorization");
             if (token.empty() || !check_token(token)) {
                 MA_LOGE("Unauthorized: ", uri);
                 return API_STATUS_UNAUTHORIZED;
@@ -214,15 +214,15 @@ public:
     }
 
     template <typename... Args>
-    static string script(const string& cmd, Args&&... args)
+    static std::string script(const std::string& cmd, Args&&... args)
     {
         int timeout_sec = 30;
         std::stringstream ss;
         ((ss << std::forward<Args>(args) << " "), ...);
-        string args_str = ss.str();
+        std::string args_str = ss.str();
         if (!args_str.empty())
             args_str.pop_back();
-        string full_cmd = _script + cmd + (args_str.empty() ? "" : " " + args_str);
+        std::string full_cmd = _script + cmd + (args_str.empty() ? "" : " " + args_str);
 
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);
         MA_LOGV("Executing: ", full_cmd);
@@ -238,7 +238,7 @@ public:
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
         std::vector<char> buffer(512);
-        string result;
+        std::string result;
         time_t start_time = time(nullptr);
 
         while (true) {
@@ -277,7 +277,7 @@ public:
         // Strip trailing newlines
         if (!result.empty()) {
             size_t end = result.find_last_not_of("\r\n");
-            if (end != string::npos) {
+            if (end != std::string::npos) {
                 result = result.substr(0, end + 1);
             } else {
                 result.clear();
@@ -291,13 +291,13 @@ public:
 protected:
     static constexpr uint32_t TOKEN_EXPIRATION_TIME = 3 * 60 * 60 * 24; // 3 days
 
-    static void save_token(string& token)
+    static void save_token(std::string& token)
     {
         _tokens[token] = time(nullptr);
         MA_LOGV("save_token: ", token, ", time: ", _tokens[token]);
     }
 
-    static bool check_token(string& token)
+    static bool check_token(std::string& token)
     {
         if (_tokens.find(token) == _tokens.end()) {
             MA_LOGV("check_token: not found");
@@ -313,14 +313,14 @@ protected:
     }
 
     // utils
-    static void string_split(string s, const char delimiter, vector<string>& output)
+    static void string_split(std::string s, const char delimiter, std::vector<std::string>& output)
     {
         size_t start = 0;
         size_t end = s.find_first_of(delimiter);
 
-        while (end <= string::npos) {
+        while (end <= std::string::npos) {
             output.emplace_back(s.substr(start, end - start));
-            if (end == string::npos)
+            if (end == std::string::npos)
                 break;
             start = end + 1;
             end = s.find_first_of(delimiter, start);
@@ -350,9 +350,9 @@ protected:
 
 private:
     static inline std::unordered_map<std::string, std::unique_ptr<rest_api>> _api_map;
-    static inline std::unordered_map<string, time_t> _tokens;
+    static inline std::unordered_map<std::string, time_t> _tokens;
     static inline std::string _script;
-    const string _group;
+    const std::string _group;
 
     static api_status_t version(request_t req, response_t res)
     {

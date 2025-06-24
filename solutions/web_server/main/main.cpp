@@ -25,8 +25,8 @@ int main(int argc, char** argv)
     MA_LOG_INIT("web_server", LOG_PID | LOG_CONS, LOG_USER);
     try {
         if (argc > 1 && std::string(argv[1]) == "-v") {
-            cout << "Build Time: " << __DATE__ << " " << __TIME__ << endl;
-            cout << PROJECT_NAME << " V" << PROJECT_VERSION << endl;
+            std::cout << "Build Time: " << __DATE__ << " " << __TIME__ << std::endl;
+            std::cout << PROJECT_NAME << " V" << PROJECT_VERSION << std::endl;
         }
 
         http_server server(ROOT_DIR);

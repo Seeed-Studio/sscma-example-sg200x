@@ -7,14 +7,14 @@ class api_file : public api_base {
 private:
     static api_status_t deleteFile(request_t req, response_t res)
     {
-        string fname = get_param(req, "filePath");
+        std::string fname = get_param(req, "filePath");
         if (fname.empty()) {
             auto&& body = parse_body(req);
             if (body.contains("filePath")) {
                 fname = body.value("filePath", "");
             }
         }
-        const string& result = script(__func__, fname);
+        const std::string& result = script(__func__, fname);
         response(res, (result == STR_OK) ? 0 : -1, result);
         return API_STATUS_OK;
     }
@@ -29,7 +29,7 @@ private:
 
     static api_status_t uploadFile(request_t req, response_t res)
     {
-        string dir = script(__func__);
+        std::string dir = script(__func__);
         if (access(dir.c_str(), F_OK) != 0) {
             response(res, -1, "Directory is not accessible.");
             return API_STATUS_OK;
@@ -41,7 +41,7 @@ private:
                 continue;
             }
 
-            ofstream file(dir + "/" + part.filename, ios::binary);
+            std::ofstream file(dir + "/" + part.filename, std::ios::binary);
             if (!file.is_open()) {
                 continue;
             }

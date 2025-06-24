@@ -1,15 +1,14 @@
 #ifndef HTTP_SERVER_H
 #define HTTP_SERVER_H
 
-#include "api_base.h"
 #include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
+#include "api_base.h"
 #include "api_device.h"
 #include "api_file.h"
 #include "api_led.h"
@@ -25,12 +24,12 @@ public:
         , _key(key)
         , _root_dir(root_dir)
     {
-        _apis.emplace_back(make_unique<api_device>());
-        _apis.emplace_back(make_unique<api_file>());
-        _apis.emplace_back(make_unique<api_led>());
-        _apis.emplace_back(make_unique<api_user>());
-        _apis.emplace_back(make_unique<api_wifi>());
-        _apis.emplace_back(make_unique<api_base>("", "/userdata/app/main.sh"));
+        _apis.emplace_back(std::make_unique<api_device>());
+        _apis.emplace_back(std::make_unique<api_file>());
+        _apis.emplace_back(std::make_unique<api_led>());
+        _apis.emplace_back(std::make_unique<api_user>());
+        _apis.emplace_back(std::make_unique<api_wifi>());
+        _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/main.sh"));
         mg_mgr_init(&mgr);
     }
 
@@ -39,17 +38,17 @@ public:
         stop();
     }
 
-    bool start(const string& http_port = "80", const string& https_port = "")
+    bool start(const std::string& http_port = "80", const std::string& https_port = "")
     {
         if (!http_port.empty()) {
-            http_conn = mg_http_listen(&mgr, string(":" + http_port).c_str(),
+            http_conn = mg_http_listen(&mgr, std::string(":" + http_port).c_str(),
                 event_handler, this);
             if (!http_conn)
                 return false;
             MA_LOGV("HTTP server started on ", http_port);
         }
         if (!https_port.empty()) {
-            https_conn = mg_http_listen(&mgr, string(":" + https_port).c_str(),
+            https_conn = mg_http_listen(&mgr, std::string(":" + https_port).c_str(),
                 https_event_handler, this);
             if (!https_conn)
                 return false;
@@ -61,7 +60,7 @@ public:
             return false;
         }
 
-        worker = thread([this]() {
+        worker = std::thread([this]() {
             running = true;
             while (running)
                 mg_mgr_poll(&mgr, 50);
@@ -92,10 +91,10 @@ private:
     mg_mgr mgr;
     mg_connection* http_conn = nullptr;
     mg_connection* https_conn = nullptr;
-    atomic<bool> running { false };
-    thread worker;
 
-    vector<unique_ptr<api_base>> _apis;
+    std::atomic<bool> running { false };
+    std::thread worker;
+    std::vector<std::unique_ptr<api_base>> _apis;
 
     static void event_handler(mg_connection* c, int ev, void* ev_data)
     {
@@ -104,11 +103,11 @@ private:
             mg_http_message* hm = (mg_http_message*)ev_data;
 
             MA_LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            MA_LOGV("---> uri=", string(hm->uri.buf, hm->uri.len));
-            MA_LOGV("---> query=", string(hm->query.buf, hm->query.len));
-            MA_LOGV("---> head=", string(hm->head.buf, hm->head.len));
-            // MA_LOGV("---> body=", string(hm->body.buf, hm->body.len));
-            // MA_LOGV(string(hm->message.buf, hm->message.len));
+            MA_LOGV("---> uri=", std::string(hm->uri.buf, hm->uri.len));
+            MA_LOGV("---> query=", std::string(hm->query.buf, hm->query.len));
+            MA_LOGV("---> head=", std::string(hm->head.buf, hm->head.len));
+            // MA_LOGV("---> body=", std::string(hm->body.buf, hm->body.len));
+            // MA_LOGV(std::string(hm->message.buf, hm->message.len));
             MA_LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
 
             json res;
