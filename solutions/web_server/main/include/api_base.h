@@ -172,7 +172,7 @@ public:
     {
         if (_group.empty()) {
             _script = script + " ";
-            MA_LOGV(_group, ", ", _script);
+            LOGV("script: %s", _script.c_str());
 
             REG_API_NO_AUTH(version);
         }
@@ -180,8 +180,7 @@ public:
 
     void register_api(std::string uri, api_handler_t handler, bool no_auth = false)
     {
-        _api_map[_group.empty() ? uri : _group + "/" + uri] =
-            std::make_unique<rest_api>(handler, no_auth);
+        _api_map[_group.empty() ? uri : _group + "/" + uri] = std::make_unique<rest_api>(handler, no_auth);
     }
 
     static api_status_t api_handler(request_t req, response_t res)
@@ -200,13 +199,13 @@ public:
                     return (*value)(req, res);
                 }
             }
-            MA_LOGE("API not implemented: ", uri);
+            LOGE("API not implemented: %s", uri.c_str());
             return API_STATUS_NEXT;
         }
         if (!api->second->no_auth()) {
             std::string token = get_header_var(req, "Authorization");
             if (token.empty() || !check_token(token)) {
-                MA_LOGE("Unauthorized: ", uri);
+                LOGE("Unauthorized: %s", uri.c_str());
                 return API_STATUS_UNAUTHORIZED;
             }
         }
@@ -225,11 +224,12 @@ public:
         std::string full_cmd = _script + cmd + (args_str.empty() ? "" : " " + args_str);
 
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"), pclose);
-        MA_LOGV("Executing: ", full_cmd);
+        LOGV("Executing: %s", full_cmd);
 
         if (!pipe) {
-            MA_LOGE("popen() failed: ", cmd, "errno=", errno, ", strerror=", strerror(errno));
-            throw std::runtime_error("popen() failed for: " + full_cmd);
+            LOGE("popen() failed: %s, errno=%d, strerror=%s", cmd, errno, strerror(errno));
+            // throw std::runtime_error("popen() failed for: " + full_cmd);
+            return "";
         }
 
         // non-blocking read
@@ -238,12 +238,12 @@ public:
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
         std::vector<char> buffer(512);
-        std::string result;
+        std::string result = "";
         time_t start_time = time(nullptr);
 
         while (true) {
             if (time(nullptr) - start_time > timeout_sec) {
-                MA_LOGE("Command timeout after ", timeout_sec, " seconds: ", full_cmd);
+                LOGE("Command timeout after ", timeout_sec, " seconds: ", full_cmd);
                 // throw std::runtime_error("Command execution timeout: " + full_cmd);
                 break;
             }
@@ -255,7 +255,7 @@ public:
                 break; // EOF
             } else {
                 if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    MA_LOGE("read() error: ", strerror(errno), ", errno=", errno);
+                    LOGE("read() error: %s, errno=%d", strerror(errno), errno);
                     // throw std::runtime_error("read() error during command execution");
                     break;
                 }
@@ -268,10 +268,10 @@ public:
         if (WIFEXITED(status)) {
             int exit_status = WEXITSTATUS(status);
             if (exit_status != 0) {
-                MA_LOGE("Command exited with status ", exit_status);
+                LOGE("Command exited with status %d", exit_status);
             }
         } else {
-            MA_LOGE("Command terminated abnormally: ", cmd);
+            LOGE("Command terminated abnormally: %s, status=%d", full_cmd.c_str(), status);
         }
 
         // Strip trailing newlines
@@ -284,7 +284,7 @@ public:
             }
         }
 
-        MA_LOGV("Completed: [", result.size(), "] ", result);
+        LOGV("Completed: [%d] %s", result.size(), result.c_str());
         return result;
     }
 
@@ -294,21 +294,21 @@ protected:
     static void save_token(std::string& token)
     {
         _tokens[token] = time(nullptr);
-        MA_LOGV("save_token: ", token, ", time: ", _tokens[token]);
+        LOGV("save_token: %s, time: %ld", token.c_str(), _tokens[token]);
     }
 
     static bool check_token(std::string& token)
     {
         if (_tokens.find(token) == _tokens.end()) {
-            MA_LOGV("check_token: not found");
+            LOGE("Not found token");
             return false;
         }
         if (_tokens[token] + TOKEN_EXPIRATION_TIME < time(nullptr)) {
-            MA_LOGV("check_token: expired");
+            LOGV("Expired token");
             _tokens.erase(token);
             return false;
         }
-        MA_LOGV("check_token: ok");
+        LOGV("Valid token");
         return true;
     }
 

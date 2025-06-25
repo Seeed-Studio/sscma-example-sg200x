@@ -237,7 +237,7 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
     }
     data["count"] = count;
 
-    MA_LOGV(data.dump(4));
+    LOGV("Upload model file: %s", data.dump(4));
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
@@ -245,7 +245,7 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
 // Upgrade
 api_status_t api_device::cancelUpdate(request_t req, response_t res)
 {
-    MA_LOGV("");
+    LOGV("");
 
     res["code"] = 0;
     res["msg"] = "";
@@ -256,7 +256,7 @@ api_status_t api_device::cancelUpdate(request_t req, response_t res)
 
 api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res)
 {
-    MA_LOGV("");
+    LOGV("");
 
     res["code"] = 0;
     res["msg"] = "";
@@ -272,7 +272,7 @@ api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res
 
 api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 {
-    MA_LOGV("");
+    LOGV("");
 
     res["code"] = 0;
     res["msg"] = "";
@@ -283,7 +283,7 @@ api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 
 api_status_t api_device::updateSystem(request_t req, response_t res)
 {
-    MA_LOGV("");
+    LOGV("");
 
     res["code"] = 0;
     res["msg"] = "";

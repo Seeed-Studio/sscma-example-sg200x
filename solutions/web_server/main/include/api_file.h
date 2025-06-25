@@ -22,7 +22,7 @@ private:
     static api_status_t queryFileList(request_t req, response_t res)
     {
         auto&& list = json::parse(script(__func__));
-        MA_LOGV(list.dump(4));
+        LOGV("%s", list.dump(4).c_str());
         response(res, 0, STR_OK, list);
         return API_STATUS_OK;
     }
@@ -64,7 +64,7 @@ public:
 
     ~api_file()
     {
-        MA_LOGV("");
+        LOGV("");
     }
 };
 

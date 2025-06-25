@@ -1,16 +1,17 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <ctime>
-#include <iostream>
 #include <mutex>
-#include <sstream>
+#include <stdarg.h>
+#include <string>
 #include <syslog.h>
-#include <thread>
 
 /*
+#include <syslog.h>
+
 #define LOG_EMERG   0
 #define LOG_ALERT   1
 #define LOG_CRIT    2
@@ -23,52 +24,74 @@
 #define LOG_USER     (1<<3)
 */
 
-#ifndef MA_LOG_MASK
-#define MA_LOG_MASK (LOG_UPTO(LOG_USER))
-#endif
+class Logger {
+public:
+    static constexpr const char* tag[] = {
+        "[EMERG]",
+        "[ALERT]",
+        "[CRIT]",
+        "[ERROR]",
+        "[WARNING]",
+        "[NOTICE]",
+        "[INFO]",
+        "[DEBUG]",
+        "[VERB]",
+    };
 
-#define MA_LOG_INIT(_id, _opt, _fac) \
-    do {                             \
-        openlog(_id, _opt, _fac);    \
-        setlogmask(MA_LOG_MASK);     \
+    Logger(const std::string& id, int level = LOG_WARNING,
+        int opt = LOG_PID, int fac = LOG_USER)
+    {
+        _log_level = level;
+        _log_mask = LOG_UPTO(level);
+        openlog(id.c_str(), opt, fac);
+        setlogmask(_log_mask);
+    }
+
+    ~Logger()
+    {
+        closelog();
+    }
+
+    static void set_level(int level)
+    {
+        _log_level = level;
+        _log_mask = LOG_UPTO(level);
+        setlogmask(_log_mask);
+    }
+
+    static void log(int level, const char* format, ...)
+    {
+        std::lock_guard<std::mutex> lock(_log_mutex);
+        va_list args;
+        va_start(args, format);
+        vsyslog(level, format, args);
+        va_end(args);
+
+        if (level <= _log_level) {
+            va_start(args, format);
+            vfprintf(stdout, format, args);
+            va_end(args);
+        }
+    }
+
+private:
+    static inline std::mutex _log_mutex;
+    static inline int _log_level = LOG_WARNING;
+    static inline int _log_mask = LOG_UPTO(_log_level);
+};
+
+#define _LOG(_level, fmt, ...) \
+    Logger::log(_level, "%s %s,%d: " fmt "\n", Logger::tag[_level], __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define LOGE(fmt, ...) _LOG(LOG_ERR, fmt, ##__VA_ARGS__)
+#define LOGW(fmt, ...) _LOG(LOG_WARNING, fmt, ##__VA_ARGS__)
+#define LOGI(fmt, ...) _LOG(LOG_INFO, fmt, ##__VA_ARGS__)
+#define LOGD(fmt, ...) _LOG(LOG_DEBUG, fmt, ##__VA_ARGS__)
+#define LOGV(fmt, ...) _LOG(LOG_USER, fmt, ##__VA_ARGS__)
+#define ASSERT(expr)                              \
+    do {                                          \
+        if (!(expr)) {                            \
+            LOGE("Failed assertion '%s'", #expr); \
+            abort();                              \
+        }                                         \
     } while (0)
-
-#define MA_LOG_DEINIT() \
-    do {                \
-        closelog();     \
-    } while (0)
-
-template <typename... Args>
-inline void format_helper(std::stringstream& ss, Args&&... args)
-{
-    ((ss << std::forward<Args>(args)), ...);
-}
-
-#define MA_LOG(_prefix, _lvl, ...)                        \
-    do {                                                  \
-        static std::mutex log_mutex;                      \
-        std::lock_guard<std::mutex> lock(log_mutex);      \
-        std::stringstream ss;                             \
-        ss << "[" << __func__ << ":" << __LINE__ << "] "; \
-        format_helper(ss, __VA_ARGS__);                   \
-        const std::string message = ss.str();             \
-        if (MA_LOG_MASK & (1 << _lvl)) {                  \
-            std::cout << _prefix << message << std::endl; \
-        }                                                 \
-        syslog(_lvl, "%s", message.c_str());              \
-    } while (0)
-
-#define MA_LOGE(...) MA_LOG("[E]", LOG_ERR, __VA_ARGS__)
-#define MA_LOGW(...) MA_LOG("[W]", LOG_WARNING, __VA_ARGS__)
-#define MA_LOGI(...) MA_LOG("[I]", LOG_INFO, __VA_ARGS__)
-#define MA_LOGD(...) MA_LOG("[D]", LOG_DEBUG, __VA_ARGS__)
-#define MA_LOGV(...) MA_LOG("[V]", LOG_USER, __VA_ARGS__)
-#define MA_ASSERT(expr)                              \
-    do {                                             \
-        if (!(expr)) {                               \
-            MA_LOGE("Failed assertion '%s'", #expr); \
-            abort();                                 \
-        }                                            \
-    } while (0)
-
 #endif // __LOGGER_H__

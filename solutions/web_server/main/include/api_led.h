@@ -35,13 +35,13 @@ public:
     api_led()
         : api_base("led")
     {
-        MA_LOGV("");
+        LOGV("");
         REG_API_FULL("", led, false); // fixed: no auth
     }
 
     ~api_led()
     {
-        MA_LOGV("");
+        LOGV("");
     }
 };
 

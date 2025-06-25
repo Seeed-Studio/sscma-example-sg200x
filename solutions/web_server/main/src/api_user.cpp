@@ -47,7 +47,7 @@ api_status_t api_user::login(request_t req, response_t res)
         }
         timespec_get(&tsLastFailed, TIME_UTC);
 
-        MA_LOGE("Authentication failed for user: ", username);
+        LOGW("Authentication failed for user: %s", username);
         response(res, -1,
             "Invalid username or password",
             json({

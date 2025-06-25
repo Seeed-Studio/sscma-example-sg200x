@@ -1,3 +1,4 @@
+#include "include/logger.hpp"
 #include <iostream>
 #include <signal.h>
 #include <stdexcept>
@@ -22,27 +23,27 @@ int main(int argc, char** argv)
     sigaddset(&sigset, SIGTSTP); // CTRL+Z
     pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
 
-    MA_LOG_INIT("web_server", LOG_PID | LOG_CONS, LOG_USER);
+    Logger logger("web_server", LOG_USER);
+
     try {
         if (argc > 1 && std::string(argv[1]) == "-v") {
-            std::cout << "Build Time: " << __DATE__ << " " << __TIME__ << std::endl;
-            std::cout << PROJECT_NAME << " V" << PROJECT_VERSION << std::endl;
+            LOGI("Build Time: %s %s", __DATE__, __TIME__);
+            LOGI("%s V%s", PROJECT_NAME, PROJECT_VERSION);
         }
 
         http_server server(ROOT_DIR);
         if (!server.start(HTTP_PORT)) {
-            MA_LOGE("Failed: server.start()\n");
+            LOGE("Failed: server.start()");
         } else {
             int sig;
             sigwait(&sigset, &sig); // 阻塞直到收到 SIGINT/SIGTERM
-            MA_LOGW("Exited with sig: ", sig);
+            LOGI("Exited with sig: ", sig);
         }
     } catch (std::exception& e) {
-        MA_LOGE("Exception: ", e.what());
+        LOGE("Exception: %s", e.what());
     } catch (...) {
-        MA_LOGE("Unknown exception");
+        LOGE("Unknown exception");
     }
-    MA_LOG_DEINIT();
 
     return 0;
 }

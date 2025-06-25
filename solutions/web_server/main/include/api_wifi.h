@@ -19,7 +19,7 @@ public:
     api_wifi()
         : api_base("wifiMgr")
     {
-        MA_LOGV("");
+        LOGV("");
 
         REG_API(autoConnectWiFi);
         REG_API(connectWiFi);
@@ -34,7 +34,7 @@ public:
 
     ~api_wifi()
     {
-        MA_LOGV("");
+        LOGV("");
     }
 };
 

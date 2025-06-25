@@ -20,7 +20,7 @@ public:
     api_user()
         : api_base("userMgr")
     {
-        MA_LOGV("");
+        LOGV("");
 
         REG_API(addSShkey);
         REG_API(deleteSShkey);
@@ -32,7 +32,7 @@ public:
 
     ~api_user()
     {
-        MA_LOGV("");
+        LOGV("");
     }
 
 private:
@@ -122,13 +122,13 @@ private:
     static bool verify_pwd(const std::string& user, const std::string& password)
     {
         if (geteuid() != 0) {
-            MA_LOGE("Require root privileges for password verification");
+            LOGE("Require root privileges for password verification");
             return false;
         }
 
         struct spwd* sp = getspnam(user.c_str());
         if (!sp) {
-            MA_LOGE("User not found: ", user);
+            LOGE("User not found: %s", user.c_str());
             return false;
         }
 
@@ -136,7 +136,7 @@ private:
         data.initialized = 0;
         char* encrypted = crypt_r(password.c_str(), sp->sp_pwdp, &data);
         if (!encrypted || strcmp(encrypted, sp->sp_pwdp) != 0) {
-            MA_LOGE("Password mismatch for user: ", user);
+            LOGE("Password mismatch for user: %s", user.c_str());
             return false;
         }
 

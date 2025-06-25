@@ -31,7 +31,7 @@ public:
     api_device()
         : api_base("deviceMgr")
     {
-        MA_LOGV("");
+        LOGV("");
 
         REG_API(cancelUpdate);
         REG_API(getAppInfo);
@@ -58,7 +58,7 @@ public:
 
     ~api_device()
     {
-        MA_LOGV("");
+        LOGV("");
     }
 };
 

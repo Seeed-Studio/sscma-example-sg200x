@@ -1,6 +1,7 @@
 #ifndef HTTP_SERVER_H
 #define HTTP_SERVER_H
 
+#include "logger.hpp"
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -45,18 +46,18 @@ public:
                 event_handler, this);
             if (!http_conn)
                 return false;
-            MA_LOGV("HTTP server started on ", http_port);
+            LOGV("HTTP server started on %s", http_port.c_str());
         }
         if (!https_port.empty()) {
             https_conn = mg_http_listen(&mgr, std::string(":" + https_port).c_str(),
                 https_event_handler, this);
             if (!https_conn)
                 return false;
-            MA_LOGV("HTTPS server started on ", https_port);
+            LOGV("HTTPS server started on %s", https_port.c_str());
         }
 
         if (!http_conn && !https_conn) {
-            MA_LOGV("Error: At least one valid port required");
+            LOGV("Error: At least one valid port required");
             return false;
         }
 
@@ -64,7 +65,7 @@ public:
             running = true;
             while (running)
                 mg_mgr_poll(&mgr, 50);
-            MA_LOGV("poll_loop exit");
+            LOGV("poll_loop exit");
         });
 
         return true;
@@ -79,7 +80,7 @@ public:
             }
             mg_mgr_free(&mgr);
         }
-        MA_LOGV("Server stopped");
+        LOGV("Server stopped");
     }
 
 private:
@@ -102,13 +103,13 @@ private:
             http_server* server = static_cast<http_server*>(c->fn_data);
             mg_http_message* hm = (mg_http_message*)ev_data;
 
-            MA_LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            MA_LOGV("---> uri=", std::string(hm->uri.buf, hm->uri.len));
-            MA_LOGV("---> query=", std::string(hm->query.buf, hm->query.len));
-            MA_LOGV("---> head=", std::string(hm->head.buf, hm->head.len));
-            // MA_LOGV("---> body=", std::string(hm->body.buf, hm->body.len));
-            // MA_LOGV(std::string(hm->message.buf, hm->message.len));
-            MA_LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
+            LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+            LOGV("---> uri=%s", std::string(hm->uri.buf, hm->uri.len));
+            LOGV("---> query=%s", std::string(hm->query.buf, hm->query.len));
+            LOGV("---> head=%s", std::string(hm->head.buf, hm->head.len));
+            // LOGV("---> body=%s", std::string(hm->body.buf, hm->body.len));
+            // LOGV(std::string(hm->message.buf, hm->message.len));
+            LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
 
             json res;
             api_status_t status = api_base::api_handler(hm, res);
