@@ -15,7 +15,6 @@
 #include "api_led.h"
 #include "api_user.h"
 #include "api_wifi.h"
-#include "mongoose.h"
 
 class http_server {
 public:
@@ -104,12 +103,12 @@ private:
             mg_http_message* hm = (mg_http_message*)ev_data;
 
             LOGV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            LOGV("---> uri=%s", std::string(hm->uri.buf, hm->uri.len));
-            LOGV("---> query=%s", std::string(hm->query.buf, hm->query.len));
-            LOGV("---> head=%s", std::string(hm->head.buf, hm->head.len));
-            // LOGV("---> body=%s", std::string(hm->body.buf, hm->body.len));
-            // LOGV(std::string(hm->message.buf, hm->message.len));
-            LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n\n");
+            LOGV("---> uri=%s", std::string(hm->uri.buf, hm->uri.len).c_str());
+            LOGV("---> query=%s", std::string(hm->query.buf, hm->query.len).c_str());
+            LOGV("---> head=%s", std::string(hm->head.buf, hm->head.len).c_str());
+            // LOGV("---> body=%s", std::string(hm->body.buf, hm->body.len).c_str());
+            // LOGV(std::string(hm->message.buf, hm->message.len).c_str());
+            LOGV("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 
             json res;
             api_status_t status = api_base::api_handler(hm, res);

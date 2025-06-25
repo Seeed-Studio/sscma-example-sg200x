@@ -47,7 +47,8 @@ api_status_t api_user::login(request_t req, response_t res)
         }
         timespec_get(&tsLastFailed, TIME_UTC);
 
-        LOGW("Authentication failed for user: %s", username);
+        LOGW("Authentication failed for user: %s, retryCount: %d",
+            username.c_str(), retryCount);
         response(res, -1,
             "Invalid username or password",
             json({
@@ -67,7 +68,7 @@ api_status_t api_user::login(request_t req, response_t res)
             { "expire", TOKEN_EXPIRATION_TIME },
         }));
 
-    return API_STATUS_AUTHORIZED;
+    return API_STATUS_OK;
 }
 
 api_status_t api_user::queryUserInfo(request_t req, response_t res)

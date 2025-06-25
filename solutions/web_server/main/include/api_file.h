@@ -57,6 +57,7 @@ public:
     api_file()
         : api_base("fileMgr")
     {
+        LOGV("");
         REG_API(deleteFile);
         REG_API(queryFileList);
         REG_API(uploadFile);

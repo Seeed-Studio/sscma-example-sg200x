@@ -1,14 +1,7 @@
-#include "include/logger.hpp"
-#include <iostream>
 #include <signal.h>
-#include <stdexcept>
 #include <string>
-#include <syslog.h>
-#include <unistd.h>
 
 #include "http_server.h"
-#include "logger.hpp"
-#include "version.h"
 
 // #define ROOT_DIR "/usr/share/supervisor/www/"
 #define ROOT_DIR "./dist/"
@@ -37,13 +30,14 @@ int main(int argc, char** argv)
         } else {
             int sig;
             sigwait(&sigset, &sig); // 阻塞直到收到 SIGINT/SIGTERM
-            LOGI("Exited with sig: ", sig);
+            LOGI("Exited with sig: %d", sig);
         }
     } catch (std::exception& e) {
         LOGE("Exception: %s", e.what());
     } catch (...) {
         LOGE("Unknown exception");
     }
+    LOGV("");
 
     return 0;
 }

@@ -237,7 +237,7 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
     }
     data["count"] = count;
 
-    LOGV("Upload model file: %s", data.dump(4));
+    LOGV("Upload model file: %s", data.dump(4).c_str());
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
