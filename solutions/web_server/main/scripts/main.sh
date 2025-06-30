@@ -366,7 +366,11 @@ function savePlatformInfo() {
 }
 
 function getPlatformInfo() {
-    echo $PLATFORM_INFO
+    if [ -f $PLATFORM_INFO ]; then
+        echo $PLATFORM_INFO
+    else
+        echo ""
+    fi
 }
 
 function getSystemStatus() {
@@ -404,15 +408,15 @@ function queryServiceStatus() {
 
 function getDeviceList() {
     local file=$WORK_DIR/avahi-browse.out
-    local tmp=$WORK_DIR/avahi-browse.tmp
+    local parse=$WORK_DIR/avahi-browse.parse
     if [ -f $file ]; then
-        cp $file $tmp
+        cp $file $parse
         rm $file
     fi
     avahi-browse -arpt >$file &
 
-    [ ! -f $tmp ] && >$tmp
-    printf '{"file": "%s"}' $tmp
+    [ ! -f $parse ] && >$parse
+    printf '{"file": "%s"}' $parse
 }
 
 # api_file
