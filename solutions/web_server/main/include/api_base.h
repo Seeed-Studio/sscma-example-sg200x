@@ -60,10 +60,13 @@ public:
 
     virtual ~api_base() = default;
 
+
     void register_api(std::string uri, api_handler_t handler, bool no_auth = false)
     {
         _api_map[_group.empty() ? uri : _group + "/" + uri] = std::make_unique<rest_api>(handler, no_auth);
     }
+
+    static void set_force_no_auth(bool no_auth) { _force_no_auth = no_auth; }
 
     static api_status_t api_handler(request_t req, response_t res)
     {
@@ -84,7 +87,7 @@ public:
             LOGE("API not implemented: %s", uri.c_str());
             return API_STATUS_NEXT;
         }
-        if (!api->second->no_auth()) {
+        if (!_force_no_auth && !api->second->no_auth()) {
             std::string token = get_header_var(req, "Authorization");
             if (token.empty() || !check_token(token)) {
                 LOGE("Unauthorized: %s", uri.c_str());
@@ -235,6 +238,7 @@ protected:
 private:
     const std::string _group;
 
+    static inline bool _force_no_auth = false;
     static inline std::string _script;
     static inline std::unordered_map<std::string, time_t> _tokens;
     static inline std::unordered_map<std::string, std::unique_ptr<rest_api>> _api_map;

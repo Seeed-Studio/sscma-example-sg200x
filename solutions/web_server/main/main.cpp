@@ -5,7 +5,7 @@
 
 // #define ROOT_DIR "/usr/share/supervisor/www/"
 #define ROOT_DIR "./dist/"
-#define HTTP_PORT "8000"
+#define HTTP_PORT "80"
 
 int main(int argc, char** argv)
 {
@@ -24,12 +24,12 @@ int main(int argc, char** argv)
             LOGI("%s V%s", PROJECT_NAME, PROJECT_VERSION);
         }
 
-        http_server server(ROOT_DIR);
+        http_server server(ROOT_DIR, true);
         if (!server.start(HTTP_PORT)) {
             LOGE("Failed: server.start()");
         } else {
             int sig;
-            sigwait(&sigset, &sig); // 阻塞直到收到 SIGINT/SIGTERM
+            sigwait(&sigset, &sig); // block until signal received
             LOGI("Exited with sig: %d", sig);
         }
     } catch (std::exception& e) {

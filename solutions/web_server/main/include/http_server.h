@@ -18,7 +18,7 @@
 
 class http_server {
 public:
-    http_server(const char* root_dir = "www",
+    http_server(const char* root_dir = "www", bool no_auth = false,
         const char* cert = nullptr, const char* key = nullptr)
         : _cert(cert)
         , _key(key)
@@ -31,6 +31,8 @@ public:
         _apis.emplace_back(std::make_unique<api_wifi>());
         _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/main.sh"));
         mg_mgr_init(&mgr);
+
+        api_base::set_force_no_auth(no_auth);
     }
 
     ~http_server()
