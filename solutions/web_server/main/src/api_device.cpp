@@ -31,12 +31,13 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
     auto&& result = json::parse(script(__func__));
     std::ifstream file(result.value("file", ""));
     if (!file.is_open()) {
-        throw std::runtime_error(__func__);
+        response(res, 0, STR_OK, { { "deviceList", "" } });
+        return API_STATUS_OK;
     }
 
+    json dev_list;
     using namespace std;
     map<pair<string, string>, map<string, string>> device_map;
-    json dev_list;
     std::string line;
     while (getline(file, line)) {
         if (line.empty() || line[0] != '=')
@@ -75,7 +76,11 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
 api_status_t api_device::getPlatformInfo(request_t req, response_t res)
 {
     json data;
-    std::ifstream(script(__func__)) >> data["platform_info"];
+    std::string fname = script(__func__);
+    if (fname.empty())
+        data["platform_info"] = "";
+    else
+        std::ifstream(fname) >> data["platform_info"];
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
@@ -118,21 +123,19 @@ api_status_t api_device::setPower(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
     std::string result = script(__func__, body.value("mode", -1));
-    if (result == STR_FAILED)
-        throw std::runtime_error("Failed: " + std::string(__func__) + " result: " + result);
-    response(res, 0, result);
+    response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }
 
 api_status_t api_device::updateChannel(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
-
     const auto& ch = body.value("channel", 0);
     const auto& url = body.value("serverUrl", "");
     if (ch > 0) {
         if (url.empty()) {
-            response(res, -1, "Server url is empty.");
+            response(res, 0, script(__func__, ch, url));
+            response(res);
             return API_STATUS_OK;
         }
         if (url.compare(0, 7, "http://") != 0
@@ -149,9 +152,7 @@ api_status_t api_device::updateDeviceName(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
     std::string result = script(__func__, body.value("deviceName", ""));
-    if (result != STR_OK)
-        throw std::runtime_error("Failed: " + std::string(__func__) + " result: " + result);
-    response(res, 0, result);
+    response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }
 
@@ -188,8 +189,10 @@ api_status_t api_device::getModelInfo(request_t req, response_t res)
 api_status_t api_device::getModelList(request_t req, response_t res)
 {
     auto&& list = json::parse(script(__func__));
-    if (list.empty())
-        throw std::runtime_error(__func__);
+    if (list.empty()) {
+        response(res, -1);
+        return API_STATUS_OK;
+    }
 
     const auto& suffix = list.value("suffix", "");
     const auto& count = list.value("count", 0);
@@ -261,22 +264,29 @@ api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res
     res["code"] = 0;
     res["msg"] = "";
     res["data"] = json({
-        { "osName", "reCameraOS" },
-        { "osVersion", "0.1.4" },
-        { "downloadUrl", "abc" },
+        { "osName", "reCamera" },
+        { "osVersion", "0.2.1" },
+        { "downloadUrl", "https://github.com/Seeed-Studio/reCamera-OS/releases/latest" },
         { "isUpgrading", "0" },
     });
 
     return API_STATUS_OK;
 }
 
+static int count = 0;
 api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 {
     LOGV("");
 
+    if (count < 100) {
+        count++;
+    }
+
     res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json({});
+    res["msg"] = "uxxxx";
+    res["data"] = json({
+        { "progress", count },
+    });
 
     return API_STATUS_OK;
 }
