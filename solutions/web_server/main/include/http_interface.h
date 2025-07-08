@@ -49,7 +49,7 @@ protected:
 
     static std::string get_host(request_t req, bool ip_only = true)
     {
-        std::string host = get_header_var(req, "Host");
+        std::string host = _get_header_var(req, "Host");
         if (ip_only) {
             size_t pos = host.find(':');
             if (pos != std::string::npos) {
@@ -61,47 +61,47 @@ protected:
 
     static std::string get_port(request_t req)
     {
-        std::string hdr = get_header_var(req, "Host");
+        std::string hdr = _get_header_var(req, "Host");
         size_t pos = hdr.find(':');
         return (pos != std::string::npos && pos < hdr.length() - 1)
             ? hdr.substr(pos + 1)
             : "";
     }
 
-    static std::string get_http_var(request_t req, std::string param)
-    {
-        struct mg_str v = mg_http_var(req->query, mg_str(param.c_str()));
-        return std::string(v.buf, v.len);
-    }
-
-    static std::string get_header_var(request_t req, const char* name)
-    {
-        mg_str* hdr = mg_http_get_header((mg_http_message*)req, name);
-        return (hdr == nullptr) ? "" : std::string(hdr->buf, hdr->len);
-    }
-
     static json parse_body(request_t req)
     {
-        std::string type = get_header_var(req, "Content-Type");
+        std::string type = _get_header_var(req, "Content-Type");
         if (type.find("application/json") == std::string::npos) {
-            return json();
+            return json({});
         }
-        return (req->body.len == 0) ? json() : json::parse(req->body.buf, req->body.buf + req->body.len);
+        return parse_result(std::string(req->body.buf, req->body.len));
+    }
+
+    template <typename T>
+    static json parse_result(T result)
+    {
+        json data = json({});
+        try {
+            data = json::parse(result);
+        } catch (const std::exception& e) {
+            LOGD("%s", e.what());
+        }
+        return data;
     }
 
     static std::string get_param(request_t req, std::string param)
     {
-        auto&& val = get_http_var(req, param);
+        auto&& val = _get_http_var(req, param);
         if (!val.empty()) {
             return val;
         }
-        return get_header_var(req, param.c_str());
+        return _get_header_var(req, param.c_str());
     }
 
     static std::vector<multipart_t> get_multiparts(request_t req, const std::string& param = "")
     {
         std::vector<multipart_t> parts;
-        auto&& type = get_header_var(req, "Content-Type");
+        auto&& type = _get_header_var(req, "Content-Type");
 
         if (type.find("multipart/form-data") != std::string::npos) {
             size_t pos = 0;
@@ -126,6 +126,19 @@ protected:
         }
 
         return parts;
+    }
+
+private:
+    static std::string _get_http_var(request_t req, std::string param)
+    {
+        struct mg_str v = mg_http_var(req->query, mg_str(param.c_str()));
+        return std::string(v.buf, v.len);
+    }
+
+    static std::string _get_header_var(request_t req, const char* name)
+    {
+        mg_str* hdr = mg_http_get_header((mg_http_message*)req, name);
+        return (hdr == nullptr) ? "" : std::string(hdr->buf, hdr->len);
     }
 };
 

@@ -19,7 +19,7 @@ api_status_t api_device::getCameraWebsocketUrl(request_t req, response_t res)
 
 api_status_t api_device::getDeviceInfo(request_t req, response_t res)
 {
-    auto&& data = json::parse(script(__func__));
+    auto&& data = parse_result(script(__func__));
     data["ip"] = get_host(req);
     data["port"] = get_port(req);
     response(res, 0, STR_OK, data);
@@ -28,7 +28,7 @@ api_status_t api_device::getDeviceInfo(request_t req, response_t res)
 
 api_status_t api_device::getDeviceList(request_t req, response_t res)
 {
-    auto&& result = json::parse(script(__func__));
+    auto&& result = parse_result(script(__func__));
     std::ifstream file(result.value("file", ""));
     if (!file.is_open()) {
         response(res, 0, STR_OK, { { "deviceList", "" } });
@@ -94,7 +94,7 @@ api_status_t api_device::getSystemStatus(request_t req, response_t res)
 
 api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
 {
-    auto&& data = json::parse(script(__func__));
+    auto&& data = parse_result(script(__func__));
     data["appName"] = PROJECT_NAME;
     data["ip"] = get_host(req);
     data["port"] = get_port(req);
@@ -104,7 +104,7 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
 
 api_status_t api_device::queryServiceStatus(request_t req, response_t res)
 {
-    auto&& data = json::parse(script(__func__));
+    auto&& data = parse_result(script(__func__));
     data["uptime"] = uptime();
     data["timestamp"] = timestamp();
     response(res, 0, STR_OK, data);
@@ -174,13 +174,14 @@ api_status_t api_device::uploadApp(request_t req, response_t res)
 // Model
 api_status_t api_device::getModelFile(request_t req, response_t res)
 {
-    response(res, 0, STR_OK, json::parse(script(__func__)));
+    auto&& data = parse_result(script(__func__));
+    response(res, 0, STR_OK, data);
     return API_STATUS_REPLY_FILE;
 }
 
 api_status_t api_device::getModelInfo(request_t req, response_t res)
 {
-    auto&& data = json::parse(script(__func__));
+    auto&& data = parse_result(script(__func__));
     std::ifstream(data.value("file", "")) >> data["model_info"];
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
@@ -188,7 +189,7 @@ api_status_t api_device::getModelInfo(request_t req, response_t res)
 
 api_status_t api_device::getModelList(request_t req, response_t res)
 {
-    auto&& list = json::parse(script(__func__));
+    auto&& list = parse_result(script(__func__));
     if (list.empty()) {
         response(res, -1);
         return API_STATUS_OK;
@@ -201,7 +202,7 @@ api_status_t api_device::getModelList(request_t req, response_t res)
     data["count"] = count;
     for (auto&& item : list["list"]) {
         if (auto fname = item.get<std::string>(); !fname.empty()) {
-            json info = json::parse(std::ifstream(fname + ".json"));
+            auto&& info = parse_result(std::ifstream(fname + ".json"));
             info["id"] = info.value("model_id", "");
             info["name"] = info.value("model_name", "");
             info["md5"] = info.value("checksum", "");
@@ -248,56 +249,40 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
 // Upgrade
 api_status_t api_device::cancelUpdate(request_t req, response_t res)
 {
-    LOGV("");
-
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json({});
-
+    script(__func__);
+    response(res);
     return API_STATUS_OK;
 }
 
 api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res)
-{
-    LOGV("");
-
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json({
-        { "osName", "reCamera" },
-        { "osVersion", "0.2.1" },
-        { "downloadUrl", "https://github.com/Seeed-Studio/reCamera-OS/releases/latest" },
-        { "isUpgrading", "0" },
-    });
-
+{ // typo
+    std::string result = script(__func__);
+    auto&& data = parse_result(result);
+    LOGV("%s", data.dump().c_str());
+    if (data.empty()) {
+        response(res, -1, result);
+        return API_STATUS_OK;
+    }
+    response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
 
-static int count = 0;
 api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 {
-    LOGV("");
-
-    if (count < 100) {
-        count++;
+    std::string result = script(__func__);
+    auto&& data = parse_result(result);
+    LOGV("%s", data.dump().c_str());
+    if (data.empty()) {
+        response(res, -1, result);
+        return API_STATUS_OK;
     }
-
-    res["code"] = 0;
-    res["msg"] = "uxxxx";
-    res["data"] = json({
-        { "progress", count },
-    });
-
+    response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
 
 api_status_t api_device::updateSystem(request_t req, response_t res)
 {
-    LOGV("");
-
-    res["code"] = 0;
-    res["msg"] = "";
-    res["data"] = json({});
-
+    script(__func__);
+    response(res);
     return API_STATUS_OK;
 }

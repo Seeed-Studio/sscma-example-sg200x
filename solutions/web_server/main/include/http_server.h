@@ -29,7 +29,7 @@ public:
         _apis.emplace_back(std::make_unique<api_led>());
         _apis.emplace_back(std::make_unique<api_user>());
         _apis.emplace_back(std::make_unique<api_wifi>());
-        _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/main.sh"));
+        _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/scripts/main.sh"));
         mg_mgr_init(&mgr);
 
         api_base::set_force_no_auth(no_auth);

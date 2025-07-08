@@ -88,7 +88,7 @@ public:
             return API_STATUS_NEXT;
         }
         if (!_force_no_auth && !api->second->no_auth()) {
-            std::string token = get_header_var(req, "Authorization");
+            std::string token = get_param(req, "Authorization");
             if (token.empty() || !check_token(token)) {
                 LOGE("Unauthorized: %s", uri.c_str());
                 return API_STATUS_UNAUTHORIZED;

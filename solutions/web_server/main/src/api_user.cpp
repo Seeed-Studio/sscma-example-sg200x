@@ -73,7 +73,7 @@ api_status_t api_user::login(request_t req, response_t res)
 
 api_status_t api_user::queryUserInfo(request_t req, response_t res)
 {
-    auto&& data = json::parse(script(__func__));
+    auto&& data = parse_result(script(__func__));
     const auto& fname = data.value("sshKeyFile", "");
     if (fname.empty()) {
         response(res, -1, "SSH key file not found.");

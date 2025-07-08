@@ -21,9 +21,9 @@ private:
 
     static api_status_t queryFileList(request_t req, response_t res)
     {
-        auto&& list = json::parse(script(__func__));
-        LOGV("%s", list.dump(4).c_str());
-        response(res, 0, STR_OK, list);
+        auto&& data = parse_result(script(__func__));
+        LOGV("%s", data.dump(4).c_str());
+        response(res, 0, STR_OK, data);
         return API_STATUS_OK;
     }
 
