@@ -1,3 +1,8 @@
+#!/bin/bash
+
+DIR_SCRIPTS=$(dirname $(readlink -f $0))
+UPGRADE="$DIR_SCRIPTS/upgrade.sh"
+
 STR_OK="OK"
 STR_FAILED="Failed"
 WORK_DIR=/tmp/web_server
@@ -301,7 +306,6 @@ function queryDeviceInfo() {
 
     local os_name=$(_os_name)
     local os_version=$(_os_version)
-
     local upgraded=0
 
     printf '{"deviceName": "%s", "sn": "%s",
@@ -455,6 +459,73 @@ function uploadFile() {
     echo "$APP_DIR"
 }
 
+function cancelUpdate() {
+    echo 1 >$WORK_DIR/upgrade.cancel
+    $UPGRADE download x >/dev/null 2>&1 &
+    $UPGRADE start x >/dev/null 2>&1 &
+    echo "$STR_OK"
+}
+
+function getSystemUpdateVesionInfo() { # typo
+    local out
+    for i in {1..3}; do
+        out=$($UPGRADE latest q)
+        [ "$(echo $out | cut -d':' -f1)" = "Success" ] && {
+            local out2 os_name os_version url upgrade
+            out2=$(echo $out | cut -d':' -f2)
+            os_name=$(echo $out2 | cut -d' ' -f1)
+            os_version=$(echo $out2 | cut -d' ' -f2)
+            url=$(cat /tmp/upgrade/url.txt 2>/dev/null)
+            out2=$($UPGRADE download q)
+            [ "$out2" != "Stopped" ] && upgrade=1
+            printf '{"osName": "%s", "osVersion": "%s", "downloadUrl": "%s", "isUpgrading": "%d"}' \
+                $os_name $os_version $url $((upgrade))
+            return 0
+        }
+        $UPGRADE latest >/dev/null 2>&1
+    done
+    echo "$out"
+}
+
+function getUpdateProgress() {
+    [ -f "$WORK_DIR/upgrade.cancel" ] && {
+        echo "Cancelled"
+        return 0
+    }
+    local result size total prog1 prog2
+    # download
+    read -r result size total <<<"$($UPGRADE download q | awk -F'[: ]' '{print $1, $3, $4}')"
+    if [[ "$result" == "Failed" || "$result" == "Stopped" ]]; then
+        $UPGRADE download >/dev/null 2>&1 &
+        printf '{"progress": "0", "status": "download"}'
+        return 0
+    elif [ "$result" != "Success" ]; then
+        [ $((total)) -gt 0 ] && prog1=$((size * 100 / total))
+        printf '{"progress": "%d", "status": "download"}' "$((prog1 / 2))"
+        return 0
+    fi
+    prog1=100
+
+    # upgrade
+    read -r result size total <<<"$($UPGRADE start q | awk -F'[: ]' '{print $1, $3, $4}')"
+    if [[ "$result" == "Failed" || "$result" == "Stopped" ]]; then
+        $UPGRADE start >/dev/null 2>&1 &
+        printf '{"progress": "50", "status": "upgrade"}'
+        return 0
+    fi
+    if [ "$result" = "Success" ]; then
+        prog2=100
+    else
+        [ $((total)) -gt 0 ] && prog2=$((size * 100 / total))
+    fi
+    printf '{"progress": "%d", "status": "upgrade"}' $(((prog1 + prog2) / 2))
+}
+
+function updateSystem() {
+    rm -f "$WORK_DIR/upgrade"*
+    echo $STR_OK
+}
+
 # tmp work dir
 if [ ! -d $WORK_DIR ]; then
     mkdir -p $WORK_DIR
@@ -462,8 +533,4 @@ if [ ! -d $WORK_DIR ]; then
 fi
 
 # call function
-if [ "$(type $1)" == "$1 is a function" ]; then
-    $1 $@
-else
-    echo "Not found"
-fi
+$1 $@
