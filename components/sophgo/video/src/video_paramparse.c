@@ -17,7 +17,7 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_ov5647 = {
     .enSnsType = SENSOR_OV_OV5647,
     .s32Framerate = 30,
     .s32BusId = 2,
-    .s32I2cAddr = 36,
+    .s32I2cAddr = 0x36,
     .MipiDev = 0,
     .as16LaneId = { 2, 0, 3, -1, -1 },
     .as8PNSwap = { 0, 0, 0, 0, 0 },
@@ -33,7 +33,7 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_sc530ai = {
     .enSnsType = SENSOR_SMS_SC530AI_2L,
     .s32Framerate = 30,
     .s32BusId = 2,
-    .s32I2cAddr = 30,
+    .s32I2cAddr = 0x30,
     .MipiDev = 0,
     .as16LaneId = { 2, 0, 3, -1, -1 },
     .as8PNSwap = { 0, 0, 0, 0, 0 },
@@ -43,6 +43,24 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_sc530ai = {
     .bHwSync = 0,
     .u8UseDualSns = 0,
 };
+
+static const APP_PARAM_SNS_CFG_T sns_cfg_gc2053 = {
+    .s32SnsId = 0,
+    .enSnsType = SENSOR_GCORE_GC2053,
+    .s32Framerate = 30,
+    .s32BusId = 2,
+    .s32I2cAddr = 0x3f,
+    .MipiDev = 0,
+    .as16LaneId = { 2, 0, 3, -1, -1 },
+    .as8PNSwap = { 0, 0, 0, 0, 0 },
+    .bMclkEn = 1,
+    .u8Mclk = 0,
+    .u8Orien = ISP_SNS_MIRROR,
+    .bHwSync = 0,
+    .u8UseDualSns = 0,
+};
+
+
 
 static const APP_PARAM_DEV_CFG_T dev_cfg = {
     .ViDev = 0,
@@ -289,7 +307,7 @@ int app_ipcam_Param_setVencChnType(int ch, PAYLOAD_TYPE_E enType)
     return CVI_SUCCESS;
 }
 
-static const APP_PARAM_SNS_CFG_T* supported_sensors[] = { &sns_cfg_ov5647, &sns_cfg_sc530ai };
+static const APP_PARAM_SNS_CFG_T* supported_sensors[] = { &sns_cfg_ov5647, &sns_cfg_sc530ai, &sns_cfg_gc2053 };
 static const APP_PARAM_SNS_CFG_T* vi_sensor_identify(void)
 {
     VI_PIPE ViPipe = 0;
@@ -337,6 +355,8 @@ char* app_ipcam_Isp_pq_bin(void)
 
     if (vi->astSensorCfg[0].enSnsType == SENSOR_SMS_SC530AI_2L) {
         sprintf(pq_bin, PQ_BIN_SDR_PREFIX"_sc530ai_2l");
+    } else if (vi->astSensorCfg[0].enSnsType == SENSOR_GCORE_GC2053) {
+        sprintf(pq_bin, PQ_BIN_SDR_PREFIX"_gc2053");
     }
 
     return pq_bin;
