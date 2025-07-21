@@ -165,12 +165,12 @@ export function useData() {
         disConnectedList.push(item);
       }
     });
-    hasConnectedList.sort(function (a, b) {
-      return b.signal - a.signal;
-    });
-    disConnectedList.sort(function (a, b) {
-      return b.signal - a.signal;
-    });
+    // hasConnectedList.sort(function (a, b) {
+    //   return b.signal - a.signal;
+    // });
+    // disConnectedList.sort(function (a, b) {
+    //   return b.signal - a.signal;
+    // });
 
     setStates({
       wifiList: [
