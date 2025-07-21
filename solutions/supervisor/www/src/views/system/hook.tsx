@@ -90,7 +90,7 @@ export function useData() {
       } catch (err) {
         onCancleReset();
       }
-    }, 1000);
+    }, 2000);
   };
   const onUpdateApply = async () => {
     try {
