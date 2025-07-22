@@ -108,7 +108,10 @@ private:
     bool websocket_;
     int audio_;
     int option_;
+    int fps_;
     int light_;
+    bool mirror_;
+    bool flip_;
     Thread* thread_;
     Thread* thread_audio_;
     MessageBox frame_;
