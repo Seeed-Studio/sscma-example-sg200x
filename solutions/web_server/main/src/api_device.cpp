@@ -182,7 +182,12 @@ api_status_t api_device::getModelFile(request_t req, response_t res)
 api_status_t api_device::getModelInfo(request_t req, response_t res)
 {
     auto&& data = parse_result(script(__func__));
-    std::ifstream(data.value("file", "")) >> data["model_info"];
+    std::ifstream file(data.value("file", ""));
+    if (!file.is_open()) {
+        response(res, 0, STR_OK, { { "model_info", "" } });
+        return API_STATUS_OK;
+    }
+    file >> data["model_info"];
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
@@ -200,7 +205,7 @@ api_status_t api_device::getModelList(request_t req, response_t res)
 
     json data;
     data["count"] = count;
-    for (auto&& item : list["list"]) {
+    for (auto&& item : list["list"]) { // Compatible with previous
         if (auto fname = item.get<std::string>(); !fname.empty()) {
             auto&& info = parse_result(std::ifstream(fname + ".json"));
             info["id"] = info.value("model_id", "");
@@ -256,7 +261,7 @@ api_status_t api_device::cancelUpdate(request_t req, response_t res)
 
 api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res)
 { // typo
-    std::string result = script(__func__);
+    auto result = script(__func__);
     auto&& data = parse_result(result);
     LOGV("%s", data.dump().c_str());
     if (data.empty()) {
@@ -269,7 +274,7 @@ api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res
 
 api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 {
-    std::string result = script(__func__);
+    auto result = script(__func__);
     auto&& data = parse_result(result);
     LOGV("%s", data.dump().c_str());
     if (data.empty()) {

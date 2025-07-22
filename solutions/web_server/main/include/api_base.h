@@ -60,7 +60,6 @@ public:
 
     virtual ~api_base() = default;
 
-
     void register_api(std::string uri, api_handler_t handler, bool no_auth = false)
     {
         _api_map[_group.empty() ? uri : _group + "/" + uri] = std::make_unique<rest_api>(handler, no_auth);
@@ -95,6 +94,29 @@ public:
             }
         }
         return (*api->second)(req, res);
+    }
+
+    using vvstr_t = std::vector<std::vector<std::string>>;
+    static vvstr_t parse_file(std::string file, char delimiter = ' ', bool skip_header = false)
+    {
+        vvstr_t result;
+        std::ifstream f(file);
+        if (!f.is_open()) {
+            LOGE("Failed to open file: %s", file.c_str());
+            return result;
+        }
+
+        std::string line;
+        if (skip_header)
+            std::getline(f, line);
+        while (std::getline(f, line)) {
+            if (line.empty())
+                continue;
+            std::vector<std::string> fields;
+            string_split(line, delimiter, fields);
+            result.push_back(fields);
+        }
+        return result;
     }
 
     template <typename... Args>
@@ -176,29 +198,6 @@ public:
     }
 
 protected:
-    static constexpr uint32_t TOKEN_EXPIRATION_TIME = 3 * 60 * 60 * 24; // 3 days
-
-    static void save_token(std::string& token)
-    {
-        _tokens[token] = time(nullptr);
-        LOGV("save_token: %s, time: %ld", token.c_str(), _tokens[token]);
-    }
-
-    static bool check_token(std::string& token)
-    {
-        if (_tokens.find(token) == _tokens.end()) {
-            LOGE("Not found token");
-            return false;
-        }
-        if (_tokens[token] + TOKEN_EXPIRATION_TIME < time(nullptr)) {
-            LOGV("Expired token");
-            _tokens.erase(token);
-            return false;
-        }
-        LOGV("Valid token");
-        return true;
-    }
-
     // utils
     static void string_split(std::string s, const char delimiter, std::vector<std::string>& output)
     {
@@ -240,7 +239,6 @@ private:
 
     static inline bool _force_no_auth = false;
     static inline std::string _script;
-    static inline std::unordered_map<std::string, time_t> _tokens;
     static inline std::unordered_map<std::string, std::unique_ptr<rest_api>> _api_map;
 
     static api_status_t version(request_t req, response_t res)

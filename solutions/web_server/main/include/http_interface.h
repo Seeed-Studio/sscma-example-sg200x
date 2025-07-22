@@ -18,13 +18,6 @@ typedef const struct mg_http_message* request_t;
 typedef json& response_t;
 typedef api_status_t (*api_handler_t)(request_t req, response_t res);
 
-typedef struct {
-    std::string name;
-    std::string filename;
-    char* data;
-    size_t len;
-} multipart_t;
-
 class http_interface {
 public:
     http_interface() = default;
@@ -35,7 +28,7 @@ protected:
     static inline const std::string STR_FAILED = "Failed";
 
     static void response(response_t res, int code = 0,
-        const std::string& msg = STR_OK, const json& data = json({}))
+        const std::string& msg = STR_OK, const json& data = json::object())
     {
         res["code"] = code;
         res["msg"] = msg;
@@ -68,6 +61,15 @@ protected:
             : "";
     }
 
+    static std::string get_param(request_t req, std::string param)
+    {
+        auto&& val = _get_http_var(req, param);
+        if (!val.empty()) {
+            return val;
+        }
+        return _get_header_var(req, param.c_str());
+    }
+
     static json parse_body(request_t req)
     {
         std::string type = _get_header_var(req, "Content-Type");
@@ -89,20 +91,16 @@ protected:
         return data;
     }
 
-    static std::string get_param(request_t req, std::string param)
-    {
-        auto&& val = _get_http_var(req, param);
-        if (!val.empty()) {
-            return val;
-        }
-        return _get_header_var(req, param.c_str());
-    }
-
+    typedef struct {
+        std::string name;
+        std::string filename;
+        char* data;
+        size_t len;
+    } multipart_t;
     static std::vector<multipart_t> get_multiparts(request_t req, const std::string& param = "")
     {
         std::vector<multipart_t> parts;
         auto&& type = _get_header_var(req, "Content-Type");
-
         if (type.find("multipart/form-data") != std::string::npos) {
             size_t pos = 0;
             struct mg_http_part part;
@@ -128,7 +126,33 @@ protected:
         return parts;
     }
 
+    // token
+    static constexpr uint32_t TOKEN_EXPIRATION_TIME = 3 * 60 * 60 * 24; // 3 days
+
+    static void save_token(std::string& token)
+    {
+        _tokens[token] = time(nullptr);
+        LOGV("save_token: %s, time: %ld", token.c_str(), _tokens[token]);
+    }
+
+    static bool check_token(std::string& token)
+    {
+        if (_tokens.find(token) == _tokens.end()) {
+            LOGE("Not found token");
+            return false;
+        }
+        if (_tokens[token] + TOKEN_EXPIRATION_TIME < time(nullptr)) {
+            LOGV("Expired token");
+            _tokens.erase(token);
+            return false;
+        }
+        LOGV("Valid token");
+        return true;
+    }
+
 private:
+    static inline std::unordered_map<std::string, time_t> _tokens;
+
     static std::string _get_http_var(request_t req, std::string param)
     {
         struct mg_str v = mg_http_var(req->query, mg_str(param.c_str()));

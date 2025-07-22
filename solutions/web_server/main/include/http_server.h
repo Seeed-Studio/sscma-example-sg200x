@@ -24,12 +24,12 @@ public:
         , _key(key)
         , _root_dir(root_dir)
     {
+        _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/scripts/main.sh"));
         _apis.emplace_back(std::make_unique<api_device>());
         _apis.emplace_back(std::make_unique<api_file>());
         _apis.emplace_back(std::make_unique<api_led>());
         _apis.emplace_back(std::make_unique<api_user>());
         _apis.emplace_back(std::make_unique<api_wifi>());
-        _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/scripts/main.sh"));
         mg_mgr_init(&mgr);
 
         api_base::set_force_no_auth(no_auth);
@@ -65,7 +65,7 @@ public:
         worker = std::thread([this]() {
             running = true;
             while (running)
-                mg_mgr_poll(&mgr, 50);
+                mg_mgr_poll(&mgr, 10);
             LOGV("poll_loop exit");
         });
 
@@ -122,6 +122,18 @@ private:
                 return;
             } else if (status != API_STATUS_NEXT) {
                 mg_http_reply(c, 500, "Content-Type: text/plain\r\n", "Internal Server Error");
+                return;
+            }
+
+            // redirection
+            std::string uri(hm->uri.buf, hm->uri.len);
+            if (!(uri == "/"
+                    || uri.find(".png") != std::string::npos
+                    || uri.find(".html") != std::string::npos
+                    || uri.find("assets") != std::string::npos
+                    || uri.find("js") != std::string::npos)) {
+                LOGV("redirect============>");
+                mg_http_reply(c, 308, "Location: http://192.168.16.1/\r\n", "");
                 return;
             }
 
