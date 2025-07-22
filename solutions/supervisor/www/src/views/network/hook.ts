@@ -1,7 +1,7 @@
 import { useEffect, Reducer, useReducer, useRef } from "react";
 import { FormInstance } from "antd-mobile/es/components/form";
 import {
-  getWifiListApi,
+  // getWifiListApi,
   getWifiResultListApi,
   getDeviceWifiInfoApi,
   switchWiFiApi,
@@ -43,10 +43,10 @@ const initialWifiList = [
     list: [],
   },
 ];
-const timeGap = 30000;
+const timeGap = 5000;
 let timer: NodeJS.Timeout | null = null;
-let resultTimer: NodeJS.Timeout | null = null;
-let resultTotalCount = 0;
+// let resultTimer: NodeJS.Timeout | null = null;
+// let resultTotalCount = 0;
 
 export enum OperateType {
   Connect = "Connect",
@@ -190,32 +190,40 @@ export function useData() {
       hasWired: !!internetList.length,
     });
   };
-  const onStopGetWifiResultsList = () => {
-    resultTimer && clearInterval(resultTimer);
-  };
+  // const onStopGetWifiResultsList = () => {
+  //   resultTimer && clearInterval(resultTimer);
+  // };
   const getWifiResults = async () => {
     const { data } = await getWifiResultListApi();
     filterList(data.wifiInfoList, data.etherinfo);
   };
-  const getWifiInterval = async () => {
-    getWifiResults();
+  // const getWifiInterval = async () => {
+  //   getWifiResults();
 
-    resultTimer = setInterval(() => {
-      if (resultTotalCount >= 3) {
-        onStopGetWifiResultsList();
-      } else {
-        // 3秒内 每秒获取一次result
-        resultTotalCount++;
-        getWifiResults();
-      }
-    }, 1000);
+  //   resultTotalCount = 0;
+  //   resultTimer = setInterval(() => {
+  //     if (resultTotalCount >= 3) {
+  //       onStopGetWifiResultsList();
+  //     } else {
+  //       // 3秒内 每秒获取一次result
+  //       resultTotalCount++;
+  //       getWifiResults();
+  //     }
+  //     console.log(resultTotalCount);
+  //   }, 1000);
+  // };
+  const getWifiInterval = async () => {
+    const status = await getDeviceWifiInfo();
+    if (status != WifiStatus.Disable) {
+      getWifiResults();
+    }
   };
   const getWifiList = async () => {
     try {
       if (state.visible || state.wifiVisible) return;
-      await getWifiListApi({
-        scanTime: 0.2,
-      });
+      // await getWifiListApi({
+      //   scanTime: 0.2,
+      // });
       // wifi没有开启不需要开启自动刷新
       if (!state.wifiChecked) return;
       getWifiInterval();
@@ -364,6 +372,8 @@ export function useData() {
     setStates({
       submitLoading: false,
     });
+
+    onAutoRefreshWifiList();
   };
   // 刷新wifi状态
   const refreshWifiStatus = async () => {
