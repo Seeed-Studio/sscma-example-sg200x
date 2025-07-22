@@ -356,6 +356,8 @@ static const APP_PARAM_SNS_CFG_T* vi_sensor_identify(void) {
 char* app_ipcam_Isp_pq_bin(void) {
     static char pq_bin[64] = "/mnt/cfg/param/";
 
+    snprintf(pq_bin, sizeof(pq_bin), "/mnt/cfg/param/");
+
     APP_PARAM_VI_CTX_S* vi = app_ipcam_Vi_Param_Get();
 
     if (vi->astSensorCfg[0].enSnsType == SENSOR_SMS_SC530AI_2L) {
