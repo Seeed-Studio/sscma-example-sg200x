@@ -28,7 +28,9 @@ AVAHI_SERVICE="/etc/init.d/S50avahi-daemon"
 MODELS_DIR="/usr/share/supervisor/models"
 PLATFORM_INFO="/usr/share/supervisor/platform.info"
 
-PATH_UPGRADE_URL="/etc/upgrade"
+CONFIG_DIR="/etc/recamera.conf"
+
+CONF_UPGRADE="$CONFIG_DIR/upgrade"
 DEFAULT_UPGRADE_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
 
 USER_DIR="/userdata"
@@ -37,6 +39,17 @@ MODEL_DIR="$USER_DIR/MODEL"
 MODEL_SUFFIX=".cvimodel"
 MODEL_FILE="$MODEL_DIR/model${MODEL_SUFFIX}"
 MODEL_INFO="$MODEL_DIR/model.json"
+
+CONF_WIFI="$CONFIG_DIR/wifi"
+WPA_SUPPLICANT_CONF="/etc/wpa_supplicant.conf"
+HOSTAPD_CONF="/etc/hostapd_2g4.conf"
+WPA_CLI="wpa_cli -i wlan0"
+
+function compatible() {
+    [ ! -d "$CONFIG_DIR" ] && mkdir -p "$CONFIG_DIR"
+    [ -f "/etc/upgrade" ] && mv /etc/upgrade $CONF_UPGRADE
+}
+compatible
 
 function _is_key_valid() {
     local tmp=$(mktemp)
@@ -222,27 +235,27 @@ function _os_version() {
 }
 
 function _wifi_status() {
-    local ifname=$2
+    local ifname=$1
     wpa_cli -i $ifname status 2>/dev/null | grep "^wpa_state" | awk -F= '{print $2}'
 }
 
 function _ip() {
-    local ifname=$2
+    local ifname=$1
     ifconfig $ifname 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{print $2}'
 }
 
 function _mask() {
-    local ifname=$2
+    local ifname=$1
     ifconfig $ifname 2>/dev/null | awk '/Mask:/ {print $4}' | awk -F':' '{print $2}'
 }
 
 function _mac() {
-    local ifname=$2
+    local ifname=$1
     ifconfig $ifname 2>/dev/null | awk '/HWaddr/ {print $5}'
 }
 
 function _gateway() {
-    local ifname=$2
+    local ifname=$1
     route -n | grep '^0.0.0.0' | grep -w $ifname | awk '{print $2}'
 }
 
@@ -280,28 +293,28 @@ function updateDeviceName() {
 function queryDeviceInfo() {
     local dev_name=$(cat $HOSTNAME_FILE)
     local sn=$(fw_printenv sn | awk -F'=' '{print $NF}')
+    local eth wifi mask mac gateway dns
 
-    local ip=""
-    local mask=""
-    local mac=""
-    local gateway=""
-    local dns="-"
-
+    eth=$(_ip "eth0")
     local ifname="wlan0"
-    if [ $(_wifi_status $1 $ifname) = "COMPLETED" ]; then
-        ip=$(_ip $1 $ifname)
-        mask=$(_mask $1 $ifname)
-        mac=$(_mac $1 $ifname)
-        gateway=$(_gateway $1 $ifname)
+    if [ $(_wifi_status $ifname) = "COMPLETED" ]; then
+        wifi=$(_ip $ifname)
+    else
+        ifname="eth0"
     fi
-    [ -z $ip ] && ip="-"
-    [ -z $mask ] && mask="-"
-    [ -z $mac ] && mac="-"
-    [ -z $gateway ] && gateway="-"
-    dns=$gateway
+    mask=$(_mask $ifname)
+    mac=$(_mac $ifname)
+    gateway=$(_gateway $ifname)
 
-    local ch=$(cat $PATH_UPGRADE_URL 2>/dev/null | awk -F',' '{print $1}')
-    local url=$(cat $PATH_UPGRADE_URL 2>/dev/null | awk -F',' '{print $2}')
+    [ -z "$eth" ] && eth="-"
+    [ -z "$wifi" ] && wifi="-"
+    [ -z "$mask" ] && mask="-"
+    [ -z "$mac" ] && mac="-"
+    [ -z "$gateway" ] && gateway="-"
+    dns="$gateway"
+
+    local ch=$(cat $CONF_UPGRADE 2>/dev/null | awk -F',' '{print $1}')
+    local url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F',' '{print $2}')
     [ -z $ch ] && ch=0
 
     local os_name=$(_os_name)
@@ -309,6 +322,7 @@ function queryDeviceInfo() {
     local upgraded=0
 
     printf '{"deviceName": "%s", "sn": "%s",
+"ethIp": "%s",
 "wifiIp": "%s", "mask": "%s", "mac": "%s", "gateway": "%s", "dns": "%s",
 "channel": %s, "serverUrl": "%s", "officialUrl": "%s",
 "osName": "%s", "osVersion": "%s",
@@ -316,7 +330,8 @@ function queryDeviceInfo() {
 "terminalPort": %s, "needRestart": %s
 }' \
         "${dev_name}" "${sn}" \
-        "${ip}" "${mask}" "${mac}" "${gateway}" "${dns}" \
+        "${eth}" \
+        "${wifi}" "${mask}" "${mac}" "${gateway}" "${dns}" \
         "${ch}" "${url}" "${DEFAULT_UPGRADE_URL}" \
         "${os_name}" "${os_version}" \
         "${CPU_NAME}" "${RAM_SIZE}" "${NPM_NUM}" \
@@ -328,7 +343,7 @@ function updateChannel() {
     # echo "It's upgrading now..."
     local ch=$2
     local url=$3
-    echo $ch,$url >$PATH_UPGRADE_URL
+    echo $ch,$url >$CONF_UPGRADE
     echo $STR_OK
 }
 
@@ -411,16 +426,16 @@ function queryServiceStatus() {
 }
 
 function getDeviceList() {
-    local file=$WORK_DIR/avahi-browse.out
-    local parse=$WORK_DIR/avahi-browse.parse
-    if [ -f $file ]; then
-        cp $file $parse
-        rm $file
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    local tmp=$WORK_DIR/${file}.tmp
+    if [ -f $tmp ]; then
+        cp $tmp $out
+        rm $tmp
     fi
-    avahi-browse -arpt >$file &
+    avahi-browse -arpt >$tmp &
 
-    [ ! -f $parse ] && >$parse
-    printf '{"file": "%s"}' $parse
+    [ ! -f $out ] && >$out
+    printf '{"file": "%s"}' $out
 }
 
 # api_file
@@ -524,6 +539,191 @@ function getUpdateProgress() {
 function updateSystem() {
     rm -f "$WORK_DIR/upgrade"*
     echo $STR_OK
+}
+
+# wifi
+function _check_wifi() {
+    if [ -z "$(ifconfig wlan0 2>/dev/null)" ]; then
+        return 1 # no wifi
+    fi
+    return 0
+}
+
+function sta_start() {
+    _check_wifi || return 0
+    ifconfig wlan0 down
+    ifconfig wlan0 up
+    wpa_supplicant -B -i wlan0 -c $WPA_SUPPLICANT_CONF >/dev/null 2>&1
+}
+
+function sta_stop() {
+    _check_wifi || return 0
+    local pids=$(pidof "wpa_supplicant")
+    for pid in $pids; do
+        [ -d "/proc/$pid" ] && kill -9 $pid
+    done
+}
+
+function ap_start() {
+    _check_wifi || return 0
+    ifconfig wlan1 down
+    ifconfig wlan1 up
+    hostapd -B $HOSTAPD_CONF >/dev/null 2>&1
+}
+
+function ap_stop() {
+    _check_wifi || return 0
+    local pids=$(pidof "hostapd")
+    for pid in $pids; do
+        [ -d "/proc/$pid" ] && kill -9 $pid
+    done
+}
+
+function start_wifi() {
+    _check_wifi || {
+        echo "-1"
+        return 0
+    }
+
+    [ ! -f "$CONF_WIFI" ] && echo 1 >"$CONF_WIFI"
+    local on=$(cat "$CONF_WIFI")
+    if [ "$on" = "1" ]; then
+        sta_start
+        ap_start
+    fi
+    echo "$on"
+}
+
+function stop_wifi() {
+    sta_stop
+    ap_stop
+}
+
+function switchWiFi() {
+    echo $2 >"$CONF_WIFI"
+    if [ "$2" = "0" ]; then
+        stop_wifi
+    else
+        start_wifi
+    fi
+}
+
+function get_networks() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    $WPA_CLI list_networks 2>/dev/null >$out
+    echo "$out"
+}
+
+function get_current() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    $WPA_CLI status 2>/dev/null >$out
+    echo "$out"
+}
+
+function get_eth() {
+    local ifname="eth0"
+    local ip=$(_ip "$ifname")
+    local mask=$(_mask "$ifname")
+    local mac=$(_mac "$ifname")
+    local gateway=$(_gateway "$ifname")
+    printf '{"ip": "%s", "mask": "%s", "mac": "%s", "gateway": "%s", "dns1": "", "dns2": ""}' \
+        "$ip" "$mask" "$mac" "$gateway"
+}
+
+function _get_scan_results() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    >"$out"
+
+    local scan_ok=0
+    for ((i=1; i<=5; i++)); do
+        if [[ "$($WPA_CLI scan 2>/dev/null)" == "OK" ]]; then
+            scan_ok=1
+            break
+        fi
+        sleep 0.5
+    done
+    
+    [[ $scan_ok -eq 0 ]] && { return 1; }
+
+    sleep 3;
+    $WPA_CLI scan_results 2>/dev/null | while IFS= read -r line; do
+        printf "%b\n" "$line" >>"$out";
+    done
+}
+
+function getWiFiScanResults() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    local result="$WORK_DIR/_get_scan_results"
+
+    if [ -s "$result" ]; then
+        cp "$result" "$out"
+    fi
+    _get_scan_results >/dev/null 2>&1 &
+
+    [ -f "$out" ] || >"$out"
+    echo "$out"
+}
+
+function set_priority() {
+    local id="$1"
+    local priority="$2"
+    $WPA_CLI set_network "$id" priority "$priority" 2>&1
+}
+
+function connectWiFi() {
+    local cur=$2 id=$3
+    local ssid="$4" pwd="$5"
+
+    [ $((id)) -lt 0 ] && { # create new
+        id=$($WPA_CLI add_network)
+
+        local ret=$($WPA_CLI set_network "$id" ssid "\"$ssid\"")
+        [ "$ret" != "OK" ] && {
+            $WPA_CLI remove_network "$id" >/dev/null 2>&1
+            return
+        }
+
+        [ -z "$pwd" ] && {
+            $WPA_CLI set_network "$id" key_mgmt NONE >/dev/null 2>&1
+        } || {
+            ret=$($WPA_CLI set_network "$id" psk "\"$pwd\"")
+            [ "$ret" != "OK" ] && {
+                $WPA_CLI remove_network "$id" >/dev/null 2>&1
+                return
+            }
+        }
+    }
+
+    local ids=$($WPA_CLI list_networks 2>/dev/null | awk -F'\t' '{print $1}')
+    for i in $ids; do
+        $WPA_CLI set_network "$i" priority 0 >/dev/null 2>&1
+    done
+
+    [ $((id)) -ge 0 ] && {
+        $WPA_CLI set_network "$id" priority 100 >/dev/null 2>&1
+        $WPA_CLI enable_network "$id" >/dev/null 2>&1
+    }
+    $WPA_CLI disconnect >/dev/null 2>&1
+    $WPA_CLI reconnect >/dev/null 2>&1
+    $WPA_CLI save_config
+}
+
+function disconnectWiFi() {
+    local ssid="$2"
+    local ids=$($WPA_CLI list_networks 2>/dev/null | grep -w "$ssid" | awk -F'\t' '{print $1}')
+    for id in $ids; do
+        $WPA_CLI disable_network $id >/dev/null 2>&1
+    done
+    $WPA_CLI save_config
+}
+
+function forgetWiFi() {
+    local ssid="$2"
+    local ids=$($WPA_CLI list_networks | grep -w "$ssid" | awk -F'\t' '{print $1}')
+    for id in $ids; do
+        $WPA_CLI remove_network $id >/dev/null 2>&1
+    done
+    $WPA_CLI save_config
 }
 
 # tmp work dir
