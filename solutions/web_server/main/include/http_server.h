@@ -64,6 +64,8 @@ public:
 
         worker = std::thread([this]() {
             running = true;
+            signal(SIGUSR1, [](int sig) {
+            });
             while (running)
                 mg_mgr_poll(&mgr, -1);
             LOGV("poll_loop exit");
@@ -75,11 +77,9 @@ public:
     void stop()
     {
         LOGV("");
-        for (struct mg_connection* c = mgr.conns; c != NULL; c = c->next) {
-            mg_wakeup(&mgr, c->id, "exit", strlen("exit"));
-        }
         if (running) {
             running = false;
+            pthread_kill(worker.native_handle(), SIGUSR1);
             if (worker.joinable()) {
                 worker.join();
             }
