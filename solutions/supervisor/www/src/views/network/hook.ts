@@ -373,6 +373,7 @@ export function useData() {
       submitLoading: false,
     });
 
+    getWifiInterval();
     onAutoRefreshWifiList();
   };
   // 刷新wifi状态
