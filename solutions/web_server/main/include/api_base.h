@@ -124,7 +124,7 @@ public:
     {
         int timeout_sec = 30;
         std::stringstream ss;
-        ((ss << std::forward<Args>(args) << " "), ...);
+        ((ss << "\"" << std::forward<Args>(args) << "\" "), ...);
         std::string args_str = ss.str();
         if (!args_str.empty())
             args_str.pop_back();

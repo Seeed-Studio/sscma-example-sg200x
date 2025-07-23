@@ -79,7 +79,6 @@ json api_wifi::get_eth()
 // APIs
 api_status_t api_wifi::connectWiFi(request_t req, response_t res)
 {
-    // _wifi_ctrl(req, res, __func__);
     auto&& body = parse_body(req);
     std::string ssid = body.value("ssid", "");
     if (ssid.empty()) {
@@ -87,18 +86,14 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
         return API_STATUS_OK;
     }
 
-    int cur = -1;
     int id = -1;
     auto&& n = get_networks();
     for (auto& _n : n) {
-        if (_n.value("flags", "").find("CURRENT") != std::string::npos) {
-            cur = stoi(_n.value("id", "-1"));
-        }
         if (_n.value("ssid", "") == ssid) {
             id = stoi(_n.value("id", "-1"));
         }
     }
-    script(__func__, cur, id, ssid, body.value("password", ""));
+    script(__func__, id, ssid, body.value("password", ""));
 
     int i = 60;
     while (i--) {
