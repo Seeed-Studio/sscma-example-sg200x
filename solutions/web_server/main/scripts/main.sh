@@ -596,8 +596,8 @@ function start_wifi() {
 }
 
 function stop_wifi() {
-    _sta_stop
-    _ap_stop
+    _sta_stop >/dev/null 2>&1 &
+    _ap_stop >/dev/null 2>&1 &
 }
 
 function switchWiFi() {
