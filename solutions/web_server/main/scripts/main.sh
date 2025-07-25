@@ -129,18 +129,19 @@ UPGRADE="$DIR_SCRIPTS/upgrade.sh"
 
 UPGRADE_CANCEL="$WORK_DIR/upgrade.cancel"
 UPGRADE_DONE="$WORK_DIR/upgrade.done"
+UPGRADE_MUTEX="$WORK_DIR/upgrade.mutex"
 UPGRADE_PROG="$WORK_DIR/upgrade.prog"
 
+_upgrading() { [ -f "$UPGRADE_PROG" ] && echo "1" || echo "0"; }
 _upgrade_done() { [ -f "$UPGRADE_DONE" ] && echo "1" || echo "0"; }
 
 function updateChannel() {
-    if [ -f "$UPGRADE_PROG" ]; then
+    if [ "$(_upgrading)" = "1" ]; then
         echo "It's upgrading now..."
         return 1
     fi
 
-    local ch=$2
-    local url=$3
+    local ch=$2 url=$3
     echo $ch,$url >$CONF_UPGRADE
     echo $STR_OK
 }
@@ -154,40 +155,49 @@ function cancelUpdate() {
 }
 
 function getSystemUpdateVersion() {
-    local out
+    local out="" url=""
+    local ch=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $1}')
+    if [ $((ch)) -ne 0 ]; then
+        url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $2}')
+    fi
+    local os="" ver=""
     for i in {1..3}; do
+        $UPGRADE latest $url >/dev/null 2>&1
         out=$($UPGRADE latest q)
         [ "$(echo $out | cut -d':' -f1)" = "Success" ] && {
-            local out2 os_name os_version url upgrade
             out2=$(echo $out | cut -d':' -f2)
-            os_name=$(echo $out2 | cut -d' ' -f1)
-            os_version=$(echo $out2 | cut -d' ' -f2)
-            url=$(cat /tmp/upgrade/url.txt 2>/dev/null)
-            out2=$($UPGRADE download q)
-            [ "$out2" != "Stopped" ] && upgrade=1
-            printf '{"osName": "%s", "osVersion": "%s", "downloadUrl": "%s", "isUpgrading": "%d"}' \
-                $os_name $os_version $url $((upgrade))
-            return 0
+            os=$(echo $out2 | cut -d' ' -f1)
+            ver=$(echo $out2 | cut -d' ' -f2)
+            break
         }
-        $UPGRADE latest >/dev/null 2>&1
     done
-    echo "$out"
+
+    # result
+    if [ -z "$os" ] || [ -z "$ver" ]; then
+        echo "$out"
+        return 1
+    fi
+    printf '{"osName": "%s", "osVersion": "%s", "downloadUrl": "%s", "isUpgrading": "%s"}' \
+        "$os" "$ver" ${url:-$DEFAULT_UPGRADE_URL} "$(_upgrading)"
 }
 
 _upgrade_prog() {
-    local mutex=$WORK_DIR/${FUNCNAME[0]}
+    local mutex="$UPGRADE_MUTEX"
     [ -f "$mutex" ] && { return 0; }
     >$mutex
     local result size total prog1 prog2
+
     # download
     read -r result size total <<<"$($UPGRADE download q | awk -F'[: ]' '{print $1, $3, $4}')"
     if [[ "$result" == "Failed" || "$result" == "Stopped" ]]; then
         $UPGRADE download >/dev/null 2>&1 &
         printf '{"progress": "0", "status": "download"}'
+        rm -f "$mutex"
         return 0
     elif [ "$result" != "Success" ]; then
         [ $((total)) -gt 0 ] && prog1=$((size * 100 / total))
         printf '{"progress": "%d", "status": "download"}' "$((prog1 / 2))"
+        rm -f "$mutex"
         return 0
     fi
     prog1=100
@@ -197,6 +207,7 @@ _upgrade_prog() {
     if [[ "$result" == "Failed" || "$result" == "Stopped" ]]; then
         $UPGRADE start >/dev/null 2>&1 &
         printf '{"progress": "50", "status": "upgrade"}'
+        rm -f "$mutex"
         return 0
     fi
     if [ "$result" = "Success" ]; then
@@ -204,7 +215,6 @@ _upgrade_prog() {
     else
         [ $((total)) -gt 0 ] && prog2=$((size * 100 / total))
     fi
-
     total=$(((prog1 + prog2) / 2))
     printf '{"progress": "%d", "status": "upgrade"}' $total
 
@@ -343,7 +353,6 @@ function deleteSShkey() {
         echo "Invalid id=$line"
         exit 1
     fi
-
     # Todo: skip comment line
     sed -i "${line}d" "$SSH_KEY_FILE"
     echo $STR_OK
@@ -551,7 +560,6 @@ _wpa_set_networks() {
 
 function disconnectWiFi() { _wpa_set_networks "$2" disable_network; }
 function forgetWiFi() { _wpa_set_networks "$2" remove_network; }
-
 # network
 ##################################################
 

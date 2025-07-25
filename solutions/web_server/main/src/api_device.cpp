@@ -269,15 +269,22 @@ api_status_t api_device::savePlatformInfo(request_t req, response_t res)
 api_status_t api_device::updateChannel(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
-    const auto& ch = body.value("channel", 0);
-    const auto& url = body.value("serverUrl", "");
-    if (ch > 0) {
-        if (url.empty()) {
-            response(res, 0, script(__func__, ch, url));
-            response(res);
-            return API_STATUS_OK;
+    auto ch = 0;
+    if (body.contains("channel")) {
+        if (body["channel"].is_number_integer()) {
+            ch = body["channel"].get<int>();
+        } else if (body["channel"].is_string()) {
+            try {
+                ch = std::stoi(body["channel"].get<std::string>());
+            } catch (...) {
+                ch = 0;
+            }
         }
-        if (url.compare(0, 7, "http://") != 0
+    }
+    auto url = body.value("serverUrl", "");
+    if (ch != 0) {
+        if (!url.empty()
+            && url.compare(0, 7, "http://") != 0
             && url.compare(0, 8, "https://") != 0) {
             response(res, -1, "Server url is invalid.");
             return API_STATUS_OK;
