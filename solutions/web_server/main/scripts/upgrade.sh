@@ -1,6 +1,8 @@
 #!/bin/bash
 
 OFFICIAL_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
+OFFICIAL_URL2="https://files.seeedstudio.com/reCamera"
+
 MD5_FILE=sg2002_recamera_emmc_md5sum.txt
 URL_FILE=url.txt
 
@@ -241,12 +243,26 @@ latest_cmd() {
 latest() {
     latest_cmd $@
     ps_mutex
-    local url="$2"
-    [ -z "$url" ] && url="$OFFICIAL_URL"
-    step_log "Parse $url"
-    local md5_url md5_path
-    md5_url=$(get_upgrade_url "$url") || exit_upgrade "parse $url"
-    step_result "$md5_url"
+    local url="$2" md5_url=""
+    if [ -z "$url" ]; then
+        url="$OFFICIAL_URL"
+        step_log "Parse $url"
+        md5_url=$(get_upgrade_url "$url")
+        [ -z "$md5_url" ] && {
+            step_result "Failed parse $url"
+            url="$OFFICIAL_URL2/latest"
+            step_log "Parse $url"
+            local ver=$(curl -sk "$url" --connect-timeout 30 --max-time 60)
+            [ -z "$ver" ] && exit_upgrade "parse $url"
+            md5_url="$OFFICIAL_URL2/"$ver"/$MD5_FILE"
+        }
+        step_result "$md5_url"
+    else
+        step_log "Parse $url"
+        local md5_url md5_path
+        md5_url=$(get_upgrade_url "$url") || exit_upgrade "parse $url"
+        step_result "$md5_url"
+    fi
 
     md5_path="$UPGRADE_FILES/$MD5_FILE"
     rm -f "$md5_path"
