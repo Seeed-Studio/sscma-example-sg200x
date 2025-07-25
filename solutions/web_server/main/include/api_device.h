@@ -37,7 +37,9 @@ public:
     api_device()
         : api_base("deviceMgr")
     {
-        LOGV("");
+        _dev_info = parse_result(script(__func__));
+        LOGD("%s", _dev_info.dump().c_str());
+
         REG_API(getCameraWebsocketUrl);
 
         REG_API(getDeviceInfo);
@@ -70,6 +72,9 @@ public:
     {
         LOGV("");
     }
+
+private:
+    static inline json _dev_info;
 };
 
 #endif // API_DEVICE_H

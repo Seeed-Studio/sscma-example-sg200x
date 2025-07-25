@@ -12,7 +12,6 @@ private:
     static api_status_t addSShkey(request_t req, response_t res);
     static api_status_t deleteSShkey(request_t req, response_t res);
     static api_status_t setSShStatus(request_t req, response_t res);
-    static api_status_t login(request_t req, response_t res);
     static api_status_t queryUserInfo(request_t req, response_t res);
     static api_status_t updatePassword(request_t req, response_t res);
 
@@ -21,11 +20,10 @@ public:
         : api_base("userMgr")
     {
         LOGV("");
-
+        REG_API_NO_AUTH(login);
         REG_API(addSShkey);
         REG_API(deleteSShkey);
         REG_API(setSShStatus); // fixed: no auth
-        REG_API_NO_AUTH(login);
         REG_API_NO_AUTH(queryUserInfo); // fixed: no auth
         REG_API(updatePassword); // fixed: no auth
     }
@@ -36,10 +34,9 @@ public:
     }
 
 private:
-    static inline const std::string KEY_AES_128 = "zqCwT7H7!rNdP3wL";
-
-    static std::string get_username(void) { return script(__func__); }
     static std::string gen_token(void) { return script(__func__); }
+    static std::string get_username(void) { return script(__func__); }
+    static api_status_t login(request_t req, response_t res);
 
     static std::string toHex(const unsigned char* data, size_t len)
     {
@@ -54,7 +51,6 @@ private:
     {
         if (hexStr.length() % 2 != 0)
             return false;
-
         for (auto& c : hexStr)
             if (!isxdigit(c))
                 return false;
@@ -66,6 +62,7 @@ private:
         return true;
     }
 
+    static inline const std::string KEY_AES_128 = "zqCwT7H7!rNdP3wL";
     static std::string aes_encrypt(const std::string& plaintext)
     {
         AES_KEY encryptKey;

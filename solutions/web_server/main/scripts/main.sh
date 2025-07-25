@@ -4,11 +4,12 @@ STR_OK="OK"
 STR_FAILED="Failed"
 
 # conf
+USER_NAME=recamera
 CONFIG_DIR="/etc/recamera.conf"
 
 # userdata
-USER_DIR="/userdata"
-APP_DIR="$USER_DIR/app"
+APP_DIR="/userdata/app"
+MODEL_DIR="/userdata/MODEL"
 
 # work_dir
 WORK_DIR=/tmp/web_server
@@ -24,8 +25,6 @@ _compatible() {
 }
 _compatible
 
-_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -9 $pid; done; }
-
 _ip() { ifconfig "$1" 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{print $2}'; }
 _mask() { ifconfig "$1" 2>/dev/null | awk '/Mask:/ {print $4}' | awk -F':' '{print $2}'; }
 _mac() { ifconfig "$1" 2>/dev/null | awk '/HWaddr/ {print $5}'; }
@@ -35,7 +34,8 @@ _sn() { fw_printenv sn | awk -F'=' '{print $NF}'; }
 _dev_name() { cat "$HOSTNAME_FILE"; }
 _os_name() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $1}'; }
 _os_version() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $2}'; }
-_wifi_status() { wpa_cli -i "$1" status 2>/dev/null | grep "^wpa_state" | awk -F= '{print $2}'; }
+
+_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -9 $pid; done; }
 
 ##################################################
 # file
@@ -48,37 +48,10 @@ api_file() {
 
 ##################################################
 # device
-WEB_SOCKET_PORT=8000
-TTYD_PORT=9090
-CPU_NAME=sg2002
-RAM_SIZE=256
-NPM_NUM=1
-
 ISSUE_FILE="/etc/issue"
 HOSTNAME_FILE="/etc/hostname"
 AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
 AVAHI_SERVICE="/etc/init.d/S50avahi-daemon"
-
-# platform
-function getPlatformInfo() {
-    local path="$CONFIG_DIR/platform.info"
-    [ -f "$path" ] || >"$path"
-    echo "$path"
-}
-
-function savePlatformInfo() {
-    getPlatformInfo
-}
-
-# device
-function getCameraWebsocketUrl() {
-    echo "$WEB_SOCKET_PORT"
-}
-
-function getDeviceInfo() {
-    printf '{"sn": "%s", "deviceName": "%s", "status": 1, "osName": "%s", "osVersion": "%s" }' \
-        "$(_sn)" "$(_dev_name)" "$(_os_name)" "$(_os_version)"
-}
 
 function getDeviceList() {
     local out="$WORK_DIR/${FUNCNAME[0]}"
@@ -108,114 +81,39 @@ function updateDeviceName() {
 }
 
 function queryDeviceInfo() {
-    local dev_name=$(cat $HOSTNAME_FILE)
-    local sn=$(fw_printenv sn | awk -F'=' '{print $NF}')
-    local eth wifi mask mac gateway dns
-
-    eth=$(_ip "eth0")
-    local ifname="wlan0"
-    if [ $(_wifi_status $ifname) = "COMPLETED" ]; then
-        wifi=$(_ip $ifname)
-    else
-        ifname="eth0"
-    fi
-    mask=$(_mask $ifname)
-    mac=$(_mac $ifname)
-    gateway=$(_gateway $ifname)
-
-    [ -z "$eth" ] && eth="-"
-    [ -z "$wifi" ] && wifi="-"
-    [ -z "$mask" ] && mask="-"
-    [ -z "$mac" ] && mac="-"
-    [ -z "$gateway" ] && gateway="-"
-    dns="$gateway"
-
     local ch=$(cat $CONF_UPGRADE 2>/dev/null | awk -F',' '{print $1}')
     local url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F',' '{print $2}')
-    [ -z $ch ] && ch=0
-
-    printf '{"deviceName": "%s", "sn": "%s",
-"ethIp": "%s",
-"wifiIp": "%s", "mask": "%s", "mac": "%s", "gateway": "%s", "dns": "%s",
-"channel": %s, "serverUrl": "%s", "officialUrl": "%s",
-"osName": "%s", "osVersion": "%s",
-"cpu": "%s", "ram": %s, "npu": %s,
-"terminalPort": %s, "needRestart": %s
-}' \
-        "${dev_name}" "${sn}" \
-        "${eth}" \
-        "${wifi}" "${mask}" "${mac}" "${gateway}" "${dns}" \
-        "${ch}" "${url}" "${DEFAULT_UPGRADE_URL}" \
-        "$(_os_name)" "$(_os_version)" \
-        "${CPU_NAME}" "${RAM_SIZE}" "${NPM_NUM}" \
-        "${TTYD_PORT}" "$(_upgrade_done)"
-}
-
-# system
-function getSystemStatus() {
-    local s="$(fw_printenv boot_rollback)"
-    local ret="$STR_FAILED"
-
-    if [ "$s" = "boot_rollback=" ]; then
-        ret="$STR_OK"
-    elif [ "$s" = "boot_rollback=1" ]; then
-        ret="System has been recovered from damage."
-    fi
-    echo "$ret"
-}
-
-function queryServiceStatus() {
-    local sscma=0
-    local nodered=0
-    local system=0
-    printf '{"sscmaNode": %d, "nodeRed": %d, "system": %d }' \
-        "${sscma}" "${nodered}" "${system}"
-}
-
-function setPower() {
-    local mode=$2
-    if [ "$mode" = "0" ]; then
-        echo "Poweroff"
-        poweroff
-    elif [ "$mode" = "1" ]; then
-        echo "Reboot"
-        reboot
-    else
-        echo $STR_FAILED
-    fi
+    printf '{'
+    printf '"channel": "%s",' "$((ch))"
+    printf '"serverUrl": "%s",' "$url"
+    printf '"needRestart": %s,' "$(_upgrade_done)"
+    printf '"ethIp": "%s",' "$(_ip "eth0")"
+    printf '"wifiIp": "%s",' "$(_ip "wlan0")"
+    printf '"mask": "%s",' "$(_mask "wlan0")"
+    printf '"mac": "%s",' "$(_mac "wlan0")"
+    printf '"gateway": "%s",' "$(_gateway "wlan0")"
+    printf '"dns": "-",'
+    printf '"deviceName": "%s" }' "$(cat $HOSTNAME_FILE)"
 }
 
 # model
-MODELS_DIR="/usr/share/supervisor/models"
-MODEL_DIR="$USER_DIR/MODEL"
+PRESET_MODELS="/usr/share/ai_models"
 MODEL_SUFFIX=".cvimodel"
 MODEL_FILE="$MODEL_DIR/model${MODEL_SUFFIX}"
 MODEL_INFO="$MODEL_DIR/model.json"
 
-function getModelFile() {
-    local path=""
-    local md5=""
+function get_model_info() {
+    local file="" info="" md5=""
     if [ -f "$MODEL_FILE" ]; then
-        path=$MODEL_FILE
-        md5=$(md5sum $path | awk '{print $1}')
+        file=$MODEL_FILE
+        [ -f "$MODEL_INFO" ] && info="$MODEL_INFO"
+        md5=$(md5sum $file | awk '{print $1}')
     fi
-    printf '{"file": "%s", "md5": "%s" }' \
-        "${path}" "${md5}"
-}
-
-function getModelInfo() {
-    local path="" info="" md5=""
-    if [ -f "$MODEL_FILE" ] && [ -f "$MODEL_INFO" ]; then
-        path=$MODEL_FILE
-        info=$MODEL_INFO
-        md5=$(md5sum $path | awk '{print $1}')
-    fi
-    printf '{"file": "%s", "model_md5": "%s" }' \
-        "${info}" "${md5}"
+    printf '{"file": "%s", "info": "%s", "md5": "%s" }' "${file}" "${info}" "${md5}"
 }
 
 function getModelList() {
-    local json=$(ls $MODELS_DIR/*.json 2>/dev/null)
+    local json=$(ls $PRESET_MODELS/*.json 2>/dev/null)
     printf '{"list": ['
     for i in $json; do
         local name=${i%.*}
@@ -223,8 +121,6 @@ function getModelList() {
     done
     printf '""], "suffix": "%s" }' ${MODEL_SUFFIX}
 }
-
-function uploadModel() { echo "$MODEL_DIR"; }
 
 # upgrade
 DEFAULT_UPGRADE_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
@@ -323,10 +219,9 @@ function getUpdateProgress() {
     }
     [ -s "$UPGRADE_PROG.tmp" ] && { cp $UPGRADE_PROG.tmp $UPGRADE_PROG; }
     if [ ! -s "$UPGRADE_PROG" ]; then
-        echo '{"progress": "0", "status": "download"}' >$UPGRADE_PROG
+        echo '{"progress": "0", "status": ""}' >$UPGRADE_PROG
     fi
     cat $UPGRADE_PROG
-
     _upgrade_prog >$UPGRADE_PROG.tmp 2>/dev/null &
 }
 
@@ -334,12 +229,37 @@ function updateSystem() {
     rm -f "$WORK_DIR/upgrade"*
     echo $STR_OK
 }
+
+function api_device() {
+    local ttyd_port=9090
+    _stop_pidname "ttyd"
+    ttyd -p $ttyd_port -u $USER_NAME login > /dev/null 2>&1 &
+
+    local rollback=0
+    [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1;
+
+    printf '{'
+    printf '"sn": "%s",' "$(_sn)"
+    printf '"dev_name": "%s",' "$(_dev_name)"
+    printf '"os": "%s",' "$(_os_name)"
+    printf '"ver": "%s",' "$(_os_version)"
+    printf '"cpu": "sg2002",'
+    printf '"ram": "256",'
+    printf '"npu": "1",'
+    printf '"ws": "8000",'
+    printf '"ttyd": "%d",' "$ttyd_port"
+    printf '"rollback": "%d",' "$rollback"
+    printf '"app_dir": "%s",' "$APP_DIR"
+    printf '"model_dir": "%s",' "$MODEL_DIR"
+    printf '"url": "%s",' "$DEFAULT_UPGRADE_URL"
+    printf '"platform_info": "%s"' "$CONFIG_DIR/platform.info"
+    printf '}'
+}
 # device
 ##################################################
 
 ##################################################
 # user
-USER_NAME=recamera
 SSH_DIR="/home/$USER_NAME/.ssh"
 SSH_KEY_FILE="$SSH_DIR/authorized_keys"
 
@@ -351,11 +271,10 @@ SSH_SERVICE="S*sshd"
 # private
 function _is_key_valid() {
     local tmp=$(mktemp)
-    local ret=0
 
     echo "$*" >$tmp
     ssh-keygen -lf $tmp 2>/dev/null
-    ret=$?
+    local ret=$?
     rm $tmp
     return $ret
 }
@@ -384,13 +303,9 @@ function _update_sshkey() {
 }
 
 # APIs
-function gen_token() {
-    dd if=/dev/random bs=64 count=1 2>/dev/null | base64 -w0
-}
-
-function get_username() {
-    echo $USER_NAME
-}
+function gen_token() { dd if=/dev/random bs=64 count=1 2>/dev/null | base64 -w0; }
+function get_username() { echo $USER_NAME; }
+function login() { [ -f "$FIRST_LOGIN" ] && rm -f "$FIRST_LOGIN"; }
 
 function addSShkey() {
     local name="$2"
@@ -459,10 +374,6 @@ function setSShStatus() {
     [ 0 -ne $((ret)) ] && echo $STR_FAILED || echo $STR_OK
 }
 
-function login() {
-    [ -f "$FIRST_LOGIN" ] && rm -f "$FIRST_LOGIN"
-}
-
 function queryUserInfo() {
     local firstLogin="false"
     local sshEnabled="false"
@@ -490,7 +401,7 @@ EOF
 
 ##################################################
 # network
-CONF_WIFI="$CONFIG_DIR/wifi"
+CONF_WIFI="$CONFIG_DIR/sta"
 
 # alias
 WPA_CLI="wpa_cli -i wlan0"
@@ -517,7 +428,7 @@ _ap_start() {
     hostapd -B "/etc/hostapd_2g4.conf" >/dev/null 2>&1
 }
 
-start_wifi() {
+function start_wifi() {
     _check_wifi || {
         echo "-1"
         return 0
@@ -532,17 +443,17 @@ start_wifi() {
     echo "$on"
 }
 
-stop_wifi() {
+function stop_wifi() {
     _sta_stop >/dev/null 2>&1 &
     _ap_stop >/dev/null 2>&1 &
 }
 
-switchWiFi() {
+function switchWiFi() {
     echo $2 >"$CONF_WIFI"
     [ "$2" = "0" ] && stop_wifi || start_wifi
 }
 
-get_sta_connected() {
+function get_sta_connected() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     >"$out"
     $WPA_CLI list_networks 2>/dev/null | while IFS= read -r line; do
@@ -551,7 +462,7 @@ get_sta_connected() {
     echo "$out"
 }
 
-get_sta_current() {
+function get_sta_current() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     >"$out"
     $WPA_CLI status 2>/dev/null | while IFS= read -r line; do
@@ -560,7 +471,7 @@ get_sta_current() {
     echo "$out"
 }
 
-get_eth() {
+function get_eth() {
     local ifname="eth0"
     printf '{"ip": "%s", "mask": "%s", "mac": "%s", "gateway": "%s", "dns1": "", "dns2": ""}' \
         "$(_ip "$ifname")" "$(_mask "$ifname")" "$(_mac "$ifname")" "$(_gateway "$ifname")"
@@ -580,18 +491,17 @@ _get_scan_results() {
     done
 }
 
-getWiFiScanResults() {
+function getWiFiScanResults() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     local result="$WORK_DIR/_get_scan_results"
 
     [ -s "$result" ] && { cp "$result" "$out"; }
-    _get_scan_results >/dev/null 2>&1 &
-
     [ -f "$out" ] || >"$out"
     echo "$out"
+    _get_scan_results >/dev/null 2>&1 &
 }
 
-connectWiFi() {
+function connectWiFi() {
     local id="$2" ssid="\"$3\"" pwd="\"$4\""
 
     $WPA_CLI reconfigure >/dev/null 2>&1
@@ -639,13 +549,9 @@ _wpa_set_networks() {
     $WPA_CLI save_config
 }
 
-disconnectWiFi() {
-    _wpa_set_networks "$2" disable_network
-}
+function disconnectWiFi() { _wpa_set_networks "$2" disable_network; }
+function forgetWiFi() { _wpa_set_networks "$2" remove_network; }
 
-forgetWiFi() {
-    _wpa_set_networks "$2" remove_network
-}
 # network
 ##################################################
 

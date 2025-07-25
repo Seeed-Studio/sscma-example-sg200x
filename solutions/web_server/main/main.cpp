@@ -24,7 +24,6 @@ int main(int argc, char** argv)
         }
 
         api_base::set_force_no_auth(false);
-        // api_base::set_script("/userdata/app/scripts/main.sh");
         api_base::set_script("./scripts/main.sh");
 
         http_server server(ROOT_DIR);

@@ -1,20 +1,25 @@
 #include "api_device.h"
 #include "api_file.h"
+#include <iterator>
 
 api_status_t api_device::getCameraWebsocketUrl(request_t req, response_t res)
 {
-    int64_t itime = parse_body(req).value("time", 0) / 1000;
     std::stringstream ss;
-    ss << "ws://" << get_host(req) << ":" << script(__func__, itime);
+    ss << "ws://" << get_host(req) << ":" << _dev_info.value("ws", "");
     response(res, 0, STR_OK, { { "websocketUrl", ss.str() } });
     return API_STATUS_OK;
 }
 
 api_status_t api_device::getDeviceInfo(request_t req, response_t res)
 {
-    auto&& data = parse_result(script(__func__));
+    json data = json::object();
     data["ip"] = get_host(req);
     data["port"] = get_port(req);
+    data["sn"] = _dev_info.value("sn", "");
+    data["deviceName"] = _dev_info.value("deviceName", "");
+    data["status"] = _dev_info.value("status", 1);
+    data["osName"] = _dev_info.value("osName", "");
+    data["osVersion"] = _dev_info.value("osVersion", "");
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
@@ -77,23 +82,38 @@ api_status_t api_device::updateDeviceName(request_t req, response_t res)
 api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
 {
     auto&& data = parse_result(script(__func__));
+    LOGV("queryDeviceInfo: %s", data.dump().c_str());
     data["appName"] = PROJECT_NAME;
     data["ip"] = get_host(req);
     data["port"] = get_port(req);
+    data["officialUrl"] = _dev_info.value("url", "");
+    data["sn"] = _dev_info.value("sn", "");
+    data["osName"] = _dev_info.value("os", "");
+    data["osVersion"] = _dev_info.value("ver", "");
+    data["cpu"] = _dev_info.value("cpu", "");
+    data["ram"] = _dev_info.value("ram", "");
+    data["npu"] = _dev_info.value("npu", "");
+    data["terminalPort"] = _dev_info.value("ttyd", "");
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
 
 api_status_t api_device::getSystemStatus(request_t req, response_t res)
 {
-    auto&& result = script(__func__);
-    response(res, (result == STR_OK) ? 0 : -1, result);
+    std::string rollback = _dev_info.value("rollback", "");
+    if (rollback == "1")
+        response(res, 0, STR_OK, "System has been recovered from damage.");
+    else
+        response(res, 0, STR_OK, "System is running normally.");
     return API_STATUS_OK;
 }
 
 api_status_t api_device::queryServiceStatus(request_t req, response_t res)
 {
-    auto&& data = parse_result(script(__func__));
+    json data = json::object();
+    data["sscmaNode"] = 0;
+    data["nodeRed"] = 0;
+    data["system"] = 0;
     data["uptime"] = uptime();
     data["timestamp"] = timestamp();
     response(res, 0, STR_OK, data);
@@ -103,8 +123,19 @@ api_status_t api_device::queryServiceStatus(request_t req, response_t res)
 api_status_t api_device::setPower(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
-    std::string result = script(__func__, body.value("mode", -1));
-    response(res, (result == STR_OK) ? 0 : -1, result);
+    int mode = body.value("mode", -1);
+    int ret = -1;
+    std::string status = "Invalid mode";
+    if (mode == 0) {
+        status = "poweroff";
+        ret = 0;
+    } else if (mode == 1) {
+        status = "reboot";
+        ret = 0;
+    }
+    response(res, ret, status);
+    if (ret == 0)
+        system(status.c_str());
     return API_STATUS_OK;
 }
 
@@ -126,21 +157,25 @@ api_status_t api_device::uploadApp(request_t req, response_t res)
 // Model
 api_status_t api_device::getModelFile(request_t req, response_t res)
 {
-    auto&& data = parse_result(script(__func__));
+    auto&& data = parse_result(script("get_model_info"));
     response(res, 0, STR_OK, data);
     return API_STATUS_REPLY_FILE;
 }
 
 api_status_t api_device::getModelInfo(request_t req, response_t res)
 {
-    auto&& data = parse_result(script(__func__));
-    std::ifstream file(data.value("file", ""));
+    auto&& data = parse_result(script("get_model_info"));
+    std::ifstream file(data.value("info", ""));
     if (!file.is_open()) {
         response(res, 0, STR_OK, { { "model_info", "" } });
         return API_STATUS_OK;
     }
-    file >> data["model_info"];
-    response(res, 0, STR_OK, data);
+    try {
+        file >> data["model_info"];
+        response(res, 0, STR_OK, data);
+    } catch (const json::exception& e) {
+        response(res, -1, "Invalid model info.");
+    }
     return API_STATUS_OK;
 }
 
@@ -173,7 +208,7 @@ api_status_t api_device::getModelList(request_t req, response_t res)
 
 api_status_t api_device::uploadModel(request_t req, response_t res)
 {
-    std::string dir = script(__func__);
+    std::string dir = _dev_info.value("model_dir", "");
     if (dir.empty()) {
         response(res, -1, "Directory is not accessible.");
         return API_STATUS_OK;
@@ -203,7 +238,7 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
 // Platform
 api_status_t api_device::getPlatformInfo(request_t req, response_t res)
 {
-    auto&& data = parse_result(std::ifstream(script(__func__)));
+    auto&& data = parse_result(std::ifstream(_dev_info.value("platform_info", "")));
     if (data.empty() || data.value("platform_info", "").empty()) {
         response(res, -1, "Get platform info failed.");
         return API_STATUS_OK;
@@ -221,7 +256,8 @@ api_status_t api_device::savePlatformInfo(request_t req, response_t res)
         return API_STATUS_OK;
     }
     // LOGV("Save platform info: %s", body.dump().c_str());
-    if (std::ofstream(script(__func__)) << body.dump()) {
+    std::ofstream file(_dev_info.value("platform_info", ""), std::ios::out | std::ios::trunc);
+    if (file.is_open() && file << body.dump()) {
         response(res);
     } else {
         response(res, -1, "Save platform info failed.");
