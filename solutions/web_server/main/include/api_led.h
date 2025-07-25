@@ -26,8 +26,14 @@ private:
 
         const auto& led = uri.substr(pos_s + 1, pos_e - pos_s - 1);
         const auto& val = uri.substr(pos_e + 1);
-        const auto& result = script(__func__, led, val);
-        response(res, (result == STR_OK) ? 0 : -1, result);
+
+        std::string led_path = "/sys/class/leds/" + led + "/brightness";
+        std::string led_val = (val == "on") ? "255" : "0";
+        if (std::ofstream(led_path) << led_val) {
+            response(res);
+        } else {
+            response(res, -1, "Set led failed.");
+        }
         return API_STATUS_OK;
     }
 

@@ -10,7 +10,7 @@
 
 #include "api_wifi.h"
 
-json api_wifi::get_networks()
+json api_wifi::get_sta_connected()
 {
     json n = json::array();
     for (auto& line : parse_file(script(__func__), '\t', true)) {
@@ -31,7 +31,7 @@ json api_wifi::get_networks()
     return n;
 }
 
-json api_wifi::get_current()
+json api_wifi::get_sta_current()
 {
     json c = json::object();
     for (auto& line : parse_file(script(__func__), '=', false)) {
@@ -87,7 +87,7 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
     }
 
     int id = -1;
-    auto&& n = get_networks();
+    auto&& n = get_sta_connected();
     for (auto& _n : n) {
         if (_n.value("ssid", "") == ssid) {
             id = stoi(_n.value("id", "-1"));
@@ -97,7 +97,7 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
 
     int i = 60;
     while (i--) {
-        auto&& c = get_current();
+        auto&& c = get_sta_current();
         if (!c.empty() && !c.value("ssid", "").empty()
             && !c.value("ip", "").empty()
             && c.value("wpa_state", "") == "COMPLETED") {
@@ -121,8 +121,8 @@ api_status_t api_wifi::scanWiFi(request_t req, response_t res)
 
 api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
 {
-    auto&& n = get_networks();
-    auto&& c = get_current();
+    auto&& n = get_sta_connected();
+    auto&& c = get_sta_current();
 
     std::string c_ssid = "";
     if (!c.empty() && !c.value("ssid", "").empty() && !c.value("ip", "").empty()) {
@@ -200,7 +200,7 @@ api_status_t api_wifi::getWifiStatus(request_t req, response_t res)
     if (!eth.value("ip", "").empty()) {
         status = 0; // eth connected
     } else {
-        auto&& info = get_current();
+        auto&& info = get_sta_current();
         if (!info.value("ip", "").empty()) {
             status = 1; // wifi connected
         }
@@ -220,7 +220,7 @@ api_status_t api_wifi::queryWiFiInfo(request_t req, response_t res)
     if (_is_open == 0) {
         status = 0; // wifi disabled
     } else if (_is_open == 1) {
-        auto&& c = get_current();
+        auto&& c = get_sta_current();
         status = 1; // not connected
         if (!c.empty()) {
             if (!c.value("ip", "").empty()) {

@@ -3,7 +3,6 @@
 
 #include "http_server.h"
 
-// #define ROOT_DIR "/usr/share/supervisor/www/"
 #define ROOT_DIR "./dist/"
 #define HTTP_PORT "80"
 
@@ -24,7 +23,11 @@ int main(int argc, char** argv)
             LOGI("%s V%s", PROJECT_NAME, PROJECT_VERSION);
         }
 
-        http_server server(ROOT_DIR, true);
+        api_base::set_force_no_auth(false);
+        // api_base::set_script("/userdata/app/scripts/main.sh");
+        api_base::set_script("./scripts/main.sh");
+
+        http_server server(ROOT_DIR);
         if (!server.start(HTTP_PORT)) {
             LOGE("Failed: server.start()");
         } else {

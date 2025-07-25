@@ -10,8 +10,8 @@ class api_wifi : public api_base {
 private:
     static inline int _is_open = 1;
 
-    static json get_networks();
-    static json get_current();
+    static json get_sta_connected();
+    static json get_sta_current();
     static json get_eth();
 
     static api_status_t _wifi_ctrl(request_t req, response_t res, std::string ctrl)

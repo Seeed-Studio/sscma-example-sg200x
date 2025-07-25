@@ -7,7 +7,7 @@
 api_status_t api_user::addSShkey(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
-    const auto& result = script(__func__,
+    auto&& result = script(__func__,
         body.value("name", ""), body.value("time", ""), body.value("value", ""));
     response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
@@ -20,9 +20,17 @@ api_status_t api_user::deleteSShkey(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
+api_status_t api_user::setSShStatus(request_t req, response_t res)
+{
+    auto&& body = parse_body(req);
+    response(res, 0, script(__func__, body.value("enabled", true)));
+    return API_STATUS_OK;
+}
+
 api_status_t api_user::login(request_t req, response_t res)
 {
-    static int retryCount = 5;
+    static const int max_retry_count = 5;
+    static int retryCount = max_retry_count;
     static struct timespec tsLastFailed;
 
     auto&& body = parse_body(req);
@@ -35,11 +43,11 @@ api_status_t api_user::login(request_t req, response_t res)
     }
 
     if (!verify_pwd(username, aes_decrypt(password))) {
-        if (retryCount != 5) {
+        if (retryCount != max_retry_count) {
             struct timespec ts;
             timespec_get(&ts, TIME_UTC);
             if (ts.tv_sec - tsLastFailed.tv_sec > 60) {
-                retryCount = 5;
+                retryCount = max_retry_count;
             }
         }
         if (retryCount > 0) {
@@ -56,7 +64,7 @@ api_status_t api_user::login(request_t req, response_t res)
             }));
         return API_STATUS_OK;
     }
-    retryCount = 5;
+    retryCount = max_retry_count;
 
     script(__func__); // remove first login record
 
@@ -93,8 +101,9 @@ api_status_t api_user::queryUserInfo(request_t req, response_t res)
         if (line.empty())
             continue;
 
-        std::vector<std::string> parts;
-        string_split(line, ' ', parts);
+        auto&& parts = string_split(line, ' ');
+        if (parts.size() < 7)
+            continue;
 
         json sshkey;
         sshkey["id"] = (parts.size() < 1) ? "-" : parts[0];
@@ -107,13 +116,6 @@ api_status_t api_user::queryUserInfo(request_t req, response_t res)
     data["sshkeyList"] = ssh_key_list;
 
     response(res, 0, STR_OK, data);
-    return API_STATUS_OK;
-}
-
-api_status_t api_user::setSShStatus(request_t req, response_t res)
-{
-    auto&& body = parse_body(req);
-    response(res, 0, script(__func__, body.value("enabled", true)));
     return API_STATUS_OK;
 }
 
@@ -138,7 +140,7 @@ api_status_t api_user::updatePassword(request_t req, response_t res)
     }
 
     new_pwd = aes_decrypt(new_pwd);
-    const auto& result = script(__func__, old_pwd, new_pwd);
+    auto&& result = script(__func__, new_pwd);
     response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }

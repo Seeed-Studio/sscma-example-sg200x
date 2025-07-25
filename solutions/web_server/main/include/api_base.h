@@ -47,25 +47,23 @@ private:
 
 class api_base : public http_interface {
 public:
-    api_base(std::string group = "", std::string script = "")
+    api_base(std::string group = "")
         : _group(group)
     {
         if (_group.empty()) {
-            _script = script + " ";
-            LOGV("script: %s", _script.c_str());
-
             REG_API_NO_AUTH(version);
         }
     }
 
     virtual ~api_base() = default;
 
+    static void set_force_no_auth(bool no_auth) { _force_no_auth = no_auth; }
+    static void set_script(std::string dir) { _script = dir; }
+
     void register_api(std::string uri, api_handler_t handler, bool no_auth = false)
     {
         _api_map[_group.empty() ? uri : _group + "/" + uri] = std::make_unique<rest_api>(handler, no_auth);
     }
-
-    static void set_force_no_auth(bool no_auth) { _force_no_auth = no_auth; }
 
     static api_status_t api_handler(request_t req, response_t res)
     {
@@ -96,29 +94,6 @@ public:
         return (*api->second)(req, res);
     }
 
-    using vvstr_t = std::vector<std::vector<std::string>>;
-    static vvstr_t parse_file(std::string file, char delimiter = ' ', bool skip_header = false)
-    {
-        vvstr_t result;
-        std::ifstream f(file);
-        if (!f.is_open()) {
-            LOGE("Failed to open file: %s", file.c_str());
-            return result;
-        }
-
-        std::string line;
-        if (skip_header)
-            std::getline(f, line);
-        while (std::getline(f, line)) {
-            if (line.empty())
-                continue;
-            std::vector<std::string> fields;
-            string_split(line, delimiter, fields);
-            result.push_back(fields);
-        }
-        return result;
-    }
-
     template <typename... Args>
     static std::string script(const std::string& cmd, Args&&... args)
     {
@@ -126,9 +101,7 @@ public:
         std::stringstream ss;
         ((ss << "\"" << std::forward<Args>(args) << "\" "), ...);
         std::string args_str = ss.str();
-        if (!args_str.empty())
-            args_str.pop_back();
-        std::string full_cmd = _script + cmd + (args_str.empty() ? "" : " " + args_str);
+        std::string full_cmd = _script + " " + cmd + " " + args_str;
 
         std::unique_ptr<FILE, decltype(&pclose)>
             pipe(popen(full_cmd.c_str(), "r"), pclose);
@@ -199,8 +172,10 @@ public:
 
 protected:
     // utils
-    static void string_split(std::string s, const char delimiter, std::vector<std::string>& output)
+    using vstr_t = std::vector<std::string>;
+    static vstr_t string_split(std::string s, const char delimiter = ' ')
     {
+        vstr_t output;
         size_t start = 0;
         size_t end = s.find_first_of(delimiter);
 
@@ -211,6 +186,31 @@ protected:
             start = end + 1;
             end = s.find_first_of(delimiter, start);
         }
+        return output;
+    }
+
+    using vvstr_t = std::vector<vstr_t>;
+    static vvstr_t parse_file(std::string file, char delimiter = ' ', bool skip_header = false)
+    {
+        vvstr_t result;
+        std::ifstream f(file);
+        if (!f.is_open()) {
+            LOGE("Failed to open file: %s", file.c_str());
+            return result;
+        }
+
+        std::string line;
+        if (skip_header)
+            std::getline(f, line);
+        while (std::getline(f, line)) {
+            if (line.empty())
+                continue;
+            auto&& fields = string_split(line, delimiter);
+            if (fields.size() < 1)
+                continue;
+            result.push_back(fields);
+        }
+        return result;
     }
 
     static uint64_t uptime(void)

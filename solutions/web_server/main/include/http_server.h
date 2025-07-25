@@ -18,21 +18,19 @@
 
 class http_server {
 public:
-    http_server(const char* root_dir = "www", bool no_auth = false,
+    http_server(const char* root_dir = "www",
         const char* cert = nullptr, const char* key = nullptr)
         : _cert(cert)
         , _key(key)
         , _root_dir(root_dir)
     {
-        _apis.emplace_back(std::make_unique<api_base>("", "/userdata/app/scripts/main.sh"));
+        _apis.emplace_back(std::make_unique<api_base>());
         _apis.emplace_back(std::make_unique<api_device>());
         _apis.emplace_back(std::make_unique<api_file>());
         _apis.emplace_back(std::make_unique<api_led>());
         _apis.emplace_back(std::make_unique<api_user>());
         _apis.emplace_back(std::make_unique<api_wifi>());
         mg_mgr_init(&mgr);
-
-        api_base::set_force_no_auth(no_auth);
     }
 
     ~http_server()
@@ -119,10 +117,26 @@ private:
             json res;
             api_status_t status = api_base::api_handler(hm, res);
             if (status == API_STATUS_OK) {
-                mg_http_reply(c, 200, "Content-Type: application/json\r\n", res.dump().c_str());
+                mg_http_reply(c, 200, "Content-Type: application/json\r\n"
+                                      "Access-Control-Allow-Origin: *\r\n",
+                    res.dump().c_str());
                 return;
             } else if (status == API_STATUS_UNAUTHORIZED) {
                 mg_http_reply(c, 401, "Content-Type: text/plain\r\n", "Unauthorized");
+                return;
+            } else if (status == API_STATUS_REPLY_FILE) {
+                std::string fname("");
+                try {
+                    fname = res["data"]["file"].get<std::string>();
+                } catch (const json::exception& e) {
+                    LOGE("json error: %s", e.what());
+                }
+                if (fname.empty()) {
+                    mg_http_reply(c, 400, "Content-Type: text/plain\r\n", "Bad Request");
+                    return;
+                }
+                struct mg_http_serve_opts _opts = { .root_dir = NULL };
+                mg_http_serve_file(c, hm, fname.c_str(), &_opts);
                 return;
             } else if (status != API_STATUS_NEXT) {
                 mg_http_reply(c, 500, "Content-Type: text/plain\r\n", "Internal Server Error");

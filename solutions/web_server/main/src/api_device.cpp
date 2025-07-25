@@ -3,14 +3,7 @@
 
 api_status_t api_device::getCameraWebsocketUrl(request_t req, response_t res)
 {
-    auto&& body = parse_body(req);
-
-    int64_t itime = 0;
-    if (body.contains("time")) {
-        itime = body.value("time", 0);
-        itime /= 1000;
-    }
-
+    int64_t itime = parse_body(req).value("time", 0) / 1000;
     std::stringstream ss;
     ss << "ws://" << get_host(req) << ":" << script(__func__, itime);
     response(res, 0, STR_OK, { { "websocketUrl", ss.str() } });
@@ -28,41 +21,42 @@ api_status_t api_device::getDeviceInfo(request_t req, response_t res)
 
 api_status_t api_device::getDeviceList(request_t req, response_t res)
 {
-    auto&& result = parse_result(script(__func__));
-    std::ifstream file(result.value("file", ""));
+    using namespace std;
+    std::ifstream file(script(__func__));
     if (!file.is_open()) {
         response(res, 0, STR_OK, { { "deviceList", "" } });
         return API_STATUS_OK;
     }
 
     json dev_list;
-    using namespace std;
-    map<pair<string, string>, map<string, string>> device_map;
-    std::string line;
+    map<pair<string, string>, map<string, string>> devs_map;
+    string line;
     while (getline(file, line)) {
         if (line.empty() || line[0] != '=')
             continue;
 
-        std::vector<std::string> it;
-        string_split(line, ';', it);
-        std::string type = it[1];
-        std::string service = it[4];
-        std::string ip = it[7];
-        std::string port = it[8];
+        auto&& it = string_split(line, ';');
+        if (it.size() < 10)
+            continue;
+
+        string type = it[1];
+        string service = it[4];
+        string ip = it[7];
+        string port = it[8];
         if ((service == "_sscma._tcp")
-            && (std::string(it[9]).find("sn=") != std::string::npos)) {
+            && (string(it[9]).find("sn=") != string::npos)) {
             dev_list.push_back({ { "type", type },
                 { "device", it[3] },
                 { "domain", it[6] },
                 { "ip", ip },
                 { "info", it[9] } });
         }
-        device_map[std::make_pair(type, ip)][service] = port;
+        devs_map[std::make_pair(type, ip)][service] = port;
     }
 
     for (auto& dev : dev_list) {
-        auto it = device_map.find(std::make_pair(dev["type"], dev["ip"]));
-        if (it != device_map.end()) {
+        auto it = devs_map.find(std::make_pair(dev["type"], dev["ip"]));
+        if (it != devs_map.end()) {
             for (auto& [service, port] : it->second) {
                 dev["services"][service] = port;
             }
@@ -73,21 +67,9 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
-api_status_t api_device::getPlatformInfo(request_t req, response_t res)
+api_status_t api_device::updateDeviceName(request_t req, response_t res)
 {
-    json data;
-    std::string fname = script(__func__);
-    if (fname.empty())
-        data["platform_info"] = "";
-    else
-        std::ifstream(fname) >> data["platform_info"];
-    response(res, 0, STR_OK, data);
-    return API_STATUS_OK;
-}
-
-api_status_t api_device::getSystemStatus(request_t req, response_t res)
-{
-    auto&& result = script(__func__);
+    std::string result = script(__func__, parse_body(req).value("deviceName", ""));
     response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }
@@ -102,6 +84,13 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
+api_status_t api_device::getSystemStatus(request_t req, response_t res)
+{
+    auto&& result = script(__func__);
+    response(res, (result == STR_OK) ? 0 : -1, result);
+    return API_STATUS_OK;
+}
+
 api_status_t api_device::queryServiceStatus(request_t req, response_t res)
 {
     auto&& data = parse_result(script(__func__));
@@ -111,47 +100,10 @@ api_status_t api_device::queryServiceStatus(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
-api_status_t api_device::savePlatformInfo(request_t req, response_t res)
-{
-    auto&& body = parse_body(req);
-    std::ofstream(script(__func__)) << body.value("platform_info", "");
-    response(res, 0, STR_OK);
-    return API_STATUS_OK;
-}
-
 api_status_t api_device::setPower(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
     std::string result = script(__func__, body.value("mode", -1));
-    response(res, (result == STR_OK) ? 0 : -1, result);
-    return API_STATUS_OK;
-}
-
-api_status_t api_device::updateChannel(request_t req, response_t res)
-{
-    auto&& body = parse_body(req);
-    const auto& ch = body.value("channel", 0);
-    const auto& url = body.value("serverUrl", "");
-    if (ch > 0) {
-        if (url.empty()) {
-            response(res, 0, script(__func__, ch, url));
-            response(res);
-            return API_STATUS_OK;
-        }
-        if (url.compare(0, 7, "http://") != 0
-            && url.compare(0, 8, "https://") != 0) {
-            response(res, -1, "Server url is invalid.");
-            return API_STATUS_OK;
-        }
-    }
-    response(res, 0, script(__func__, ch, url));
-    return API_STATUS_OK;
-}
-
-api_status_t api_device::updateDeviceName(request_t req, response_t res)
-{
-    auto&& body = parse_body(req);
-    std::string result = script(__func__, body.value("deviceName", ""));
     response(res, (result == STR_OK) ? 0 : -1, result);
     return API_STATUS_OK;
 }
@@ -199,12 +151,10 @@ api_status_t api_device::getModelList(request_t req, response_t res)
         response(res, -1);
         return API_STATUS_OK;
     }
-
     const auto& suffix = list.value("suffix", "");
-    const auto& count = list.value("count", 0);
 
+    int count = 0;
     json data;
-    data["count"] = count;
     for (auto&& item : list["list"]) { // Compatible with previous
         if (auto fname = item.get<std::string>(); !fname.empty()) {
             auto&& info = parse_result(std::ifstream(fname + ".json"));
@@ -213,8 +163,10 @@ api_status_t api_device::getModelList(request_t req, response_t res)
             info["md5"] = info.value("checksum", "");
             info["file"] = fname + suffix;
             data["list"].push_back(info);
+            count++;
         }
     }
+    data["count"] = count;
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
@@ -231,14 +183,11 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
     json data;
     auto&& parts = get_multiparts(req, "model_file");
     for (auto& part : parts) {
-        if (part.filename.empty() || part.len == 0) {
+        if (part.filename.empty() || part.len == 0)
             continue;
-        }
-
         std::ofstream file(dir + "/" + part.filename, std::ios::binary);
-        if (!file.is_open()) {
+        if (!file.is_open())
             continue;
-        }
         file.write(part.data, part.len);
         file.close();
         data["list"].push_back(part.filename);
@@ -251,7 +200,58 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
+// Platform
+api_status_t api_device::getPlatformInfo(request_t req, response_t res)
+{
+    auto&& data = parse_result(std::ifstream(script(__func__)));
+    if (data.empty() || data.value("platform_info", "").empty()) {
+        response(res, -1, "Get platform info failed.");
+        return API_STATUS_OK;
+    }
+    // LOGV("Platform info: %s", data.dump().c_str());
+    response(res, 0, STR_OK, data);
+    return API_STATUS_OK;
+}
+
+api_status_t api_device::savePlatformInfo(request_t req, response_t res)
+{
+    auto&& body = parse_body(req);
+    if (body.empty() || body.value("platform_info", "").empty()) {
+        response(res, -1, "Platform info is empty.");
+        return API_STATUS_OK;
+    }
+    // LOGV("Save platform info: %s", body.dump().c_str());
+    if (std::ofstream(script(__func__)) << body.dump()) {
+        response(res);
+    } else {
+        response(res, -1, "Save platform info failed.");
+    }
+    return API_STATUS_OK;
+}
+
 // Upgrade
+api_status_t api_device::updateChannel(request_t req, response_t res)
+{
+    auto&& body = parse_body(req);
+    const auto& ch = body.value("channel", 0);
+    const auto& url = body.value("serverUrl", "");
+    if (ch > 0) {
+        if (url.empty()) {
+            response(res, 0, script(__func__, ch, url));
+            response(res);
+            return API_STATUS_OK;
+        }
+        if (url.compare(0, 7, "http://") != 0
+            && url.compare(0, 8, "https://") != 0) {
+            response(res, -1, "Server url is invalid.");
+            return API_STATUS_OK;
+        }
+    }
+    std::string result = script(__func__, ch, url);
+    response(res, (result == STR_OK) ? 0 : -1, result);
+    return API_STATUS_OK;
+}
+
 api_status_t api_device::cancelUpdate(request_t req, response_t res)
 {
     script(__func__);
@@ -259,9 +259,9 @@ api_status_t api_device::cancelUpdate(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
-api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res)
-{ // typo
-    auto result = script(__func__);
+api_status_t api_device::getSystemUpdateVersion(request_t req, response_t res)
+{
+    auto&& result = script(__func__);
     auto&& data = parse_result(result);
     LOGV("%s", data.dump().c_str());
     if (data.empty()) {
@@ -274,7 +274,7 @@ api_status_t api_device::getSystemUpdateVesionInfo(request_t req, response_t res
 
 api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 {
-    auto result = script(__func__);
+    auto&& result = script(__func__);
     auto&& data = parse_result(result);
     LOGV("%s", data.dump().c_str());
     if (data.empty()) {
