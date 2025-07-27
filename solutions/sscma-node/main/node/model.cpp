@@ -30,7 +30,10 @@ ModelNode::ModelNode(std::string id)
       jpeg_frame_(1),
       websocket_(true),
       transport_(nullptr),
-      camera_(nullptr) {}
+      camera_(nullptr),
+      preview_width_(640),
+      preview_height_(640),
+      preview_fps_(30) {}
 
 ModelNode::~ModelNode() {
     onDestroy();
@@ -353,6 +356,17 @@ ma_err_t ModelNode::onCreate(const json& config) {
             if (config.contains("splitter") && config["splitter"].is_array()) {
                 counter_.setSplitter(config["splitter"].get<std::vector<int16_t>>());
             }
+            if (config.contains("previewResolution") && config["previewResolution"].is_string()) {
+                std::string resolution = config["previewResolution"].get<std::string>();
+                size_t pos = resolution.find('x');
+                if (pos != std::string::npos) {
+                    preview_width_ = std::stoi(resolution.substr(0, pos));
+                    preview_height_ = std::stoi(resolution.substr(pos + 1));
+                }
+            }
+            if (config.contains("previewFps") && config["previewFps"].is_number_integer()) {
+                preview_fps_ = config["previewFps"].get<int32_t>();
+            }
         }
 
         if (websocket_) {
@@ -509,10 +523,10 @@ ma_err_t ModelNode::onStart() {
         return MA_ENOTSUP;
     }
 
-    camera_->config(CHN_RAW, img->width, img->height, 30, img->format);
+    camera_->config(CHN_RAW, img->width, img->height, preview_fps_, img->format);
     camera_->attach(CHN_RAW, &raw_frame_);
     if (debug_) {
-        camera_->config(CHN_JPEG, img->width, img->height, 30, MA_PIXEL_FORMAT_JPEG);
+        camera_->config(CHN_JPEG, preview_width_, preview_height_, preview_fps_, MA_PIXEL_FORMAT_JPEG);
         camera_->attach(CHN_JPEG, &jpeg_frame_);
     }
 
