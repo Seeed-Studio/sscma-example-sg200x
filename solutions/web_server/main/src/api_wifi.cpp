@@ -8,7 +8,29 @@
 #include <utility>
 #include <vector>
 
+#include <iostream>
+#include <string>
+
 #include "api_wifi.h"
+
+static std::string parse_escaped_string(const std::string& input)
+{
+    std::string result;
+    size_t i = 0;
+    while (i < input.length()) {
+        if (i + 3 < input.length() && input[i] == '\\' && input[i + 1] == 'x') {
+            // 提取 \xHH 格式的两个十六进制字符
+            std::string hex = input.substr(i + 2, 2);
+            char byte = static_cast<char>(std::stoi(hex, nullptr, 16));
+            result += byte;
+            i += 4; // 跳过 \xHH
+        } else {
+            result += input[i];
+            i++;
+        }
+    }
+    return result;
+}
 
 json api_wifi::get_sta_connected()
 {
@@ -17,7 +39,7 @@ json api_wifi::get_sta_connected()
         if (line.size() < 4)
             continue;
         n.push_back({ { "id", line[0] },
-            { "ssid", line[1] },
+            { "ssid", parse_escaped_string(line[1]) },
             { "bssid", line[2] },
             { "flags", line[3] } });
     }
@@ -39,6 +61,8 @@ json api_wifi::get_sta_current()
             continue;
         c[line[0]] = line[1];
     }
+    c["ssid"] = parse_escaped_string(c.value("ssid", ""));
+
     std::string ip = c.value("ip_address", "");
     if (ip.find("169.254") != std::string::npos) {
         ip = "";
@@ -106,6 +130,7 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
         sleep(1);
     }
     if (i <= 0) {
+        script("forgetWiFi", ssid);
         response(res, -1, "Connect failed");
     } else {
         response(res, 0, STR_OK);
@@ -139,19 +164,39 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
         }
     }
 
-    std::map<std::string, json> m;
-    for (auto& l : parse_file(script(__func__), '\t', true)) {
-        if ((l.size() < 5) || l[4].empty())
-            continue;
+    json jlist = json::array();
+    std::string file = script(__func__);
+    std::ifstream f(file);
+    if (f.is_open()) {
         json j = json::object();
-        j["bssid"] = l[0];
-        j["frequency"] = stoi(l[1]);
-        j["signal"] = stoi(l[2]);
-        j["flags"] = l[3];
-        j["ssid"] = l[4];
+        std::string line;
+        while (std::getline(f, line)) {
+            if (line.find("BSS ") == 0) {
+                if (!j.empty() && !j.value("ssid", "").empty()) {
+                    jlist.push_back(j);
+                }
+                j = json::object();
+                j["bssid"] = line.substr(4, 17);
+            } else if (line.find("\tfreq: ") == 0) {
+                j["frequency"] = stoi(line.substr(7));
+            } else if (line.find("\tsignal: ") == 0) {
+                std::string sub = line.substr(9);
+                j["signal"] = std::stod(sub.substr(0, sub.find(" dBm")));
+            } else if (line.find("\tSSID: ") == 0) {
+                j["ssid"] = parse_escaped_string(line.substr(7));
+            } else if (line.find("\tRSN:\t") == 0) {
+                j["rsn"] = line.substr(6);
+            }
+        }
+        if (!j.empty() && !j.value("ssid", "").empty()) {
+            jlist.push_back(j);
+        }
+    }
 
+    std::map<std::string, json> m;
+    for (auto& j : jlist) {
         // Compatible with previous
-        j["auth"] = j.value("flags", "").find("WPA") != std::string::npos ? 1 : 0;
+        j["auth"] = j.value("rsn", "").empty() ? 0 : 1;
         j["macAddress"] = j["bssid"];
         j["connectedStatus"] = 0;
         j["autoConnect"] = 0;
@@ -165,9 +210,8 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
                 break;
             }
         }
-        if (!found) {
-            m[j["ssid"]] = j; // ignore duplicate
-        }
+        if (!found)
+            m[j["ssid"]] = j;
     }
 
     // sort by signal strength

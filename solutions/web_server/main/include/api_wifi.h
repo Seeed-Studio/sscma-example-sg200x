@@ -23,7 +23,7 @@ private:
             return API_STATUS_OK;
         }
 
-        auto result = script(ctrl, ssid, body.value("password", ""));
+        auto result = script(ctrl, ssid);
         response(res, result == STR_OK ? 0 : -1, result);
         return API_STATUS_OK;
     }

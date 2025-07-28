@@ -243,10 +243,10 @@ function updateSystem() {
 function api_device() {
     local ttyd_port=9090
     _stop_pidname "ttyd"
-    ttyd -p $ttyd_port -u $USER_NAME login > /dev/null 2>&1 &
+    ttyd -p $ttyd_port -u $USER_NAME login >/dev/null 2>&1 &
 
     local rollback=0
-    [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1;
+    [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
 
     printf '{'
     printf '"sn": "%s",' "$(_sn)"
@@ -473,41 +473,27 @@ function get_sta_connected() {
 
 function get_sta_current() {
     local out=$WORK_DIR/${FUNCNAME[0]}
-    >"$out"
-    $WPA_CLI status 2>/dev/null | while IFS= read -r line; do
-        printf "%b\n" "$line" >>"$out"
-    done
+    $WPA_CLI status 2>/dev/null >"$out"
     echo "$out"
 }
 
 function get_eth() {
     local ifname="eth0"
     printf '{"ip": "%s", "mask": "%s", "mac": "%s", "gateway": "%s", "dns1": "", "dns2": ""}' \
-        "$(_ip "$ifname")" "$(_mask "$ifname")" "$(_mac "$ifname")" "$(_gateway "$ifname")"
-}
-
-_get_scan_results() {
-    for ((i = 1; i <= 5; i++)); do
-        [ "$($WPA_CLI scan 2>/dev/null)" == "OK" ] && break
-        sleep 0.5
-    done
-    sleep 3
-
-    local out=$WORK_DIR/${FUNCNAME[0]}
-    >"$out"
-    $WPA_CLI scan_results 2>/dev/null | while IFS= read -r line; do
-        printf "%b\n" "$line" >>"$out"
-    done
+        "$(_ip "$ifname")" "$(_mask "$ifname")" \
+        "$(_mac "$ifname")" "$(_gateway "$ifname")"
 }
 
 function getWiFiScanResults() {
     local out=$WORK_DIR/${FUNCNAME[0]}
-    local result="$WORK_DIR/_get_scan_results"
-
-    [ -s "$result" ] && { cp "$result" "$out"; }
+    local result="$out.tmp"
+    [ -s "$result" ] && {
+        cp "$result" "$out"
+        rm "$result"
+    }
     [ -f "$out" ] || >"$out"
     echo "$out"
-    _get_scan_results >/dev/null 2>&1 &
+    iw dev wlan0 scan >"$result" 2>/dev/null &
 }
 
 function connectWiFi() {
@@ -523,15 +509,15 @@ function connectWiFi() {
             return
         }
 
-        [ -z "$pwd" ] && {
+        if [ "$pwd" == "\"\"" ]; then
             $WPA_CLI set_network "$id" key_mgmt NONE >/dev/null 2>&1
-        } || {
+        else
             ret=$($WPA_CLI set_network "$id" psk "$pwd")
             [ "$ret" != "OK" ] && {
                 $WPA_CLI remove_network "$id" >/dev/null 2>&1
                 return
             }
-        }
+        fi
     }
 
     local ids=$(cat $(get_sta_connected) | awk -F'\t' '{print $1}')
@@ -549,17 +535,23 @@ function connectWiFi() {
 }
 
 _wpa_set_networks() {
-    local ssid="$1"
-    local status="$2"
-    $WPA_CLI reconfigure >/dev/null 2>&1
+    local ssid="$1" status="$2"
+    $WPA_CLI reconfigure
     local id=$(cat $(get_sta_connected) | grep -w "$ssid" | awk -F'\t' '{print $1}')
     [ -z "$id" ] && return 0
-    $WPA_CLI "$status" "$id" >/dev/null 2>&1
+    $WPA_CLI "$status" "$id"
     $WPA_CLI save_config
+    $WPA_CLI reconfigure
 }
 
-function disconnectWiFi() { _wpa_set_networks "$2" disable_network; }
-function forgetWiFi() { _wpa_set_networks "$2" remove_network; }
+function disconnectWiFi() {
+    echo "$STR_OK"
+    _wpa_set_networks "$2" disable_network >/dev/null 2>&1 &
+}
+function forgetWiFi() {
+    echo "$STR_OK"
+    _wpa_set_networks "$2" remove_network >/dev/null 2>&1 &
+}
 # network
 ##################################################
 
