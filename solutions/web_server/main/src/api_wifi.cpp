@@ -22,7 +22,8 @@ static std::string parse_escaped_string(const std::string& input)
             // 提取 \xHH 格式的两个十六进制字符
             std::string hex = input.substr(i + 2, 2);
             char byte = static_cast<char>(std::stoi(hex, nullptr, 16));
-            result += byte;
+            if (byte != 0x00)
+                result += byte;
             i += 4; // 跳过 \xHH
         } else {
             result += input[i];
@@ -32,25 +33,27 @@ static std::string parse_escaped_string(const std::string& input)
     return result;
 }
 
-json api_wifi::get_sta_connected()
+json api_wifi::get_eth()
 {
-    json n = json::array();
-    for (auto& line : parse_file(script(__func__), '\t', true)) {
-        if (line.size() < 4)
-            continue;
-        n.push_back({ { "id", line[0] },
-            { "ssid", parse_escaped_string(line[1]) },
-            { "bssid", line[2] },
-            { "flags", line[3] } });
+    auto&& r = parse_result(script(__func__));
+    std::string ip = r.value("ip", "");
+    if (ip.find("169.254") != std::string::npos) {
+        ip = "";
     }
 
     // Don't be strange: Compatible with previous
-    for (auto& j : n) {
-        j["connectedStatus"] = 1;
-        j["autoConnect"] = j.value("flags", "").find("DISABLED") != std::string::npos ? 0 : 1;
-    }
-    // LOGV("%s", n.dump().c_str());
-    return n;
+    json e = json::object();
+    e["connectedStatus"] = (int)_eth_status;
+    e["ip"] = ip;
+    e["macAddress"] = r.value("mac", "");
+    e["subnetMask"] = r.value("mask", "");
+    e["gateway"] = r.value("gateway", "");
+    e["dns1"] = r.value("dns1", "");
+    e["dns2"] = r.value("dns2", "");
+    e["ipAssignment"] = 1; // static / dhcp
+    _eth = e;
+    // LOGV("%s", e.dump().c_str());
+    return e;
 }
 
 json api_wifi::get_sta_current()
@@ -66,6 +69,7 @@ json api_wifi::get_sta_current()
     std::string ip = c.value("ip_address", "");
     if (ip.find("169.254") != std::string::npos) {
         ip = "";
+        c["ip_address"] = "";
     }
 
     // Don't be strange: Compatible with previous
@@ -74,30 +78,94 @@ json api_wifi::get_sta_current()
     c["ip"] = ip;
     c["ipAssignment"] = 1; // static/dhcp
     c["subnetMask"] = "255.255.255.0";
+    _sta_current = c;
     // LOGV("%s", c.dump().c_str());
     return c;
 }
 
-json api_wifi::get_eth()
+json api_wifi::get_sta_connected()
 {
-    auto&& r = parse_result(script(__func__));
-    std::string ip = r.value("ip", "");
-    if (ip.find("169.254") != std::string::npos) {
-        ip = "";
+    auto&& c = _sta_current;
+    json n = json::array();
+    if (!c.empty() && !c.value("ssid", "").empty()) {
+        n.push_back(c);
+    }
+    for (auto& line : parse_file(script(__func__), '\t', true)) {
+        if (line.size() < 3 || line[1].empty())
+            continue;
+        std::string ssid = parse_escaped_string(line[1]);
+        json j = { { "id", line[0] },
+            { "ssid", ssid },
+            { "bssid", line[2] },
+            { "flags", line.size() > 3 ? line[3] : "" } };
+        if (!c.empty() && (ssid == c.value("ssid", ""))) {
+            c.update(j);
+            n[0] = c;
+        } else {
+            n.push_back(j);
+        }
     }
 
     // Don't be strange: Compatible with previous
-    json e = json::object();
-    e["connectedStatus"] = ip.empty() ? 0 : 1;
-    e["ip"] = ip;
-    e["macAddress"] = r.value("mac", "");
-    e["subnetMask"] = r.value("mask", "");
-    e["gateway"] = r.value("gateway", "");
-    e["dns1"] = r.value("dns1", "");
-    e["dns2"] = r.value("dns2", "");
-    e["ipAssignment"] = 1; // static / dhcp
-    // LOGV("%s", e.dump().c_str());
-    return e;
+    for (auto& j : n) {
+        j["connectedStatus"] = 1;
+        j["autoConnect"] = j.value("flags", "").find("DISABLED") != std::string::npos ? 0 : 1;
+    }
+    _sta_connected = n;
+    // LOGV("%s", n.dump().c_str());
+    return n;
+}
+
+void api_wifi::start_wifi()
+{
+    auto&& conf = parse_result(script(__func__));
+    _sta_enable = conf.value("sta", 1);
+    _ap_enable = conf.value("ap", 1);
+    LOGV("sta_enable: %d, ap_enable: %d", _sta_enable, _ap_enable);
+
+    _worker = std::thread([&]() {
+        while (_running) {
+            // eth
+            get_eth();
+            _eth_status = !_eth.value("ip", "").empty();
+
+            // sta
+            if (_sta_enable < 0) {
+                _sta_status = 4; // wifi not supported
+            } else if (_sta_enable == 0) {
+                _sta_status = 0; // wifi disabled
+            } else {
+                get_sta_current();
+                get_sta_connected();
+                auto&& c = _sta_current;
+                _sta_status = 2; // connecting
+                if (!c.value("ssid", "").empty() && !c.value("ip", "").empty()
+                    && c.value("wpa_state", "") == "COMPLETED") {
+                    _sta_status = 3; // connected
+                }
+            }
+            if ((_eth_status == 1) || (_sta_status == 3)) {
+                script("_ap_stop");
+            }
+
+            std::unique_lock<std::mutex> lock(wifi_mutex);
+            cv.wait_for(lock, std::chrono::seconds(3), [] { return !_running; });
+        }
+        LOGV("network thread exit");
+    });
+}
+
+void api_wifi::stop_wifi()
+{
+    LOGV("");
+    if (_running) {
+        _running = false;
+        cv.notify_one();
+        if (_worker.joinable())
+            _worker.join();
+    }
+    script(__func__);
+    LOGV("exited");
 }
 
 // APIs
@@ -111,7 +179,7 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
     }
 
     int id = -1;
-    auto&& n = get_sta_connected();
+    auto&& n = _sta_connected;
     for (auto& _n : n) {
         if (_n.value("ssid", "") == ssid) {
             id = stoi(_n.value("id", "-1"));
@@ -120,14 +188,11 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
     script(__func__, id, ssid, body.value("password", ""));
 
     int i = 60;
-    while (i--) {
-        auto&& c = get_sta_current();
-        if (!c.empty() && !c.value("ssid", "").empty()
-            && !c.value("ip", "").empty()
-            && c.value("wpa_state", "") == "COMPLETED") {
+    _sta_status = 2; // connecting
+    while (_running && i--) {
+        if (_sta_status == 3)
             break;
-        }
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     if (i <= 0) {
         script("forgetWiFi", ssid);
@@ -144,37 +209,17 @@ api_status_t api_wifi::scanWiFi(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
-api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
+static json _parse_iw_scan(std::string fname)
 {
-    auto&& n = get_sta_connected();
-    auto&& c = get_sta_current();
-
-    std::string c_ssid = "";
-    if (!c.empty() && !c.value("ssid", "").empty() && !c.value("ip", "").empty()) {
-        auto it = std::find_if(n.begin(), n.end(), [&](const auto& item) {
-            return item.value("ssid", "") == c.value("ssid", "");
-        });
-        if (it != n.end()) {
-            auto new_it = *it;
-            new_it.update(c);
-            n.erase(it);
-            n.insert(n.begin(), new_it);
-        } else {
-            n.insert(n.begin(), c);
-        }
-    }
-
     json jlist = json::array();
-    std::string file = script(__func__);
-    std::ifstream f(file);
+    std::ifstream f(fname);
     if (f.is_open()) {
         json j = json::object();
         std::string line;
         while (std::getline(f, line)) {
             if (line.find("BSS ") == 0) {
-                if (!j.empty() && !j.value("ssid", "").empty()) {
+                if (!j.empty() && !j.value("ssid", "").empty())
                     jlist.push_back(j);
-                }
                 j = json::object();
                 j["bssid"] = line.substr(4, 17);
             } else if (line.find("\tfreq: ") == 0) {
@@ -183,7 +228,10 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
                 std::string sub = line.substr(9);
                 j["signal"] = std::stod(sub.substr(0, sub.find(" dBm")));
             } else if (line.find("\tSSID: ") == 0) {
-                j["ssid"] = parse_escaped_string(line.substr(7));
+                std::string ssid = line.substr(7);
+                if (ssid.empty())
+                    continue;
+                j["ssid"] = parse_escaped_string(ssid);
             } else if (line.find("\tRSN:\t") == 0) {
                 j["rsn"] = line.substr(6);
             }
@@ -192,9 +240,13 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
             jlist.push_back(j);
         }
     }
+    return jlist;
+}
 
+api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
+{
     std::map<std::string, json> m;
-    for (auto& j : jlist) {
+    for (auto& j : _parse_iw_scan(script(__func__))) {
         // Compatible with previous
         j["auth"] = j.value("rsn", "").empty() ? 0 : 1;
         j["macAddress"] = j["bssid"];
@@ -202,7 +254,7 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
         j["autoConnect"] = 0;
 
         bool found = false;
-        for (auto& _n : n) {
+        for (auto& _n : _sta_connected) {
             if (_n.value("ssid", "") == j["ssid"]) {
                 j.update(_n);
                 _n = j;
@@ -223,16 +275,14 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
 
     json data = json::object();
     data["wifiInfoList"] = json::array();
-    for (auto& _n : n) {
-        if (!_n.value("ssid", "").empty()) {
-            data["wifiInfoList"].push_back(_n);
-        }
+    for (auto& _n : _sta_connected) {
+        data["wifiInfoList"].push_back(_n);
     }
     for (auto& l : list) {
         data["wifiInfoList"].push_back(m[l]);
     }
 
-    data["etherinfo"] = get_eth();
+    data["etherinfo"] = _eth;
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
@@ -240,16 +290,11 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
 api_status_t api_wifi::getWifiStatus(request_t req, response_t res)
 { // Don't be strange: Compatible with previous
     int status = 2; // wifi not connected
-    auto&& eth = get_eth();
-    if (!eth.value("ip", "").empty()) {
+    if (_eth_status == 1) {
         status = 0; // eth connected
-    } else {
-        auto&& info = get_sta_current();
-        if (!info.value("ip", "").empty()) {
-            status = 1; // wifi connected
-        }
+    } else if (_sta_status == 3) {
+        status = 1; // wifi connected
     }
-
     json data = json::object();
     data["status"] = status;
     response(res, 0, STR_OK, data);
@@ -259,34 +304,22 @@ api_status_t api_wifi::getWifiStatus(request_t req, response_t res)
 api_status_t api_wifi::queryWiFiInfo(request_t req, response_t res)
 {
     json data = json::object();
-
-    int status = 4; // wifi not supported
-    if (_is_open == 0) {
-        status = 0; // wifi disabled
-    } else if (_is_open == 1) {
-        auto&& c = get_sta_current();
-        status = 1; // not connected
-        if (!c.empty()) {
-            if (!c.value("ip", "").empty()) {
-                status = 3; // connected
-                data["wifiInfo"] = c;
-            } else if (!c.value("wpa_state", "").empty()) {
-                status = 2; // connecting
-            }
-        }
-    }
+    int status = _sta_status;
     data["status"] = status;
+    if (status == 3) {
+        data["wifiInfo"] = _sta_current;
+    }
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
 
 api_status_t api_wifi::switchWiFi(request_t req, response_t res)
 {
-    if (_is_open == -1) {
+    if (_sta_enable == -1) {
         response(res, -1, "wifi not supported");
     } else {
-        _is_open = parse_body(req).value("mode", _is_open);
-        script(__func__, _is_open);
+        _sta_enable = parse_body(req).value("mode", _sta_enable);
+        script(__func__, _sta_enable);
         response(res, 0, STR_OK);
     }
     return API_STATUS_OK;

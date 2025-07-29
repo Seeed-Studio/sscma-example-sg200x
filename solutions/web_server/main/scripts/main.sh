@@ -411,13 +411,14 @@ EOF
 ##################################################
 # network
 CONF_WIFI="$CONFIG_DIR/sta"
+CONF_AP="$CONFIG_DIR/ap"
 
 # alias
 WPA_CLI="wpa_cli -i wlan0"
-STA_DOWN="ifconfig wlan0 down >/dev/null 2>&1"
-STA_UP="ifconfig wlan0 up >/dev/null 2>&1"
-AP_DOWN="ifconfig wlan1 down >/dev/null 2>&1"
-AP_UP="ifconfig wlan1 up >/dev/null 2>&1"
+STA_DOWN="ifconfig wlan0 down"
+STA_UP="ifconfig wlan0 up"
+AP_DOWN="ifconfig wlan1 down"
+AP_UP="ifconfig wlan1 up"
 
 _check_wifi() { [ -z "$(ifconfig wlan0 2>/dev/null)" ] && return 1 || return 0; }
 _sta_stop() { _stop_pidname "wpa_supplicant"; }
@@ -438,18 +439,17 @@ _ap_start() {
 }
 
 function start_wifi() {
-    _check_wifi || {
-        echo "-1"
-        return 0
-    }
+    local sta=-1 ap=-1
+    _check_wifi && {
+        [ ! -f "$CONF_WIFI" ] && echo 1 >"$CONF_WIFI"
+        sta=$(cat "$CONF_WIFI")
+        [ $((sta)) -eq 1 ] && { _sta_start >/dev/null 2>&1 & }
 
-    [ ! -f "$CONF_WIFI" ] && echo 1 >"$CONF_WIFI"
-    local on=$(cat "$CONF_WIFI")
-    [ "$on" = "1" ] && {
-        _sta_start >/dev/null 2>&1 &
-        _ap_start >/dev/null 2>&1 &
+        [ ! -f "$CONF_AP" ] && echo 1 >"$CONF_AP"
+        ap=$(cat "$CONF_AP")
+        [ $((ap)) -eq 1 ] && { _ap_start >/dev/null 2>&1 & }
     }
-    echo "$on"
+    printf '{"sta": %d, "ap": %d}' $((sta)) $((ap))
 }
 
 function stop_wifi() {
