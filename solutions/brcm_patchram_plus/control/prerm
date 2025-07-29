@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+if [ -f /etc/init.d/S41bt-init ]; then
+    /etc/init.d/S41bt-init stop
+fi
+
+exit 0
