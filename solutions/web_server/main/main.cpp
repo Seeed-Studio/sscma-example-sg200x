@@ -23,7 +23,7 @@ int main(int argc, char** argv)
             LOGI("%s V%s", PROJECT_NAME, PROJECT_VERSION);
         }
 
-        api_base::set_force_no_auth(false);
+        api_base::set_force_no_auth(true);
         api_base::set_script("./scripts/main.sh");
 
         http_server server(ROOT_DIR);

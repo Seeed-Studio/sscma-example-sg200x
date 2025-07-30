@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <iomanip>
 #include <iterator>
@@ -124,6 +125,8 @@ void api_wifi::start_wifi()
     LOGV("sta_enable: %d, ap_enable: %d", _sta_enable, _ap_enable);
 
     _worker = std::thread([&]() {
+        uint32_t stable_count = 0;
+
         while (_running) {
             // eth
             get_eth();
@@ -145,11 +148,17 @@ void api_wifi::start_wifi()
                 }
             }
             if ((_eth_status == 1) || (_sta_status == 3)) {
-                script("_ap_stop");
+                if (stable_count < 10) {
+                    stable_count++;
+                } else {
+                    script("_ap_stop");
+                }
+            } else {
+                stable_count = 0;
             }
 
             std::unique_lock<std::mutex> lock(wifi_mutex);
-            cv.wait_for(lock, std::chrono::seconds(3), [] { return !_running; });
+            cv.wait_for(lock, std::chrono::seconds((_sta_status == 3) ? 10 : 1), [] { return !_running; });
         }
         LOGV("network thread exit");
     });
@@ -187,12 +196,13 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
     }
     script(__func__, id, ssid, body.value("password", ""));
 
+    // Todo: Stop waiting
     int i = 60;
     _sta_status = 2; // connecting
     while (_running && i--) {
         if (_sta_status == 3)
             break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     if (i <= 0) {
         script("forgetWiFi", ssid);
