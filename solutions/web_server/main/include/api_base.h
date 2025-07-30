@@ -148,10 +148,10 @@ public:
         // Get exit status
         int status = pclose(pipe.release());
         if (WIFEXITED(status)) {
-            int exit_status = WEXITSTATUS(status);
-            if (exit_status != 0) {
-                LOGE("Command exited with status %d", exit_status);
-            }
+            // int exit_status = WEXITSTATUS(status);
+            // if (exit_status != 0) {
+                // LOGE("Command exited with status %d", exit_status);
+            // }
         } else {
             LOGE("Command terminated abnormally: %s, status=%d", full_cmd.c_str(), status);
         }

@@ -1,11 +1,16 @@
 #ifndef API_DEVICE_H
 #define API_DEVICE_H
 
-#include "api_base.h"
+#include <memory>
 #include <stdexcept>
+
+#include "api_base.h"
+#include "deamon.h"
 
 class api_device : public api_base {
 private:
+    static inline std::unique_ptr<deamon> _serviced;
+
     static api_status_t getCameraWebsocketUrl(request_t req, response_t res);
 
     static api_status_t getDeviceInfo(request_t req, response_t res);
@@ -66,6 +71,8 @@ public:
         REG_API(getSystemUpdateVersion);
         REG_API(getUpdateProgress);
         REG_API(updateSystem);
+
+        _serviced = std::make_unique<deamon>();
     }
 
     ~api_device()

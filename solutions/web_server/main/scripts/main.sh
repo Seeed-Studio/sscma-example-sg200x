@@ -573,5 +573,65 @@ function forgetWiFi() {
 # network
 ##################################################
 
+##################################################
+# deamon
+function query_sscma() {
+    mosquitto_rr -h localhost -p 1883 -q 1 -v -W 1 \
+        -t "sscma/v0/recamera/node/in/" \
+        -e "sscma/v0/recamera/node/out/" \
+        -m "{\"name\":\"health\",\"type\":3,\"data\":\"\"}" 2>/dev/null |
+        awk -F ' ' '{print $2}'
+    [ $? -ne 0 ] && {
+        echo "$STR_FAILED"
+        return
+    }
+}
+
+function query_flow() {
+    local result="$(curl "localhost:1880/flows/state" 2>/dev/null)"
+    [ -z "$result" ] && {
+        echo "$STR_FAILED"
+        return
+    }
+    echo "$result"
+}
+
+function query_nodered() {
+    local result="$(curl "localhost:1880" 2>/dev/null)"
+    [ -z "$result" ] && {
+        echo "$STR_FAILED"
+        return
+    }
+    echo "$STR_OK"
+}
+
+function start_service() {
+    local service="$2"
+    case "$service" in
+    "sscma")
+        /etc/init.d/S91sscma-node restart >/dev/null 2>&1
+        [ $? -ne 0 ] && {
+            echo "$STR_FAILED"
+            return
+        }
+        echo "$STR_OK"
+        ;;
+    "nodered")
+        /etc/init.d/S03node-red restart >/dev/null 2>&1
+        [ $? -ne 0 ] && {
+            echo "$STR_FAILED"
+            return
+        }
+        echo "$STR_OK"
+        ;;
+    *)
+        echo "$STR_FAILED"
+        return
+        ;;
+    esac
+}
+# deamon
+##################################################
+
 # call function
 $1 "$@"

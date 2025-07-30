@@ -111,8 +111,8 @@ api_status_t api_device::getSystemStatus(request_t req, response_t res)
 api_status_t api_device::queryServiceStatus(request_t req, response_t res)
 {
     json data = json::object();
-    data["sscmaNode"] = 0;
-    data["nodeRed"] = 0;
+    data["sscmaNode"] = _serviced->get_sscma_status();
+    data["nodeRed"] = _serviced->get_nodered_status();
     data["system"] = 0;
     data["uptime"] = uptime();
     data["timestamp"] = timestamp();
