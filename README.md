@@ -1,6 +1,7 @@
 # SSCMA Example for SG200X  
 
 This repository provides a compilation framework for developing and running applications on the **ReCamera** platform. It includes setup instructions, compilation steps, and installation guidelines.  
+this is a modified version that includes the realtime_http_demo, and some modifications required to build it after july 22 2025.
 
 ## Project Directory Structure  
 
