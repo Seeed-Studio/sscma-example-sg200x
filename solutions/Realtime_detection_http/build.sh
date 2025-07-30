@@ -8,4 +8,4 @@ fi
 
 cd build
 cmake ..
-make
+make -j8
