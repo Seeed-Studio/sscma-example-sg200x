@@ -56,6 +56,7 @@ public:
                 wait_nodered = 0;
             }
         });
+        thread_.detach();
     }
 
     ~deamon()
