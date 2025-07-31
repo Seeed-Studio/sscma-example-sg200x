@@ -29,6 +29,7 @@ _ip() { ifconfig "$1" 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{
 _mask() { ifconfig "$1" 2>/dev/null | awk '/Mask:/ {print $4}' | awk -F':' '{print $2}'; }
 _mac() { ifconfig "$1" 2>/dev/null | awk '/HWaddr/ {print $5}'; }
 _gateway() { route -n | grep '^0.0.0.0' | grep -w "$1" | awk '{print $2}'; }
+_dns() { cat /etc/resolv.conf 2>/dev/null | awk '/nameserver/ {print $2}'; }
 
 _sn() { fw_printenv sn | awk -F'=' '{print $NF}'; }
 _dev_name() { cat "$HOSTNAME_FILE"; }
@@ -92,7 +93,7 @@ function queryDeviceInfo() {
     printf '"mask": "%s",' "$(_mask "wlan0")"
     printf '"mac": "%s",' "$(_mac "wlan0")"
     printf '"gateway": "%s",' "$(_gateway "wlan0")"
-    printf '"dns": "-",'
+    printf '"dns": "%s",' "$(_dns)"
     printf '"deviceName": "%s" }' "$(cat $HOSTNAME_FILE)"
 }
 
