@@ -54,9 +54,9 @@ public:
         REG_API(getCameraWebsocketUrl);
 
         REG_API(getDeviceInfo);
-        REG_API_NO_AUTH(getDeviceList);
+        REG_API(getDeviceList);
         REG_API(updateDeviceName);
-        REG_API(queryDeviceInfo); // fixed: no auth
+        REG_API_NO_AUTH(queryDeviceInfo);
         REG_API(getSystemStatus);
         REG_API(queryServiceStatus);
         REG_API(setPower);
@@ -65,11 +65,11 @@ public:
         REG_API(uploadApp);
 
         REG_API(getModelFile);
-        REG_API_NO_AUTH(getModelInfo); // fixed: no auth
+        REG_API(getModelInfo); // fixed: no auth
         REG_API(getModelList); // fixed: no auth
         REG_API(uploadModel); // fixed: no auth
 
-        REG_API_NO_AUTH(getPlatformInfo);
+        REG_API(getPlatformInfo);
         REG_API(savePlatformInfo);
 
         REG_API(updateChannel);
