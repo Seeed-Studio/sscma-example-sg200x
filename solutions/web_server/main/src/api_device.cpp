@@ -28,7 +28,7 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
 {
     using namespace std;
     map<pair<string, string>, map<string, string>> devs_map;
-    json dev_list;
+    auto&& dev_list = json::array();
     auto&& list = parse_result(script(__func__), ';');
     for (auto& l : list) {
         if (l.size() < 10 || (l[0][0] != '='))
@@ -37,11 +37,13 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
         std::string service = l[4];
         std::string ip = l[7];
         std::string port = l[8];
-        if (service == "_sscma._tcp") {
+        std::string sn = l[9].find("sn=") != std::string::npos ? l[9] : "";
+        if (service == "_sscma._tcp" && !sn.empty()) {
             json dev;
             dev["type"] = type;
             dev["ip"] = ip;
             dev["port"] = port;
+            dev["info"] = sn;
             dev["services"][service] = port;
             dev_list.push_back(dev);
         }
