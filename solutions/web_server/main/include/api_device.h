@@ -5,11 +5,11 @@
 #include <stdexcept>
 
 #include "api_base.h"
-#include "deamon.h"
+#include "serviced.h"
 
 class api_device : public api_base {
 private:
-    static inline std::unique_ptr<deamon> _serviced;
+    static inline std::unique_ptr<serviced> _serviced;
 
     static api_status_t getCameraWebsocketUrl(request_t req, response_t res);
 
@@ -42,9 +42,9 @@ public:
     api_device()
         : api_base("deviceMgr")
     {
-        _serviced = std::make_unique<deamon>();
+        _serviced = std::make_unique<serviced>();
         if (_serviced == nullptr) {
-            throw std::runtime_error("Failed to create deamon");
+            throw std::runtime_error("Failed to create serviced");
             return;
         }
 
@@ -58,18 +58,18 @@ public:
         REG_API(updateDeviceName);
         REG_API_NO_AUTH(queryDeviceInfo);
         REG_API(getSystemStatus);
-        REG_API(queryServiceStatus);
+        REG_API_NO_AUTH(queryServiceStatus);
         REG_API(setPower);
 
         REG_API(getAppInfo);
         REG_API(uploadApp);
 
-        REG_API(getModelFile);
-        REG_API(getModelInfo); // fixed: no auth
-        REG_API(getModelList); // fixed: no auth
-        REG_API(uploadModel); // fixed: no auth
+        REG_API_NO_AUTH(getModelFile);
+        REG_API_NO_AUTH(getModelInfo);
+        REG_API_NO_AUTH(getModelList);
+        REG_API_NO_AUTH(uploadModel);
 
-        REG_API(getPlatformInfo);
+        REG_API_NO_AUTH(getPlatformInfo);
         REG_API(savePlatformInfo);
 
         REG_API(updateChannel);
