@@ -6,6 +6,7 @@ STR_FAILED="Failed"
 # conf
 USER_NAME=recamera
 CONFIG_DIR="/etc/recamera.conf"
+CONF_UPGRADE="$CONFIG_DIR/upgrade"
 
 # userdata
 APP_DIR="/userdata/app"
@@ -36,7 +37,7 @@ _dev_name() { cat "$HOSTNAME_FILE"; }
 _os_name() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $1}'; }
 _os_version() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $2}'; }
 
-_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -9 $pid; done; }
+_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -1 $pid || kill -9 $pid; done; }
 
 ##################################################
 # file
@@ -98,7 +99,7 @@ function queryDeviceInfo() {
 }
 
 # model
-PRESET_MODELS="/usr/share/ai_models"
+PRESET_MODELS="/usr/share/supervisor/models"
 MODEL_SUFFIX=".cvimodel"
 MODEL_FILE="$MODEL_DIR/model${MODEL_SUFFIX}"
 MODEL_INFO="$MODEL_DIR/model.json"
@@ -125,7 +126,6 @@ function getModelList() {
 
 # upgrade
 DEFAULT_UPGRADE_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
-CONF_UPGRADE="$CONFIG_DIR/upgrade"
 UPGRADE="$DIR_SCRIPTS/upgrade.sh"
 
 UPGRADE_CANCEL="$WORK_DIR/upgrade.cancel"
@@ -580,25 +580,24 @@ function query_sscma() {
     mosquitto_rr -h localhost -p 1883 -q 1 -v -W 1 \
         -t "sscma/v0/recamera/node/in/" \
         -e "sscma/v0/recamera/node/out/" \
-        -m "{\"name\":\"health\",\"type\":3,\"data\":\"\"}" 2>/dev/null |
-        awk -F ' ' '{print $2}'
+        -m "{\"name\":\"health\",\"type\":3,\"data\":\"\"}" 2>/dev/null
     [ $? -ne 0 ] && {
         echo "$STR_FAILED"
         return
     }
 }
 
-function query_flow() {
-    local result="$(curl "localhost:1880/flows/state" 2>/dev/null)"
-    [ -z "$result" ] && {
-        echo "$STR_FAILED"
-        return
-    }
-    echo "$result"
-}
+# function query_flow() {
+#     local result="$(curl -I --connect-timeout 2 --max-time 10 "localhost:1880/flows/state" 2>/dev/null)"
+#     [ -z "$result" ] && {
+#         echo "$STR_FAILED"
+#         return
+#     }
+#     echo "$result"
+# }
 
 function query_nodered() {
-    local result="$(curl "localhost:1880" 2>/dev/null)"
+    local result="$(curl -I --connect-timeout 2 --max-time 10 "localhost:1880" 2>/dev/null)"
     [ -z "$result" ] && {
         echo "$STR_FAILED"
         return
@@ -618,6 +617,9 @@ function start_service() {
         echo "$STR_OK"
         ;;
     "nodered")
+        # /etc/init.d/S91sscma-node stop
+        _stop_pidname "sscma-node"
+        _stop_pidname "node"
         /etc/init.d/S03node-red restart >/dev/null 2>&1
         [ $? -ne 0 ] && {
             echo "$STR_FAILED"
