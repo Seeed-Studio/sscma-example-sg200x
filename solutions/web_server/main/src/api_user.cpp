@@ -81,40 +81,20 @@ api_status_t api_user::login(request_t req, response_t res)
 
 api_status_t api_user::queryUserInfo(request_t req, response_t res)
 {
-    auto&& data = parse_result(script(__func__));
-    const auto& fname = data.value("sshKeyFile", "");
-    if (fname.empty()) {
-        response(res, -1, "SSH key file not found.");
-        return API_STATUS_OK;
-    }
-
-    std::ifstream file(fname);
-    if (!file.is_open()) {
-        response(res, -1, "SSH key file open failed.");
-        return API_STATUS_OK;
-    }
-
-    // parse file
     std::vector<json> ssh_key_list;
-    std::string line;
-    while (getline(file, line)) {
-        if (line.empty())
+    auto&& data = parse_result(script(__func__));
+    auto&& list = parse_result(data.value("sshKeyFile", ""), ' ');
+    for (auto&& l : list) {
+        if (l.size() < 4)
             continue;
-
-        auto&& parts = string_split(line, ' ');
-        if (parts.size() < 7)
-            continue;
-
         json sshkey;
-        sshkey["id"] = (parts.size() < 1) ? "-" : parts[0];
-        sshkey["value"] = (parts.size() < 3) ? "-" : parts[2];
-        sshkey["name"] = (parts.size() < 6) ? "-" : parts[5];
-        sshkey["addTime"] = (parts.size() < 7) ? "-" : parts[6];
+        sshkey["id"] = l[0];
+        sshkey["value"] = l[2];
+        sshkey["name"] = (l.size() < 6) ? "-" : l[5];
+        sshkey["addTime"] = (l.size() < 7) ? "-" : l[6];
         ssh_key_list.push_back(sshkey);
     }
-    file.close();
     data["sshkeyList"] = ssh_key_list;
-
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }

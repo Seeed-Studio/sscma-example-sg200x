@@ -150,7 +150,7 @@ public:
         if (WIFEXITED(status)) {
             // int exit_status = WEXITSTATUS(status);
             // if (exit_status != 0) {
-                // LOGE("Command exited with status %d", exit_status);
+            //     LOGE("Command exited with status %d", exit_status);
             // }
         } else {
             LOGE("Command terminated abnormally: %s, status=%d", full_cmd.c_str(), status);
@@ -170,8 +170,6 @@ public:
         return result;
     }
 
-protected:
-    // utils
     using vstr_t = std::vector<std::string>;
     static vstr_t string_split(std::string s, const char delimiter = ' ')
     {
@@ -190,7 +188,7 @@ protected:
     }
 
     using vvstr_t = std::vector<vstr_t>;
-    static vvstr_t parse_file(std::string file, char delimiter = ' ', bool skip_header = false)
+    static vvstr_t parse_result(std::string file, char delimiter, bool skip_header = false)
     {
         vvstr_t result;
         std::ifstream f(file);
@@ -213,6 +211,14 @@ protected:
         return result;
     }
 
+    template <typename T>
+    static json parse_result(T&& result)
+    {
+        return to_json(result);
+    }
+
+protected:
+    // utils
     static uint64_t uptime(void)
     {
         uint64_t uptime = 0;

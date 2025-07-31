@@ -60,7 +60,7 @@ json api_wifi::get_eth()
 json api_wifi::get_sta_current()
 {
     json c = json::object();
-    for (auto& line : parse_file(script(__func__), '=', false)) {
+    for (auto& line : parse_result(script(__func__), '=', false)) {
         if (line.size() < 2)
             continue;
         c[line[0]] = line[1];
@@ -91,7 +91,7 @@ json api_wifi::get_sta_connected()
     if (!c.empty() && !c.value("ssid", "").empty()) {
         n.push_back(c);
     }
-    for (auto& line : parse_file(script(__func__), '\t', true)) {
+    for (auto& line : parse_result(script(__func__), '\t', true)) {
         if (line.size() < 3 || line[1].empty())
             continue;
         std::string ssid = parse_escaped_string(line[1]);

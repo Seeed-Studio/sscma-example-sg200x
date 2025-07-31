@@ -27,6 +27,18 @@ protected:
     static inline const std::string STR_OK = "OK";
     static inline const std::string STR_FAILED = "Failed";
 
+    template <typename T>
+    static json to_json(T&& obj)
+    {
+        json j;
+        try {
+            j = json::parse(obj);
+        } catch (const std::exception& e) {
+            LOGV("%s", e.what());
+        }
+        return j;
+    }
+
     static void response(response_t res, int code = 0,
         const std::string& msg = STR_OK, const json& data = json::object())
     {
@@ -70,25 +82,18 @@ protected:
         return _get_header_var(req, param.c_str());
     }
 
+    static std::string get_body_raw(request_t req)
+    {
+        return std::string(req->body.buf, req->body.len);
+    }
+
     static json parse_body(request_t req)
     {
         std::string type = _get_header_var(req, "Content-Type");
         if (type.find("application/json") == std::string::npos) {
             return json({});
         }
-        return parse_result(std::string(req->body.buf, req->body.len));
-    }
-
-    template <typename T>
-    static json parse_result(T result)
-    {
-        json data = json({});
-        try {
-            data = json::parse(result);
-        } catch (const std::exception& e) {
-            LOGD("%s", e.what());
-        }
-        return data;
+        return to_json(get_body_raw(req));
     }
 
     typedef struct {

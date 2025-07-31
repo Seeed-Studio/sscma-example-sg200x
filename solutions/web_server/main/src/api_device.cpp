@@ -27,34 +27,23 @@ api_status_t api_device::getDeviceInfo(request_t req, response_t res)
 api_status_t api_device::getDeviceList(request_t req, response_t res)
 {
     using namespace std;
-    std::ifstream file(script(__func__));
-    if (!file.is_open()) {
-        response(res, 0, STR_OK, { { "deviceList", "" } });
-        return API_STATUS_OK;
-    }
-
-    json dev_list;
     map<pair<string, string>, map<string, string>> devs_map;
-    string line;
-    while (getline(file, line)) {
-        if (line.empty() || line[0] != '=')
+    json dev_list;
+    auto&& list = parse_result(script(__func__), ';');
+    for (auto& l : list) {
+        if (l.size() < 10 || (l[0][0] != '='))
             continue;
-
-        auto&& it = string_split(line, ';');
-        if (it.size() < 10)
-            continue;
-
-        string type = it[1];
-        string service = it[4];
-        string ip = it[7];
-        string port = it[8];
-        if ((service == "_sscma._tcp")
-            && (string(it[9]).find("sn=") != string::npos)) {
-            dev_list.push_back({ { "type", type },
-                { "device", it[3] },
-                { "domain", it[6] },
-                { "ip", ip },
-                { "info", it[9] } });
+        std::string type = l[1];
+        std::string service = l[4];
+        std::string ip = l[7];
+        std::string port = l[8];
+        if (service == "_sscma._tcp") {
+            json dev;
+            dev["type"] = type;
+            dev["ip"] = ip;
+            dev["port"] = port;
+            dev["services"][service] = port;
+            dev_list.push_back(dev);
         }
         devs_map[std::make_pair(type, ip)][service] = port;
     }
@@ -67,7 +56,7 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
             }
         }
     }
-    file.close();
+
     response(res, 0, STR_OK, { { "deviceList", dev_list } });
     return API_STATUS_OK;
 }
@@ -306,7 +295,6 @@ api_status_t api_device::getSystemUpdateVersion(request_t req, response_t res)
 {
     auto&& result = script(__func__);
     auto&& data = parse_result(result);
-    LOGV("%s", data.dump().c_str());
     if (data.empty()) {
         response(res, -1, result);
         return API_STATUS_OK;
@@ -319,7 +307,6 @@ api_status_t api_device::getUpdateProgress(request_t req, response_t res)
 {
     auto&& result = script(__func__);
     auto&& data = parse_result(result);
-    LOGV("%s", data.dump().c_str());
     if (data.empty()) {
         response(res, -1, result);
         return API_STATUS_OK;

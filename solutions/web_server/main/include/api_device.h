@@ -42,6 +42,12 @@ public:
     api_device()
         : api_base("deviceMgr")
     {
+        _serviced = std::make_unique<deamon>();
+        if (_serviced == nullptr) {
+            throw std::runtime_error("Failed to create deamon");
+            return;
+        }
+
         _dev_info = parse_result(script(__func__));
         LOGD("%s", _dev_info.dump().c_str());
 
@@ -71,8 +77,6 @@ public:
         REG_API(getSystemUpdateVersion);
         REG_API(getUpdateProgress);
         REG_API(updateSystem);
-
-        _serviced = std::make_unique<deamon>();
     }
 
     ~api_device()
