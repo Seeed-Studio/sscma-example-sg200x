@@ -18,11 +18,11 @@
 
 class http_server {
 public:
-    http_server(const char* root_dir = "www",
-        const char* cert = nullptr, const char* key = nullptr)
-        : _cert(cert)
-        , _key(key)
-        , _root_dir(root_dir)
+    http_server(const std::string& root_dir = "www",
+        const std::string& cert = "", const std::string& key = "")
+        : _cert(cert.c_str())
+        , _key(key.c_str())
+        , _root_dir(root_dir.c_str())
     {
         _apis.emplace_back(std::make_unique<api_base>());
         _apis.emplace_back(std::make_unique<api_device>());
@@ -90,7 +90,7 @@ private:
     const char* _cert;
     const char* _key;
     const char* _root_dir;
-    const char* _ssi_pattern = "#.html";
+    // const std::string _ssi_pattern = "#.html";
 
     mg_mgr mgr;
     mg_connection* http_conn = nullptr;

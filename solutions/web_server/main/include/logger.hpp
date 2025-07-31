@@ -37,12 +37,13 @@ public:
         "[DEBUG]",
         "[VERB]",
     };
+    static const uint8_t max_level = sizeof(tag) / sizeof(tag[0]);
 
-    Logger(const std::string& id, int level = LOG_WARNING,
+    Logger(const std::string& id, uint8_t level = LOG_WARNING,
         int opt = LOG_PID, int fac = LOG_USER)
     {
-        _log_level = level;
-        _log_mask = LOG_UPTO(level);
+        _log_level = (level > max_level) ? LOG_WARNING : level;
+        _log_mask = LOG_UPTO(_log_level);
         openlog(id.c_str(), opt, fac);
         setlogmask(_log_mask);
     }
@@ -52,14 +53,15 @@ public:
         closelog();
     }
 
-    static void set_level(int level)
+    static void set_level(uint8_t level)
     {
+        level = (level > max_level) ? LOG_WARNING : level;
         _log_level = level;
-        _log_mask = LOG_UPTO(level);
+        _log_mask = LOG_UPTO(_log_level);
         setlogmask(_log_mask);
     }
 
-    static void log(int level, const char* format, ...)
+    static void log(uint8_t level, const char* format, ...)
     {
         std::lock_guard<std::mutex> lock(_log_mutex);
         va_list args;
@@ -76,7 +78,7 @@ public:
 
 private:
     static inline std::mutex _log_mutex;
-    static inline int _log_level = LOG_WARNING;
+    static inline uint8_t _log_level = LOG_WARNING;
     static inline int _log_mask = LOG_UPTO(_log_level);
 };
 
