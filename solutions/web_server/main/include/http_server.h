@@ -118,7 +118,9 @@ private:
             api_status_t status = api_base::api_handler(hm, res);
             if (status == API_STATUS_OK) {
                 mg_http_reply(c, 200, "Content-Type: application/json\r\n"
-                                      "Access-Control-Allow-Origin: *\r\n",
+                                      "Access-Control-Allow-Origin: *\r\n"
+                                      "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n"
+                                      "Access-Control-Allow-Headers: Authorization, Content-Type\r\n",
                     res.dump().c_str());
                 return;
             } else if (status == API_STATUS_UNAUTHORIZED) {
