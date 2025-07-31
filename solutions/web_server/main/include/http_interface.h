@@ -30,7 +30,7 @@ protected:
     template <typename T>
     static json to_json(T&& obj)
     {
-        json j;
+        json j = json::object();
         try {
             j = json::parse(obj);
         } catch (const std::exception& e) {
