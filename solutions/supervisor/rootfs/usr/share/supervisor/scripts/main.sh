@@ -37,7 +37,7 @@ _dev_name() { cat "$HOSTNAME_FILE"; }
 _os_name() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $1}'; }
 _os_version() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $2}'; }
 
-_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -1 $pid || kill -9 $pid; done; }
+_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -9 $pid; done; }
 
 ##################################################
 # file
@@ -587,15 +587,6 @@ function query_sscma() {
     }
 }
 
-# function query_flow() {
-#     local result="$(curl -I --connect-timeout 2 --max-time 10 "localhost:1880/flows/state" 2>/dev/null)"
-#     [ -z "$result" ] && {
-#         echo "$STR_FAILED"
-#         return
-#     }
-#     echo "$result"
-# }
-
 function query_nodered() {
     local result="$(curl -I --connect-timeout 2 --max-time 10 "localhost:1880" 2>/dev/null)"
     [ -z "$result" ] && {
@@ -603,6 +594,20 @@ function query_nodered() {
         return
     }
     echo "$STR_OK"
+}
+
+function query_flow() {
+    local result="$(curl --connect-timeout 2 --max-time 10 "localhost:1880/flows/state" 2>/dev/null)"
+    [ -z "$result" ] && {
+        echo "$STR_FAILED"
+        return
+    }
+    echo "$result"
+}
+
+function ctrl_flow() {
+    local state="$2"
+    curl -s -X POST -H "Content-Type: application/json" -d "{\"state\":\"$state\"}" http://localhost:1880/flows/state
 }
 
 function start_service() {
@@ -617,8 +622,7 @@ function start_service() {
         echo "$STR_OK"
         ;;
     "nodered")
-        # /etc/init.d/S91sscma-node stop
-        _stop_pidname "sscma-node"
+        kill -1 $(pidof "sscma-node")
         _stop_pidname "node"
         /etc/init.d/S03node-red restart >/dev/null 2>&1
         [ $? -ne 0 ] && {

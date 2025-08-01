@@ -27,7 +27,8 @@ public:
     {
         LOGV("");
         thread_ = std::thread([this]() {
-            uint32_t wait_nodered = 0;
+            uint8_t wait_nodered = 0;
+            bool restart_flow = false;
             running_ = true;
             while (running_) {
                 std::this_thread::sleep_for(std::chrono::seconds(10));
@@ -47,7 +48,14 @@ public:
                 query_sscma();
                 if (sscma_status_ != STATUS_NORMAL) {
                     start_service("sscma");
+                    restart_flow = true;
                     continue;
+                }
+
+                if (restart_flow) {
+                    api_base::script("ctrl_flow", "stop");
+                    api_base::script("ctrl_flow", "start");
+                    restart_flow = false;
                 }
             }
         });
