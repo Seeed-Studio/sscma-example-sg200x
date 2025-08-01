@@ -49,6 +49,9 @@ protected:
     bool websocket_;
     bool output_;
     TransportWebSocket* transport_;
+    int32_t preview_width_;   // Preview resolution width
+    int32_t preview_height_;  // Preview resolution height
+    int32_t preview_fps_;     // Preview FPS
 };
 
 
