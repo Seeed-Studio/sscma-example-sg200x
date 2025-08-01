@@ -13,7 +13,7 @@ APP_DIR="/userdata/app"
 MODEL_DIR="/userdata/MODEL"
 
 # work_dir
-WORK_DIR=/tmp/web_server
+WORK_DIR=/tmp/supervisor
 if [ ! -d $WORK_DIR ]; then
     mkdir -p $WORK_DIR
     chmod 400 -R $WORK_DIR

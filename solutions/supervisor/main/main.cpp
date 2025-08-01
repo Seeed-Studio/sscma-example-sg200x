@@ -9,9 +9,9 @@
 #include "http_server.h"
 
 // 默认配置
-#define DEFAULT_ROOT_DIR "./dist/"
 #define DEFAULT_HTTP_PORT "80"
-#define DEFAULT_SCRIPT_PATH "./scripts/main.sh"
+#define DEFAULT_ROOT_DIR "/usr/share/supervisor/www/"
+#define DEFAULT_SCRIPT_PATH "/usr/share/supervisor/scripts/main.sh"
 
 void print_help(char* argv0)
 {
