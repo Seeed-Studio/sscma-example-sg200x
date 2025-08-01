@@ -121,7 +121,7 @@ private:
                                       "Access-Control-Allow-Origin: *\r\n"
                                       "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n"
                                       "Access-Control-Allow-Headers: Authorization, Content-Type\r\n",
-                    res.dump().c_str());
+                    "%s", res.dump().c_str());
                 return;
             } else if (status == API_STATUS_UNAUTHORIZED) {
                 mg_http_reply(c, 401, "Content-Type: text/plain\r\n", "Unauthorized");
