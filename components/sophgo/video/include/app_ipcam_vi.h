@@ -101,7 +101,7 @@ typedef struct APP_PARAM_VI_CFG_T {
 } APP_PARAM_VI_CTX_S;
 
 APP_PARAM_VI_CTX_S *app_ipcam_Vi_Param_Get(void);
-int app_ipcam_Vi_Init(void);
+int app_ipcam_Vi_Init(bool mirror, bool flip);
 int app_ipcam_Vi_DeInit(void);
 
 #ifdef __cplusplus

@@ -15,7 +15,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::enterCritical();                                                                                                             \
         Thread::sleep(Tick::fromMilliseconds(100));                                                                                          \
         MA_LOGI(TAG, "start video");                                                                                                         \
-        startVideo();                                                                                                                        \
+        startVideo(mirror_, flip_);                                                                                                         \
         Thread::sleep(Tick::fromSeconds(1));                                                                                                 \
         Thread::exitCritical();                                                                                                              \
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}})); \
@@ -40,7 +40,10 @@ CameraNode::CameraNode(std::string id)
       preview_(false),
       websocket_(true),
       audio_(80),
+      mirror_(false),
+      flip_(false),
       option_(0),
+      fps_(30),
       frame_(60),
       thread_(nullptr),
       thread_audio_(nullptr),
@@ -49,6 +52,7 @@ CameraNode::CameraNode(std::string id)
         channels_[i].configured = false;
         channels_[i].enabled    = false;
         channels_[i].format     = MA_PIXEL_FORMAT_H264;
+        channels_[i].fps        = 30;
     }
     channels_.shrink_to_fit();
 }
@@ -242,7 +246,7 @@ void CameraNode::threadAudioEntry() {
 
     char cmd[256] = {0};
     snprintf(cmd, sizeof(cmd), "amixer -D" AUDIO_DEVICE " cset name='ADC Capture Volume' %d", audio_ * 24 / 100);
-    
+
     system(cmd);
 
     pcm_return = snd_pcm_open(&handle, device_name, SND_PCM_STREAM_CAPTURE, 0);
@@ -420,8 +424,26 @@ ma_err_t CameraNode::onCreate(const json& config) {
         }
     }
 
+    if (config.contains("fps") && config["fps"].is_number()) {
+        fps_ = config["fps"].get<int>();
+        if (fps_ < 1) {
+            fps_ = 1;
+        }
+        if (fps_ > 30) {
+            fps_ = 30;
+        }
+    }
+
     if (config.contains("light") && config["light"].is_number()) {
         light_ = config["light"].get<int>();
+    }
+
+    if (config.contains("mirror") && config["mirror"].is_boolean()) {
+        mirror_ = config["mirror"].get<bool>();
+    }
+
+    if (config.contains("flip") && config["flip"].is_boolean()) {
+        flip_ = config["flip"].get<bool>();
     }
 
 
@@ -430,32 +452,38 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1280;
             channels_[CHN_H264].height = 1080;
-            channels_[CHN_H264].fps    = 15;
+            channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
             channels_[CHN_JPEG].height = 640;
-            channels_[CHN_JPEG].fps    = 15;
+            channels_[CHN_JPEG].fps    = 30;
             break;
         case 2:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 640;
             channels_[CHN_H264].height = 480;
-            channels_[CHN_H264].fps    = 15;
+            channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
             channels_[CHN_JPEG].height = 640;
-            channels_[CHN_JPEG].fps    = 15;
+            channels_[CHN_JPEG].fps    = 30;
             break;
         default:
             channels_[CHN_H264].format = MA_PIXEL_FORMAT_H264;
             channels_[CHN_H264].width  = 1920;
             channels_[CHN_H264].height = 1080;
-            channels_[CHN_H264].fps    = 15;
+            channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
             channels_[CHN_JPEG].height = 640;
-            channels_[CHN_JPEG].fps    = 15;
+            channels_[CHN_JPEG].fps    = 30;
             break;
+    }
+
+    if (fps_ > 0) {
+        channels_[CHN_RAW].fps  = fps_;
+        channels_[CHN_H264].fps = fps_;
+        channels_[CHN_JPEG].fps = fps_;
     }
 
     if (preview_) {
@@ -477,9 +505,11 @@ ma_err_t CameraNode::onCreate(const json& config) {
         transport_ = nullptr;
     }
 
-    thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
-    if (thread_ == nullptr) {
-        MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
+    if(preview_ || websocket_) {
+        thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
+        if (thread_ == nullptr) {
+            MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
+        }
     }
 
     if (audio_) {

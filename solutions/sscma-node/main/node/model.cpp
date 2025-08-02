@@ -497,6 +497,8 @@ ma_err_t ModelNode::onStart() {
 
     const ma_img_t* img = static_cast<const ma_img_t*>(model_->getInput());
 
+    MA_LOGI(TAG, "onStart model: %s(%s) width %d height %d format %d", type_.c_str(), id_.c_str(), img->width, img->height, img->format);
+
     for (auto& dep : dependencies_) {
         if (dep.second->type() == "camera") {
             camera_ = static_cast<CameraNode*>(dep.second);
@@ -509,10 +511,10 @@ ma_err_t ModelNode::onStart() {
         return MA_ENOTSUP;
     }
 
-    camera_->config(CHN_RAW, img->width, img->height, 30, img->format);
+    camera_->config(CHN_RAW, img->width, img->height, 0, img->format);
     camera_->attach(CHN_RAW, &raw_frame_);
     if (debug_) {
-        camera_->config(CHN_JPEG, img->width, img->height, 30, MA_PIXEL_FORMAT_JPEG);
+        camera_->config(CHN_JPEG, img->width, img->height, 0, MA_PIXEL_FORMAT_JPEG);
         camera_->attach(CHN_JPEG, &jpeg_frame_);
     }
 

@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
     initRtsp((0x01 << VIDEO_CH2));
 #endif
 
-    startVideo();
+    startVideo(false, false);
 
     while (1) {
         sleep(1);
