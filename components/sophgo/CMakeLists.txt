@@ -2,11 +2,15 @@ include_directories("${SG200X_SDK_PATH}/osdrv/interdrv/v2/include/chip/cv181x/ua
 include_directories("${SG200X_SDK_PATH}/osdrv/interdrv/v2/include/common/uapi/")
 include_directories("${SG200X_SDK_PATH}/osdrv/interdrv/v2/include/common/uapi/linux/")
 
+
 include_directories("${SG200X_SDK_PATH}/cvi_mpi/include")
 include_directories("${SG200X_SDK_PATH}/cvi_mpi/modules/isp/cv181x/isp-daemon2/inc/")
+include_directories("${SG200X_SDK_PATH}/cvi_mpi/modules/isp/common/raw_dump/inc")
+include_directories("${SG200X_SDK_PATH}/cvi_mpi/sample/")
 include_directories("${SG200X_SDK_PATH}/cvi_mpi/modules/isp/include/cv181x/")
 
 link_directories("${SG200X_SDK_PATH}/cvi_mpi/lib/")
+link_directories("${SG200X_SDK_PATH}/cvi_mpi/lib/3rd")
 
 include(${CMAKE_CURRENT_LIST_DIR}/audio/CMakeLists.txt)
 include(${CMAKE_CURRENT_LIST_DIR}/video/CMakeLists.txt)
