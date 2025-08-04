@@ -99,10 +99,10 @@ int deinitVideo(void) {
     }
 }
 
-int startVideo(bool mirror, bool flip) {
+int startVideo() {
     /* init modules include <Peripheral; Sys; VI; VB; OSD; Venc; AI; Audio; etc.> */
     APP_CHK_RET(app_ipcam_Sys_Init(), "init systerm");
-    APP_CHK_RET(app_ipcam_Vi_Init(mirror, flip), "init vi module");
+    APP_CHK_RET(app_ipcam_Vi_Init(), "init vi module");
     APP_CHK_RET(app_ipcam_Vpss_Init(), "init vpss module");
     APP_CHK_RET(app_ipcam_Venc_Init(APP_VENC_ALL), "init video encode");
 

@@ -313,7 +313,7 @@ static int app_ipcam_Vi_Pipe_Stop(void) {
     return CVI_SUCCESS;
 }
 
-static int app_ipcam_Vi_Chn_Start(bool mirror, bool flip) {
+static int app_ipcam_Vi_Chn_Start() {
     CVI_S32 s32Ret;
 
     VI_PIPE ViPipe;
@@ -356,12 +356,12 @@ static int app_ipcam_Vi_Chn_Start(bool mirror, bool flip) {
         }
 
         /* Coordinate transform */
-        if (mirror) {
-            stViChnAttr.bMirror = !stViChnAttr.bMirror;
-        }
-        if (flip) {
-            stViChnAttr.bFlip = !stViChnAttr.bFlip;
-        }
+        // if (mirror) {
+        //     stViChnAttr.bMirror = !stViChnAttr.bMirror;
+        // }
+        // if (flip) {
+        //     stViChnAttr.bFlip = !stViChnAttr.bFlip;
+        // }
 
         s32Ret = CVI_VI_SetChnAttr(ViPipe, ViChn, &stViChnAttr);
         APP_IPCAM_CHECK_RET(s32Ret, "CVI_VI_SetChnAttr(%d) failed!\n", ViPipe);
@@ -427,7 +427,7 @@ int app_ipcam_Vi_DeInit(void) {
     return CVI_SUCCESS;
 }
 
-int app_ipcam_Vi_Init(bool mirror, bool flip) {
+int app_ipcam_Vi_Init() {
     CVI_S32 s32Ret = CVI_SUCCESS;
 
     s32Ret = CVI_SYS_VI_Open();
@@ -472,7 +472,7 @@ int app_ipcam_Vi_Init(bool mirror, bool flip) {
         goto VI_EXIT3;
     }
 
-    s32Ret = app_ipcam_Vi_Chn_Start(mirror, flip);
+    s32Ret = app_ipcam_Vi_Chn_Start();
     if (s32Ret != CVI_SUCCESS) {
         APP_PROF_LOG_PRINT(LEVEL_ERROR, "app_ipcam_Chn_Start failed with %#x\n", s32Ret);
         goto VI_EXIT4;
