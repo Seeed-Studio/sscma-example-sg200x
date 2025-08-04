@@ -15,7 +15,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::enterCritical();                                                                                                             \
         Thread::sleep(Tick::fromMilliseconds(100));                                                                                          \
         MA_LOGI(TAG, "start video");                                                                                                         \
-        startVideo(mirror_, flip_);                                                                                                         \
+        startVideo();                                                                                                         \
         Thread::sleep(Tick::fromSeconds(1));                                                                                                 \
         Thread::exitCritical();                                                                                                              \
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}})); \

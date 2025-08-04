@@ -43,7 +43,7 @@ typedef struct {
 
 int initVideo(void);
 int deinitVideo(void);
-int startVideo(bool mirror, bool flip);
+int startVideo();
 int setupVideo(video_ch_index_t ch, const video_ch_param_t* param);
 int registerVideoFrameHandler(video_ch_index_t ch, int index, pfpDataConsumes handler, void* pUserData);
 
