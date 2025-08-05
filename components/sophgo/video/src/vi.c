@@ -5,6 +5,8 @@
 
 #include "app_ipcam_paramparse.h"
 
+#include "video.h"
+
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -321,6 +323,8 @@ static int app_ipcam_Vi_Chn_Start() {
     VI_DEV_ATTR_S stViDevAttr;
     VI_CHN_ATTR_S stViChnAttr;
     ISP_SNS_OBJ_S* pstSnsObj = CVI_NULL;
+    bool mirror = getVideoMirror();
+    bool flip = getVideoFlip();
 
     for (CVI_U32 i = 0; i < g_pstViCtx->u32WorkSnsCnt; i++) {
         APP_PARAM_SNS_CFG_T* pstSnsCfg = &g_pstViCtx->astSensorCfg[i];
@@ -356,12 +360,12 @@ static int app_ipcam_Vi_Chn_Start() {
         }
 
         /* Coordinate transform */
-        // if (mirror) {
-        //     stViChnAttr.bMirror = !stViChnAttr.bMirror;
-        // }
-        // if (flip) {
-        //     stViChnAttr.bFlip = !stViChnAttr.bFlip;
-        // }
+        if (mirror) {
+            stViChnAttr.bMirror = !stViChnAttr.bMirror;
+        }
+        if (flip) {
+            stViChnAttr.bFlip = !stViChnAttr.bFlip;
+        }
 
         s32Ret = CVI_VI_SetChnAttr(ViPipe, ViChn, &stViChnAttr);
         APP_IPCAM_CHECK_RET(s32Ret, "CVI_VI_SetChnAttr(%d) failed!\n", ViPipe);

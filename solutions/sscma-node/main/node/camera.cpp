@@ -446,6 +446,8 @@ ma_err_t CameraNode::onCreate(const json& config) {
         flip_ = config["flip"].get<bool>();
     }
 
+    setVideoMirror(mirror_);
+    setVideoFlip(flip_);
 
     switch (option_) {
         case 1:
