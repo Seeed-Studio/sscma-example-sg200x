@@ -26,7 +26,7 @@ static const presets_wrapper_t _presets[] = {
         Thread::enterCritical();                    \
         Thread::sleep(Tick::fromMilliseconds(100)); \
         MA_LOGD(TAG, "start video");                \
-        startVideo();                               \
+        startVideo();                   \
         Thread::sleep(Tick::fromSeconds(1));        \
         Thread::exitCritical();                     \
     }

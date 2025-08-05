@@ -101,7 +101,7 @@ export const getSystemUpdateVesionInfoApi = async (data: {
     isUpgrading: IsUpgrading;
   }>(
     {
-      url: "api/deviceMgr/getSystemUpdateVesionInfo",
+      url: "api/deviceMgr/getSystemUpdateVersion",
       method: "post",
       data,
     },

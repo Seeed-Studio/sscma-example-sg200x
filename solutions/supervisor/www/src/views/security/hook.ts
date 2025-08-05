@@ -1,5 +1,5 @@
-import { useEffect, Reducer, useReducer, useRef } from "react";
-import { FormInstance } from "antd-mobile/es/components/form";
+import { useEffect, Reducer, useReducer } from "react";
+import { Form } from "antd";
 import useConfigStore from "@/store/config";
 import { encryptPassword } from "@/utils";
 import moment from "moment";
@@ -7,6 +7,7 @@ import {
   getUserInfoApi,
   updateUserInfoApi,
   updateUserPasswordApi,
+  setSShStatusApi,
   delSshKeyApi,
   addSshKeyApi,
 } from "@/api/user";
@@ -33,6 +34,7 @@ interface IInitialState {
   username: string;
   sshkeyList: ISshItem[];
   curSshInfo?: ISshItem;
+  sshEnabled: boolean;
 }
 type ActionType = { type: "setState"; payload: Partial<IInitialState> };
 const initialState: IInitialState = {
@@ -42,6 +44,7 @@ const initialState: IInitialState = {
   form: {},
   username: "",
   sshkeyList: [],
+  sshEnabled: false,
 };
 function reducer(state: IInitialState, action: ActionType): IInitialState {
   switch (action.type) {
@@ -65,9 +68,9 @@ export function useData() {
   const setStates = (payload: Partial<IInitialState>) => {
     stateDispatch({ type: "setState", payload: payload });
   };
-  const passwordFormRef = useRef<FormInstance>(null);
-  const usernameFormRef = useRef<FormInstance>(null);
-  const formRef = useRef<FormInstance>(null);
+  const [passwordFormRef] = Form.useForm();
+  const [usernameFormRef] = Form.useForm();
+  const [formRef] = Form.useForm();
 
   const onQueryUserInfo = async () => {
     try {
@@ -75,8 +78,12 @@ export function useData() {
       setStates({
         username: data.userName,
         sshkeyList: data.sshkeyList,
+        sshEnabled: data.sshEnabled || false,
       });
-    } catch (err) {}
+    } catch (err) {
+      // 错误处理
+      console.error("Failed to fetch user info:", err);
+    }
   };
   const onCancel = () => {
     setStates({
@@ -84,14 +91,13 @@ export function useData() {
     });
     switch (state.formType) {
       case IFormTypeEnum.Key:
-        formRef.current?.resetFields();
-
+        formRef.resetFields();
         break;
       case IFormTypeEnum.Password:
-        passwordFormRef.current?.resetFields();
+        passwordFormRef.resetFields();
         break;
       case IFormTypeEnum.Username:
-        usernameFormRef.current?.resetFields();
+        usernameFormRef.resetFields();
         break;
     }
   };
@@ -154,6 +160,18 @@ export function useData() {
       visible: false,
     });
   };
+  const setSShStatus = async (enabled: boolean) => {
+    try {
+      const response = await setSShStatusApi({ enabled });
+      if (response.code === 0) {
+        setStates({
+          sshEnabled: enabled,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to set SSH status:", error);
+    }
+  };
   useEffect(() => {
     onQueryUserInfo();
   }, []);
@@ -172,5 +190,6 @@ export function useData() {
     onDelete,
     onAddSshFinish,
     onDeleteFinish,
+    setSShStatus,
   };
 }

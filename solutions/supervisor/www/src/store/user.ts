@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { loginApi } from "@/api/user";
 
 type UserInfo = {
   userName: string | null;
@@ -15,7 +14,6 @@ type UserStoreType = {
   updateFirstLogin: (firstLogin: boolean) => void;
   updateUserInfo: (userInfo: UserInfo) => void;
   setCurrentSn: (sn: string) => void;
-  // getUserInfoBySn: (sn: string) => UserInfo | undefined;
   updateUserName: (userName: string | null) => void;
   updatePassword: (password: string | null) => void;
   updateToken: (token: string | null) => void;
@@ -55,7 +53,6 @@ const useUserStore = create<UserStoreType>()(
           });
         }
       },
-      // getUserInfoBySn: (sn: string) => get().usersBySn[sn],
       updateUserName: (userName: string | null) => {
         const { currentSn, usersBySn } = get();
         if (currentSn) {
@@ -128,34 +125,14 @@ const useUserStore = create<UserStoreType>()(
   )
 );
 
-// export const getUserInfoBySN = (sn: string) =>
-//   useUserStore.getState().usersBySn?.[sn] ?? {};
-
 export const getToken = () => {
   const { currentSn, usersBySn } = useUserStore.getState();
   return currentSn ? usersBySn[currentSn]?.token : null;
 };
 
-export const refreshToken = async () => {
-  const { currentSn, usersBySn, updateToken, clearCurrentUserInfo } =
-    useUserStore.getState();
-  if (currentSn) {
-    const currentUser = usersBySn[currentSn] || {};
-    if (currentUser.userName && currentUser.password) {
-      const response = await loginApi({
-        userName: currentUser.userName,
-        password: currentUser.password,
-      });
-      if (response.code == 0) {
-        const token = response.data.token;
-        updateToken(token);
-      } else {
-        clearCurrentUserInfo();
-      }
-    } else {
-      clearCurrentUserInfo();
-    }
-  }
+export const clearCurrentUser = async () => {
+  const { clearCurrentUserInfo } = useUserStore.getState();
+  clearCurrentUserInfo();
 };
 
 export default useUserStore;

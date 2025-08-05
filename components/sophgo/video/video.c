@@ -99,7 +99,7 @@ int deinitVideo(void) {
     }
 }
 
-int startVideo(void) {
+int startVideo() {
     /* init modules include <Peripheral; Sys; VI; VB; OSD; Venc; AI; Audio; etc.> */
     APP_CHK_RET(app_ipcam_Sys_Init(), "init systerm");
     APP_CHK_RET(app_ipcam_Vi_Init(), "init vi module");

@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosError } from "axios";
 import { message } from "antd";
-import { getToken, refreshToken } from "@/store/user";
+import { getToken, clearCurrentUser } from "@/store/user";
 import { isDev } from "@/utils";
 
 // 根据环境设置 baseURL
@@ -54,9 +54,9 @@ const createSupervisorRequest = () => {
         },
         (err: AxiosError) => {
           console.error(err);
-          //鉴权失败，重新登录获取token
+          //鉴权失败，重新登录
           if (err.response?.status == 401) {
-            refreshToken();
+            clearCurrentUser();
           } else {
             if (!catchs) {
               message.error(err.message || "request error");

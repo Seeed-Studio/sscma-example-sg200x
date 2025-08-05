@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
     });
 
     TransportRTSP rtsp;
-    TransportRTSP::RTSPConfig rtsp_config;
+    TransportRTSP::Config rtsp_config;
     rtsp_config.port    = 554;
     rtsp_config.format  = MA_PIXEL_FORMAT_H264;
     rtsp_config.session = "test";

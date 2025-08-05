@@ -19,7 +19,7 @@ export default {
         text: "#878B7E",
         error: "#D54941",
       },
-      width: getSizeByNumber(500),
+      width: getSizeByNumber(750),
       minWidth: getSizeByNumber(300),
       height: getSizeByNumber(100),
       fontSize: getSizeByNumber(50, 12),

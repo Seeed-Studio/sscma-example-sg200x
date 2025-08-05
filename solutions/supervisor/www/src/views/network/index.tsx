@@ -34,7 +34,7 @@ const wifiInfoList = [
     label: "",
     key: "info",
     children: [
-      { label: "Auto Connect", key: "autoConnect", wiredHide: true },
+      // { label: "Auto Connect", key: "autoConnect", wiredHide: true },
       { label: "Status", key: "connectedStatusText" },
       { label: "MAC Address", key: "macAddress" },
     ],

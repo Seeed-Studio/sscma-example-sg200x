@@ -10,6 +10,21 @@ export const requiredTrimValidate = () => {
     },
   };
 };
+
+export const publicKeyValidate = () => {
+  const reg =
+    /^(ssh-ed25519|ssh-rsa|ssh-dss)\s+([A-Za-z0-9+/]+[=]{0,2}|(\{?[A-Za-z0-9+/]+?\}?))(\s+.*)?$/;
+  return {
+    required: true,
+    validator: (_: unknown, value: string) => {
+      if (value && reg.test(value)) {
+        return Promise.resolve();
+      }
+      return Promise.reject("Invalid Key");
+    },
+  };
+};
+
 // 不能输入中文验证
 export const chineseValidate = () => {
   const digitOnly = /^[^一-\u9fa5]+$/; // 匹配任何一个非中文字符
