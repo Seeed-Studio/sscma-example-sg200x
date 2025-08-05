@@ -7,7 +7,7 @@
 
 // Default folders for saving
 #ifndef NODE_SAVE_PATH_LOCAL
-#define NODE_SAVE_PATH_LOCAL "/userdata/VIDEO/"
+#define NODE_SAVE_PATH_LOCAL "/userdata/app/VIDEO/"
 #endif
 
 #ifndef NODE_SAVE_PATH_EXTERNAL
@@ -15,7 +15,7 @@
 #endif
 
 #ifndef NODE_IMAGE_PATH_LOCAL
-#define NODE_IMAGE_PATH_LOCAL "/userdata/IMAGES/"
+#define NODE_IMAGE_PATH_LOCAL "/userdata/app/IMAGES/"
 #endif
 
 #ifndef NODE_IMAGE_PATH_EXTERNAL
@@ -434,7 +434,7 @@ ma_err_t SaveNode::onCreate(const json& config) {
     }
 
     if (!std::filesystem::exists(storage_) || !std::filesystem::is_directory(storage_)) {
-        if (!std::filesystem::create_directory(storage_)) {
+        if (!std::filesystem::create_directories(storage_)) {
             MA_THROW(Exception(MA_EINVAL, "Failed to create storage directory"));
         }
     }
