@@ -8,7 +8,7 @@
 
 #include "http_server.h"
 
-// 默认配置
+// Default configuration
 #define DEFAULT_HTTP_PORT "80"
 #define DEFAULT_ROOT_DIR "/usr/share/supervisor/www/"
 #define DEFAULT_SCRIPT_PATH "/usr/share/supervisor/scripts/main.sh"
@@ -26,7 +26,7 @@ void print_help(char* argv0)
 
 int main(int argc, char** argv)
 {
-    // 配置参数初始化
+    // Initialize configuration parameters
     std::string root_dir = DEFAULT_ROOT_DIR;
     std::string http_port = DEFAULT_HTTP_PORT;
     std::string script_path = DEFAULT_SCRIPT_PATH;
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     bool daemon_mode = false;
     bool show_version = false;
 
-    // 解析命令行参数
+    // Parse command-line arguments
     int opt;
     while ((opt = getopt(argc, argv, "vBr:p:s:aD:")) != -1) {
         switch (opt) {
@@ -66,31 +66,31 @@ int main(int argc, char** argv)
         }
     }
 
-    // 如果启用了后台运行模式
+    // If daemon mode is enabled
     if (daemon_mode) {
-        // 创建子进程
+        // Create child process
         pid_t pid = fork();
         if (pid < 0) {
             fprintf(stderr, "Failed to fork\n");
             exit(EXIT_FAILURE);
         }
         if (pid > 0) {
-            // 父进程退出
+            // Parent process exits
             exit(EXIT_SUCCESS);
         }
 
-        // 子进程继续执行，成为会话组长
+        // Child process continues, becoming session leader
         if (setsid() < 0) {
             fprintf(stderr, "Failed to setsid\n");
             exit(EXIT_FAILURE);
         }
 
-        // 重定向标准输入、输出、错误
+        // Redirect standard input, output, and error
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
 
-        // 设置文件权限掩码
+        // Set file permission mask
         umask(0);
     }
 
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
             fprintf(stdout, "%s V%s\n", PROJECT_NAME, PROJECT_VERSION);
         }
 
-        // 使用配置参数
+        // Apply configuration parameters
         api_base::set_force_no_auth(no_auth);
         api_base::set_script(script_path);
 
