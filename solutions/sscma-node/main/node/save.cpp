@@ -1,14 +1,25 @@
 #include <filesystem>
 #include <sys/statvfs.h>
+#include <fstream>
+
 
 #include "save.h"
 
+// Default folders for saving
 #ifndef NODE_SAVE_PATH_LOCAL
 #define NODE_SAVE_PATH_LOCAL "/userdata/VIDEO/"
 #endif
 
 #ifndef NODE_SAVE_PATH_EXTERNAL
 #define NODE_SAVE_PATH_EXTERNAL "/mnt/sd/VIDEO/"
+#endif
+
+#ifndef NODE_IMAGE_PATH_LOCAL
+#define NODE_IMAGE_PATH_LOCAL "/userdata/IMAGES/"
+#endif
+
+#ifndef NODE_IMAGE_PATH_EXTERNAL
+#define NODE_IMAGE_PATH_EXTERNAL "/mnt/sd/IMAGES/"
 #endif
 
 #ifndef NODE_SAVE_MAX_SIZE
@@ -26,7 +37,7 @@ namespace ma::node {
 static constexpr char TAG[] = "ma::node::save";
 
 SaveNode::SaveNode(std::string id)
-    : Node("save", id), storage_(NODE_SAVE_PATH_LOCAL), slice_(300), duration_(-1), vcount_(0), acount_(0), camera_(nullptr), frame_(60), thread_(nullptr), avFmtCtx_(nullptr), avStream_(nullptr) {
+    : Node("save", id), storage_(NODE_SAVE_PATH_LOCAL), saveMode_("video"), slice_(300), duration_(-1), begin_(0), start_(0), manual_capture_requested_(false), vcount_(0), acount_(0), imageCount_(0), camera_(nullptr), frame_(60), thread_(nullptr), avFmtCtx_(nullptr), avStream_(nullptr) {
     // av_log_set_level(AV_LOG_LEVEL);
 }
 
@@ -39,6 +50,48 @@ std::string SaveNode::generateFileName() {
     std::ostringstream oss;
     oss << storage_ << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S") << ".mov";
     return oss.str();
+}
+
+std::string SaveNode::generateImageFileName() {
+    auto now = std::time(nullptr);
+    std::ostringstream oss;
+    oss << storage_ << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S") << "_" << std::setfill('0') << std::setw(4) << imageCount_ << ".jpg";
+    return oss.str();
+}
+
+bool SaveNode::saveImage(videoFrame* frame) {
+    if (frame == nullptr || frame->img.data == nullptr) {
+        return false;
+    }
+
+    // Generate filename for the image
+    filename_ = generateImageFileName();
+    MA_LOGI(TAG, "save image to %s", filename_.c_str());
+
+    // Check available space (estimate JPEG size as 1/2 of frame size)
+    if (recycle(frame->img.size / 2) == false) {
+        MA_LOGW(TAG, "No space left on device");
+        return false;
+    }
+
+    // Write JPEG data directly to file (no conversion needed)
+    std::ofstream file(filename_, std::ios::binary);
+    if (!file.is_open()) {
+        MA_LOGE(TAG, "could not open %s for writing", filename_.c_str());
+        return false;
+    }
+
+    file.write(reinterpret_cast<const char*>(frame->img.data), frame->img.size);
+    file.close();
+
+    if (!file.good()) {
+        MA_LOGE(TAG, "failed to write image data to %s", filename_.c_str());
+        return false;
+    }
+
+    imageCount_++;
+    MA_LOGI(TAG, "image saved successfully: %s (size: %d bytes)", filename_.c_str(), frame->img.size);
+    return true;
 }
 
 bool SaveNode::recycle(uint32_t req_size) {
@@ -195,13 +248,60 @@ void SaveNode::threadEntry() {
 
     while (started_) {
         Thread::exitCritical();
+        
+        // Fetch frames from the appropriate message box
         if (frame_.fetch(reinterpret_cast<void**>(&frame), Tick::fromSeconds(2))) {
             Thread::enterCritical();
             if (!enabled_) {
                 frame->release();
                 continue;
             }
-            if (frame->chn == CHN_H264) {
+            if (saveMode_ == "image" && frame->chn == CHN_JPEG) {
+                // Handle JPEG image saving
+                video = static_cast<videoFrame*>(frame);
+                
+                bool shouldSave = false;
+                
+                if (duration_ == 0) {
+                    // Manual mode - save when manual_capture_requested_ is true
+                    if (manual_capture_requested_) {
+                        shouldSave = true;
+                        manual_capture_requested_ = false; // Reset flag after capture
+                    }
+                } else {
+                    // Automatic mode - check interval
+                    if (slice_ > 0 && Tick::current() - start_ > Tick::fromSeconds(slice_)) {
+                        shouldSave = true;
+                        start_ = Tick::current();
+                    }
+                }
+                
+                if (shouldSave) {
+                    if (saveImage(video)) {
+                        MA_LOGI(TAG, "image saved %s", (duration_ == 0) ? "manually" : "at interval");
+                        // --- CHANGE: in manual mode, briefly set status to running ---
+                        if (duration_ == 0) {
+                            enabled_ = true;
+                            server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
+                        }
+                    } else {
+                        MA_LOGW(TAG, "failed to save image");
+                    }
+                }
+                
+                // Check duration limit (only for automatic mode)
+                if (duration_ > 0 && Tick::current() - begin_ > Tick::fromSeconds(duration_)) {
+                    enabled_ = false;
+                    MA_LOGI(TAG, "stop image saving - duration reached");
+                    server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
+                    frame->release();
+                    continue;
+                }
+                
+                frame->release();
+                continue;
+            } else if (saveMode_ == "video" && frame->chn == CHN_H264) {
+                // Handle H264 video saving
                 video = static_cast<videoFrame*>(frame);
                 if (recycle(video->img.size) == false) {
                     video->release();
@@ -260,7 +360,7 @@ void SaveNode::threadEntry() {
                     }
                 }
             }
-            if (frame->chn == CHN_AUDIO) {
+            if (saveMode_ == "video" && frame->chn == CHN_AUDIO) {
                 audio = static_cast<audioFrame*>(frame);
                 if (avFmtCtx_ != nullptr) {
                     av_init_packet(&packet);
@@ -306,6 +406,14 @@ ma_err_t SaveNode::onCreate(const json& config) {
         MA_THROW(Exception(MA_EINVAL, "Invalid config"));
     }
 
+    // Get save mode (video or image)
+    if (config.contains("saveMode") && config["saveMode"].is_string()) {
+        saveMode_ = config["saveMode"].get<std::string>();
+        if (saveMode_ != "video" && saveMode_ != "image") {
+            saveMode_ = "video"; // Default to video mode
+        }
+    }
+
     if (config.contains("duration") && config["duration"].is_number()) {
         duration_ = config["duration"].get<int>();
     }
@@ -315,8 +423,11 @@ ma_err_t SaveNode::onCreate(const json& config) {
     }
 
     std::string storageType = config["storage"].get<std::string>();
-    storage_                = (storageType == "local") ? NODE_SAVE_PATH_LOCAL : (storageType == "external") ? NODE_SAVE_PATH_EXTERNAL : "";
-
+    if (saveMode_ == "image") {
+        storage_ = (storageType == "local") ? NODE_IMAGE_PATH_LOCAL : (storageType == "external") ? NODE_IMAGE_PATH_EXTERNAL : "";
+    } else {
+        storage_ = (storageType == "local") ? NODE_SAVE_PATH_LOCAL : (storageType == "external") ? NODE_SAVE_PATH_EXTERNAL : "";
+    }
 
     if (storage_.empty()) {
         MA_THROW(Exception(MA_EINVAL, "Invalid storage type"));
@@ -343,10 +454,10 @@ ma_err_t SaveNode::onCreate(const json& config) {
         available = 0;
     }
 
-    MA_LOGI(TAG, "storage: %s, slice: %d duration: %d available: %ldKB", storage_.c_str(), slice_, duration_, available);
+    MA_LOGI(TAG, "storage: %s, saveMode: %s, slice: %d duration: %d available: %ldKB", storage_.c_str(), saveMode_.c_str(), slice_, duration_, available);
 
     server_->response(id_,
-                      json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", {"storage", storage_, "slice", slice_, "duration", duration_, "available", available}}}));
+                      json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "create"}, {"code", err}, {"data", {"storage", storage_, "saveMode", saveMode_, "slice", slice_, "duration", duration_, "available", available}}}));
 
     created_ = true;
 
@@ -365,6 +476,18 @@ ma_err_t SaveNode::onControl(const std::string& control, const json& data) {
             }
         }
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", enabled_.load()}}));
+    } else if (control == "capture" && saveMode_ == "image") {
+        // Manual capture command for image mode
+        MA_LOGI(TAG, "Received capture command, enabled: %d, saveMode: %s", enabled_.load(), saveMode_.c_str());
+        if (enabled_.load()) {
+            // Trigger immediate capture by setting manual capture flag
+            manual_capture_requested_ = true;
+            MA_LOGI(TAG, "Capture triggered, manual_capture_requested_ set to true");
+            server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_OK}, {"data", "Capture triggered"}}));
+        } else {
+            MA_LOGW(TAG, "Capture command rejected - save node not enabled");
+            server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_EBUSY}, {"data", "Save node not enabled"}}));
+        }
     } else {
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", control}, {"code", MA_ENOTSUP}, {"data", "Not supported"}}));
     }
@@ -409,9 +532,17 @@ ma_err_t SaveNode::onStart() {
         return MA_ENOTSUP;
     }
 
-    camera_->config(CHN_H264);
-    camera_->attach(CHN_H264, &frame_);
-    camera_->attach(CHN_AUDIO, &frame_);
+    if (saveMode_ == "image") {
+        // Use JPEG channel configured by model (no reconfiguration needed)
+        camera_->attach(CHN_JPEG, &frame_);
+        MA_LOGI(TAG, "attached to JPEG channel for image saving (using model's configuration)");
+    } else {
+        // Configure and attach H264 and audio channels for video saving
+        camera_->config(CHN_H264);
+        camera_->attach(CHN_H264, &frame_);
+        camera_->attach(CHN_AUDIO, &frame_);
+        MA_LOGI(TAG, "configured H264 and audio channels for video saving");
+    }
 
     recycle();
 
@@ -435,10 +566,13 @@ ma_err_t SaveNode::onStop() {
     }
 
     if (camera_ != nullptr) {
-        camera_->detach(CHN_H264, &frame_);
-        camera_->detach(CHN_AUDIO, &frame_);
+        if (saveMode_ == "image") {
+            camera_->detach(CHN_JPEG, &frame_);
+        } else {
+            camera_->detach(CHN_H264, &frame_);
+            camera_->detach(CHN_AUDIO, &frame_);
+        }
     }
-
 
     closeFile();
 
