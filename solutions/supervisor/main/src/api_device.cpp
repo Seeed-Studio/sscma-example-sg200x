@@ -162,7 +162,9 @@ api_status_t api_device::getModelInfo(request_t req, response_t res)
         return API_STATUS_OK;
     }
     try {
-        file >> data["model_info"];
+        std::stringstream ss;
+        ss << file.rdbuf();
+        data["model_info"] = ss.str();
         response(res, 0, STR_OK, data);
     } catch (const json::exception& e) {
         response(res, -1, "Invalid model info.");
