@@ -42,7 +42,7 @@ stop() {
     echo "Stopping $DESC: $NAME"
     if [ -f $PIDFILE ]; then
         PID=$(cat $PIDFILE)
-        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        if [ -n "$PID" ] && kill -1 "$PID" 2>/dev/null; then
             start-stop-daemon -K -q -p $PIDFILE
             rm -f $PIDFILE
             [ $? = 0 ] && echo "OK" || echo "FAIL"
