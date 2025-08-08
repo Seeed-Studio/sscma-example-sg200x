@@ -37,7 +37,7 @@ _dev_name() { cat "$HOSTNAME_FILE"; }
 _os_name() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $1}'; }
 _os_version() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $2}'; }
 
-_stop_pidname() { for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -9 $pid; done; }
+_stop_pidname() { local sig=${2:-9}; for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -$sig $pid; done; }
 
 ##################################################
 # file
@@ -577,7 +577,7 @@ function forgetWiFi() {
 ##################################################
 # deamon
 function query_sscma() {
-    mosquitto_rr -h localhost -p 1883 -q 1 -v -W 1 \
+    mosquitto_rr -h localhost -p 1883 -q 1 -v -W 3 \
         -t "sscma/v0/recamera/node/in/" \
         -e "sscma/v0/recamera/node/out/" \
         -m "{\"name\":\"health\",\"type\":3,\"data\":\"\"}" 2>/dev/null
@@ -622,7 +622,7 @@ function start_service() {
         echo "$STR_OK"
         ;;
     "nodered")
-        kill -1 $(pidof "sscma-node")
+        _stop_pidname "sscma-node" 1
         _stop_pidname "node"
         /etc/init.d/S03node-red restart >/dev/null 2>&1
         [ $? -ne 0 ] && {
