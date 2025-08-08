@@ -416,29 +416,24 @@ CONF_AP="$CONFIG_DIR/ap"
 
 # alias
 WPA_CLI="wpa_cli -i wlan0"
-STA_DOWN="ifconfig wlan0 down"
-STA_UP="ifconfig wlan0 up"
-AP_DOWN="ifconfig wlan1 down"
-AP_UP="ifconfig wlan1 up"
 
 _check_wifi() { [ -z "$(ifconfig wlan0 2>/dev/null)" ] && return 1 || return 0; }
 _sta_stop() { _stop_pidname "wpa_supplicant"; }
 _ap_stop() {
     _stop_pidname "hostapd"
-    $AP_DOWN
 }
 
 _sta_start() {
     _check_wifi || return 0
-    $STA_DOWN
-    $STA_UP
-    wpa_supplicant -B -i wlan0 -c "/etc/wpa_supplicant.conf" >/dev/null 2>&1
+    [ -z "$(pidof wpa_supplicant)" ] && {
+        ifconfig wlan0 down
+        ifconfig wlan0 up
+        wpa_supplicant -B -i wlan0 -c "/etc/wpa_supplicant.conf" >/dev/null 2>&1
+    }
 }
 
 _ap_start() {
     _check_wifi || return 0
-    $AP_DOWN
-    $AP_UP
     local conf="/etc/hostapd_2g4.conf"
     local ssid=$(cat "$conf" | grep -w "ssid" | awk -F'=' '{print $2}')
     [ "$ssid" = "AUOK" ] && {
@@ -448,7 +443,11 @@ _ap_start() {
         sed -i "s/ssid=.*$/ssid=$ssid/" "$conf"
         sync
     }
-    hostapd -B "$conf" >/dev/null 2>&1
+    [ -z "$(pidof hostapd)" ] && {
+        ifconfig wlan1 down
+        ifconfig wlan1 up
+        hostapd -B "$conf" >/dev/null 2>&1
+    }
 }
 
 function start_wifi() {
@@ -507,7 +506,9 @@ function getWiFiScanResults() {
     }
     [ -f "$out" ] || >"$out"
     echo "$out"
-    iw dev wlan0 scan >"$result" 2>/dev/null &
+    [ -z "$(pidof iw)" ] && {
+        iw dev wlan0 scan >"$result" 2>/dev/null &
+    }
 }
 
 function connectWiFi() {
