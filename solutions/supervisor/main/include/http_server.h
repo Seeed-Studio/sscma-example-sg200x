@@ -152,8 +152,24 @@ private:
                     || uri.find(".html") != std::string::npos
                     || uri.find("assets") != std::string::npos
                     || uri.find("js") != std::string::npos)) {
-                LOGV("redirect============>");
-                mg_http_reply(c, 308, "Location: http://192.168.16.1/\r\n", "");
+                mg_str* host = mg_http_get_header(hm, "Host");
+                std::string redirect(host->buf, host->len);
+
+                // is ip address ?
+                std::stringstream ss(redirect);
+                std::string segment;
+                while (std::getline(ss, segment, '.')) {
+                    if (segment.empty() || segment.find(":") != std::string::npos)
+                        continue;
+                    if (!std::all_of(segment.begin(), segment.end(), ::isdigit)) {
+                        redirect = "192.168.16.1";
+                        break;
+                    }
+                }
+
+                redirect = "Location: http://" + redirect + "/\r\n";
+                LOGD("redirect============>%s",  redirect.c_str());
+                mg_http_reply(c, 307, redirect.c_str(), "");
                 return;
             }
 
