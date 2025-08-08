@@ -84,6 +84,7 @@ stop() {
     if [ "$PID" ]; then
         kill $PID
         [ $? = 0 ] && echo "OK" || echo "FAIL"
+        sleep 0.1
     else
         echo "$DAEMON is not running."
     fi
