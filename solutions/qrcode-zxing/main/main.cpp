@@ -21,7 +21,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-
+    auto start_time = std::chrono::high_resolution_clock::now();
+    
     // Create a luminance source from OpenCV Mat
     zxing::Ref<zxing::LuminanceSource> source = MatSource::create(image);
 
@@ -40,9 +41,14 @@ int main(int argc, char* argv[]) {
     // Decode the barcode
     zxing::Ref<zxing::Result> result = reader.decode(bitmap, hints);
 
+     // End timing
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+
     // Output results
     std::cout << "Barcode format: " << result->getBarcodeFormat() << std::endl;
     std::cout << "Barcode text: " << result->getText()->getText() << std::endl;
+    std::cout << "Decoding time: " << elapsed.count() << " ms" << std::endl;
 
 
     return 0;

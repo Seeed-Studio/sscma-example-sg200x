@@ -1,0 +1,9 @@
+
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_LIST_DIR}/*.c ${CMAKE_CURRENT_LIST_DIR}/*.cpp)
+
+
+component_register(
+    COMPONENT_NAME quirc
+    INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}"
+    SRCS "${SOURCES}"
+)
