@@ -8,7 +8,17 @@
 
 class api_file : public api_base {
 private:
-    static inline std::string _dir = "/userdata/app";
+    static inline std::string _local_dir = "/userdata";
+    static inline std::string _sd_dir = "/mnt/sd";
+
+    // Check if SD card is available
+    static bool isSDAvailable() {
+        try {
+            return std::filesystem::exists(_sd_dir) && std::filesystem::is_directory(_sd_dir);
+        } catch (...) {
+            return false;
+        }
+    }
 
     // Helper function to get parameter from URL or body
     static std::string getParam(request_t req, const std::string& name) {
@@ -16,12 +26,17 @@ private:
             std::string val = get_param(req, name);
             if (val.empty()) {
                 auto params = parse_body(req);
-                val         = params.value(name, "");
+                val = params.value(name, "");
             }
             return val;
         } catch (const std::exception& e) {
             return "";
         }
+    }
+
+    // Validate storage parameter
+    static bool isValidStorage(const std::string& storage) {
+        return storage.empty() || storage == "local" || storage == "sd";
     }
 
     static std::string decodePath(const std::string& path) {
@@ -43,7 +58,7 @@ private:
         return decoded;
     }
 
-    // Validate path to prevent directory traversal
+    // Validate path to prevent directory traversal and hidden files/directories
     static bool isValidPath(const std::string& path) {
         try {
             if (path.empty())
@@ -52,6 +67,17 @@ private:
                 return false;
             if (path.find("../") != std::string::npos || path.find("..\\") != std::string::npos) {
                 return false;
+            }
+            // Check for hidden files or directories (starting with '.')
+            std::string cleanPath = path;
+            if (cleanPath[0] == '/')
+                cleanPath = cleanPath.substr(1); // Remove leading slash for consistency
+            std::istringstream pathStream(cleanPath);
+            std::string component;
+            while (std::getline(pathStream, component, '/')) {
+                if (!component.empty() && component[0] == '.') {
+                    return false; // Reject any component starting with a dot
+                }
             }
             return true;
         } catch (const std::exception& e) {
@@ -78,15 +104,16 @@ private:
         }
     }
 
-    // Construct full path
-    static std::string getFullPath(const std::string& relativePath) {
+    // Construct full path based on storage type
+    static std::string getFullPath(const std::string& relativePath, const std::string& storage) {
         try {
+            std::string baseDir = (storage == "sd") ? _sd_dir : _local_dir;
             if (relativePath.empty()) {
-                return _dir;
+                return baseDir;
             }
-            return _dir + "/" + relativePath;
+            return baseDir + "/" + relativePath;
         } catch (const std::exception& e) {
-            return _dir;
+            return (storage == "sd") ? _sd_dir : _local_dir;
         }
     }
 
@@ -94,8 +121,21 @@ private:
     static api_status_t list(request_t req, response_t res) {
         try {
             std::string path = getParam(req, "path");
-
+            std::string storage = getParam(req, "storage");
             path = decodePath(path);
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
+
+            // Validate storage
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
+                return API_STATUS_OK;
+            }
 
             // Validate path
             if (!isValidPath(path)) {
@@ -103,8 +143,7 @@ private:
                 return API_STATUS_OK;
             }
 
-            std::string fullPath = getFullPath(path);
-            
+            std::string fullPath = getFullPath(path, effectiveStorage);
 
             // Check if path exists and is directory
             if (!std::filesystem::exists(fullPath)) {
@@ -117,37 +156,42 @@ private:
                 return API_STATUS_OK;
             }
 
-            json data           = json::object();
-            data["path"]        = path.empty() ? "/" : path;
+            json data = json::object();
+            data["path"] = path.empty() ? "/" : path;
+            data["storage"] = effectiveStorage;
             data["directories"] = json::array();
-            data["files"]       = json::array();
+            data["files"] = json::array();
 
             try {
                 for (const auto& entry : std::filesystem::directory_iterator(fullPath)) {
                     try {
-                        json item        = json::object();
+                        json item = json::object();
                         std::string name = entry.path().filename().string();
-                        item["name"]     = name;
+                        // don't show hidden file & directory
+                        if (!name.empty() && name[0] == '.') {
+                            continue;
+                        }
+                        item["name"] = name;
+                        item["storage"] = effectiveStorage;
 
                         if (entry.is_directory()) {
                             item["type"] = "directory";
                             item["size"] = 0;
-                            // Get modification time
                             auto ftime = std::filesystem::last_write_time(entry);
-                            auto sctp  = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
                             item["modified"] = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
                             data["directories"].push_back(item);
                         } else if (entry.is_regular_file()) {
                             item["type"] = "file";
                             item["size"] = static_cast<uint64_t>(entry.file_size());
-                            // Get modification time
                             auto ftime = std::filesystem::last_write_time(entry);
-                            auto sctp  = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
                             item["modified"] = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
                             data["files"].push_back(item);
                         }
                     } catch (const std::exception& e) {
-                        // Skip problematic entries
                         continue;
                     }
                 }
@@ -157,7 +201,6 @@ private:
                 response(res, -1, "Failed to read directory: " + std::string(e.what()));
                 return API_STATUS_OK;
             }
-
         } catch (const std::exception& e) {
             response(res, -1, "Internal server error: " + std::string(e.what()));
         } catch (...) {
@@ -171,11 +214,23 @@ private:
     static api_status_t mkdir(request_t req, response_t res) {
         try {
             std::string path = getParam(req, "path");
-
+            std::string storage = getParam(req, "storage");
             path = decodePath(path);
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             if (path.empty()) {
                 response(res, -1, "Path is empty.");
+                return API_STATUS_OK;
+            }
+
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
                 return API_STATUS_OK;
             }
 
@@ -184,23 +239,21 @@ private:
                 return API_STATUS_OK;
             }
 
-            std::string fullPath = getFullPath(path);
+            std::string fullPath = getFullPath(path, effectiveStorage);
 
-            // Check if already exists
             if (std::filesystem::exists(fullPath)) {
                 response(res, -1, "Path already exists.");
                 return API_STATUS_OK;
             }
 
-            // Create directory
             if (std::filesystem::create_directories(fullPath)) {
-                json data    = json::object();
+                json data = json::object();
                 data["path"] = path;
+                data["storage"] = effectiveStorage;
                 response(res, 0, "Directory created.", data);
             } else {
                 response(res, -1, "Failed to create directory.");
             }
-
         } catch (const std::filesystem::filesystem_error& e) {
             response(res, -1, "Filesystem error: " + std::string(e.what()));
         } catch (const std::exception& e) {
@@ -216,11 +269,23 @@ private:
     static api_status_t remove(request_t req, response_t res) {
         try {
             std::string path = getParam(req, "path");
-
+            std::string storage = getParam(req, "storage");
             path = decodePath(path);
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             if (path.empty()) {
                 response(res, -1, "Path is empty.");
+                return API_STATUS_OK;
+            }
+
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
                 return API_STATUS_OK;
             }
 
@@ -229,9 +294,9 @@ private:
                 return API_STATUS_OK;
             }
 
-            std::string fullPath = getFullPath(path);
+            std::string fullPath = getFullPath(path, effectiveStorage);
             LOGV("fullPath: %s", fullPath.c_str());
-            // Check if exists
+
             if (!std::filesystem::exists(fullPath)) {
                 response(res, -1, "Path does not exist.");
                 return API_STATUS_OK;
@@ -239,24 +304,25 @@ private:
 
             try {
                 if (std::filesystem::is_directory(fullPath)) {
-                    // For directory, check if empty
                     if (!std::filesystem::is_empty(fullPath)) {
                         response(res, -1, "Directory is not empty.");
                         return API_STATUS_OK;
                     }
                     if (std::filesystem::remove(fullPath)) {
-                        json data    = json::object();
+                        json data = json::object();
                         data["path"] = path;
                         data["type"] = "directory";
+                        data["storage"] = effectiveStorage;
                         response(res, 0, "Directory removed.", data);
                     } else {
                         response(res, -1, "Failed to remove directory.");
                     }
                 } else {
                     if (std::filesystem::remove(fullPath)) {
-                        json data    = json::object();
+                        json data = json::object();
                         data["path"] = path;
                         data["type"] = "file";
+                        data["storage"] = effectiveStorage;
                         response(res, 0, "File removed.", data);
                     } else {
                         response(res, -1, "Failed to remove file.");
@@ -265,7 +331,6 @@ private:
             } catch (const std::filesystem::filesystem_error& e) {
                 response(res, -1, "Filesystem error: " + std::string(e.what()));
             }
-
         } catch (const std::exception& e) {
             response(res, -1, "Internal server error: " + std::string(e.what()));
         } catch (...) {
@@ -279,20 +344,30 @@ private:
     static api_status_t upload(request_t req, response_t res) {
         try {
             std::string path = getParam(req, "path");
-
+            std::string storage = getParam(req, "storage");
             path = decodePath(path);
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             LOGV("path: %s", path.c_str());
 
-            // Validate path
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
+                return API_STATUS_OK;
+            }
+
             if (!path.empty() && !isValidPath(path)) {
                 response(res, -1, "Invalid path.");
                 return API_STATUS_OK;
             }
 
-            std::string uploadDir = getFullPath(path);
+            std::string uploadDir = getFullPath(path, effectiveStorage);
 
-            // Check if directory exists
             if (!path.empty() && !std::filesystem::exists(uploadDir)) {
                 response(res, -1, "Upload directory does not exist.");
                 return API_STATUS_OK;
@@ -303,9 +378,8 @@ private:
                 return API_STATUS_OK;
             }
 
-            // Get uploaded files
-            auto&& parts     = get_multiparts(req, "file");
-            json results     = json::array();
+            auto&& parts = get_multiparts(req, "file");
+            json results = json::array();
             int successCount = 0;
 
             for (auto& part : parts) {
@@ -331,7 +405,7 @@ private:
                     file.write(part.data, part.len);
                     file.close();
 
-                    json result = {{"filename", part.filename}, {"status", "success"}, {"size", part.len}};
+                    json result = {{"filename", part.filename}, {"status", "success"}, {"size", part.len}, {"storage", effectiveStorage}};
                     results.push_back(result);
                     successCount++;
                 } catch (const std::exception& e) {
@@ -340,22 +414,21 @@ private:
                 }
             }
 
-            json data       = json::object();
+            json data = json::object();
             data["uploads"] = results;
-            data["count"]   = successCount;
+            data["count"] = successCount;
+            data["storage"] = effectiveStorage;
 
             if (successCount > 0) {
                 response(res, 0, "Upload completed.", data);
             } else {
                 response(res, -1, "Upload failed.", data);
             }
-
         } catch (const std::exception& e) {
             response(res, -1, "Internal server error: " + std::string(e.what()));
         } catch (...) {
             response(res, -1, "Unknown error occurred.");
         }
-
         return API_STATUS_OK;
     }
 
@@ -363,11 +436,23 @@ private:
     static api_status_t download(request_t req, response_t res) {
         try {
             std::string path = getParam(req, "path");
-
+            std::string storage = getParam(req, "storage");
             path = decodePath(path);
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             if (path.empty()) {
                 response(res, -1, "Path is empty.");
+                return API_STATUS_OK;
+            }
+
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
                 return API_STATUS_OK;
             }
 
@@ -376,9 +461,8 @@ private:
                 return API_STATUS_OK;
             }
 
-            std::string fullPath = getFullPath(path);
+            std::string fullPath = getFullPath(path, effectiveStorage);
 
-            // Check if file exists
             if (!std::filesystem::exists(fullPath)) {
                 response(res, -1, "File does not exist.");
                 return API_STATUS_OK;
@@ -389,14 +473,14 @@ private:
                 return API_STATUS_OK;
             }
 
-            json data    = json::object();
+            json data = json::object();
             data["file"] = fullPath;
+            data["storage"] = effectiveStorage;
             response(res, 0, "File ready.", data);
             return API_STATUS_REPLY_FILE;
-
         } catch (const std::filesystem::filesystem_error& e) {
             response(res, -1, "Filesystem error: " + std::string(e.what()));
-        } catch (const std::exception& e) {
+        } catch (std::exception& e) {
             response(res, -1, "Internal server error: " + std::string(e.what()));
         } catch (...) {
             response(res, -1, "Unknown error occurred.");
@@ -410,9 +494,22 @@ private:
         try {
             std::string oldPath = getParam(req, "old_path");
             std::string newPath = getParam(req, "new_path");
+            std::string storage = getParam(req, "storage");
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             if (oldPath.empty() || newPath.empty()) {
                 response(res, -1, "Paths are empty.");
+                return API_STATUS_OK;
+            }
+
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
                 return API_STATUS_OK;
             }
 
@@ -421,30 +518,26 @@ private:
                 return API_STATUS_OK;
             }
 
-            std::string fullOldPath = getFullPath(oldPath);
-            std::string fullNewPath = getFullPath(newPath);
+            std::string fullOldPath = getFullPath(oldPath, effectiveStorage);
+            std::string fullNewPath = getFullPath(newPath, effectiveStorage);
 
-            // Check if source exists
             if (!std::filesystem::exists(fullOldPath)) {
                 response(res, -1, "Source does not exist.");
                 return API_STATUS_OK;
             }
 
-            // Check if destination already exists
             if (std::filesystem::exists(fullNewPath)) {
                 response(res, -1, "Destination already exists.");
                 return API_STATUS_OK;
             }
 
-            // Rename
             std::filesystem::rename(fullOldPath, fullNewPath);
-            json data        = json::object();
+            json data = json::object();
             data["old_path"] = oldPath;
             data["new_path"] = newPath;
+            data["storage"] = effectiveStorage;
             response(res, 0, "Renamed successfully.", data);
-
-
-        }catch (const std::filesystem::filesystem_error& e) {
+        } catch (const std::filesystem::filesystem_error& e) {
             response(res, -1, "Filesystem error: " + std::string(e.what()));
         } catch (const std::exception& e) {
             response(res, -1, "Internal server error: " + std::string(e.what()));
@@ -459,11 +552,23 @@ private:
     static api_status_t info(request_t req, response_t res) {
         try {
             std::string path = getParam(req, "path");
-
+            std::string storage = getParam(req, "storage");
             path = decodePath(path);
+
+            // Default to local if storage is empty
+            std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             if (path.empty()) {
                 response(res, -1, "Path is empty.");
+                return API_STATUS_OK;
+            }
+
+            if (!isValidStorage(effectiveStorage)) {
+                response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
+                return API_STATUS_OK;
+            }
+            if (effectiveStorage == "sd" && !isSDAvailable()) {
+                response(res, -1, "SD card not available.");
                 return API_STATUS_OK;
             }
 
@@ -472,18 +577,18 @@ private:
                 return API_STATUS_OK;
             }
 
-            std::string fullPath = getFullPath(path);
+            std::string fullPath = getFullPath(path, effectiveStorage);
 
-            // Check if exists
             if (!std::filesystem::exists(fullPath)) {
                 response(res, -1, "Path does not exist.");
                 return API_STATUS_OK;
             }
 
-            json data            = json::object();
-            data["path"]         = path;
+            json data = json::object();
+            data["path"] = path;
             data["is_directory"] = std::filesystem::is_directory(fullPath);
-            data["is_file"]      = std::filesystem::is_regular_file(fullPath);
+            data["is_file"] = std::filesystem::is_regular_file(fullPath);
+            data["storage"] = effectiveStorage;
 
             if (std::filesystem::is_regular_file(fullPath)) {
                 data["size"] = static_cast<uint64_t>(std::filesystem::file_size(fullPath));
@@ -491,13 +596,12 @@ private:
                 data["size"] = 0;
             }
 
-            // Get modification time
-            auto ftime       = std::filesystem::last_write_time(fullPath);
-            auto sctp        = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+            auto ftime = std::filesystem::last_write_time(fullPath);
+            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
             data["modified"] = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
 
             response(res, 0, "Info retrieved.", data);
-
         } catch (const std::filesystem::filesystem_error& e) {
             response(res, -1, "Filesystem error: " + std::string(e.what()));
         } catch (const std::exception& e) {
@@ -512,10 +616,10 @@ private:
 public:
     api_file() : api_base("fileMgr") {
         try {
-            std::string dir = script(__func__);
-            if (!dir.empty()) {
-                _dir = dir;
-            }
+            // std::string dir = script(__func__);
+            // if (!dir.empty()) {
+            //     _local_dir = dir;
+            // }
 
             // Register API endpoints
             REG_API(list);      // GET  /api/file/list
