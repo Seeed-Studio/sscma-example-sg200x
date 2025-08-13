@@ -148,20 +148,35 @@ api_status_t api_device::uploadApp(request_t req, response_t res)
 // Model
 api_status_t api_device::getModelFile(request_t req, response_t res)
 {
-    auto&& data = parse_result(script("get_model_info"));
-    response(res, 0, STR_OK, data);
+    std::string file;
+    try {
+        file = _dev_info["model"]["file"];
+        LOGV("getModelFile: %s", file.c_str());
+    } catch (const json::exception& e) {
+        response(res, -1, "Invalid model file.");
+        return API_STATUS_OK;
+    }
+    response(res, 0, STR_OK, { { "file", file } });
     return API_STATUS_REPLY_FILE;
 }
 
 api_status_t api_device::getModelInfo(request_t req, response_t res)
 {
-    auto&& data = parse_result(script("get_model_info"));
-    std::ifstream file(data.value("info", ""));
+    std::string info;
+    try {
+        info = _dev_info["model"]["info"];
+    } catch (const json::exception& e) {
+        response(res, -1, "Invalid model info.");
+        return API_STATUS_OK;
+    }
+
+    std::ifstream file(info);
     if (!file.is_open()) {
         response(res, 0, STR_OK, { { "model_info", "" } });
         return API_STATUS_OK;
     }
     try {
+        json data = json::object();
         std::stringstream ss;
         ss << file.rdbuf();
         data["model_info"] = ss.str();
@@ -174,56 +189,107 @@ api_status_t api_device::getModelInfo(request_t req, response_t res)
 
 api_status_t api_device::getModelList(request_t req, response_t res)
 {
-    auto&& list = parse_result(script(__func__));
-    if (list.empty()) {
-        response(res, -1);
+    std::string dir;
+    std::string suffix;
+    try {
+        dir = _dev_info["model"]["preset"];
+        suffix = _dev_info["model"]["file"];
+        suffix = suffix.substr(suffix.find_last_of("."));
+    } catch (const json::exception& e) {
+        response(res, -1, "Invalid model preset.");
         return API_STATUS_OK;
     }
-    const auto& suffix = list.value("suffix", "");
 
-    int count = 0;
-    json data;
-    for (auto&& item : list["list"]) { // Compatible with previous
-        if (auto fname = item.get<std::string>(); !fname.empty()) {
-            auto&& info = parse_result(std::ifstream(fname + ".json"));
-            info["id"] = info.value("model_id", "");
-            info["name"] = info.value("model_name", "");
-            info["md5"] = info.value("checksum", "");
-            info["file"] = fname + suffix;
-            data["list"].push_back(info);
-            count++;
+    json data = json::object();
+    for (auto& entry : std::filesystem::directory_iterator(dir)) {
+        auto info = entry.path().string();
+        if (entry.path().extension() == ".json") {
+            size_t pos = info.find(".json");
+            std::string model = info.substr(0, pos) + suffix;
+            LOGD("%s", info.c_str());
+            if (!std::filesystem::exists(model))
+                continue;
+
+            json js = parse_result(std::ifstream(info));
+            js["file"] = model;
+            js["id"] = js.value("model_id", "");
+            js["name"] = js.value("model_name", "");
+            js["md5"] = js.value("checksum", "");
+            data["list"].push_back(js);
         }
     }
-    data["count"] = count;
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
 
 api_status_t api_device::uploadModel(request_t req, response_t res)
 {
-    std::string dir = _dev_info.value("model_dir", "");
-    if (dir.empty()) {
-        response(res, -1, "Directory is not accessible.");
+    std::string model, info;
+    try {
+        model = _dev_info["model"]["file"];
+        info = _dev_info["model"]["info"];
+    } catch (const json::exception& e) {
+        response(res, -1, "Invalid model dir.");
         return API_STATUS_OK;
     }
 
-    int count = 0;
-    json data;
-    auto&& parts = get_multiparts(req, "model_file");
+    bool has_model = false;
+    bool has_info = false;
+    json data = json::object();
+    auto&& parts = get_multiparts(req);
     for (auto& part : parts) {
-        if (part.filename.empty() || part.len == 0)
+        LOGD("name: %s, filename: %s, len: %d", part.name.c_str(), part.filename.c_str(), part.len);
+        if (part.len == 0)
             continue;
-        std::ofstream file(dir + "/" + part.filename, std::ios::binary);
+
+        std::string path;
+        if (part.name == "model_file") {
+            path = model;
+            has_model = true;
+        } else if (part.name == "model_info") {
+            path = info;
+            has_info = true;
+        } else {
+            continue;
+        }
+
+        std::ofstream file(path + ".tmp", std::ios::binary | std::ios::trunc);
         if (!file.is_open())
             continue;
         file.write(part.data, part.len);
         file.close();
-        data["list"].push_back(part.filename);
-        count++;
+        data["list"].push_back({ { part.name, path } });
     }
-    data["count"] = count;
 
-    LOGV("Upload model file: %s", data.dump(4).c_str());
+    if (!has_info) {
+        response(res, -1, "Upload model failed.");
+        return API_STATUS_OK;
+    }
+    if (!has_model) {
+        auto&& js = parse_result(std::ifstream(info + ".tmp"));
+        std::string file = js.value("file", "");
+        if (file.empty() || !std::filesystem::exists(file)) { // model not exist
+            std::filesystem::remove(info + ".tmp");
+            response(res, -1, "Model file is missing in model info.");
+            return API_STATUS_OK;
+        }
+        try {
+            std::filesystem::copy_file(file, model, std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::rename(info + ".tmp", info);
+        } catch (const std::exception& e) {
+            response(res, -1, "Upload model failed. " + std::string(e.what()));
+            return API_STATUS_OK;
+        }
+    } else {
+        try {
+            std::filesystem::rename(model + ".tmp", model);
+            std::filesystem::rename(info + ".tmp", info);
+        } catch (const std::exception& e) {
+            response(res, -1, "Upload model failed. " + std::string(e.what()));
+            return API_STATUS_OK;
+        }
+    }
+
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
 }
