@@ -45,6 +45,8 @@ void ModelNode::threadEntry() {
     videoFrame* jpeg = nullptr;
     int32_t width    = 0;
     int32_t height   = 0;
+    int32_t target_width  = 0;
+    int32_t target_height = 0;
     std::vector<std::string> labels;
 
     server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}}));
@@ -71,8 +73,11 @@ void ModelNode::threadEntry() {
 
         ma_tick_t start = Tick::current();
 
-        json reply = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
-
+        json reply       = json::object({{"type", MA_MSG_TYPE_EVT}, {"name", "invoke"}, {"code", MA_OK}, {"data", {{"count", ++count_}}}});
+        float scale_h    = 1.0;
+        float scale_w    = 1.0;
+        int32_t offset_x = 0;
+        int32_t offset_y = 0;
         if (debug_) {
             width  = jpeg->img.width;
             height = jpeg->img.height;
@@ -81,6 +86,16 @@ void ModelNode::threadEntry() {
             height = raw->img.height;
         }
 
+        if (width > height) {
+            scale_h  = (float)width / (float)height;
+            offset_y = (height - width) / 2;
+        } else {
+            scale_w  = (float)height / (float)width;
+            offset_x = (width - height) / 2;
+        }
+
+        target_width  = width * scale_w;
+        target_height = height * scale_h;
 
         reply["data"]["resolution"] = json::array({width, height});
 
@@ -106,10 +121,10 @@ void ModelNode::threadEntry() {
                 auto tracks             = tracker_.inplace_update(_bboxes);
                 reply["data"]["tracks"] = tracks;
                 for (int i = 0; i < _bboxes.size(); i++) {
-                    reply["data"]["boxes"].push_back({static_cast<int16_t>(_bboxes[i].x * width),
-                                                      static_cast<int16_t>(_bboxes[i].y * height),
-                                                      static_cast<int16_t>(_bboxes[i].w * width),
-                                                      static_cast<int16_t>(_bboxes[i].h * height),
+                    reply["data"]["boxes"].push_back({static_cast<int16_t>(_bboxes[i].x * target_width + offset_x),
+                                                      static_cast<int16_t>(_bboxes[i].y * target_height + offset_y),
+                                                      static_cast<int16_t>(_bboxes[i].w * target_width),
+                                                      static_cast<int16_t>(_bboxes[i].h * target_height),
                                                       static_cast<int8_t>(_bboxes[i].score * 100),
                                                       _bboxes[i].target});
                     if (labels_.size() > _bboxes[i].target) {
@@ -126,10 +141,10 @@ void ModelNode::threadEntry() {
                 }
             } else {
                 for (int i = 0; i < _bboxes.size(); i++) {
-                    reply["data"]["boxes"].push_back({static_cast<int16_t>(_bboxes[i].x * width),
-                                                      static_cast<int16_t>(_bboxes[i].y * height),
-                                                      static_cast<int16_t>(_bboxes[i].w * width),
-                                                      static_cast<int16_t>(_bboxes[i].h * height),
+                    reply["data"]["boxes"].push_back({static_cast<int16_t>(_bboxes[i].x * target_width + offset_x),
+                                                      static_cast<int16_t>(_bboxes[i].y * target_height + offset_y),
+                                                      static_cast<int16_t>(_bboxes[i].w * target_width),
+                                                      static_cast<int16_t>(_bboxes[i].h * target_height),
                                                       static_cast<int8_t>(_bboxes[i].score * 100),
                                                       _bboxes[i].target});
                     if (labels_.size() > _bboxes[i].target) {
@@ -165,12 +180,12 @@ void ModelNode::threadEntry() {
             for (auto& result : _results) {
                 json pts = json::array();
                 for (auto& pt : result.pts) {
-                    pts.push_back({static_cast<int16_t>(pt.x * width), static_cast<int16_t>(pt.y * height), static_cast<int8_t>(pt.z * 100)});
+                    pts.push_back({static_cast<int16_t>(pt.x * target_width + offset_x), static_cast<int16_t>(pt.y * target_height + offset_y), static_cast<int8_t>(pt.z * 100)});
                 }
-                json box = {static_cast<int16_t>(result.box.x * width),
-                            static_cast<int16_t>(result.box.y * height),
-                            static_cast<int16_t>(result.box.w * width),
-                            static_cast<int16_t>(result.box.h * height),
+                json box = {static_cast<int16_t>(result.box.x * target_width + offset_x),
+                            static_cast<int16_t>(result.box.y * target_height + offset_y),
+                            static_cast<int16_t>(result.box.w * target_width),
+                            static_cast<int16_t>(result.box.h * target_height),
                             static_cast<int8_t>(result.box.score * 100),
                             result.box.target};
                 if (labels_.size() > result.box.target) {
@@ -186,10 +201,10 @@ void ModelNode::threadEntry() {
             auto _results             = segmentor->getResults();
             reply["data"]["segments"] = json::array();
             for (auto& result : _results) {
-                json box = {static_cast<int16_t>(result.box.x * width),
-                            static_cast<int16_t>(result.box.y * height),
-                            static_cast<int16_t>(result.box.w * width),
-                            static_cast<int16_t>(result.box.h * height),
+                json box = {static_cast<int16_t>(result.box.x * target_width + offset_x),
+                            static_cast<int16_t>(result.box.y * target_height + offset_y),
+                            static_cast<int16_t>(result.box.w * target_width),
+                            static_cast<int16_t>(result.box.h * target_height),
                             static_cast<int8_t>(result.box.score * 100),
                             result.box.target};
                 if (labels_.size() > result.box.target) {
@@ -217,11 +232,11 @@ void ModelNode::threadEntry() {
                 std::vector<uint16_t> contour;
                 if (maxContour != contours.end()) {
                     contour.reserve(maxContour->size() * 2);
-                    float w_scale = width / result.mask.width;
-                    float h_scale = height / result.mask.height;
+                    float w_scale = width  * scale_w / result.mask.width;
+                    float h_scale = target_height / result.mask.height;
                     for (auto& c : *maxContour) {
-                        contour.push_back(static_cast<uint16_t>(c.x * w_scale));
-                        contour.push_back(static_cast<uint16_t>(c.y * h_scale));
+                        contour.push_back(static_cast<uint16_t>(c.x * w_scale + offset_x));
+                        contour.push_back(static_cast<uint16_t>(c.y * h_scale + offset_y));
                     }
                 }
                 reply["data"]["segments"].push_back({box, contour});
@@ -358,9 +373,9 @@ ma_err_t ModelNode::onCreate(const json& config) {
             }
             if (config.contains("previewResolution") && config["previewResolution"].is_string()) {
                 std::string resolution = config["previewResolution"].get<std::string>();
-                size_t pos = resolution.find('x');
+                size_t pos             = resolution.find('x');
                 if (pos != std::string::npos) {
-                    preview_width_ = std::stoi(resolution.substr(0, pos));
+                    preview_width_  = std::stoi(resolution.substr(0, pos));
                     preview_height_ = std::stoi(resolution.substr(pos + 1));
                 }
             }
