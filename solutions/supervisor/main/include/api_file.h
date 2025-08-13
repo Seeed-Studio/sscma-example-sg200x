@@ -9,7 +9,7 @@
 class api_file : public api_base {
 private:
     static inline std::string _local_dir = "/userdata";
-    static inline std::string _sd_dir = "/mnt/sd";
+    static inline std::string _sd_dir    = "/mnt/sd";
 
     // Check if SD card is available
     static bool isSDAvailable() {
@@ -26,7 +26,7 @@ private:
             std::string val = get_param(req, name);
             if (val.empty()) {
                 auto params = parse_body(req);
-                val = params.value(name, "");
+                val         = params.value(name, "");
             }
             return val;
         } catch (const std::exception& e) {
@@ -71,12 +71,12 @@ private:
             // Check for hidden files or directories (starting with '.')
             std::string cleanPath = path;
             if (cleanPath[0] == '/')
-                cleanPath = cleanPath.substr(1); // Remove leading slash for consistency
+                cleanPath = cleanPath.substr(1);  // Remove leading slash for consistency
             std::istringstream pathStream(cleanPath);
             std::string component;
             while (std::getline(pathStream, component, '/')) {
                 if (!component.empty() && component[0] == '.') {
-                    return false; // Reject any component starting with a dot
+                    return false;  // Reject any component starting with a dot
                 }
             }
             return true;
@@ -120,9 +120,9 @@ private:
     // List directory contents
     static api_status_t list(request_t req, response_t res) {
         try {
-            std::string path = getParam(req, "path");
+            std::string path    = getParam(req, "path");
             std::string storage = getParam(req, "storage");
-            path = decodePath(path);
+            path                = decodePath(path);
 
             // Default to local if storage is empty
             std::string effectiveStorage = storage.empty() ? "local" : storage;
@@ -156,38 +156,51 @@ private:
                 return API_STATUS_OK;
             }
 
-            json data = json::object();
-            data["path"] = path.empty() ? "/" : path;
-            data["storage"] = effectiveStorage;
+            json data           = json::object();
+            data["path"]        = path.empty() ? "/" : path;
+            data["storage"]     = effectiveStorage;
             data["directories"] = json::array();
-            data["files"] = json::array();
+            data["files"]       = json::array();
+
+            // Add storage info for root path
+            if (path.empty() || path == "/") {
+                try {
+                    std::filesystem::space_info space = std::filesystem::space(fullPath);
+                    uint64_t totalCapacity            = space.capacity;
+                    uint64_t freeSpace                = space.free;
+                    uint64_t usedSpace                = totalCapacity - freeSpace;
+                    data["total"]      = totalCapacity;
+                    data["used"]          = usedSpace;
+                    data["free"]          = freeSpace;
+                } catch (const std::exception& e) {
+                    // Log error but don't fail the entire request
+                    // Optionally, you could add an error field to the response
+                }
+            }
 
             try {
                 for (const auto& entry : std::filesystem::directory_iterator(fullPath)) {
                     try {
-                        json item = json::object();
+                        json item        = json::object();
                         std::string name = entry.path().filename().string();
                         // don't show hidden file & directory
                         if (!name.empty() && name[0] == '.') {
                             continue;
                         }
                         item["name"] = name;
-                        item["storage"] = effectiveStorage;
 
                         if (entry.is_directory()) {
                             item["type"] = "directory";
                             item["size"] = 0;
-                            auto ftime = std::filesystem::last_write_time(entry);
-                            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                            auto ftime   = std::filesystem::last_write_time(entry);
+                            auto sctp    = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
                             item["modified"] = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
                             data["directories"].push_back(item);
                         } else if (entry.is_regular_file()) {
                             item["type"] = "file";
                             item["size"] = static_cast<uint64_t>(entry.file_size());
-                            auto ftime = std::filesystem::last_write_time(entry);
-                            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+                            auto ftime   = std::filesystem::last_write_time(entry);
+                            auto sctp    = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
                             item["modified"] = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
                             data["files"].push_back(item);
                         }
@@ -209,13 +222,12 @@ private:
 
         return API_STATUS_OK;
     }
-
     // Create directory
     static api_status_t mkdir(request_t req, response_t res) {
         try {
-            std::string path = getParam(req, "path");
+            std::string path    = getParam(req, "path");
             std::string storage = getParam(req, "storage");
-            path = decodePath(path);
+            path                = decodePath(path);
 
             // Default to local if storage is empty
             std::string effectiveStorage = storage.empty() ? "local" : storage;
@@ -247,8 +259,8 @@ private:
             }
 
             if (std::filesystem::create_directories(fullPath)) {
-                json data = json::object();
-                data["path"] = path;
+                json data       = json::object();
+                data["path"]    = path;
                 data["storage"] = effectiveStorage;
                 response(res, 0, "Directory created.", data);
             } else {
@@ -268,9 +280,9 @@ private:
     // Delete file or directory
     static api_status_t remove(request_t req, response_t res) {
         try {
-            std::string path = getParam(req, "path");
+            std::string path    = getParam(req, "path");
             std::string storage = getParam(req, "storage");
-            path = decodePath(path);
+            path                = decodePath(path);
 
             // Default to local if storage is empty
             std::string effectiveStorage = storage.empty() ? "local" : storage;
@@ -309,9 +321,9 @@ private:
                         return API_STATUS_OK;
                     }
                     if (std::filesystem::remove(fullPath)) {
-                        json data = json::object();
-                        data["path"] = path;
-                        data["type"] = "directory";
+                        json data       = json::object();
+                        data["path"]    = path;
+                        data["type"]    = "directory";
                         data["storage"] = effectiveStorage;
                         response(res, 0, "Directory removed.", data);
                     } else {
@@ -319,9 +331,9 @@ private:
                     }
                 } else {
                     if (std::filesystem::remove(fullPath)) {
-                        json data = json::object();
-                        data["path"] = path;
-                        data["type"] = "file";
+                        json data       = json::object();
+                        data["path"]    = path;
+                        data["type"]    = "file";
                         data["storage"] = effectiveStorage;
                         response(res, 0, "File removed.", data);
                     } else {
@@ -343,9 +355,9 @@ private:
     // Upload file
     static api_status_t upload(request_t req, response_t res) {
         try {
-            std::string path = getParam(req, "path");
+            std::string path    = getParam(req, "path");
             std::string storage = getParam(req, "storage");
-            path = decodePath(path);
+            path                = decodePath(path);
 
             // Default to local if storage is empty
             std::string effectiveStorage = storage.empty() ? "local" : storage;
@@ -378,8 +390,8 @@ private:
                 return API_STATUS_OK;
             }
 
-            auto&& parts = get_multiparts(req, "file");
-            json results = json::array();
+            auto&& parts     = get_multiparts(req, "file");
+            json results     = json::array();
             int successCount = 0;
 
             for (auto& part : parts) {
@@ -414,9 +426,9 @@ private:
                 }
             }
 
-            json data = json::object();
+            json data       = json::object();
             data["uploads"] = results;
-            data["count"] = successCount;
+            data["count"]   = successCount;
             data["storage"] = effectiveStorage;
 
             if (successCount > 0) {
@@ -435,9 +447,9 @@ private:
     // Download file
     static api_status_t download(request_t req, response_t res) {
         try {
-            std::string path = getParam(req, "path");
+            std::string path    = getParam(req, "path");
             std::string storage = getParam(req, "storage");
-            path = decodePath(path);
+            path                = decodePath(path);
 
             // Default to local if storage is empty
             std::string effectiveStorage = storage.empty() ? "local" : storage;
@@ -473,8 +485,8 @@ private:
                 return API_STATUS_OK;
             }
 
-            json data = json::object();
-            data["file"] = fullPath;
+            json data       = json::object();
+            data["file"]    = fullPath;
             data["storage"] = effectiveStorage;
             response(res, 0, "File ready.", data);
             return API_STATUS_REPLY_FILE;
@@ -532,10 +544,10 @@ private:
             }
 
             std::filesystem::rename(fullOldPath, fullNewPath);
-            json data = json::object();
+            json data        = json::object();
             data["old_path"] = oldPath;
             data["new_path"] = newPath;
-            data["storage"] = effectiveStorage;
+            data["storage"]  = effectiveStorage;
             response(res, 0, "Renamed successfully.", data);
         } catch (const std::filesystem::filesystem_error& e) {
             response(res, -1, "Filesystem error: " + std::string(e.what()));
@@ -551,9 +563,9 @@ private:
     // Get file/directory info
     static api_status_t info(request_t req, response_t res) {
         try {
-            std::string path = getParam(req, "path");
+            std::string path    = getParam(req, "path");
             std::string storage = getParam(req, "storage");
-            path = decodePath(path);
+            path                = decodePath(path);
 
             // Default to local if storage is empty
             std::string effectiveStorage = storage.empty() ? "local" : storage;
@@ -584,11 +596,11 @@ private:
                 return API_STATUS_OK;
             }
 
-            json data = json::object();
-            data["path"] = path;
+            json data            = json::object();
+            data["path"]         = path;
             data["is_directory"] = std::filesystem::is_directory(fullPath);
-            data["is_file"] = std::filesystem::is_regular_file(fullPath);
-            data["storage"] = effectiveStorage;
+            data["is_file"]      = std::filesystem::is_regular_file(fullPath);
+            data["storage"]      = effectiveStorage;
 
             if (std::filesystem::is_regular_file(fullPath)) {
                 data["size"] = static_cast<uint64_t>(std::filesystem::file_size(fullPath));
@@ -596,9 +608,8 @@ private:
                 data["size"] = 0;
             }
 
-            auto ftime = std::filesystem::last_write_time(fullPath);
-            auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+            auto ftime       = std::filesystem::last_write_time(fullPath);
+            auto sctp        = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
             data["modified"] = std::chrono::duration_cast<std::chrono::seconds>(sctp.time_since_epoch()).count();
 
             response(res, 0, "Info retrieved.", data);
