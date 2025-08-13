@@ -202,7 +202,6 @@ public:
         return result;
     }
 
-protected:
     // utils
     static uint64_t uptime(void)
     {

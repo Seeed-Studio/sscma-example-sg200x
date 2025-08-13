@@ -27,44 +27,61 @@ public:
     {
         LOGV("");
         thread_ = std::thread([this]() {
+            bool sys_booting = true;
             uint8_t wait_nodered = 0;
             bool restart_flow = false;
+
             running_ = true;
             while (running_) {
-                std::this_thread::sleep_for(std::chrono::seconds(10));
+                std::unique_lock<std::mutex> lock(mutex_);
+                if (cv_.wait_for(lock, std::chrono::seconds(6), [this] { return !running_; })) {
+                    break;
+                }
                 query_nodered();
-                LOGV("nodered_status_=%d", nodered_status_);
+                query_sscma();
+                LOGV("nodered_status_=%d, sscma_status_=%d", nodered_status_, sscma_status_);
+
+                if (sys_booting) {
+                    uint64_t t = api_base::uptime();
+                    LOGD("uptime: %llu", t);
+                    if (t >= 2 * 60 * 1000) // 2 minutes
+                        sys_booting = false;
+                }
+                if (sys_booting)
+                    continue;
+
                 if (nodered_status_ != STATUS_NORMAL) {
-                    LOGW("nodered_status_=%d, wait_nodered=%d", nodered_status_, wait_nodered);
-                    if (3 == wait_nodered)
+                    LOGV("wait_nodered=%d", wait_nodered);
+                    if (3 == wait_nodered) { // Continuous failure
                         start_service("nodered");
-                    if (wait_nodered++ > 15) {
+                    }
+                    if (wait_nodered++ > 20) { // Timeout, will start again
                         wait_nodered = 0;
                     }
                     continue;
                 }
                 wait_nodered = 0;
 
-                query_sscma();
                 if (sscma_status_ != STATUS_NORMAL) {
                     start_service("sscma");
                     restart_flow = true;
-                    continue;
+                    continue; // To check sscma ready
                 }
-
                 if (restart_flow) {
+                    LOGW("Restart flow");
                     api_base::script("ctrl_flow", "stop");
                     api_base::script("ctrl_flow", "start");
                     restart_flow = false;
                 }
             }
+            LOGV("serviced thread exit");
         });
-        thread_.detach();
     }
 
     ~serviced()
     {
         running_ = false;
+        cv_.notify_all();
         if (thread_.joinable()) {
             thread_.join();
         }
@@ -78,6 +95,8 @@ public:
 private:
     std::thread thread_;
     std::atomic<bool> running_;
+    std::mutex mutex_;
+    std::condition_variable cv_;
 
     status_t sscma_status_ = STATUS_UNKOWN;
     status_t nodered_status_ = STATUS_UNKOWN;
