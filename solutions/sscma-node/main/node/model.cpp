@@ -12,7 +12,7 @@ using namespace ma::model;
 
 static constexpr char TAG[] = "ma::node::model";
 
-#define DEFAULT_MODEL "/userdata/MODEL/model.cvimodel"
+#define DEFAULT_MODEL "/userdata/Models/model.cvimodel"
 
 ModelNode::ModelNode(std::string id)
     : Node("model", id),

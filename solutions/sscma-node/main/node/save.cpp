@@ -7,19 +7,19 @@
 
 // Default folders for saving
 #ifndef NODE_SAVE_PATH_LOCAL
-#define NODE_SAVE_PATH_LOCAL "/userdata/app/VIDEO/"
+#define NODE_SAVE_PATH_LOCAL "/userdata/Videos/"
 #endif
 
 #ifndef NODE_SAVE_PATH_EXTERNAL
-#define NODE_SAVE_PATH_EXTERNAL "/mnt/sd/VIDEO/"
+#define NODE_SAVE_PATH_EXTERNAL "/mnt/sd/Videos/"
 #endif
 
 #ifndef NODE_IMAGE_PATH_LOCAL
-#define NODE_IMAGE_PATH_LOCAL "/userdata/app/IMAGES/"
+#define NODE_IMAGE_PATH_LOCAL "/userdata/Images/"
 #endif
 
 #ifndef NODE_IMAGE_PATH_EXTERNAL
-#define NODE_IMAGE_PATH_EXTERNAL "/mnt/sd/IMAGES/"
+#define NODE_IMAGE_PATH_EXTERNAL "/mnt/sd/Images/"
 #endif
 
 #ifndef NODE_SAVE_MAX_SIZE

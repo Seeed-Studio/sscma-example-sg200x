@@ -3,12 +3,6 @@
 DAEMON=supervisor
 DAEMON_PATH=/usr/local/bin
 
-# SERVICE_FILE="/etc/avahi/services/sscma.service"
-
-# SRC_FLOW="/usr/share/supervisor/flows.json"
-# SRC_FLOW_GIMBAL="/usr/share/supervisor/flows_gimbal.json"
-# DST_FLOW="/home/recamera/.node-red/flows.json"
-
 JOYSTICK_SRC="/usr/share/supervisor/nipplejs.min.js"
 JOYSTICK_DIR="/home/recamera/.node-red/public"
 if [ -f $JOYSTICK_SRC ]; then
@@ -16,35 +10,6 @@ if [ -f $JOYSTICK_SRC ]; then
     cp -f "$JOYSTICK_SRC" "$JOYSTICK_DIR/"
     sync
 fi
-
-# SRC_MODEL="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.cvimodel"
-# SRC_INFO="/usr/share/supervisor/models/yolo11n_detection_cv181x_int8.json"
-# DST_MODEL="/userdata/MODEL/model.cvimodel"
-# DST_INFO="/userdata/MODEL/model.json"
-
-# if [ ! -f "$DST_FLOW" ] || [ ! -s "$DST_FLOW" ]; then
-#     if [ ! -z "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ]; then
-#         if [ -f "$SRC_FLOW_GIMBAL" ]; then
-#             SRC_FLOW=$SRC_FLOW_GIMBAL
-#         fi
-#     fi
-
-#     if [ -f "$SRC_FLOW" ]; then
-#         cp -f "$SRC_FLOW" "$DST_FLOW"
-#         # cp -f "$SRC_MODEL" "$DST_MODEL"
-#         # cp -f "$SRC_INFO" "$DST_INFO"
-#         sync
-#     fi
-# fi
-
-# if [ -d /userdata/ ] && [ ! -f "$DST_MODEL" ]; then
-#     if [ -f "$SRC_MODEL" ]; then
-#         mkdir -p /userdata/MODEL
-#         cp "$SRC_MODEL" "$DST_MODEL"
-#         cp "$SRC_INFO" "$DST_INFO"
-#         sync
-#     fi
-# fi
 
 check_avahi() {
     local service_file="/etc/avahi/services/sscma.service"
