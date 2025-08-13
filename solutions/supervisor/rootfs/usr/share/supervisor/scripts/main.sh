@@ -561,8 +561,9 @@ _wpa_set_networks() {
     [ -z "$id" ] && return 0
     $WPA_CLI "$status" "$id"
     $WPA_CLI save_config
-    _sta_stop >/dev/null 2>&1
-    _sta_start >/dev/null 2>&1 &
+    # _sta_stop >/dev/null 2>&1
+    # sleep 1
+    # _sta_start >/dev/null 2>&1
 }
 
 function disconnectWiFi() {

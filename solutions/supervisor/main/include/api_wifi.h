@@ -75,7 +75,6 @@ private:
 
     static inline json _eth;
     static inline json _sta_current;
-    static inline json _sta_connected;
 
     static json get_eth();
     static json get_sta_current();
