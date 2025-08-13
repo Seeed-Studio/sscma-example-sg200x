@@ -170,24 +170,10 @@ public:
         return result;
     }
 
-    using vstr_t = std::vector<std::string>;
-    static vstr_t string_split(std::string s, const char delimiter = ' ')
-    {
-        vstr_t output;
-        size_t start = 0;
-        size_t end = s.find_first_of(delimiter);
+    template <typename T>
+    static json parse_result(T&& result) { return to_json(result); }
 
-        while (end <= std::string::npos) {
-            output.emplace_back(s.substr(start, end - start));
-            if (end == std::string::npos)
-                break;
-            start = end + 1;
-            end = s.find_first_of(delimiter, start);
-        }
-        return output;
-    }
-
-    using vvstr_t = std::vector<vstr_t>;
+    using vvstr_t = std::vector<std::vector<std::string>>;
     static vvstr_t parse_result(std::string file, char delimiter, bool skip_header = false)
     {
         vvstr_t result;
@@ -203,18 +189,17 @@ public:
         while (std::getline(f, line)) {
             if (line.empty())
                 continue;
-            auto&& fields = string_split(line, delimiter);
+            std::stringstream ss(std::move(line));
+            std::string field;
+            std::vector<std::string> fields;
+            while (std::getline(ss, field, delimiter)) {
+                fields.push_back(field);
+            }
             if (fields.size() < 1)
                 continue;
             result.push_back(fields);
         }
         return result;
-    }
-
-    template <typename T>
-    static json parse_result(T&& result)
-    {
-        return to_json(result);
     }
 
 protected:
