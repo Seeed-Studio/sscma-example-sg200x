@@ -12,6 +12,7 @@ private:
     static api_status_t addSShkey(request_t req, response_t res);
     static api_status_t deleteSShkey(request_t req, response_t res);
     static api_status_t setSShStatus(request_t req, response_t res);
+    static api_status_t login(request_t req, response_t res);
     static api_status_t queryUserInfo(request_t req, response_t res);
     static api_status_t updatePassword(request_t req, response_t res);
 
@@ -36,7 +37,6 @@ public:
 private:
     static std::string gen_token(void) { return script(__func__); }
     static std::string get_username(void) { return script(__func__); }
-    static api_status_t login(request_t req, response_t res);
 
     static std::string toHex(const unsigned char* data, size_t len)
     {

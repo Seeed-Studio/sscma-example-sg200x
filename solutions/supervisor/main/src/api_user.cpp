@@ -29,8 +29,8 @@ api_status_t api_user::setSShStatus(request_t req, response_t res)
 
 api_status_t api_user::login(request_t req, response_t res)
 {
-    static const int max_retry_count = 5;
-    static int retryCount = max_retry_count;
+    static const uint8_t MAX_TRY_CNT = 5;
+    static uint8_t try_cnt = MAX_TRY_CNT;
     static struct timespec tsLastFailed;
 
     auto&& body = parse_body(req);
@@ -42,30 +42,29 @@ api_status_t api_user::login(request_t req, response_t res)
         return API_STATUS_OK;
     }
 
-    if (!verify_pwd(username, aes_decrypt(password))) {
-        if (retryCount != max_retry_count) {
-            struct timespec ts;
-            timespec_get(&ts, TIME_UTC);
-            if (ts.tv_sec - tsLastFailed.tv_sec > 60) {
-                retryCount = max_retry_count;
-            }
+    static struct timespec ts;
+    timespec_get(&ts, TIME_UTC);
+    if (try_cnt == 0) {
+        if (ts.tv_sec - tsLastFailed.tv_sec < 60) {
+            response(res, -1, "Login failed, please try again later.",
+                json({ { "retryCount", try_cnt } }));
+            return API_STATUS_OK;
         }
-        if (retryCount > 0) {
-            retryCount--;
+        try_cnt = MAX_TRY_CNT;
+    }
+
+    if (!verify_pwd(username, aes_decrypt(password))) {
+        if (try_cnt > 0) {
+            try_cnt--;
         }
         timespec_get(&tsLastFailed, TIME_UTC);
-
         LOGW("Authentication failed for user: %s, retryCount: %d",
-            username.c_str(), retryCount);
-        response(res, -1,
-            "Invalid username or password",
-            json({
-                { "retryCount", retryCount },
-            }));
+            username.c_str(), try_cnt);
+        response(res, -1, "Invalid username or password",
+            json({ { "retryCount", try_cnt } }));
         return API_STATUS_OK;
     }
-    retryCount = max_retry_count;
-
+    try_cnt = MAX_TRY_CNT;
     script(__func__); // remove first login record
 
     std::string token = gen_token();
