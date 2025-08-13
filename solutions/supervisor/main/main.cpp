@@ -1,10 +1,10 @@
+#include <cctype> // for isdigit()
 #include <cstdio>
+#include <cstdlib> // for exit()
 #include <signal.h>
 #include <string>
-#include <unistd.h>  // for fork()
-#include <sys/stat.h>  // for umask()
-#include <cstdlib>  // for exit()
-#include <cctype>  // for isdigit()
+#include <sys/stat.h> // for umask()
+#include <unistd.h> // for fork()
 
 #include "http_server.h"
 
@@ -39,30 +39,30 @@ int main(int argc, char** argv)
     int opt;
     while ((opt = getopt(argc, argv, "vBr:p:s:aD:")) != -1) {
         switch (opt) {
-            case 'v':
-                show_version = true;
-                break;
-            case 'B':
-                daemon_mode = true;
-                break;
-            case 'r':
-                root_dir = optarg;
-                break;
-            case 'p':
-                http_port = optarg;
-                break;
-            case 's':
-                script_path = optarg;
-                break;
-            case 'a':
-                no_auth = true;
-                break;
-            case 'D':
-                log_level = atoi(optarg);
-                break;
-            default:
-                print_help(argv[0]);
-                exit(EXIT_FAILURE);
+        case 'v':
+            show_version = true;
+            break;
+        case 'B':
+            daemon_mode = true;
+            break;
+        case 'r':
+            root_dir = optarg;
+            break;
+        case 'p':
+            http_port = optarg;
+            break;
+        case 's':
+            script_path = optarg;
+            break;
+        case 'a':
+            no_auth = true;
+            break;
+        case 'D':
+            log_level = atoi(optarg);
+            break;
+        default:
+            print_help(argv[0]);
+            exit(EXIT_FAILURE);
         }
     }
 

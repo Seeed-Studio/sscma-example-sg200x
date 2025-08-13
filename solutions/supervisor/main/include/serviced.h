@@ -33,7 +33,7 @@ public:
             while (running_) {
                 std::this_thread::sleep_for(std::chrono::seconds(10));
                 query_nodered();
-                LOGD("nodered_status_=%d", nodered_status_);
+                LOGV("nodered_status_=%d", nodered_status_);
                 if (nodered_status_ != STATUS_NORMAL) {
                     LOGW("nodered_status_=%d, wait_nodered=%d", nodered_status_, wait_nodered);
                     if (3 == wait_nodered)

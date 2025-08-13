@@ -129,6 +129,7 @@ private:
             } else if (status == API_STATUS_REPLY_FILE) {
                 std::string fname("");
                 try {
+                    LOGV("Reply file: %s", res.dump().c_str());
                     fname = res["data"]["file"].get<std::string>();
                 } catch (const json::exception& e) {
                     LOGE("json error: %s", e.what());
@@ -168,7 +169,7 @@ private:
                 }
 
                 redirect = "Location: http://" + redirect + "/\r\n";
-                LOGD("redirect============>%s",  redirect.c_str());
+                LOGD("redirect============>%s", redirect.c_str());
                 mg_http_reply(c, 307, redirect.c_str(), "");
                 return;
             }
