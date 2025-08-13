@@ -173,7 +173,7 @@ void api_wifi::stop_wifi()
         if (_worker.joinable())
             _worker.join();
     }
-    script(__func__);
+    // script(__func__);
     LOGV("exited");
 }
 

@@ -55,7 +55,7 @@ public:
 
     ~api_wifi()
     {
-        // stop_wifi();
+        stop_wifi();
         LOGV("");
     }
 
