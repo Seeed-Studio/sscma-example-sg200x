@@ -157,6 +157,11 @@ void api_wifi::start_wifi()
                 stable_count = 0;
             }
 
+            if (_need_scan) {
+                _get_scan_results();
+                _need_scan = false;
+            }
+
             std::unique_lock<std::mutex> lock(wifi_mutex);
             cv.wait_for(lock, std::chrono::seconds(timeout), [] { return !_running; });
         }
@@ -253,7 +258,7 @@ static json _parse_iw_scan(std::string fname)
     return jlist;
 }
 
-api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
+void api_wifi::_get_scan_results()
 {
     auto&& n = get_sta_connected();
     std::map<std::string, json> m;
@@ -284,7 +289,7 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
         return m[a]["signal"] > m[b]["signal"];
     });
 
-    json data = json::object();
+    json& data = _scan_results;
     data["wifiInfoList"] = json::array();
     for (auto& _n : n) {
         data["wifiInfoList"].push_back(_n);
@@ -294,7 +299,12 @@ api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
     }
 
     data["etherinfo"] = _eth;
-    response(res, 0, STR_OK, data);
+}
+
+api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
+{
+    _need_scan = true;
+    response(res, 0, STR_OK, _scan_results);
     return API_STATUS_OK;
 }
 

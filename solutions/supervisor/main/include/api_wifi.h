@@ -76,6 +76,10 @@ private:
     static inline json _eth;
     static inline json _sta_current;
 
+    static inline std::atomic<bool> _need_scan { true };
+    static inline json _scan_results = json::object();
+    static void _get_scan_results();
+
     static json get_eth();
     static json get_sta_current();
     static json get_sta_connected();

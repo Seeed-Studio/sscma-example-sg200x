@@ -498,7 +498,7 @@ function get_eth() {
         "$(_mac "$ifname")" "$(_gateway "$ifname")"
 }
 
-function getWiFiScanResults() {
+function _get_scan_results() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     local result="$out.tmp"
     [ -s "$result" ] && {
