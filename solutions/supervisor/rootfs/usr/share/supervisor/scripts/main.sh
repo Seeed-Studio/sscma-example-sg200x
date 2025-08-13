@@ -1,28 +1,29 @@
 #!/bin/bash
-DIR_SCRIPTS=$(dirname $(readlink -f $0))
-STR_OK="OK"
-STR_FAILED="Failed"
+readonly DIR_SCRIPTS=$(dirname $(readlink -f $0))
+readonly STR_OK="OK"
+readonly STR_FAILED="Failed"
 
 # conf
-USER_NAME=recamera
-CONFIG_DIR="/etc/recamera.conf"
-CONF_UPGRADE="$CONFIG_DIR/upgrade"
+readonly USER_NAME="recamera"
+readonly CONFIG_DIR="/etc/$USER_NAME.conf"
+readonly CONF_UPGRADE="$CONFIG_DIR/upgrade"
 
 # userdata
-APP_DIR="/userdata/app"
-MODEL_DIR="/userdata/MODEL"
+readonly USERDATA_DIR="/userdata"
+readonly MODEL_DIR="$USERDATA_DIR/Models"
+readonly MODELS_PRESET="/usr/share/supervisor/models"
 
 # work_dir
-WORK_DIR=/tmp/supervisor
-if [ ! -d $WORK_DIR ]; then
-    mkdir -p $WORK_DIR
-    chmod 400 -R $WORK_DIR
+readonly WORK_DIR="/tmp/supervisor"
+if [ ! -d "$WORK_DIR" ]; then
+    mkdir -p "$WORK_DIR"
+    chmod 400 -R "$WORK_DIR"
 fi
 
 # private
 _compatible() {
     [ ! -d "$CONFIG_DIR" ] && mkdir -p "$CONFIG_DIR"
-    [ -f "/etc/upgrade" ] && mv /etc/upgrade $CONF_UPGRADE
+    [ -f "/etc/upgrade" ] && mv /etc/upgrade "$CONF_UPGRADE"
 }
 _compatible
 
@@ -37,31 +38,29 @@ _dev_name() { cat "$HOSTNAME_FILE"; }
 _os_name() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $1}'; }
 _os_version() { cat "$ISSUE_FILE" 2>/dev/null | awk -F' ' '{print $2}'; }
 
-_stop_pidname() { local sig=${2:-9}; for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -$sig $pid; done; }
+_stop_pidname() {
+    local sig=${2:-9}
+    for pid in $(pidof "$1"); do [ -d "/proc/$pid" ] && kill -$sig $pid; done
+}
 
 ##################################################
 # file
-api_file() {
-    [ -d $APP_DIR ] || mkdir -p $APP_DIR
-    echo $APP_DIR
-}
+api_file() { echo "$USERDATA_DIR"; }
 # file
 ##################################################
 
 ##################################################
 # device
-ISSUE_FILE="/etc/issue"
-HOSTNAME_FILE="/etc/hostname"
-AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
-AVAHI_SERVICE="/etc/init.d/S50avahi-daemon"
+readonly ISSUE_FILE="/etc/issue"
+readonly HOSTNAME_FILE="/etc/hostname"
+readonly AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
+readonly AVAHI_SERVICE="/etc/init.d/S50avahi-daemon"
 
 function getDeviceList() {
     local out="$WORK_DIR/${FUNCNAME[0]}"
     local tmp="$out.tmp"
     [ -s "$tmp" ] && { cp "$tmp" "$out"; }
-    [ -z "$(pidof avahi-browse 2>/dev/null)" ] && {
-        avahi-browse -arpt >"$tmp" 2>/dev/null &
-    }
+    [ -z "$(pidof avahi-browse 2>/dev/null)" ] && { avahi-browse -arpt >"$tmp" 2>/dev/null & }
     [ -f "$out" ] || >"$out"
     echo "$out"
 }
@@ -98,40 +97,45 @@ function queryDeviceInfo() {
     printf '"deviceName": "%s" }' "$(cat $HOSTNAME_FILE)"
 }
 
-# model
-PRESET_MODELS="/usr/share/supervisor/models"
-MODEL_SUFFIX=".cvimodel"
-MODEL_FILE="$MODEL_DIR/model${MODEL_SUFFIX}"
-MODEL_INFO="$MODEL_DIR/model.json"
+# flow
+_check_flow() {
+    local src_flow="/usr/share/supervisor/flows.json"
+    local src_flow_gimbal="/usr/share/supervisor/flows_gimbal.json"
+    local dst_flow="/home/recamera/.node-red/flows.json"
 
-function get_model_info() {
-    local file="" info="" md5=""
-    if [ -f "$MODEL_FILE" ]; then
-        file=$MODEL_FILE
-        [ -f "$MODEL_INFO" ] && info="$MODEL_INFO"
-        md5=$(md5sum $file | awk '{print $1}')
-    fi
-    printf '{"file": "%s", "info": "%s", "md5": "%s" }' "${file}" "${info}" "${md5}"
+    [ ! -f "$dst_flow" ] && {
+        [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && {
+            [ -f "$src_flow_gimbal" ] && src_flow=$src_flow_gimbal
+        }
+        [ -f "$src_flow" ] && {
+            cp -f "$src_flow" "$dst_flow"
+            chown "$USER_NAME":"$USER_NAME" "$dst_flow"
+            sync
+        }
+    }
 }
 
-function getModelList() {
-    local json=$(ls $PRESET_MODELS/*.json 2>/dev/null)
-    printf '{"list": ['
-    for i in $json; do
-        local name=${i%.*}
-        [ -f "${name}${MODEL_SUFFIX}" ] && printf '"%s",' $name
-    done
-    printf '""], "suffix": "%s" }' ${MODEL_SUFFIX}
+# model
+readonly MODEL_FILE="$MODEL_DIR/model.cvimodel"
+readonly MODEL_INFO="$MODEL_DIR/model.json"
+_check_models() {
+    [ ! -d "$MODEL_DIR" ] && { mkdir -p "$MODEL_DIR"; }
+    [ ! -f "$MODEL_FILE" ] && {
+        local src_model="$MODELS_PRESET/yolo11n_detection_cv181x_int8.cvimodel"
+        local src_info="$MODELS_PRESET/yolo11n_detection_cv181x_int8.json"
+        cp -f "$src_model" "$MODEL_FILE"
+        cp -f "$src_info" "$MODEL_INFO"
+        sync
+    }
 }
 
 # upgrade
-DEFAULT_UPGRADE_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
-UPGRADE="$DIR_SCRIPTS/upgrade.sh"
-
-UPGRADE_CANCEL="$WORK_DIR/upgrade.cancel"
-UPGRADE_DONE="$WORK_DIR/upgrade.done"
-UPGRADE_MUTEX="$WORK_DIR/upgrade.mutex"
-UPGRADE_PROG="$WORK_DIR/upgrade.prog"
+readonly DEFAULT_UPGRADE_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
+readonly UPGRADE="$DIR_SCRIPTS/upgrade.sh"
+readonly UPGRADE_CANCEL="$WORK_DIR/upgrade.cancel"
+readonly UPGRADE_DONE="$WORK_DIR/upgrade.done"
+readonly UPGRADE_MUTEX="$WORK_DIR/upgrade.mutex"
+readonly UPGRADE_PROG="$WORK_DIR/upgrade.prog"
 
 _upgrading() { [ -f "$UPGRADE_PROG" ] && echo "1" || echo "0"; }
 _upgrade_done() { [ -f "$UPGRADE_DONE" ] && echo "1" || echo "0"; }
@@ -249,6 +253,9 @@ function api_device() {
     local rollback=0
     [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
 
+    _check_flow >/dev/null 2>&1
+    _check_models >/dev/null 2>&1
+
     printf '{'
     printf '"sn": "%s",' "$(_sn)"
     printf '"dev_name": "%s",' "$(_dev_name)"
@@ -261,9 +268,10 @@ function api_device() {
     printf '"ttyd": "%d",' "$ttyd_port"
     printf '"rollback": "%d",' "$rollback"
     printf '"app_dir": "%s",' "$APP_DIR"
-    printf '"model_dir": "%s",' "$MODEL_DIR"
     printf '"url": "%s",' "$DEFAULT_UPGRADE_URL"
-    printf '"platform_info": "%s"' "$CONFIG_DIR/platform.info"
+    printf '"platform_info": "%s",' "$CONFIG_DIR/platform.info"
+    printf '"model": { "dir": "%s", "file": "%s", "info": "%s", "preset": "%s" }' \
+        "$MODEL_DIR" "$MODEL_FILE" "$MODEL_INFO" "$MODELS_PRESET"
     printf '}'
 }
 # device
@@ -271,18 +279,16 @@ function api_device() {
 
 ##################################################
 # user
-SSH_DIR="/home/$USER_NAME/.ssh"
-SSH_KEY_FILE="$SSH_DIR/authorized_keys"
-
-FIRST_LOGIN="/etc/.first_login"
-DIR_INID="/etc/init.d"
-DIR_INID_DISABLED="$DIR_INID/disabled"
-SSH_SERVICE="S*sshd"
+readonly SSH_DIR="/home/$USER_NAME/.ssh"
+readonly SSH_KEY_FILE="$SSH_DIR/authorized_keys"
+readonly FIRST_LOGIN="/etc/.first_login"
+readonly DIR_INID="/etc/init.d"
+readonly DIR_INID_DISABLED="$DIR_INID/disabled"
+readonly SSH_SERVICE="S*sshd"
 
 # private
 function _is_key_valid() {
     local tmp=$(mktemp)
-
     echo "$*" >$tmp
     ssh-keygen -lf $tmp 2>/dev/null
     local ret=$?
@@ -316,7 +322,7 @@ function _update_sshkey() {
 # APIs
 function gen_token() { dd if=/dev/random bs=64 count=1 2>/dev/null | base64 -w0; }
 function get_username() { echo $USER_NAME; }
-function login() { [ -f "$FIRST_LOGIN" ] && rm -f "$FIRST_LOGIN"; }
+function login() { rm -f "$FIRST_LOGIN"; }
 
 function addSShkey() {
     local name="$2"
@@ -349,7 +355,6 @@ function addSShkey() {
 
 function deleteSShkey() {
     local line="$2"
-
     if ! [[ "$line" =~ ^[0-9]+$ ]]; then
         echo "Invalid id=$line"
         exit 1
@@ -411,17 +416,13 @@ EOF
 
 ##################################################
 # network
-CONF_WIFI="$CONFIG_DIR/sta"
-CONF_AP="$CONFIG_DIR/ap"
-
-# alias
-WPA_CLI="wpa_cli -i wlan0"
+readonly CONF_WIFI="$CONFIG_DIR/sta"
+readonly CONF_AP="$CONFIG_DIR/ap"
+readonly WPA_CLI="wpa_cli -i wlan0"
 
 _check_wifi() { [ -z "$(ifconfig wlan0 2>/dev/null)" ] && return 1 || return 0; }
 _sta_stop() { _stop_pidname "wpa_supplicant"; }
-_ap_stop() {
-    _stop_pidname "hostapd"
-}
+_ap_stop() { _stop_pidname "hostapd"; }
 
 _sta_start() {
     _check_wifi || return 0
