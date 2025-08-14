@@ -19,7 +19,7 @@ LOGFILE=/var/log/$NAME.log
 USER=root
 
 # Set up the library path if necessary
-LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib:/mnt/system/usr/lib/3rd:$LD_LIBRARY_PATH
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib:/usr/lib:/usr/lib64:/mnt/system/lib:/mnt/system/usr/lib:/mnt/system/usr/lib/3rd
 export LD_LIBRARY_PATH
 
 start() {
