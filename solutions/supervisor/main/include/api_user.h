@@ -25,7 +25,7 @@ public:
         REG_API(addSShkey);
         REG_API(deleteSShkey);
         REG_API(setSShStatus); // fixed: no auth
-        REG_API(queryUserInfo); // fixed: no auth
+        REG_API_NO_AUTH(queryUserInfo); // fixed: no auth
         REG_API(updatePassword); // fixed: no auth
     }
 
