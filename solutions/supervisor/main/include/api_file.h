@@ -169,9 +169,9 @@ private:
                     uint64_t totalCapacity            = space.capacity;
                     uint64_t freeSpace                = space.free;
                     uint64_t usedSpace                = totalCapacity - freeSpace;
-                    data["total"]      = totalCapacity;
-                    data["used"]          = usedSpace;
-                    data["free"]          = freeSpace;
+                    data["total"]                     = totalCapacity;
+                    data["used"]                      = usedSpace;
+                    data["free"]                      = freeSpace;
                 } catch (const std::exception& e) {
                     // Log error but don't fail the entire request
                     // Optionally, you could add an error field to the response
@@ -355,69 +355,124 @@ private:
     // Upload file
     static api_status_t upload(request_t req, response_t res) {
         try {
-            std::string path    = getParam(req, "path");
-            std::string storage = getParam(req, "storage");
-            path                = decodePath(path);
+            std::string path      = getParam(req, "path");
+            std::string storage   = getParam(req, "storage");
+            std::string offsetStr = getParam(req, "offset");  // Get offset parameter as string
+            path                  = decodePath(path);
 
-            // Default to local if storage is empty
+            // Default to local if storage is not specified
             std::string effectiveStorage = storage.empty() ? "local" : storage;
 
             LOGV("path: %s", path.c_str());
 
+            // Validate storage type
             if (!isValidStorage(effectiveStorage)) {
                 response(res, -1, "Invalid storage parameter. Use 'local' or 'sd'.");
                 return API_STATUS_OK;
             }
+
+            // Check if SD card is available when using 'sd' storage
             if (effectiveStorage == "sd" && !isSDAvailable()) {
                 response(res, -1, "SD card not available.");
                 return API_STATUS_OK;
             }
 
+            // Validate path format
             if (!path.empty() && !isValidPath(path)) {
                 response(res, -1, "Invalid path.");
                 return API_STATUS_OK;
             }
 
+            // Get the full upload directory path
             std::string uploadDir = getFullPath(path, effectiveStorage);
 
+            // Check if upload directory exists
             if (!path.empty() && !std::filesystem::exists(uploadDir)) {
                 response(res, -1, "Upload directory does not exist.");
                 return API_STATUS_OK;
             }
 
+            // Ensure the path is a directory
             if (!path.empty() && !std::filesystem::is_directory(uploadDir)) {
                 response(res, -1, "Upload path is not a directory.");
                 return API_STATUS_OK;
             }
 
+            // Parse offset (default to 0 if not provided)
+            size_t offset = 0;
+            if (!offsetStr.empty()) {
+                try {
+                    offset = std::stoull(offsetStr);  // Support large file offsets
+                } catch (...) {
+                    response(res, -1, "Invalid offset parameter. Must be a non-negative integer.");
+                    return API_STATUS_OK;
+                }
+            }
+
+            // Get uploaded file parts
             auto&& parts     = get_multiparts(req, "file");
             json results     = json::array();
             int successCount = 0;
 
             for (auto& part : parts) {
                 try {
+                    // Skip empty or invalid parts
                     if (part.filename.empty() || part.len == 0)
                         continue;
 
+                    // Validate filename
                     if (!isValidFilename(part.filename)) {
                         json result = {{"filename", part.filename}, {"status", "failed"}, {"message", "Invalid filename"}};
                         results.push_back(result);
                         continue;
                     }
 
+                    // Full path to the target file
                     std::string fullPath = uploadDir + "/" + part.filename;
 
-                    std::ofstream file(fullPath, std::ios::binary);
-                    if (!file.is_open()) {
-                        json result = {{"filename", part.filename}, {"status", "failed"}, {"message", "Cannot create file"}};
+                    // Ensure parent directory exists
+                    std::filesystem::path parentDir = std::filesystem::path(fullPath).parent_path();
+                    if (!std::filesystem::exists(parentDir)) {
+                        std::filesystem::create_directories(parentDir);
+                    }
+
+                    // Open file in read/write binary mode to support random access
+                    std::fstream file(fullPath, std::ios::in | std::ios::out | std::ios::binary);
+                    bool fileExisted = file.is_open();
+
+                    if (!fileExisted) {
+                        // If file doesn't exist, create it
+                        file.open(fullPath, std::ios::out | std::ios::binary);
+                        if (!file.is_open()) {
+                            json result = {{"filename", part.filename}, {"status", "failed"}, {"message", "Cannot create file"}};
+                            results.push_back(result);
+                            continue;
+                        }
+                        // Close and reopen in read/write mode for seeking
+                        file.close();
+                        file.open(fullPath, std::ios::in | std::ios::out | std::ios::binary);
+                        if (!file.is_open()) {
+                            json result = {{"filename", part.filename}, {"status", "failed"}, {"message", "Cannot reopen file"}};
+                            results.push_back(result);
+                            continue;
+                        }
+                    }
+
+                    // Seek to the specified offset
+                    file.seekp(offset);
+                    if (file.fail()) {
+                        file.close();
+                        json result = {{"filename", part.filename}, {"status", "failed"}, {"message", "Cannot seek to offset"}};
                         results.push_back(result);
                         continue;
                     }
 
+                    // Write the data at the given offset
                     file.write(part.data, part.len);
                     file.close();
 
-                    json result = {{"filename", part.filename}, {"status", "success"}, {"size", part.len}, {"storage", effectiveStorage}};
+                    // Record success result
+                    json result = {{"filename", part.filename}, {"status", "success"}, {"size", part.len}, {"offset", offset}, {"storage", effectiveStorage}};
                     results.push_back(result);
                     successCount++;
                 } catch (const std::exception& e) {
@@ -426,6 +481,7 @@ private:
                 }
             }
 
+            // Prepare response data
             json data       = json::object();
             data["uploads"] = results;
             data["count"]   = successCount;
@@ -443,7 +499,6 @@ private:
         }
         return API_STATUS_OK;
     }
-
     // Download file
     static api_status_t download(request_t req, response_t res) {
         try {
