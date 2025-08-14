@@ -1,3 +1,4 @@
+// save.h
 #pragma once
 
 extern "C" {
@@ -59,6 +60,9 @@ protected:
     AVFormatContext* avFmtCtx_;
     AVStream* avStream_;
     AVStream* audioStream_;
+    const AVCodec* audioCodec_;
+    AVCodecContext* audioCodecCtx_;
+    std::vector<uint8_t> audio_buffer_;
 };
 
 }  // namespace ma::node
