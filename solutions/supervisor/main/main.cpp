@@ -1,6 +1,7 @@
 #include <cctype> // for isdigit()
 #include <cstdio>
 #include <cstdlib> // for exit()
+#include <semaphore.h> // 添加信号量头文件
 #include <signal.h>
 #include <string>
 #include <sys/stat.h> // for umask()
@@ -22,6 +23,15 @@ void print_help(char* argv0)
     fprintf(stderr, "  -p: Set HTTP port (default: %s)\n", DEFAULT_HTTP_PORT);
     fprintf(stderr, "  -s: Set script path (default: %s)\n", DEFAULT_SCRIPT_PATH);
     fprintf(stderr, "  -a: Disable authentication\n");
+}
+
+static sem_t signal_sem;
+static int signal_num;
+
+void signal_handler(int sig)
+{
+    signal_num = sig;
+    sem_post(&signal_sem);
 }
 
 int main(int argc, char** argv)
@@ -94,14 +104,20 @@ int main(int argc, char** argv)
         umask(0);
     }
 
-    sigset_t sigset;
-    sigemptyset(&sigset);
-    sigaddset(&sigset, SIGTERM);
-    sigaddset(&sigset, SIGINT); // CTRL+C
-    sigaddset(&sigset, SIGTSTP); // CTRL+Z
-    pthread_sigmask(SIG_BLOCK, &sigset, nullptr);
-
     Logger logger(PROJECT_NAME, log_level);
+
+    if (sem_init(&signal_sem, 0, 0) == -1) {
+        perror("sem_init");
+        exit(EXIT_FAILURE);
+    }
+    signal(SIGINT, signal_handler);
+    signal(SIGSEGV, signal_handler);
+    signal(SIGABRT, signal_handler);
+    signal(SIGTRAP, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGHUP, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGPIPE, signal_handler);
 
     try {
         if (show_version) {
@@ -117,9 +133,8 @@ int main(int argc, char** argv)
         if (!server.start(http_port)) {
             LOGE("Failed: server.start()");
         } else {
-            int sig;
-            sigwait(&sigset, &sig); // block until signal received
-            LOGW("Exited with sig: %d", sig);
+            sem_wait(&signal_sem);
+            LOGW("Received signal(%d), exiting main", signal_num);
         }
     } catch (std::exception& e) {
         LOGE("Exception: %s", e.what());
