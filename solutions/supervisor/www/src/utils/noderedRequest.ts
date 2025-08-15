@@ -1,15 +1,12 @@
 import axios, { AxiosRequestConfig, AxiosError } from "axios";
-import { isDev } from "./index";
-
-// 根据环境设置 baseURL
-export const baseIP = isDev ? "http://192.168.42.1" : window.location.origin;
+import { baseIP } from "./supervisorRequest";
 
 // nodered的接口
 const noderedService = axios.create({
   baseURL: `${baseIP}:1880`,
   headers: {
     "Content-Type": "application/json",
-    "Node-RED-API-Version": "v2"
+    "Node-RED-API-Version": "v2",
   },
 });
 

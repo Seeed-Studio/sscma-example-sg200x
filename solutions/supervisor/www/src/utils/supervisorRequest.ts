@@ -4,7 +4,7 @@ import { getToken, clearCurrentUser } from "@/store/user";
 import { isDev } from "@/utils";
 
 // 根据环境设置 baseURL
-const baseIP = isDev ? "http://192.168.42.1" : window.location.origin;
+export const baseIP = isDev ? "http://192.168.42.1" : window.location.origin;
 
 // 和设备通信的
 const supervisorService = axios.create({

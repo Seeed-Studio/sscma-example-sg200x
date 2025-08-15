@@ -44,6 +44,8 @@ import {
   DirectoryEntry,
   FileEntry,
 } from "@/api/files";
+import { getToken } from "@/store/user";
+import { baseIP } from "@/utils/supervisorRequest";
 
 type SortField = "name" | "size" | "type" | "modified";
 type SortDirection = "asc" | "desc";
@@ -90,13 +92,9 @@ const Files = () => {
   });
 
   // 图片预览状态
-  const [previewLoading, setPreviewLoading] = useState(false);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [previewFileName, setPreviewFileName] = useState("");
-
-  // 图片缓存 - 使用Map存储已下载的图片blob URL
-  const [imageCache, setImageCache] = useState<Map<string, string>>(new Map());
 
   // 导航历史
   const [navigationHistory, setNavigationHistory] = useState<
@@ -279,11 +277,6 @@ const Files = () => {
     return ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(ext || "");
   };
 
-  // 生成缓存key
-  const getCacheKey = (storage: StorageType, path: string): string => {
-    return `${storage}:${path}`;
-  };
-
   // 预览图片
   const handleImagePreview = async (filename: string) => {
     if (!isImageFile(filename)) {
@@ -291,49 +284,15 @@ const Files = () => {
       return;
     }
 
-    // 如果正在加载中，直接返回
-    if (previewLoading) {
-      return;
-    }
-
     const fullPath = currentPath ? `${currentPath}/${filename}` : filename;
-    const cacheKey = getCacheKey(currentStorage, fullPath);
-
-    // 检查缓存
-    const cachedUrl = imageCache.get(cacheKey);
-    if (cachedUrl) {
-      // 如果缓存存在，直接使用
-      setPreviewImageUrl(cachedUrl);
-      setPreviewFileName(filename);
-      setPreviewModalVisible(true);
-      return;
-    }
-
-    try {
-      // 先显示弹窗和loading状态
-      setPreviewModalVisible(true);
-      setPreviewLoading(true);
-      setPreviewImageUrl("");
-      setPreviewFileName(filename);
-
-      // 使用下载接口获取图片数据
-      const blob = await downloadAsBlob(currentStorage, fullPath);
-
-      // 创建blob URL用于预览
-      const imageUrl = URL.createObjectURL(blob);
-
-      // 缓存图片URL
-      setImageCache((prev) => new Map(prev).set(cacheKey, imageUrl));
-
-      setPreviewImageUrl(imageUrl);
-    } catch (error) {
-      console.error("Failed to preview image:", error);
-      messageApi.error("Failed to load image for preview");
-      // 加载失败时关闭弹窗
-      setPreviewModalVisible(false);
-    } finally {
-      setPreviewLoading(false);
-    }
+    const token = getToken();
+    const url = `/api/fileMgr/download?path=${encodeURIComponent(
+      fullPath
+    )}&storage=${encodeURIComponent(currentStorage)}&authorization=${token}`;
+    const imageUrl = `${baseIP}${url}`;
+    setPreviewImageUrl(imageUrl);
+    setPreviewFileName(filename);
+    setPreviewModalVisible(true);
   };
 
   // 关闭图片预览
@@ -342,41 +301,6 @@ const Files = () => {
     setPreviewImageUrl("");
     setPreviewFileName("");
   };
-
-  // 清理指定storage的缓存
-  const clearStorageCache = (storage: StorageType) => {
-    setImageCache((prev) => {
-      const newCache = new Map(prev);
-      // 清理指定storage的所有缓存
-      for (const [key] of newCache) {
-        if (key.startsWith(`${storage}:`)) {
-          const url = newCache.get(key);
-          if (url) {
-            URL.revokeObjectURL(url);
-          }
-          newCache.delete(key);
-        }
-      }
-      return newCache;
-    });
-  };
-
-  // 组件卸载时清理所有缓存
-  useEffect(() => {
-    return () => {
-      // 清理所有缓存的blob URL
-      imageCache.forEach((url) => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, []);
-
-  // 切换storage时清理缓存
-  useEffect(() => {
-    // 当storage改变时，清理其他storage的缓存以节省内存
-    const otherStorage = currentStorage === "local" ? "sd" : "local";
-    clearStorageCache(otherStorage);
-  }, [currentStorage]);
 
   // 构建文件浏览器面包屑
   const buildBrowserBreadcrumbItems = (): NonNullable<
@@ -587,13 +511,8 @@ const Files = () => {
               ? [
                   {
                     key: "preview",
-                    icon: previewLoading ? (
-                      <Spin size="small" />
-                    ) : (
-                      <PictureOutlined />
-                    ),
-                    label: previewLoading ? "Loading..." : "Preview",
-                    disabled: previewLoading,
+                    icon: <PictureOutlined />,
+                    label: "Preview",
                   },
                 ]
               : []),
@@ -622,7 +541,6 @@ const Files = () => {
           return;
         }
         if (key === "preview") {
-          if (previewLoading) return; // 防止重复点击
           handleImagePreview(item.name);
           return;
         }
@@ -674,7 +592,6 @@ const Files = () => {
         onClick: () => setSelectedFile(file.name),
         onDoubleClick: () => {
           if (isImage) {
-            if (previewLoading) return; // 防止重复点击
             handleImagePreview(file.name);
           } else {
             handleDownload(file.name);
@@ -794,31 +711,21 @@ const Files = () => {
         footer={null}
         centered
       >
-        {previewLoading ? (
-          <div className="flex flex-col justify-center items-center h-64">
-            <Spin size="large" />
-            <div className="mt-4 text-gray-500">Loading image...</div>
-            <div className="text-sm text-gray-400 mt-2">
-              This may take a moment for large images
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <img
-              src={previewImageUrl}
-              alt={previewFileName}
-              style={{
-                maxWidth: "100%",
-                maxHeight: "70vh",
-                objectFit: "contain",
-              }}
-              onError={(e) => {
-                console.error("Image load error:", e);
-                messageApi.error("Failed to display image");
-              }}
-            />
-          </div>
-        )}
+        <div className="flex justify-center">
+          <img
+            src={previewImageUrl}
+            alt={previewFileName}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "70vh",
+              objectFit: "contain",
+            }}
+            onError={(e) => {
+              console.error("Image load error:", e);
+              messageApi.error("Failed to display image");
+            }}
+          />
+        </div>
       </Modal>
 
       {/* New Folder Modal */}
