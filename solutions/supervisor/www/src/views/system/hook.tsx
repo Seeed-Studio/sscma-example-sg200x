@@ -90,7 +90,7 @@ export function useData() {
       } catch (err) {
         onCancleReset();
       }
-    }, 2000);
+    }, 1000);
   };
   const onUpdateApply = async () => {
     try {
@@ -168,7 +168,7 @@ export function useData() {
         downloadUrl: data.downloadUrl + "/upgrade.zip",
       });
     } catch (err) {
-      console.log(err, 999);
+      console.log(err);
       status = UpdateStatus.NoNeedUpdate;
       setStatus(status, click);
     }

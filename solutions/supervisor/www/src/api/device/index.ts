@@ -110,7 +110,7 @@ export const getSystemUpdateVesionInfoApi = async (data: {
     }
   );
 
-// 获取设备信息
+// 获取模型信息
 export const getModelInfoApi = async () =>
   supervisorRequest<IDeviceInfo>(
     {

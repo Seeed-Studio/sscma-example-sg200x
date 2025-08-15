@@ -7,6 +7,7 @@ import TerminalImg from "@/assets/images/svg/terminal.svg";
 import SystemImg from "@/assets/images/svg/system.svg";
 import PowerImg from "@/assets/images/svg/power.svg";
 import ApplicationImg from "@/assets/images/svg/application.svg";
+import FilesImg from "@/assets/images/svg/files.svg";
 import { useLocation, useNavigate } from "react-router-dom";
 import useConfigStore from "@/store/config";
 import { MenuOutlined } from "@ant-design/icons";
@@ -27,6 +28,7 @@ function Sidebar() {
         judgeApp: true,
       },
       { label: "Workspace", icon: ApplicationImg, route: "/workspace" },
+      { label: "Files", icon: FilesImg, route: "/files" },
       { label: "Security", icon: SecurityImg, route: "/security" },
       { label: "Network", icon: NetworkImg, route: "/network" },
     ],

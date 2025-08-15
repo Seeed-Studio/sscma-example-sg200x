@@ -20,8 +20,8 @@ export interface IAppInfo {
   app_id: string;
   user_id: string;
   app_name: string;
-  flow_data: string;
-  model_data: IModelData;
+  flow_data?: string;
+  model_data?: IModelData | null;
   res_url: string;
   created: number;
   updated: number;

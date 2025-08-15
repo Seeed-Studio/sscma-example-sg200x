@@ -8,6 +8,7 @@ import NetworkImg from "@/assets/images/svg/network.svg";
 import TerminalImg from "@/assets/images/svg/terminal.svg";
 import SystemImg from "@/assets/images/svg/system.svg";
 import PowerImg from "@/assets/images/svg/power.svg";
+import FilesImg from "@/assets/images/svg/files.svg";
 import ApplicationImg from "@/assets/images/svg/application.svg";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
 import { requiredTrimValidate } from "@/utils/validate";
@@ -26,6 +27,7 @@ const menuList = [
       judgeApp: true,
     },
     { label: "Workspace", icon: ApplicationImg, route: "/workspace" },
+    { label: "Files", icon: FilesImg, route: "/files" },
     { label: "Security", icon: SecurityImg, route: "/security" },
     { label: "Network", icon: NetworkImg, route: "/network" },
   ],
