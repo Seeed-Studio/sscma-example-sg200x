@@ -100,12 +100,15 @@ export const downloadAsBlob = async (
   storage: StorageType,
   path: string
 ): Promise<Blob> => {
+  const url = `/api/fileMgr/download?path=${encodeURIComponent(
+    path
+  )}&storage=${encodeURIComponent(storage)}`;
+
   // 使用 supervisorRequest 以便自动携带鉴权，且支持设备 baseURL
   const blobResponse = await supervisorRequest<Blob>(
     {
-      url: `/api/fileMgr/download`,
+      url,
       method: "post",
-      data: { storage, path, t: Date.now() },
       responseType: "blob",
     },
     { catchs: true }
@@ -130,29 +133,33 @@ export const uploadFiles = async (
     const totalSize = file.size;
     let offset = 0;
 
-    console.log(`开始分片上传文件: ${file.name}, 大小: ${file.size} bytes`);
-
     // 对于每个文件进行分片上传
     while (offset < totalSize) {
       const end = Math.min(offset + CHUNK_SIZE, totalSize);
       const chunk = file.slice(offset, end);
 
+      // 手动构建URL参数，确保编码一致性
+      const uploadUrl = path
+        ? `/api/fileMgr/upload?storage=${encodeURIComponent(
+            storage
+          )}&offset=${encodeURIComponent(
+            offset.toString()
+          )}&path=${encodeURIComponent(path)}`
+        : `/api/fileMgr/upload?storage=${encodeURIComponent(
+            storage
+          )}&offset=${encodeURIComponent(offset.toString())}`;
+
+      // 只保留文件数据在FormData中
       const formData = new FormData();
       formData.append("file", chunk, file.name);
-      formData.append("storage", storage);
-      formData.append("offset", offset.toString());
-      if (path) {
-        formData.append("path", path);
-      }
 
       try {
         await supervisorRequest<object>({
-          url: `/api/fileMgr/upload`,
+          url: uploadUrl,
           method: "post",
           data: formData,
         });
 
-        console.log(`上传分片成功: ${offset} - ${end} for ${file.name}`);
         offset = end;
 
         // 计算并报告总进度
@@ -172,10 +179,7 @@ export const uploadFiles = async (
     }
 
     completedFiles++;
-    console.log(`文件上传完成: ${file.name}`);
   }
-
-  console.log(`所有文件上传完成，共 ${totalFiles} 个文件`);
 };
 
 // 兼容旧类型命名
