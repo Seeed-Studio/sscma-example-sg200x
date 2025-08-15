@@ -157,9 +157,9 @@ void api_wifi::start_wifi()
                 stable_count = 0;
             }
 
-            if (_need_scan) {
+            if (_need_scan > 0) {
+                _need_scan--;
                 _get_scan_results();
-                _need_scan = false;
             }
 
             std::unique_lock<std::mutex> lock(wifi_mutex);
@@ -303,7 +303,8 @@ void api_wifi::_get_scan_results()
 
 api_status_t api_wifi::getWiFiScanResults(request_t req, response_t res)
 {
-    _need_scan = true;
+    if (_need_scan == 0)
+        _need_scan = 1;
     response(res, 0, STR_OK, _scan_results);
     return API_STATUS_OK;
 }
