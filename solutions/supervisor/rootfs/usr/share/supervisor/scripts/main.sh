@@ -247,8 +247,8 @@ function updateSystem() {
 
 function api_device() {
     local ttyd_port=9090
-    _stop_pidname "ttyd"
-    ttyd -p $ttyd_port -u $USER_NAME login >/dev/null 2>&1 &
+    # _stop_pidname "ttyd"
+    [ -z "$(pidof ttyd 2>/dev/null)" ] && ttyd -p $ttyd_port -u $USER_NAME login >/dev/null 2>&1 &
 
     local rollback=0
     [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
@@ -369,7 +369,7 @@ function setSShStatus() {
     local dir_disabled="$DIR_INID_DISABLED"
     local ret=0
 
-    if [ $((2)) -eq 0 ]; then
+    if [ $(($2)) -eq 0 ]; then
         path=$(ls $dir/$SSH_SERVICE 2>/dev/null)
         if [ -n "$path" ] && [ -f $path ]; then
             mkdir -p $dir_disabled
@@ -426,7 +426,7 @@ _ap_stop() { _stop_pidname "hostapd"; }
 
 _sta_start() {
     _check_wifi || return 0
-    [ -z "$(pidof wpa_supplicant)" ] && {
+    [ -z "$(pidof wpa_supplicant 2>/dev/null)" ] && {
         ifconfig wlan0 down
         ifconfig wlan0 up
         wpa_supplicant -B -i wlan0 -c "/etc/wpa_supplicant.conf" >/dev/null 2>&1
@@ -444,7 +444,7 @@ _ap_start() {
         sed -i "s/ssid=.*$/ssid=$ssid/" "$conf"
         sync
     }
-    [ -z "$(pidof hostapd)" ] && {
+    [ -z "$(pidof hostapd 2>/dev/null)" ] && {
         ifconfig wlan1 down
         ifconfig wlan1 up
         hostapd -B "$conf" >/dev/null 2>&1
@@ -507,9 +507,7 @@ function _get_scan_results() {
     }
     [ -f "$out" ] || >"$out"
     echo "$out"
-    [ -z "$(pidof iw)" ] && {
-        iw dev wlan0 scan >"$result" 2>/dev/null &
-    }
+    [ -z "$(pidof iw 2>/dev/null)" ] && { iw dev wlan0 scan >"$result" 2>/dev/null & }
 }
 
 function connectWiFi() {
