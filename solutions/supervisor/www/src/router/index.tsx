@@ -8,6 +8,7 @@ import System from "@/views/system";
 import Power from "@/views/power";
 import Workspace from "@/views/workspace";
 import Dashboard from "@/views/dashboard";
+import Files from "@/views/files";
 import ConfigLayout from "@/layout/config";
 import MainLayout from "@/layout/main";
 
@@ -45,6 +46,10 @@ const Routes = [
       {
         path: "init",
         element: <NetworkInit />,
+      },
+      {
+        path: "files",
+        element: <Files />,
       },
       {
         path: "network",

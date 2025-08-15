@@ -44,7 +44,7 @@ export const isDev = import.meta.env.MODE === "development";
 export const sensecraftAuthorize = () => {
   window.location.href = `${
     import.meta.env.VITE_AUTHORIZE_URL
-  }?response_type=token&client_id=seeed_recamera&scop=profile&redirec_url=${
+  }?client_id=seeed_recamera&response_type=token&scop=profile&redirect_url=${
     window.location.href
   }`;
 };

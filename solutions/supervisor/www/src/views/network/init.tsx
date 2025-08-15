@@ -30,7 +30,7 @@ function Init() {
   const { deviceInfo, updateWifiStatus, updateDeviceInfo } = useConfigStore();
 
   const getWifiStatus = async () => {
-    let { data } = await getWifiStatusApi();
+    const { data } = await getWifiStatusApi();
     updateWifiStatus(data.status);
     const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
