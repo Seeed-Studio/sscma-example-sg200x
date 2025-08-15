@@ -27,20 +27,11 @@ api_status_t api_user::setSShStatus(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
-api_status_t api_user::login(request_t req, response_t res)
+api_status_t api_user::check_pwd(const std::string& username, const std::string& password, response_t res)
 {
     static const uint8_t MAX_TRY_CNT = 5;
     static uint8_t try_cnt = MAX_TRY_CNT;
     static struct timespec tsLastFailed;
-
-    auto&& body = parse_body(req);
-    const auto& username = body.value("userName", "");
-    const auto& password = body.value("password", "");
-
-    if (username.empty() || password.empty()) {
-        response(res, -1, "Username or password is empty.");
-        return API_STATUS_OK;
-    }
 
     static struct timespec ts;
     timespec_get(&ts, TIME_UTC);
@@ -65,6 +56,24 @@ api_status_t api_user::login(request_t req, response_t res)
         return API_STATUS_OK;
     }
     try_cnt = MAX_TRY_CNT;
+
+    return API_STATUS_NEXT;
+}
+
+api_status_t api_user::login(request_t req, response_t res)
+{
+    auto&& body = parse_body(req);
+    const auto& username = body.value("userName", "");
+    const auto& password = body.value("password", "");
+    if (username.empty() || password.empty()) {
+        response(res, -1, "Username or password is empty.");
+        return API_STATUS_OK;
+    }
+
+    if (check_pwd(username, password, res) != API_STATUS_NEXT) {
+        return API_STATUS_OK;
+    }
+
     script(__func__); // remove first login record
 
     std::string token = gen_token();
@@ -112,9 +121,7 @@ api_status_t api_user::updatePassword(request_t req, response_t res)
         return API_STATUS_OK;
     }
 
-    old_pwd = aes_decrypt(old_pwd);
-    if (!verify_pwd(get_username(), old_pwd)) {
-        response(res, -1, "Invalid old password.");
+    if (check_pwd(get_username(), old_pwd, res) != API_STATUS_NEXT) {
         return API_STATUS_OK;
     }
 

@@ -26,7 +26,7 @@ public:
         REG_API(deleteSShkey);
         REG_API(setSShStatus); // fixed: no auth
         REG_API_NO_AUTH(queryUserInfo); // fixed: no auth
-        REG_API(updatePassword); // fixed: no auth
+        REG_API_NO_AUTH(updatePassword);
     }
 
     ~api_user()
@@ -132,6 +132,8 @@ private:
 
         return true;
     }
+
+    static api_status_t check_pwd(const std::string& username, const std::string& password, response_t res);
 };
 
 #endif // API_USER_H
