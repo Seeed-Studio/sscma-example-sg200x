@@ -493,12 +493,13 @@ function get_sta_current() {
 
 function get_eth() {
     local ifname="eth0"
-    printf '{"ip": "%s", "mask": "%s", "mac": "%s", "gateway": "%s", "dns1": "", "dns2": ""}' \
+    printf '{"ip": "%s", "subnetMask": "%s", "macAddress": "%s", "gateway": "%s", "dns1": "%s", "dns2": ""}' \
         "$(_ip "$ifname")" "$(_mask "$ifname")" \
-        "$(_mac "$ifname")" "$(_gateway "$ifname")"
+        "$(_mac "$ifname")" "$(_gateway "$ifname")" \
+        "$(_dns "$ifname")"
 }
 
-function _get_scan_results() {
+function get_scan_list() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     local result="$out.tmp"
     [ -s "$result" ] && {
