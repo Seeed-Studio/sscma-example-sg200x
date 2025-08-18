@@ -117,12 +117,21 @@ export const downloadAsBlob = async (
   return blobResponse as unknown as Blob;
 };
 
+// 上传进度信息接口
+export interface UploadProgressInfo {
+  currentFileIndex: number;
+  currentFileName: string;
+  currentFileProgress: number; // 0-100
+  totalFiles: number;
+  completedFiles: number;
+}
+
 // 统一的分片上传接口
 export const uploadFiles = async (
   storage: StorageType,
   path: string,
   files: FileList,
-  onProgress?: (totalProgress: number) => void
+  onProgress?: (progressInfo: UploadProgressInfo) => void
 ): Promise<void> => {
   const CHUNK_SIZE = 1024 * 1024; // 1MB per chunk
   const totalFiles = files.length;
@@ -162,12 +171,16 @@ export const uploadFiles = async (
 
         offset = end;
 
-        // 计算并报告总进度
+        // 计算并报告详细进度信息
         if (onProgress) {
-          const currentFileProgress = offset / totalSize;
-          const totalProgress =
-            ((completedFiles + currentFileProgress) / totalFiles) * 100;
-          onProgress(totalProgress);
+          const currentFileProgress = (offset / totalSize) * 100;
+          onProgress({
+            currentFileIndex: i,
+            currentFileName: file.name,
+            currentFileProgress: Math.round(currentFileProgress),
+            totalFiles,
+            completedFiles,
+          });
         }
       } catch (error) {
         console.error(

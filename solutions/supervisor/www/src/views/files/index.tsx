@@ -43,6 +43,7 @@ import {
   FileListData,
   DirectoryEntry,
   FileEntry,
+  UploadProgressInfo,
 } from "@/api/files";
 import { getToken } from "@/store/user";
 import { baseIP } from "@/utils/supervisorRequest";
@@ -86,6 +87,10 @@ const Files = () => {
   const [uploadProgress, setUploadProgress] = useState<{
     visible: boolean;
     progress: number;
+    currentFile?: string;
+    currentFileProgress?: number;
+    totalFiles?: number;
+    completedFiles?: number;
   }>({
     visible: false,
     progress: 0,
@@ -95,6 +100,7 @@ const Files = () => {
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [previewFileName, setPreviewFileName] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // 导航历史
   const [navigationHistory, setNavigationHistory] = useState<
@@ -277,6 +283,14 @@ const Files = () => {
     return ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(ext || "");
   };
 
+  // 检查是否为视频文件
+  const isVideoFile = (filename: string): boolean => {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    return ["mp4", "avi", "mov", "mkv", "wmv", "flv", "webm"].includes(
+      ext || ""
+    );
+  };
+
   // 预览图片
   const handleImagePreview = async (filename: string) => {
     if (!isImageFile(filename)) {
@@ -290,7 +304,41 @@ const Files = () => {
       fullPath
     )}&storage=${encodeURIComponent(currentStorage)}&authorization=${token}`;
     const imageUrl = `${baseIP}${url}`;
-    setPreviewImageUrl(imageUrl);
+
+    // 显示加载状态
+    setPreviewLoading(true);
+    setPreviewImageUrl("");
+    setPreviewFileName(filename);
+    setPreviewModalVisible(true);
+
+    // 预加载图片
+    const img = new Image();
+    img.onload = () => {
+      setPreviewImageUrl(imageUrl);
+      setPreviewLoading(false);
+    };
+    img.onerror = () => {
+      messageApi.error("Failed to load image");
+      setPreviewLoading(false);
+      setPreviewModalVisible(false);
+    };
+    img.src = imageUrl;
+  };
+
+  // 预览视频
+  const handleVideoPreview = async (filename: string) => {
+    if (!isVideoFile(filename)) {
+      messageApi.warning("This file is not a video");
+      return;
+    }
+
+    const fullPath = currentPath ? `${currentPath}/${filename}` : filename;
+    const token = getToken();
+    const url = `/api/fileMgr/download?path=${encodeURIComponent(
+      fullPath
+    )}&storage=${encodeURIComponent(currentStorage)}&authorization=${token}`;
+    const videoUrl = `${baseIP}${url}`;
+    setPreviewImageUrl(videoUrl); // 复用同一个状态
     setPreviewFileName(filename);
     setPreviewModalVisible(true);
   };
@@ -300,6 +348,7 @@ const Files = () => {
     setPreviewModalVisible(false);
     setPreviewImageUrl("");
     setPreviewFileName("");
+    setPreviewLoading(false);
   };
 
   // 构建文件浏览器面包屑
@@ -380,6 +429,10 @@ const Files = () => {
       setUploadProgress({
         visible: true,
         progress: 0,
+        currentFile: "",
+        currentFileProgress: 0,
+        totalFiles: fileList.length,
+        completedFiles: 0,
       });
 
       // 统一使用分片上传
@@ -387,10 +440,13 @@ const Files = () => {
         currentStorage,
         currentPath,
         fileList,
-        (totalProgress) => {
+        (progressInfo: UploadProgressInfo) => {
           setUploadProgress((prev) => ({
             ...prev,
-            progress: totalProgress,
+            currentFile: progressInfo.currentFileName,
+            currentFileProgress: progressInfo.currentFileProgress,
+            totalFiles: progressInfo.totalFiles,
+            completedFiles: progressInfo.completedFiles,
           }));
         }
       );
@@ -515,6 +571,14 @@ const Files = () => {
                     label: "Preview",
                   },
                 ]
+              : isVideoFile(item.name)
+              ? [
+                  {
+                    key: "preview",
+                    icon: <VideoCameraOutlined />,
+                    label: "Preview",
+                  },
+                ]
               : []),
             { key: "download", icon: <DownloadOutlined />, label: "Download" },
           ]),
@@ -541,7 +605,11 @@ const Files = () => {
           return;
         }
         if (key === "preview") {
-          handleImagePreview(item.name);
+          if (isImageFile(item.name)) {
+            handleImagePreview(item.name);
+          } else if (isVideoFile(item.name)) {
+            handleVideoPreview(item.name);
+          }
           return;
         }
         if (key === "download") {
@@ -593,6 +661,8 @@ const Files = () => {
         onDoubleClick: () => {
           if (isImage) {
             handleImagePreview(file.name);
+          } else if (isVideoFile(file.name)) {
+            handleVideoPreview(file.name);
           } else {
             handleDownload(file.name);
           }
@@ -703,28 +773,59 @@ const Files = () => {
       {/* 文件浏览器 */}
       {renderFileBrowser()}
 
-      {/* Image Preview Modal */}
+      {/* Media Preview Modal */}
       <Modal
-        title={previewFileName || "Image Preview"}
+        title={previewFileName || "Media Preview"}
         open={previewModalVisible}
         onCancel={handleCloseImagePreview}
         footer={null}
         centered
+        width={800}
       >
         <div className="flex justify-center">
-          <img
-            src={previewImageUrl}
-            alt={previewFileName}
-            style={{
-              maxWidth: "100%",
-              maxHeight: "70vh",
-              objectFit: "contain",
-            }}
-            onError={(e) => {
-              console.error("Image load error:", e);
-              messageApi.error("Failed to display image");
-            }}
-          />
+          {isImageFile(previewFileName) ? (
+            previewLoading ? (
+              <div className="flex flex-col justify-center items-center h-64">
+                <Spin size="large" />
+                <div className="mt-4 text-gray-500">Loading image...</div>
+              </div>
+            ) : (
+              <img
+                src={previewImageUrl}
+                alt={previewFileName}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                }}
+                onError={(e) => {
+                  console.error("Image load error:", e);
+                  messageApi.error("Failed to display image");
+                }}
+              />
+            )
+          ) : isVideoFile(previewFileName) ? (
+            <video
+              src={previewImageUrl}
+              controls
+              autoPlay
+              style={{
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+              }}
+              onError={(e) => {
+                console.error("Video load error:", e);
+                messageApi.error("Failed to load video");
+              }}
+            >
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <div className="text-center text-gray-500">
+              Unsupported file type for preview
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -799,20 +900,22 @@ const Files = () => {
         footer={null}
         closable={false}
         centered
-        width={400}
+        width={500}
       >
         <div className="space-y-4">
-          <div>
-            <Progress
-              percent={Math.round(uploadProgress.progress)}
-              status="active"
-              strokeColor="#1890ff"
-            />
-          </div>
-
-          <div className="text-center text-sm text-gray-500">
-            Uploading files, please wait...
-          </div>
+          {/* 当前文件进度 */}
+          {uploadProgress.currentFile && (
+            <div>
+              <Progress
+                percent={uploadProgress.currentFileProgress || 0}
+                status="active"
+                strokeColor="#1890ff"
+              />
+              <div className="text-xs text-gray-500 mt-1 truncate">
+                {uploadProgress.currentFile}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
