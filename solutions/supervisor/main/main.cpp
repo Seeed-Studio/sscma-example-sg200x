@@ -6,6 +6,7 @@
 #include <string>
 #include <sys/stat.h> // for umask()
 #include <unistd.h> // for fork()
+#include <fcntl.h> // for open(), O_RDWR
 
 #include "http_server.h"
 
@@ -47,8 +48,11 @@ int main(int argc, char** argv)
 
     // Parse command-line arguments
     int opt;
-    while ((opt = getopt(argc, argv, "vBr:p:s:aD:")) != -1) {
+    while ((opt = getopt(argc, argv, "hvBr:p:s:aD:")) != -1) {
         switch (opt) {
+        case 'h':
+            print_help(argv[0]);
+            return 0;
         case 'v':
             show_version = true;
             break;
@@ -76,6 +80,13 @@ int main(int argc, char** argv)
         }
     }
 
+    // Validate http_port: must be all digits
+    if (http_port.empty() ||
+        !std::all_of(http_port.begin(), http_port.end(), [](unsigned char ch) { return std::isdigit(ch); })) {
+        LOGW("Invalid HTTP port '%s', falling back to default %s", http_port.c_str(), DEFAULT_HTTP_PORT);
+        http_port = DEFAULT_HTTP_PORT;
+    }
+
     // If daemon mode is enabled
     if (daemon_mode) {
         // Create child process
@@ -95,10 +106,22 @@ int main(int argc, char** argv)
             exit(EXIT_FAILURE);
         }
 
-        // Redirect standard input, output, and error
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
+        // Change working directory to root to avoid locking mount points
+        chdir("/");
+
+        // Redirect standard input, output, and error to /dev/null
+        int fd = open("/dev/null", O_RDWR);
+        if (fd >= 0) {
+            dup2(fd, STDIN_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+            if (fd > STDERR_FILENO) close(fd);
+        } else {
+            // Fallback: close std fds if /dev/null open fails
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+        }
 
         // Set file permission mask
         umask(0);
@@ -123,6 +146,7 @@ int main(int argc, char** argv)
         if (show_version) {
             fprintf(stdout, "Build Time: %s %s\n", __DATE__, __TIME__);
             fprintf(stdout, "%s V%s\n", PROJECT_NAME, PROJECT_VERSION);
+            return 0;
         }
 
         // Apply configuration parameters
@@ -132,14 +156,17 @@ int main(int argc, char** argv)
         http_server server(root_dir);
         if (!server.start(http_port)) {
             LOGE("Failed: server.start()");
+            return EXIT_FAILURE;
         } else {
             sem_wait(&signal_sem);
             LOGW("Received signal(%d), exiting main", signal_num);
         }
-    } catch (std::exception& e) {
+    } catch (const std::exception& e) {
         LOGE("Exception: %s", e.what());
+        return EXIT_FAILURE;
     } catch (...) {
         LOGE("Unknown exception");
+        return EXIT_FAILURE;
     }
     LOGV("");
 

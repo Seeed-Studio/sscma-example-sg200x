@@ -63,17 +63,19 @@ public:
 
     static void log(uint8_t level, const char* format, ...)
     {
+        if (level > _log_level)
+            return;
+
         std::lock_guard<std::mutex> lock(_log_mutex);
         va_list args;
-        if (level <= _log_level) {
-            va_start(args, format);
-            vsyslog(level, format, args);
-            va_end(args);
 
-            va_start(args, format);
-            vfprintf(stdout, format, args);
-            va_end(args);
-        }
+        va_start(args, format);
+        vsyslog(level, format, args);
+        va_end(args);
+
+        va_start(args, format);
+        vfprintf(stdout, format, args);
+        va_end(args);
     }
 
 private:

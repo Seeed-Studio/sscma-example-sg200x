@@ -422,7 +422,7 @@ readonly WPA_CLI="wpa_cli -i wlan0"
 
 _check_wifi() { [ -z "$(ifconfig wlan0 2>/dev/null)" ] && return 1 || return 0; }
 _sta_stop() { _stop_pidname "wpa_supplicant"; }
-_ap_stop() { _stop_pidname "hostapd"; }
+_ap_stop() { _stop_pidname "hostapd"; ifconfig wlan1 down; }
 
 _sta_start() {
     _check_wifi || return 0
