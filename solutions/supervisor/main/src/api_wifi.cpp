@@ -126,6 +126,7 @@ void api_wifi::start_wifi()
     _worker = std::thread([&]() {
         uint32_t stable_count = 0;
         uint8_t timeout;
+        bool ap_stopped = false;
 
         while (_running) {
             timeout = 15;
@@ -150,8 +151,9 @@ void api_wifi::start_wifi()
             if ((_eth_status == 1) || (_sta_status == 3)) {
                 if (stable_count < 10) {
                     stable_count++;
-                } else {
+                } else if (!ap_stopped) {
                     script("_ap_stop");
+                    ap_stopped = true;
                 }
             } else {
                 stable_count = 0;
