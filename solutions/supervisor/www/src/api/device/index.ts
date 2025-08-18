@@ -1,5 +1,5 @@
 import { supervisorRequest } from "@/utils/request";
-import { PowerMode, DeviceChannleMode, IsUpgrading } from "@/enum";
+import { PowerMode, DeviceChannleMode, SystemUpdateStatus } from "@/enum";
 import {
   IDeviceInfo,
   IChannelParams,
@@ -98,7 +98,7 @@ export const getSystemUpdateVesionInfoApi = async (data: {
     osName: string;
     osVersion: string;
     downloadUrl: string;
-    isUpgrading: IsUpgrading;
+    status: SystemUpdateStatus;
   }>(
     {
       url: "api/deviceMgr/getSystemUpdateVersion",

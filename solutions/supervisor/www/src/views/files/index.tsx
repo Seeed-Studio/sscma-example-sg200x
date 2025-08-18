@@ -344,7 +344,7 @@ const Files = () => {
   };
 
   // 关闭图片预览
-  const handleCloseImagePreview = () => {
+  const handleCloseMediaPreview = () => {
     setPreviewModalVisible(false);
     setPreviewImageUrl("");
     setPreviewFileName("");
@@ -777,7 +777,7 @@ const Files = () => {
       <Modal
         title={previewFileName || "Media Preview"}
         open={previewModalVisible}
-        onCancel={handleCloseImagePreview}
+        onCancel={handleCloseMediaPreview}
         footer={null}
         centered
         width={800}
