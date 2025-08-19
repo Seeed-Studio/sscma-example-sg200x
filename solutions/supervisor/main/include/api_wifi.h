@@ -57,8 +57,8 @@ private:
  
     json get_eth();
     json get_sta_current();
-    json get_sta_connected();
-    json get_scan_list();
+    json get_sta_connected(json& current);
+    json get_scan_list(json& current, json& connected);
 
     void start_wifi();
     void stop_wifi();

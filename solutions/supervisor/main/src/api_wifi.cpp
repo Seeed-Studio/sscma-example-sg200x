@@ -80,7 +80,7 @@ json api_wifi::get_sta_current()
     return c;
 }
 
-json api_wifi::get_sta_connected()
+json api_wifi::get_sta_connected(json& current)
 {
     json n = json::array();
     for (auto& line : parse_result(script(__func__), '\t', true)) {
@@ -93,6 +93,10 @@ json api_wifi::get_sta_connected()
             { "flags", line.size() > 3 ? line[3] : "" } };
         j["connectedStatus"] = 1;
         j["autoConnect"] = j.value("flags", "").find("DISABLED") != std::string::npos ? 0 : 1;
+        if (current.value("ssid", "") == ssid) {
+            current.update(j);
+            continue;
+        }
         n.push_back(j);
     }
     return n;
@@ -120,8 +124,8 @@ void api_wifi::start_wifi()
                 _need_scan--;
                 auto&& e = get_eth();
                 auto&& c = get_sta_current();
-                auto&& n = get_sta_connected();
-                auto&& l = get_scan_list();
+                auto&& n = get_sta_connected(c);
+                auto&& l = get_scan_list(c, n);
 
                 if ((e.value("status", 0) == 3) || (c.value("status", 0) == 3)) {
                     if (!ap_stopped) {
@@ -131,21 +135,21 @@ void api_wifi::start_wifi()
                     }
                 }
 
-                {
+                {// lock_guard
                     std::lock_guard<std::mutex> lock(wifi_mutex);
                     _nw_info["etherInfo"] = e;
                     _nw_info["currentWifiInfo"] = c;
                     _nw_info["connectedWifiInfoList"] = n;
-                    _nw_info["wifiInfoList"] = l;
+                    if (!l.empty()) {
+                        _nw_info["wifiInfoList"] = l;
+                    }
                 }
-                LOGV("wifi info: %s", _nw_info.dump(4).c_str());
+                // LOGV("wifi info: %s", _nw_info.dump(4).c_str());
             }
 
             std::unique_lock<std::mutex> lock(wifi_mutex);
-            if (!_running) {
+            if (!_running)
                 break;
-            }
-
             if (timeout == 0) {
                 cv.wait(lock, [] { return !_running || (_need_scan > 0); });
             } else {
@@ -256,7 +260,7 @@ static json _parse_iw_scan(std::string fname)
     return jlist;
 }
 
-json api_wifi::get_scan_list()
+json api_wifi::get_scan_list(json& current, json& connected)
 {
     std::map<std::string, json> m;
     for (auto& j : _parse_iw_scan(script(__func__))) {
@@ -275,11 +279,27 @@ json api_wifi::get_scan_list()
         return m[a]["signal"] > m[b]["signal"];
     });
 
-    json r = json::array();
+    json result = json::array();
     for (auto& ssid : list) {
-        r.push_back(m[ssid]);
+        if (current.value("ssid", "") == ssid) {
+            current.update(m[ssid]);
+            LOGD("Current: %s", current.dump().c_str());
+            continue;
+        }
+
+        bool found = false;
+        for (auto& j : connected) {
+            if (j.value("ssid", "") == ssid) {
+                j.update(m[ssid]);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            result.push_back(std::move(m[ssid]));
+        }
     }
-    return r;
+    return result;
 }
 
 api_status_t api_wifi::getWiFiInfoList(request_t req, response_t res)
@@ -306,6 +326,5 @@ api_status_t api_wifi::switchWiFi(request_t req, response_t res)
     if (_sta_enable != -1)
         sta = _sta_enable;
     _nw_info["wifiEnable"] = sta;
-
     return API_STATUS_OK;
 }
