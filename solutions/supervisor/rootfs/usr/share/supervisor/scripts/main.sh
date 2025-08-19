@@ -159,31 +159,41 @@ function cancelUpdate() {
     echo "$STR_OK"
 }
 
-function getSystemUpdateVersion() {
-    local out="" url=""
+_upgrade_latest() {
+    local url
     local ch=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $1}')
-    if [ $((ch)) -ne 0 ]; then
-        url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $2}')
-    fi
-    local os="" ver=""
+    [ $((ch)) -ne 0 ] && {
+        url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $2}');
+    }
     for i in {1..3}; do
         $UPGRADE latest $url >/dev/null 2>&1
-        out=$($UPGRADE latest q)
+        local out=$($UPGRADE latest q)
         [ "$(echo $out | cut -d':' -f1)" = "Success" ] && {
-            out2=$(echo $out | cut -d':' -f2)
-            os=$(echo $out2 | cut -d' ' -f1)
-            ver=$(echo $out2 | cut -d' ' -f2)
             break
         }
     done
+}
 
-    # result
-    if [ -z "$os" ] || [ -z "$ver" ]; then
-        echo "$out"
-        return 1
+function getSystemUpdateVersion() {
+    local os ver
+    local status=3 # querying
+    if [ "$(_upgrading)" = "1" ]; then {
+        status=2
+    }
+    else {
+        local out=$($UPGRADE latest q)
+        if [ "$(echo $out | cut -d':' -f1)" = "Success" ]; then {
+            status=1
+            out2=$(echo $out | cut -d':' -f2)
+            os=$(echo $out2 | cut -d' ' -f1)
+            ver=$(echo $out2 | cut -d' ' -f2)
+        }
+        else { [ -z "$(pidof $UPGRADE latest)" ] && { _upgrade_latest >/dev/null & } }
+        fi
+    }
     fi
-    printf '{"osName": "%s", "osVersion": "%s", "downloadUrl": "%s", "isUpgrading": "%s"}' \
-        "$os" "$ver" ${url:-$DEFAULT_UPGRADE_URL} "$(_upgrading)"
+    printf '{"osName": "%s", "osVersion": "%s", "status": "%d"}' \
+        "$os" "$ver" "${status}"
 }
 
 _upgrade_prog() {
@@ -253,8 +263,8 @@ function api_device() {
     local rollback=0
     [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
 
-    _check_flow >/dev/null 2>&1
-    _check_models >/dev/null 2>&1
+    _check_flow >/dev/null &
+    _check_models >/dev/null &
 
     printf '{'
     printf '"sn": "%s",' "$(_sn)"
