@@ -24,7 +24,7 @@ check_avahi() {
         sync
 
         /etc/init.d/S50avahi-daemon stop
-        sleep 0.1
+        sleep 1
         /etc/init.d/S50avahi-daemon start
     fi
 }
@@ -57,6 +57,7 @@ stop() {
 
 restart() {
     stop
+    sleep 1
     start
 }
 
