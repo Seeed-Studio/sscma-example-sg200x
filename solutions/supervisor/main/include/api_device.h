@@ -46,7 +46,9 @@ private:
     static api_status_t getTimezoneList(request_t req, response_t res);
 
 public:
-    api_device() : api_base("deviceMgr") {
+    api_device()
+        : api_base("deviceMgr")
+    {
         _serviced = std::make_unique<serviced>();
         if (_serviced == nullptr) {
             throw std::runtime_error("Failed to create serviced");
@@ -88,10 +90,10 @@ public:
         REG_API(setTimezone);
         REG_API(getTimezone);
         REG_API(getTimezoneList);
-        
     }
 
-    ~api_device() {
+    ~api_device()
+    {
         LOGV("");
     }
 
@@ -99,4 +101,4 @@ private:
     static inline json _dev_info;
 };
 
-#endif  // API_DEVICE_H
+#endif // API_DEVICE_H
