@@ -262,6 +262,12 @@ function api_device() {
     _check_flow >/dev/null &
     _check_models >/dev/null &
 
+    local wifi=0
+    _check_wifi && wifi=1
+    local can=0
+    [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && can=1
+    local emmc=$(lsblk -b | grep -w mmcblk0 | awk '{print $4}')
+
     printf '{'
     printf '"sn": "%s",' "$(_sn)"
     printf '"dev_name": "%s",' "$(_dev_name)"
@@ -270,6 +276,9 @@ function api_device() {
     printf '"cpu": "sg2002",'
     printf '"ram": "256",'
     printf '"npu": "1",'
+    printf '"Emmc": %d,' "$emmc"
+    printf '"Wifi": %d,' "$wifi"
+    printf '"CanBus": %d,' "$can"
     printf '"ws": "8000",'
     printf '"ttyd": "%d",' "9090"
     printf '"rollback": "%d",' "$rollback"
