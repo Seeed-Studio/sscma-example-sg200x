@@ -4,12 +4,6 @@ export enum WifiAuth {
   Need = 1,
 }
 
-// wifi是否自动连接
-export enum WifiAutoConnect {
-  No = 0,
-  Yes = 1,
-}
-
 // IP 分配规则
 export enum WifiIpAssignmentRule {
   Automatic = 1, //动态

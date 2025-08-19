@@ -5,14 +5,9 @@ import {
   switchWiFiApi,
   disconnectWifiApi,
   connectWifiApi,
-  autoConnectWiFiApi,
   forgetWiFiApi,
 } from "@/api/network";
-import {
-  WifiConnectedStatus,
-  NetworkStatus,
-  WifiAuth,
-} from "@/enum/network";
+import { WifiConnectedStatus, NetworkStatus, WifiAuth } from "@/enum/network";
 import { IWifiInfo, IConnectParams } from "@/api/network/network";
 import useConfigStore from "@/store/config";
 
@@ -27,7 +22,6 @@ export enum OperateType {
   Connect = "Connect",
   DisConnect = "DisConnect",
   Forget = "Forget",
-  AutoConnect = "AutoConnect",
 }
 export enum FormType {
   Password = "Password",
@@ -45,7 +39,6 @@ interface IInitialState {
   channel: string;
   // 直接使用接口返回的数据，不需要重新分类
   etherInfo?: IWifiInfo;
-  currentWifiInfo?: IWifiInfo;
   connectedWifiInfoList: IWifiInfo[];
   wifiInfoList: IWifiInfo[];
   selectedWifiInfo?: IWifiInfo; // 用户选中的WiFi项，用于显示详情和操作
@@ -67,7 +60,6 @@ const initialState: IInitialState = {
   password: "",
   channel: "",
   etherInfo: undefined,
-  currentWifiInfo: undefined,
   connectedWifiInfoList: [],
   wifiInfoList: [],
   selectedWifiInfo: undefined,
@@ -104,21 +96,24 @@ export function useData() {
   };
   const passwordFormRef = useRef<FormInstance>(null);
 
-
-
   const getWifiResults = async () => {
     const { data } = await getWiFiInfoListApi();
 
     setStates({
-      wifiStatus: data.currentWifiInfo
-        ? data.currentWifiInfo.status
-        : NetworkStatus.Disconnected,
+      // wifiStatus 由是否有已连接的条目推导
+      wifiStatus:
+        (data.connectedWifiInfoList || []).some(
+          (item) => item.status === NetworkStatus.Connected,
+        )
+          ? NetworkStatus.Connected
+          : NetworkStatus.Disconnected,
       wifiChecked: data.wifiEnable === 1,
-      currentWifiInfo: data.currentWifiInfo,
       connectedWifiInfoList: data.connectedWifiInfoList || [],
       wifiInfoList: data.wifiInfoList || [],
       etherInfo: data.etherInfo,
-      etherStatus: data.etherInfo ? data.etherInfo.status : NetworkStatus.Disconnected,
+      etherStatus: data.etherInfo
+        ? data.etherInfo.status
+        : NetworkStatus.Disconnected,
     });
   };
 
@@ -189,16 +184,9 @@ export function useData() {
       wifiVisible: true,
     });
   };
-  const onClickWifiItem = (
-    wifiItem: IWifiInfo,
-    showInfo?: boolean
-  ) => {
+  const onClickWifiItem = (wifiItem: IWifiInfo, showInfo?: boolean) => {
     onStopRefreshWifiList();
-    if (
-      showInfo ||
-      wifiItem.type === 1 || // 有线网络
-      wifiItem.ssid == state.currentWifiInfo?.ssid
-    ) {
+    if (showInfo) {
       onShowWifiItemInfo(wifiItem);
     } else {
       if (state.connectLoading) {
@@ -218,26 +206,40 @@ export function useData() {
       }
     }
   };
+
+  const onClickEthernetItem = () => {
+    onStopRefreshWifiList();
+    if (state.etherInfo) {
+      onShowWifiItemInfo(state.etherInfo);
+    }
+  };
   const onHandleConnect = async () => {
     try {
-      if (state.selectedWifiInfo?.connectedStatus === WifiConnectedStatus.Yes) {
-        // 已连接过的直接连接
+      const selected = state.selectedWifiInfo;
+      // 以太网或缺少 ssid 的项不触发连接
+      if (!selected || !selected.ssid || selected === state.etherInfo) return;
+      const isSavedNetwork = selected
+        ? state.connectedWifiInfoList.some(
+            (item) => item.ssid === selected.ssid
+          )
+        : false;
+
+      // 已连接过、已保存到“我的网络”的WiFi，或无加密WiFi，均直接连接且不传密码
+      if (
+        selected.connectedStatus === WifiConnectedStatus.Yes ||
+        selected.auth === WifiAuth.NoNeed ||
+        isSavedNetwork
+      ) {
         setStates({
           connectLoading: true,
         });
-        await onConnect(undefined, state.selectedWifiInfo.ssid);
-      } else if (state.selectedWifiInfo?.auth === WifiAuth.Need) {
+        await onConnect(undefined, selected.ssid);
+      } else if (selected.auth === WifiAuth.Need) {
         // 需要密码的WiFi，显示密码输入框
         setStates({
           visible: true,
           formType: FormType.Password,
         });
-      } else if (state.selectedWifiInfo) {
-        // 不需要密码的WiFi，直接连接
-        setStates({
-          connectLoading: true,
-        });
-        await onConnect(undefined, state.selectedWifiInfo.ssid);
       }
     } catch (err) {
       // 错误处理
@@ -251,44 +253,59 @@ export function useData() {
 
   const onConnect = async (values?: FormParams, ssid?: string) => {
     try {
-      console.log("connectWifiApi values", values);
-      console.log("connectWifiApi ssid", ssid);
-      console.log("connectWifiApi state.selectedWifiInfo", state.selectedWifiInfo);
+      const targetSsid = ssid || state.selectedWifiInfo?.ssid || "";
+      // 防御：ssid 为空或当前为以太网则不请求
+      if (!targetSsid || state.selectedWifiInfo === state.etherInfo) {
+        return;
+      }
       const params: IConnectParams = {
-        ssid: ssid || state.selectedWifiInfo?.ssid || "",
+        ssid: targetSsid,
       };
-      values && (params.password = values?.password || "");
-      console.log("connectWifiApi params", params);
+      if (values?.password) {
+        params.password = values.password;
+      }
       setStates({
         submitLoading: true,
       });
-      
+
       // 立即更新选中的WiFi项状态为连接中
       if (state.selectedWifiInfo) {
         const updatedWifiInfo = {
           ...state.selectedWifiInfo,
-          status: NetworkStatus.Connecting
+          status: NetworkStatus.Connecting,
         };
         setStates({
-          selectedWifiInfo: updatedWifiInfo
+          selectedWifiInfo: updatedWifiInfo,
         });
-        
+
         // 同时更新列表中的对应项
-        const updateWifiItemStatus = (list: IWifiInfo[], ssid: string, status: NetworkStatus) => {
-          return list.map(item => 
+        const updateWifiItemStatus = (
+          list: IWifiInfo[],
+          ssid: string,
+          status: NetworkStatus
+        ) => {
+          return list.map((item) =>
             item.ssid === ssid ? { ...item, status } : item
           );
         };
-        
+
         const currentSsid = ssid || state.selectedWifiInfo.ssid;
         if (currentSsid) {
           setStates({
-            connectedWifiInfoList: updateWifiItemStatus(state.connectedWifiInfoList, currentSsid, NetworkStatus.Connecting),
-            wifiInfoList: updateWifiItemStatus(state.wifiInfoList, currentSsid, NetworkStatus.Connecting)
+            connectedWifiInfoList: updateWifiItemStatus(
+              state.connectedWifiInfoList,
+              currentSsid,
+              NetworkStatus.Connecting
+            ),
+            wifiInfoList: updateWifiItemStatus(
+              state.wifiInfoList,
+              currentSsid,
+              NetworkStatus.Connecting
+            ),
           });
         }
       }
-      
+
       await connectWifiApi(params);
       setStates({
         wifiVisible: false,
@@ -312,8 +329,10 @@ export function useData() {
   const refreshWifiStatus = async () => {
     const { data } = await getWiFiInfoListApi();
 
-    const wifiStatus = data.currentWifiInfo
-      ? data.currentWifiInfo.status
+    const wifiStatus = (data.connectedWifiInfoList || []).some(
+      (item) => item.status === NetworkStatus.Connected,
+    )
+      ? NetworkStatus.Connected
       : NetworkStatus.Disconnected;
 
     updateWifiStatus(wifiStatus);
@@ -327,6 +346,8 @@ export function useData() {
   const onHandleOperate = async (type: OperateType) => {
     const info = state.selectedWifiInfo;
     if (!info) return;
+    // 防御：以太网或缺少 ssid 的项不触发任何 WiFi 管理接口
+    if (!info.ssid || info === state.etherInfo) return;
     setStates({
       submitType: type,
     });
@@ -334,26 +355,6 @@ export function useData() {
       switch (type) {
         case OperateType.Connect:
           onHandleConnect();
-          break;
-        case OperateType.AutoConnect:
-          setStates({
-            submitLoading: true,
-          });
-          await autoConnectWiFiApi({
-            ssid: info.ssid || "",
-            mode: Number(!info.autoConnect),
-          });
-          refreshWifiStatus();
-          setStates({
-            submitLoading: false,
-            selectedWifiInfo: state.selectedWifiInfo ? {
-              ...state.selectedWifiInfo,
-              autoConnect: Number(!state.selectedWifiInfo.autoConnect),
-              connectChecked: !state.selectedWifiInfo.connectChecked,
-            } : undefined,
-            wifiVisible: true,
-          });
-          getWifiList();
           break;
         case OperateType.DisConnect:
           setStates({
@@ -423,6 +424,7 @@ export function useData() {
     onConnect,
     onHandleOperate,
     onClickWifiItem,
+    onClickEthernetItem,
     handleSwitchWifi,
   };
 }

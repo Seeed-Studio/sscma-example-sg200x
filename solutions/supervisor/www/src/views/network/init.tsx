@@ -34,8 +34,10 @@ function Init() {
   const getWifiStatus = async () => {
     const { data } = await getWiFiInfoListApi();
 
-    const wifiStatus = data.currentWifiInfo
-      ? data.currentWifiInfo.status
+    const wifiStatus = (data.connectedWifiInfoList || []).some(
+      (item) => item.status === NetworkStatus.Connected,
+    )
+      ? NetworkStatus.Connected
       : NetworkStatus.Disconnected;
 
     updateWifiStatus(wifiStatus);

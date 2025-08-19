@@ -24,6 +24,7 @@ const infoList = [
   { label: "RAM", key: "ram" },
   { label: "NPU", key: "npu" },
   { label: "OS", key: "osVersion" },
+  { label: "Device Info", key: "type" },
 ];
 function System() {
   const {

@@ -1,6 +1,5 @@
 import {
   WifiConnectedStatus,
-  WifiAutoConnect,
   WifiIpAssignmentRule,
   NetworkStatus,
 } from "@/enum/network";
@@ -11,15 +10,12 @@ interface IWifiInfo {
   signal: number;
   connectedStatus: WifiConnectedStatus;
   status: NetworkStatus;
-  connectChecked: boolean;
-  connectedStatusText: string;
   macAddress: string;
   ip: string;
   ipAssignment: WifiIpAssignmentRule;
-  type: number;
-  autoConnect: WifiAutoConnect;
   subnetMask: string;
-  ipAssignmentText: string;
+  dns1?: string;
+  dns2?: string;
   loading?: boolean;
 }
 

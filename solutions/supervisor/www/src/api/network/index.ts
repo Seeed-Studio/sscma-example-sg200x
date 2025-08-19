@@ -7,15 +7,12 @@ export const getWiFiInfoListApi = async () =>
   supervisorRequest<{
     wifiEnable: WifiEnable; // 0、有wifi，未开启 1、有wifi，已开启 2、没有wifi
     etherInfo?: IWifiInfo; // 连接的有线网信息
-    currentWifiInfo?: IWifiInfo; // 当前wifi信息，包含连接状态
     connectedWifiInfoList?: IWifiInfo[]; // 已经连接过的wifi列表
     wifiInfoList?: IWifiInfo[]; // 扫描到的未连接过的wifi列表
-  }>(
-    {
-      url: "api/wifiMgr/getWiFiInfoList",
-      method: "get",
-    },
-  );
+  }>({
+    url: "api/wifiMgr/getWiFiInfoList",
+    method: "get",
+  });
 // 连接wifi
 export const connectWifiApi = async (data: IConnectParams) =>
   supervisorRequest({
@@ -37,16 +34,6 @@ export const switchWiFiApi = async (data: { mode: WifiEnable }) =>
     method: "post",
     data,
   });
-// wifi自动连接
-export const autoConnectWiFiApi = async (data: {
-  ssid: string;
-  mode: number;
-}) =>
-  supervisorRequest({
-    url: "api/wifiMgr/autoConnectWiFi",
-    method: "post",
-    data,
-  });
 // wifi忘记
 export const forgetWiFiApi = async (data: { ssid: string }) =>
   supervisorRequest({
@@ -54,4 +41,3 @@ export const forgetWiFiApi = async (data: { ssid: string }) =>
     method: "post",
     data,
   });
-
