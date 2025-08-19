@@ -192,7 +192,7 @@ function getSystemUpdateVersion() {
         fi
     }
     fi
-    printf '{"osName": "%s", "osVersion": "%s", "status": "%d"}' \
+    printf '{"osName": "%s", "osVersion": "%s", "status": %d}' \
         "$os" "$ver" "${status}"
 }
 
