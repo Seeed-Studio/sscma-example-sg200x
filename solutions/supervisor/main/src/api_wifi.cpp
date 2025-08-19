@@ -116,7 +116,7 @@ void api_wifi::start_wifi()
         _need_scan = 1;
 
         while (_running) {
-            if (_need_scan > 0) {
+            if (_need_scan > 0 || !ap_stopped) {
                 _need_scan--;
                 auto&& e = get_eth();
                 auto&& c = get_sta_current();

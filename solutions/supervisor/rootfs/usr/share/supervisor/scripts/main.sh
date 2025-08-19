@@ -256,10 +256,6 @@ function updateSystem() {
 }
 
 function api_device() {
-    local ttyd_port=9090
-    # _stop_pidname "ttyd"
-    [ -z "$(pidof ttyd 2>/dev/null)" ] && ttyd -p $ttyd_port -u $USER_NAME login >/dev/null 2>&1 &
-
     local rollback=0
     [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
 
@@ -275,7 +271,7 @@ function api_device() {
     printf '"ram": "256",'
     printf '"npu": "1",'
     printf '"ws": "8000",'
-    printf '"ttyd": "%d",' "$ttyd_port"
+    printf '"ttyd": "%d",' "9090"
     printf '"rollback": "%d",' "$rollback"
     printf '"app_dir": "%s",' "$APP_DIR"
     printf '"url": "%s",' "$DEFAULT_UPGRADE_URL"
@@ -432,7 +428,7 @@ readonly WPA_CLI="wpa_cli -i wlan0"
 
 _check_wifi() { [ -z "$(ifconfig wlan0 2>/dev/null)" ] && return 1 || return 0; }
 _sta_stop() { _stop_pidname "wpa_supplicant"; }
-_ap_stop() { _stop_pidname "hostapd"; ifconfig wlan1 down; }
+_ap_stop() { _stop_pidname "hostapd"; ifconfig wlan1 0; ifconfig wlan1 down; /etc/init.d/S80dnsmasq restart; }
 
 _sta_start() {
     _check_wifi || return 0
@@ -570,9 +566,6 @@ _wpa_set_networks() {
     [ -z "$id" ] && return 0
     $WPA_CLI "$status" "$id"
     $WPA_CLI save_config
-    # _sta_stop >/dev/null 2>&1
-    # sleep 1
-    # _sta_start >/dev/null 2>&1
 }
 
 function disconnectWiFi() {
