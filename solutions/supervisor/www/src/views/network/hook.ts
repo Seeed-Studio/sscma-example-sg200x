@@ -1,52 +1,27 @@
 import { useEffect, Reducer, useReducer, useRef } from "react";
 import { FormInstance } from "antd-mobile/es/components/form";
 import {
-  // getWifiListApi,
-  getWifiResultListApi,
-  getDeviceWifiInfoApi,
+  getWiFiInfoListApi,
   switchWiFiApi,
   disconnectWifiApi,
   connectWifiApi,
   autoConnectWiFiApi,
   forgetWiFiApi,
-  getWifiStatusApi,
 } from "@/api/network";
 import {
   WifiConnectedStatus,
-  WifiStatus,
-  WifiIpAssignmentRule,
+  NetworkStatus,
   WifiAuth,
-  WifiType,
 } from "@/enum/network";
-import { getSignalStrengthLevel } from "@/utils";
 import { IWifiInfo, IConnectParams } from "@/api/network/network";
 import useConfigStore from "@/store/config";
-import { message } from "antd";
 
 interface FormParams {
   password?: string;
 }
-const initialWifiList = [
-  {
-    label: "",
-    key: "Internet",
-    list: [],
-  },
-  {
-    label: "Enable Wi-Fi",
-    key: WifiConnectedStatus.Yes,
-    list: [],
-  },
-  {
-    label: "Networks Found",
-    key: WifiConnectedStatus.No,
-    list: [],
-  },
-];
+
 const timeGap = 5000;
 let timer: NodeJS.Timeout | null = null;
-// let resultTimer: NodeJS.Timeout | null = null;
-// let resultTotalCount = 0;
 
 export enum OperateType {
   Connect = "Connect",
@@ -58,53 +33,49 @@ export enum FormType {
   Password = "Password",
   Disabled = "Disabled",
 }
-interface IInfo {
-  label: string;
-  key: WifiConnectedStatus | string;
-  list: IWifiInfo[];
-}
+
 interface IInitialState {
   queryNum: number;
-  wifiStatus: WifiStatus;
+  wifiStatus: NetworkStatus;
   wifiChecked: boolean;
   wifiVisible: boolean;
   visible: boolean;
   passwordVisible: boolean;
   password: string;
   channel: string;
-  internetList: IWifiInfo[];
-  hasConnectedList: IWifiInfo[];
-  disConnectedList: IWifiInfo[];
-  deviceWifiInfo?: IWifiInfo;
-  curWifiInfo: Partial<IWifiInfo>;
-  wifiList: IInfo[];
+  // 直接使用接口返回的数据，不需要重新分类
+  etherInfo?: IWifiInfo;
+  currentWifiInfo?: IWifiInfo;
+  connectedWifiInfoList: IWifiInfo[];
+  wifiInfoList: IWifiInfo[];
+  selectedWifiInfo?: IWifiInfo; // 用户选中的WiFi项，用于显示详情和操作
   timer: NodeJS.Timeout | null;
   formType: FormType;
   submitLoading: boolean;
   submitType?: OperateType;
   needRefresh: boolean;
-  hasWired: boolean;
+  etherStatus: NetworkStatus;
   connectLoading: boolean;
 }
 type ActionType = { type: "setState"; payload: Partial<IInitialState> };
 const initialState: IInitialState = {
   queryNum: 0,
-  wifiStatus: 0,
+  wifiStatus: NetworkStatus.Disconnected,
   wifiChecked: false,
   wifiVisible: false,
   visible: false,
   password: "",
   channel: "",
-  internetList: [],
-  hasConnectedList: [],
-  disConnectedList: [],
-  curWifiInfo: {},
-  wifiList: initialWifiList,
+  etherInfo: undefined,
+  currentWifiInfo: undefined,
+  connectedWifiInfoList: [],
+  wifiInfoList: [],
+  selectedWifiInfo: undefined,
   timer: null,
   formType: FormType.Disabled,
   submitLoading: false,
   needRefresh: true,
-  hasWired: false,
+  etherStatus: NetworkStatus.Disconnected,
   passwordVisible: false,
   connectLoading: false,
 };
@@ -121,7 +92,7 @@ function reducer(state: IInitialState, action: ActionType): IInitialState {
 }
 
 export function useData() {
-  const { updateWifiStatus } = useConfigStore();
+  const { updateWifiStatus, updateEtherStatus } = useConfigStore();
 
   // ---状态管理
   const [state, stateDispatch] = useReducer<Reducer<IInitialState, ActionType>>(
@@ -132,115 +103,35 @@ export function useData() {
     stateDispatch({ type: "setState", payload: payload });
   };
   const passwordFormRef = useRef<FormInstance>(null);
-  const getConnectText = (item: IWifiInfo) => {
-    return item.connectedStatus === WifiConnectedStatus.Yes
-      ? "Connected"
-      : "Not Connected";
-  };
-  const filterList = (data: IWifiInfo[], etherinfo?: IWifiInfo) => {
-    const [interneInfo, hasConnectedInfo, disConnectedInfo] = state.wifiList;
-    const hasConnectedList: IWifiInfo[] = [],
-      disConnectedList: IWifiInfo[] = [],
-      internetList: IWifiInfo[] = [];
-    if (etherinfo) {
-      internetList.push({
-        ...etherinfo,
-        type: WifiType.Wired,
-        ssid: "Ethernet",
-        connectedStatusText: getConnectText(etherinfo),
-      });
-    }
-    data.forEach((item: IWifiInfo) => {
-      item.signal = getSignalStrengthLevel(item.signal);
-      item.type = WifiType.Wireless;
-      item.ipAssignmentText =
-        item.ipAssignment === WifiIpAssignmentRule.Automatic
-          ? "Automatic"
-          : "Static";
-      item.connectChecked = !!item.autoConnect;
-      item.connectedStatusText = getConnectText(item);
-      if (item.connectedStatus === WifiConnectedStatus.Yes) {
-        hasConnectedList.push(item);
-      } else {
-        disConnectedList.push(item);
-      }
-    });
-    // hasConnectedList.sort(function (a, b) {
-    //   return b.signal - a.signal;
-    // });
-    // disConnectedList.sort(function (a, b) {
-    //   return b.signal - a.signal;
-    // });
+
+
+
+  const getWifiResults = async () => {
+    const { data } = await getWiFiInfoListApi();
 
     setStates({
-      wifiList: [
-        {
-          ...interneInfo,
-          list: internetList,
-        },
-        {
-          ...hasConnectedInfo,
-          list: hasConnectedList,
-        },
-        {
-          ...disConnectedInfo,
-          list: disConnectedList,
-        },
-      ],
-      hasWired: !!internetList.length,
+      wifiStatus: data.currentWifiInfo
+        ? data.currentWifiInfo.status
+        : NetworkStatus.Disconnected,
+      wifiChecked: data.wifiEnable === 1,
+      currentWifiInfo: data.currentWifiInfo,
+      connectedWifiInfoList: data.connectedWifiInfoList || [],
+      wifiInfoList: data.wifiInfoList || [],
+      etherInfo: data.etherInfo,
+      etherStatus: data.etherInfo ? data.etherInfo.status : NetworkStatus.Disconnected,
     });
   };
-  // const onStopGetWifiResultsList = () => {
-  //   resultTimer && clearInterval(resultTimer);
-  // };
-  const getWifiResults = async () => {
-    const { data } = await getWifiResultListApi();
-    filterList(data.wifiInfoList, data.etherinfo);
-  };
-  // const getWifiInterval = async () => {
-  //   getWifiResults();
 
-  //   resultTotalCount = 0;
-  //   resultTimer = setInterval(() => {
-  //     if (resultTotalCount >= 3) {
-  //       onStopGetWifiResultsList();
-  //     } else {
-  //       // 3秒内 每秒获取一次result
-  //       resultTotalCount++;
-  //       getWifiResults();
-  //     }
-  //     console.log(resultTotalCount);
-  //   }, 1000);
-  // };
-  const getWifiInterval = async () => {
-    const status = await getDeviceWifiInfo();
-    if (status != WifiStatus.Disable) {
-      getWifiResults();
-    }
-  };
   const getWifiList = async () => {
     try {
       if (state.visible || state.wifiVisible) return;
-      // await getWifiListApi({
-      //   scanTime: 0.2,
-      // });
       // wifi没有开启不需要开启自动刷新
       if (!state.wifiChecked) return;
-      getWifiInterval();
+      await getWifiResults();
       return true;
     } catch (err) {}
   };
-  const getDeviceWifiInfo = async () => {
-    try {
-      const { data } = await getDeviceWifiInfoApi();
-      setStates({
-        wifiStatus: data.status,
-        deviceWifiInfo: data.wifiInfo,
-        wifiChecked: data.status !== WifiStatus.Close,
-      });
-      return data.status;
-    } catch (err) {}
-  };
+
   //
   const onStopRefreshWifiList = () => {
     // state.timer && clearInterval(state.timer)
@@ -284,10 +175,8 @@ export function useData() {
   };
   const onQueryData = async () => {
     try {
-      const status = await getDeviceWifiInfo();
-      if (status != WifiStatus.Disable) {
-        await getWifiList();
-      }
+      // 直接调用getWifiResults，它已经包含了所有需要的数据和状态更新
+      await getWifiResults();
     } catch (err) {}
     setStates({
       needRefresh: false,
@@ -296,72 +185,118 @@ export function useData() {
 
   const onShowWifiItemInfo = (item: IWifiInfo) => {
     setStates({
-      curWifiInfo: item,
+      selectedWifiInfo: item,
       wifiVisible: true,
     });
   };
   const onClickWifiItem = (
-    item: IInfo,
     wifiItem: IWifiInfo,
-    index: number,
     showInfo?: boolean
   ) => {
     onStopRefreshWifiList();
     if (
       showInfo ||
-      wifiItem.type === WifiType.Wired ||
-      item.key === WifiConnectedStatus.No ||
-      wifiItem.ssid == state.deviceWifiInfo?.ssid
+      wifiItem.type === 1 || // 有线网络
+      wifiItem.ssid == state.currentWifiInfo?.ssid
     ) {
       onShowWifiItemInfo(wifiItem);
     } else {
       if (state.connectLoading) {
-        message.info("The current operation is prohibited");
         return;
       }
-      onHandleConnect(item.list, index);
+      // 先设置选中的WiFi项，再执行连接操作
+      setStates({
+        selectedWifiInfo: wifiItem,
+      });
+      // 根据WiFi项的类型和状态来决定操作
+      if (wifiItem.connectedStatus === WifiConnectedStatus.Yes) {
+        // 已连接的WiFi，直接操作
+        onHandleConnect();
+      } else {
+        // 未连接的WiFi，需要密码
+        onHandleConnect();
+      }
     }
   };
-  const onHandleConnect = async (list?: IWifiInfo[], index?: number) => {
+  const onHandleConnect = async () => {
     try {
-      if (list) {
+      if (state.selectedWifiInfo?.connectedStatus === WifiConnectedStatus.Yes) {
         // 已连接过的直接连接
         setStates({
-          deviceWifiInfo: undefined,
           connectLoading: true,
         });
-        list && (list[index || 0].loading = true);
-        await onConnect(undefined, list[index || 0].ssid);
-        list && (list[index || 0].loading = false);
-      } else if (state.curWifiInfo.auth === WifiAuth.Need) {
+        await onConnect(undefined, state.selectedWifiInfo.ssid);
+      } else if (state.selectedWifiInfo?.auth === WifiAuth.Need) {
+        // 需要密码的WiFi，显示密码输入框
         setStates({
           visible: true,
           formType: FormType.Password,
         });
+      } else if (state.selectedWifiInfo) {
+        // 不需要密码的WiFi，直接连接
+        setStates({
+          connectLoading: true,
+        });
+        await onConnect(undefined, state.selectedWifiInfo.ssid);
       }
     } catch (err) {
-      list && (list[index || 0].loading = false);
+      // 错误处理
+    } finally {
+      // 确保无论成功还是失败都重置loading状态
+      setStates({
+        connectLoading: false,
+      });
     }
-    setStates({
-      connectLoading: false,
-    });
   };
 
   const onConnect = async (values?: FormParams, ssid?: string) => {
     try {
+      console.log("connectWifiApi values", values);
+      console.log("connectWifiApi ssid", ssid);
+      console.log("connectWifiApi state.selectedWifiInfo", state.selectedWifiInfo);
       const params: IConnectParams = {
-        ssid: ssid || state.curWifiInfo.ssid || "",
+        ssid: ssid || state.selectedWifiInfo?.ssid || "",
       };
       values && (params.password = values?.password || "");
+      console.log("connectWifiApi params", params);
       setStates({
         submitLoading: true,
       });
+      
+      // 立即更新选中的WiFi项状态为连接中
+      if (state.selectedWifiInfo) {
+        const updatedWifiInfo = {
+          ...state.selectedWifiInfo,
+          status: NetworkStatus.Connecting
+        };
+        setStates({
+          selectedWifiInfo: updatedWifiInfo
+        });
+        
+        // 同时更新列表中的对应项
+        const updateWifiItemStatus = (list: IWifiInfo[], ssid: string, status: NetworkStatus) => {
+          return list.map(item => 
+            item.ssid === ssid ? { ...item, status } : item
+          );
+        };
+        
+        const currentSsid = ssid || state.selectedWifiInfo.ssid;
+        if (currentSsid) {
+          setStates({
+            connectedWifiInfoList: updateWifiItemStatus(state.connectedWifiInfoList, currentSsid, NetworkStatus.Connecting),
+            wifiInfoList: updateWifiItemStatus(state.wifiInfoList, currentSsid, NetworkStatus.Connecting)
+          });
+        }
+      }
+      
       await connectWifiApi(params);
       setStates({
         wifiVisible: false,
         visible: false,
       });
-      refreshWifiStatus();
+      // 立即刷新WiFi列表以获取最新的status
+      await getWifiResults();
+      // 延迟刷新以获取最终状态
       setTimeout(() => {
         setStates({
           needRefresh: true,
@@ -372,17 +307,25 @@ export function useData() {
     setStates({
       submitLoading: false,
     });
-
-    getWifiInterval();
-    onAutoRefreshWifiList();
   };
   // 刷新wifi状态
   const refreshWifiStatus = async () => {
-    const { data } = await getWifiStatusApi();
-    updateWifiStatus(data.status);
+    const { data } = await getWiFiInfoListApi();
+
+    const wifiStatus = data.currentWifiInfo
+      ? data.currentWifiInfo.status
+      : NetworkStatus.Disconnected;
+
+    updateWifiStatus(wifiStatus);
+
+    const etherStatus = data.etherInfo
+      ? data.etherInfo.status
+      : NetworkStatus.Disconnected;
+
+    updateEtherStatus(etherStatus);
   };
   const onHandleOperate = async (type: OperateType) => {
-    const info = state.curWifiInfo;
+    const info = state.selectedWifiInfo;
     if (!info) return;
     setStates({
       submitType: type,
@@ -403,11 +346,11 @@ export function useData() {
           refreshWifiStatus();
           setStates({
             submitLoading: false,
-            curWifiInfo: {
-              ...state.curWifiInfo,
-              autoConnect: Number(!state.curWifiInfo.autoConnect),
-              connectChecked: !state.curWifiInfo.connectChecked,
-            },
+            selectedWifiInfo: state.selectedWifiInfo ? {
+              ...state.selectedWifiInfo,
+              autoConnect: Number(!state.selectedWifiInfo.autoConnect),
+              connectChecked: !state.selectedWifiInfo.connectChecked,
+            } : undefined,
             wifiVisible: true,
           });
           getWifiList();
@@ -450,7 +393,7 @@ export function useData() {
 
   useEffect(() => {
     if (state.wifiChecked && !state.wifiVisible && !state.visible) {
-      getWifiInterval();
+      getWifiResults();
       onAutoRefreshWifiList();
     } else {
       onStopRefreshWifiList();
@@ -459,6 +402,7 @@ export function useData() {
       submitLoading: false,
     });
   }, [state.wifiChecked, state.wifiVisible, state.visible]);
+
   useEffect(() => {
     if (state.needRefresh) {
       onQueryData();

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { IDeviceInfo } from "@/api/device/device";
-import { WifiConnectStatus } from "@/enum/network";
+import { NetworkStatus } from "@/enum/network";
 import { DeviceChannleMode, UpdateStatus } from "@/enum";
 
 interface SystemUpdateState {
@@ -11,21 +11,23 @@ interface SystemUpdateState {
   percent: number;
   channel: DeviceChannleMode;
   address: string;
-  downloadUrl: string;
 }
 
 type ConfigStoreType = {
   deviceInfo: Partial<IDeviceInfo>;
-  wifiStatus: WifiConnectStatus | undefined;
+  wifiStatus: NetworkStatus | undefined;
+  etherStatus: NetworkStatus | undefined;
   systemUpdateState: Partial<SystemUpdateState>;
   updateDeviceInfo: (deviceInfo: IDeviceInfo) => void;
-  updateWifiStatus: (wifiStatus: WifiConnectStatus) => void;
+  updateWifiStatus: (wifiStatus: NetworkStatus) => void;
+  updateEtherStatus: (etherStatus: NetworkStatus) => void;
   setSystemUpdateState: (payload: Partial<SystemUpdateState>) => void;
 };
 
 const useConfigStore = create<ConfigStoreType>((set) => ({
   deviceInfo: {},
   wifiStatus: undefined,
+  etherStatus: undefined,
   systemUpdateState: {
     status: UpdateStatus.Check,
     visible: false,
@@ -34,11 +36,11 @@ const useConfigStore = create<ConfigStoreType>((set) => ({
     channel: DeviceChannleMode.Official,
     updateInfoVisible: false,
     address: "",
-    downloadUrl: "",
   },
   updateDeviceInfo: (deviceInfo: IDeviceInfo) => set(() => ({ deviceInfo })),
-  updateWifiStatus: (wifiStatus: WifiConnectStatus) =>
-    set(() => ({ wifiStatus })),
+  updateWifiStatus: (wifiStatus: NetworkStatus) => set(() => ({ wifiStatus })),
+  updateEtherStatus: (etherStatus: NetworkStatus) =>
+    set(() => ({ etherStatus })),
   setSystemUpdateState: (payload) =>
     set((state) => ({
       systemUpdateState: { ...state.systemUpdateState, ...payload },

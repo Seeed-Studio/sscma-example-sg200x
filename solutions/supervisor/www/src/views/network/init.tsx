@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { CheckCircleFill } from "antd-mobile-icons";
 import useConfigStore from "@/store/config";
-import { getWifiStatusApi } from "@/api/network";
+import { getWiFiInfoListApi } from "@/api/network";
+import { NetworkStatus } from "@/enum/network";
 import { queryDeviceInfoApi } from "@/api/device/index";
 
 const infoList = [
@@ -27,11 +28,24 @@ const infoList = [
   },
 ];
 function Init() {
-  const { deviceInfo, updateWifiStatus, updateDeviceInfo } = useConfigStore();
+  const { deviceInfo, updateWifiStatus, updateEtherStatus, updateDeviceInfo } =
+    useConfigStore();
 
   const getWifiStatus = async () => {
-    const { data } = await getWifiStatusApi();
-    updateWifiStatus(data.status);
+    const { data } = await getWiFiInfoListApi();
+
+    const wifiStatus = data.currentWifiInfo
+      ? data.currentWifiInfo.status
+      : NetworkStatus.Disconnected;
+
+    updateWifiStatus(wifiStatus);
+
+    const etherStatus = data.etherInfo
+      ? data.etherInfo.status
+      : NetworkStatus.Disconnected;
+
+    updateEtherStatus(etherStatus);
+
     const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
   };

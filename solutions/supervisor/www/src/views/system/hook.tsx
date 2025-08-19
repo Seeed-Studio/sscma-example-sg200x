@@ -96,9 +96,7 @@ export function useData() {
   };
   const onUpdateApply = async () => {
     try {
-      await updateSystemApi({
-        downloadUrl: systemUpdateState.downloadUrl || "",
-      });
+      await updateSystemApi();
       getProgress();
     } catch (err) {
       onCancleReset();
@@ -124,7 +122,7 @@ export function useData() {
   const onUpdateCheck = async (click?: boolean) => {
     // 重置检查计数器
     checkCountRef.current = 0;
-    
+
     const performCheck = async () => {
       let status: UpdateStatus = UpdateStatus.Check;
 
@@ -152,7 +150,7 @@ export function useData() {
           channel: deviceInfo.channel,
           url: url,
         });
-        
+
         checkCountRef.current++;
 
         if (code == -1) {
@@ -183,7 +181,7 @@ export function useData() {
             setStatus(status, click);
             return;
           }
-          
+
           if (
             deviceInfo.osName != data.osName ||
             deviceInfo.osVersion != data.osVersion
@@ -193,10 +191,9 @@ export function useData() {
             status = UpdateStatus.NoNeedUpdate;
             setStatus(status, click);
           }
-          
+
           setSystemUpdateState({
             status: status,
-            downloadUrl: data.downloadUrl + "/upgrade.zip",
           });
           return;
         }

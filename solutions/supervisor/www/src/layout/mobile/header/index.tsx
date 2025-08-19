@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Sidebar from "../sidebar/index";
 import CommonPopup from "@/components/common-popup";
 import EditImg from "@/assets/images/svg/edit.svg";
@@ -6,7 +6,6 @@ import { Form, Input, Button } from "antd-mobile";
 import { FormInstance } from "antd-mobile/es/components/form";
 import useConfigStore from "@/store/config";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
-import { getWifiStatusApi } from "@/api/network";
 import { requiredTrimValidate } from "@/utils/validate";
 
 interface FormParams {
@@ -16,8 +15,12 @@ interface FormParams {
 function Header() {
   const [visible, setVisible] = useState(false);
   const formRef = useRef<FormInstance>(null);
-  const { deviceInfo, updateDeviceInfo, updateWifiStatus } = useConfigStore();
+  const { deviceInfo, updateDeviceInfo } = useConfigStore();
 
+  const onQueryDeviceInfo = async () => {
+    const res = await queryDeviceInfoApi();
+    updateDeviceInfo(res.data);
+  };
   const onFinish = async (values: FormParams) => {
     await updateDeviceInfoApi(values);
     onCancel();
@@ -30,18 +33,7 @@ function Header() {
   const resetFields = () => {
     formRef.current?.resetFields();
   };
-  const onQueryDeviceInfo = async () => {
-    const res = await queryDeviceInfoApi();
-    updateDeviceInfo(res.data);
-  };
-  const getWifiStatus = async () => {
-    let { data } = await getWifiStatusApi();
-    updateWifiStatus(data.status);
-  };
-  useEffect(() => {
-    getWifiStatus();
-    onQueryDeviceInfo();
-  }, []);
+
   return (
     <div className="bg-white text-center py-10">
       <div className="text-primary text-18 font-medium relative flex justify-center px-40 pl-50">

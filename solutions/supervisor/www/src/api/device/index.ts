@@ -68,11 +68,10 @@ export const setDevicePowerApi = async (data: { mode: PowerMode }) =>
     data,
   });
 // 更新设备系统
-export const updateSystemApi = async (data: { downloadUrl: string }) =>
+export const updateSystemApi = async () =>
   supervisorRequest({
     url: "api/deviceMgr/updateSystem",
     method: "post",
-    data,
   });
 // 获取设备更新进度
 export const getUpdateSystemProgressApi = async () =>
@@ -97,7 +96,6 @@ export const getSystemUpdateVesionInfoApi = async (data: {
   supervisorRequest<{
     osName: string;
     osVersion: string;
-    downloadUrl: string;
     status: SystemUpdateStatus;
   }>(
     {
