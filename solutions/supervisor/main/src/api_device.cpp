@@ -87,10 +87,15 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
     data["terminalPort"] = _dev_info.value("ttyd", "");
 
     {
-        std::string model_type = "Standard";
-        int can = _dev_info.value("CanBus", 0);
+        std::string model_type = "Basic";
+        if (_dev_info.value("CanBus", 0)) {
+            model_type = "Gimbal";
+        }
+        if (_dev_info.value("Wifi", 0)) {
+            model_type += " WiFi";
+        }
 
-        // 修复 emmc 类型转换问题
+        // emmc
         uint64_t emmc = 0;
         if (_dev_info.contains("Emmc")) {
             if (_dev_info["Emmc"].is_number_integer()) {
@@ -103,27 +108,30 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
                 }
             }
         }
-
-        int wifi = _dev_info.value("Wifi", 0);
-        if (can) {
-            model_type = "Gimbal";
-        }
-        if (wifi) {
-            model_type += " with Wifi";
-        }
-
         emmc = emmc >> 30; // GB
         if (emmc == 0) {
-            model_type += " - No EMMC";
+            model_type += " No EMMC";
         } else if (emmc < 8) {
-            model_type += " - 8G";
+            model_type += " 8G";
         } else if (emmc < 16) {
-            model_type += " - 16G";
+            model_type += " 16G";
         } else if (emmc < 32) {
-            model_type += " - 32G";
+            model_type += " 32G";
         } else if (emmc < 64) {
-            model_type += " - 64G";
+            model_type += " 64G";
         }
+
+        // sensor
+        int sensor = _dev_info.value("Sensor", 0);
+        if (sensor == 0) {
+            model_type += " (No Sensor)";
+        } else if (sensor == 1) {
+            model_type += " (OV5647)";
+        }
+        else if (sensor == 2) {
+            model_type += " (GC2053)";
+        }
+
         data["type"] = model_type;
     }
     response(res, 0, STR_OK, data);

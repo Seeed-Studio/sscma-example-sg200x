@@ -32,6 +32,7 @@ _mask() { ifconfig "$1" 2>/dev/null | awk '/Mask:/ {print $4}' | awk -F':' '{pri
 _mac() { ifconfig "$1" 2>/dev/null | awk '/HWaddr/ {print $5}'; }
 _gateway() { route -n | grep '^0.0.0.0' | grep -w "$1" | awk '{print $2}'; }
 _dns() { cat /etc/resolv.conf 2>/dev/null | awk '/nameserver/ {print $2}' | head -n 1; }
+_dns2() { cat /etc/resolv.conf 2>/dev/null | awk '/nameserver/ {print $2}' | tail -n 1; }
 
 _sn() { fw_printenv sn | awk -F'=' '{print $NF}'; }
 _dev_name() { cat "$HOSTNAME_FILE"; }
@@ -267,6 +268,9 @@ function api_device() {
     local can=0
     [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && can=1
     local emmc=$(lsblk -b | grep -w mmcblk0 | awk '{print $4}')
+    local sensor=0
+    [ -n "$(i2cdetect -y -r 2 36 36 | grep 36)" ] && sensor=1
+    [ -n "$(i2cdetect -y -r 2 3f 3f | grep 3f)" ] && sensor=2
 
     printf '{'
     printf '"sn": "%s",' "$(_sn)"
@@ -279,6 +283,7 @@ function api_device() {
     printf '"Emmc": %d,' "$emmc"
     printf '"Wifi": %d,' "$wifi"
     printf '"CanBus": %d,' "$can"
+    printf '"Sensor": %d,' "$sensor"
     printf '"ws": "8000",'
     printf '"ttyd": "%d",' "9090"
     printf '"rollback": "%d",' "$rollback"
@@ -508,10 +513,10 @@ function get_sta_current() {
 
 function get_eth() {
     local ifname="eth0"
-    printf '{"ip": "%s", "subnetMask": "%s", "macAddress": "%s", "gateway": "%s", "dns1": "%s", "dns2": ""}' \
+    printf '{"ip": "%s", "subnetMask": "%s", "macAddress": "%s", "gateway": "%s", "dns1": "%s", "dns2": "%s"}' \
         "$(_ip "$ifname")" "$(_mask "$ifname")" \
         "$(_mac "$ifname")" "$(_gateway "$ifname")" \
-        "$(_dns "$ifname")"
+        "$(_dns "$ifname")" "$(_dns2 "$ifname")"
 }
 
 function get_scan_list() {
