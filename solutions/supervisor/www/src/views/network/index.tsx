@@ -1,6 +1,5 @@
-import { Form, Input, Button, Mask } from "antd-mobile";
-import { Button as AntdButton, Switch } from "antd";
-import { CloseOutlined, LoadingOutlined } from "@ant-design/icons";
+import { Button, Form, Switch, Input, Modal } from "antd";
+import { LoadingOutlined } from "@ant-design/icons";
 import CommonPopup from "@/components/common-popup";
 import WarnImg from "@/assets/images/warn.png";
 import LockImg from "@/assets/images/svg/lock.svg";
@@ -10,7 +9,6 @@ import Wifi1 from "@/assets/images/svg/wifi_1.svg";
 import Wifi2 from "@/assets/images/svg/wifi_2.svg";
 import Wifi3 from "@/assets/images/svg/wifi_3.svg";
 import Wifi4 from "@/assets/images/svg/wifi_4.svg";
-import { EyeInvisibleOutline, EyeOutline } from "antd-mobile-icons";
 import { useData, OperateType, FormType } from "./hook";
 
 import {
@@ -88,21 +86,16 @@ function Network() {
         </div>
       )}
 
-      {/* WiFi开关 */}
-      {state.wifiChecked && (
-        <div className="mt-30">
-          <div className="flex justify-between mb-20">
-            <div className="font-bold text-18">Enable Wi-Fi</div>
-            <Switch
-              checked={state.wifiChecked}
-              onChange={onSwitchEnabledWifi}
-            />
-          </div>
+      {/* WiFi开关：始终显示，状态由 state.wifiChecked 控制 */}
+      <div className="mt-30">
+        <div className="flex justify-between mb-20">
+          <div className="font-bold text-18">Enable Wi-Fi</div>
+          <Switch checked={state.wifiChecked} onChange={onSwitchEnabledWifi} />
         </div>
-      )}
+      </div>
 
-      {/* 我的网络 - 已连接过的WiFi列表 */}
-      {state.connectedWifiInfoList.length > 0 && (
+      {/* 我的网络 - 已连接过的WiFi列表（Wi-Fi 开启时显示） */}
+      {state.wifiChecked && state.connectedWifiInfoList.length > 0 && (
         <div className="mt-30">
           <div className="font-bold text-18 mb-20">My Networks</div>
           <div className="border-b text-16">
@@ -133,7 +126,7 @@ function Network() {
                         alt=""
                         onClick={(event: React.MouseEvent) => {
                           event.stopPropagation();
-                          onClickWifiItem(wifiItem, true);
+                          onClickWifiItem(wifiItem);
                         }}
                       />
                     </div>
@@ -150,8 +143,8 @@ function Network() {
         </div>
       )}
 
-      {/* 其他发现的网络 */}
-      {state.wifiInfoList.length > 0 && (
+      {/* 其他发现的网络（Wi-Fi 开启时显示） */}
+      {state.wifiChecked && state.wifiInfoList.length > 0 && (
         <div className="mt-30">
           <div className="font-bold text-18 mb-20">Networks Found</div>
           <div className="border-b text-16">
@@ -182,7 +175,7 @@ function Network() {
                         alt=""
                         onClick={(event: React.MouseEvent) => {
                           event.stopPropagation();
-                          onClickWifiItem(wifiItem, true);
+                          onClickWifiItem(wifiItem);
                         }}
                       />
                     </div>
@@ -211,9 +204,8 @@ function Network() {
             </div>
             <Button
               block
-              shape="rounded"
-              type="submit"
-              color="danger"
+              danger
+              type="primary"
               loading={state.submitLoading}
               onClick={handleSwitchWifi}
             >
@@ -225,200 +217,153 @@ function Network() {
           <Form
             ref={passwordFormRef}
             className="border-b-0"
-            requiredMarkStyle="none"
+            requiredMark={false}
             onFinish={onConnect}
             initialValues={{
               password: state.password,
             }}
-            footer={
-              <Button
-                block
-                type="submit"
-                color="primary"
-                loading={state.submitLoading}
-              >
-                Confirm
-              </Button>
-            }
           >
             <Form.Item
               name="password"
               label=""
               rules={[requiredTrimValidate()]}
-              extra={
-                <div>
-                  {!state.passwordVisible ? (
-                    <EyeInvisibleOutline
-                      fontSize={18}
-                      onClick={() =>
-                        setStates({
-                          passwordVisible: true,
-                        })
-                      }
-                    />
-                  ) : (
-                    <EyeOutline
-                      fontSize={18}
-                      onClick={() =>
-                        setStates({
-                          passwordVisible: false,
-                        })
-                      }
-                    />
-                  )}
-                </div>
-              }
             >
-              <Input
-                type={state.passwordVisible ? "text" : "password"}
-                className="border rounded-6 p-10 pr-6"
-                placeholder=""
-                clearable
-                maxLength={63}
-              />
+              <Input.Password placeholder="" allowClear maxLength={63} />
             </Form.Item>
+            <Button
+              block
+              type="primary"
+              htmlType="submit"
+              loading={state.submitLoading}
+            >
+              Confirm
+            </Button>
           </Form>
         )}
       </CommonPopup>
-      <Mask
-        visible={state.wifiVisible}
-        onMaskClick={() => {
+      <Modal
+        open={state.wifiVisible}
+        onCancel={() => {
           setStates({
             wifiVisible: false,
           });
         }}
+        footer={null}
+        centered
+        width="90%"
+        style={{ maxWidth: 480 }}
+        destroyOnClose
       >
-        <div
-          className="absolute"
-          style={{
-            height: "60%",
-            width: "90%",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%,-50%)",
-            maxWidth: "480px",
-          }}
-        >
-          <div className="h-full p-20 pr-6 bg-white rounded-16">
-            <div className="text-3d  pr-14 h-full overflow-y-auto flex-1 flex flex-col justify-between">
-              <div className="flex justify-between">
-                <div className="font-bold text-16 break-words">
-                  {state.selectedWifiInfo?.ssid}
-                </div>
-                <AntdButton
-                  icon={<CloseOutlined />}
-                  className="border-none"
-                  onClick={() => {
-                    setStates({
-                      wifiVisible: false,
-                    });
-                  }}
-                />
+        <div className="p-20 pr-6">
+          <div className="text-3d pr-14 h-full overflow-y-auto flex-1 flex flex-col justify-between">
+            <div className="flex justify-between">
+              <div className="font-bold text-16 break-words">
+                {state.selectedWifiInfo?.ssid}
               </div>
-              {state.selectedWifiInfo &&
-                state.selectedWifiInfo !== state.etherInfo && (
-                  <div className="flex mt-20">
-                    {state.selectedWifiInfo?.connectedStatus ==
-                    WifiConnectedStatus.No ? (
+            </div>
+            {state.selectedWifiInfo &&
+              state.selectedWifiInfo !== state.etherInfo && (
+                <div className="flex mt-20">
+                  {state.selectedWifiInfo?.connectedStatus ==
+                  WifiConnectedStatus.No ? (
+                    <Button
+                      size="small"
+                      type="primary"
+                      block
+                      loading={state.submitLoading}
+                      onClick={() => onHandleOperate(OperateType.Connect)}
+                    >
+                      <span className="text-14">Connect</span>
+                    </Button>
+                  ) : (
+                    <>
                       <Button
-                        fill="none"
                         size="small"
-                        className="flex-1 bg-primary text-white"
-                        loading={state.submitLoading}
-                        onClick={() => onHandleOperate(OperateType.Connect)}
+                        color="danger"
+                        variant="solid"
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Forget
+                        }
+                        onClick={() => onHandleOperate(OperateType.Forget)}
                       >
-                        <span className="text-14">Connect</span>
+                        Forget
                       </Button>
-                    ) : (
-                      <>
-                        <Button
-                          fill="none"
-                          size="small"
-                          className="flex-1 mr-28 bg-error text-white"
-                          loading={
-                            state.submitLoading &&
-                            state.submitType == OperateType.Forget
-                          }
-                          onClick={() => onHandleOperate(OperateType.Forget)}
-                        >
-                          <span className="text-14">Forget</span>
-                        </Button>
-                        <Button
-                          fill="none"
-                          size="small"
-                          className="flex-1 bg-primary text-white"
-                          loading={
-                            state.submitLoading &&
-                            state.submitType == OperateType.DisConnect
-                          }
-                          onClick={() =>
-                            onHandleOperate(OperateType.DisConnect)
-                          }
-                        >
-                          <span className="text-14">Disconnect</span>
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={{
+                          marginLeft: "12px",
+                        }}
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.DisConnect
+                        }
+                        onClick={() => onHandleOperate(OperateType.DisConnect)}
+                      >
+                        Disconnect
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
 
-              <div className="flex-1 mt-20 border-t">
-                {/* 基本信息 */}
+            <div className="flex-1 mt-20 border-t">
+              <div>
+                <div className="flex justify-between border-b py-6">
+                  <span className="self-center">MAC Address</span>
+                  <span className="text-8d text-black opacity-60">
+                    {state.selectedWifiInfo?.macAddress || "N/A"}
+                  </span>
+                </div>
+              </div>
+
+              {state.selectedWifiInfo && (
                 <div>
+                  <div className="font-bold border-b mt-24 py-6">
+                    IPV4 ADDRESS
+                  </div>
                   <div className="flex justify-between border-b py-6">
-                    <span className="self-center">MAC Address</span>
+                    <span className="self-center">IP Address Assignment</span>
                     <span className="text-8d text-black opacity-60">
-                      {state.selectedWifiInfo?.macAddress || "N/A"}
+                      {state.selectedWifiInfo?.ipAssignment ===
+                      WifiIpAssignmentRule.Automatic
+                        ? "Automatic"
+                        : "Static"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b py-6">
+                    <span className="self-center">IP Address</span>
+                    <span className="text-8d text-black opacity-60">
+                      {state.selectedWifiInfo?.ip || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b py-6">
+                    <span className="self-center">Subnet Mask</span>
+                    <span className="text-8d text-black opacity-60">
+                      {state.selectedWifiInfo?.subnetMask || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b py-6">
+                    <span className="self-center">DNS 1</span>
+                    <span className="text-8d text-black opacity-60">
+                      {state.selectedWifiInfo?.dns1 || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-b py-6">
+                    <span className="self-center">DNS 2</span>
+                    <span className="text-8d text-black opacity-60">
+                      {state.selectedWifiInfo?.dns2 || "N/A"}
                     </span>
                   </div>
                 </div>
-
-                {/* IP地址信息 - 显示IP相关信息 */}
-                {state.selectedWifiInfo && (
-                  <div>
-                    <div className="font-bold border-b mt-24 py-6">
-                      IPV4 ADDRESS
-                    </div>
-                    <div className="flex justify-between border-b py-6">
-                      <span className="self-center">IP Address Assignment</span>
-                      <span className="text-8d text-black opacity-60">
-                        {state.selectedWifiInfo?.ipAssignment ===
-                        WifiIpAssignmentRule.Automatic
-                          ? "Automatic"
-                          : "Static"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b py-6">
-                      <span className="self-center">IP Address</span>
-                      <span className="text-8d text-black opacity-60">
-                        {state.selectedWifiInfo?.ip || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b py-6">
-                      <span className="self-center">Subnet Mask</span>
-                      <span className="text-8d text-black opacity-60">
-                        {state.selectedWifiInfo?.subnetMask || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b py-6">
-                      <span className="self-center">DNS 1</span>
-                      <span className="text-8d text-black opacity-60">
-                        {state.selectedWifiInfo?.dns1 || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b py-6">
-                      <span className="self-center">DNS 2</span>
-                      <span className="text-8d text-black opacity-60">
-                        {state.selectedWifiInfo?.dns2 || "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
-      </Mask>
+      </Modal>
     </div>
   );
 }
