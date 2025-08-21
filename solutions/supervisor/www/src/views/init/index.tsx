@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { CheckCircleFill } from "antd-mobile-icons";
+import { CheckCircleFilled } from "@ant-design/icons";
 import useConfigStore from "@/store/config";
 import { getWiFiInfoListApi } from "@/api/network";
 import { NetworkStatus } from "@/enum/network";
@@ -35,7 +35,7 @@ function Init() {
     const { data } = await getWiFiInfoListApi();
 
     const wifiStatus = (data.connectedWifiInfoList || []).some(
-      (item) => item.status === NetworkStatus.Connected,
+      (item) => item.status === NetworkStatus.Connected
     )
       ? NetworkStatus.Connected
       : NetworkStatus.Disconnected;
@@ -54,6 +54,7 @@ function Init() {
   useEffect(() => {
     getWifiStatus();
   }, []);
+
   return (
     <div className="p-16">
       <div className="rounded-16 bg-white p-30">
@@ -76,7 +77,7 @@ function Init() {
       {deviceInfo.wifiIp && deviceInfo.wifiIp != "-" && (
         <div>
           <div className="text-center flex justify-center py-40">
-            <CheckCircleFill fontSize={48} color="#8fc31f" />
+            <CheckCircleFilled style={{ fontSize: 48, color: "#8fc31f" }} />
           </div>
           {deviceInfo.wifiIp != deviceInfo.ip && (
             <div className="text-center text-18 px-32  break-all">

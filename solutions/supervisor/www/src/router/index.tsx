@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Network from "@/views/network";
-import NetworkInit from "@/views/network/init";
+import Init from "@/views/init";
 import Overview from "@/views/overview";
 import Security from "@/views/security";
 import WebShell from "@/views/terminal";
@@ -45,7 +45,7 @@ const Routes = [
     children: [
       {
         path: "init",
-        element: <NetworkInit />,
+        element: <Init />,
       },
       {
         path: "files",

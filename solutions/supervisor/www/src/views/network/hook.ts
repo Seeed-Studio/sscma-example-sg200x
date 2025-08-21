@@ -99,12 +99,11 @@ export function useData() {
 
     setStates({
       // wifiStatus 由是否有已连接的条目推导
-      wifiStatus:
-        (data.connectedWifiInfoList || []).some(
-          (item) => item.status === NetworkStatus.Connected,
-        )
-          ? NetworkStatus.Connected
-          : NetworkStatus.Disconnected,
+      wifiStatus: (data.connectedWifiInfoList || []).some(
+        (item) => item.status === NetworkStatus.Connected
+      )
+        ? NetworkStatus.Connected
+        : NetworkStatus.Disconnected,
       wifiChecked: data.wifiEnable === 1,
       connectedWifiInfoList: data.connectedWifiInfoList || [],
       wifiInfoList: data.wifiInfoList || [],
@@ -159,6 +158,8 @@ export function useData() {
   const toggleVisible = () => {
     setStates({
       visible: !state.visible,
+      submitLoading: false,
+      submitType: undefined,
     });
   };
 
@@ -179,7 +180,12 @@ export function useData() {
     setStates({
       selectedWifiInfo: item,
       wifiVisible: true,
+      submitLoading: false,
+      submitType: undefined,
     });
+  };
+  const onClickWifiInfo = (wifiItem: IWifiInfo) => {
+    onShowWifiItemInfo(wifiItem);
   };
   const onClickWifiItem = (wifiItem: IWifiInfo) => {
     if (state.connectLoading) {
@@ -296,6 +302,8 @@ export function useData() {
       setStates({
         wifiVisible: false,
         visible: false,
+        submitLoading: false,
+        submitType: undefined,
       });
       // 延迟刷新以获取较稳定的连接结果（避免立即重复请求）
       setTimeout(() => {
@@ -307,6 +315,7 @@ export function useData() {
     } catch (err) {}
     setStates({
       submitLoading: false,
+      submitType: undefined,
     });
   };
   // 刷新wifi状态
@@ -314,7 +323,7 @@ export function useData() {
     const { data } = await getWiFiInfoListApi();
 
     const wifiStatus = (data.connectedWifiInfoList || []).some(
-      (item) => item.status === NetworkStatus.Connected,
+      (item) => item.status === NetworkStatus.Connected
     )
       ? NetworkStatus.Connected
       : NetworkStatus.Disconnected;
@@ -352,6 +361,8 @@ export function useData() {
           setStates({
             wifiVisible: false,
             needRefresh: true,
+            submitLoading: false,
+            submitType: undefined,
           });
           break;
         case OperateType.Forget:
@@ -364,6 +375,8 @@ export function useData() {
           setStates({
             wifiVisible: false,
             needRefresh: true,
+            submitLoading: false,
+            submitType: undefined,
           });
           break;
         default:
@@ -408,6 +421,7 @@ export function useData() {
     onConnect,
     onHandleOperate,
     onClickWifiItem,
+    onClickWifiInfo,
     onClickEthernetItem,
     handleSwitchWifi,
   };

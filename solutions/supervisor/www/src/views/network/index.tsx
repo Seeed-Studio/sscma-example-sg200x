@@ -1,6 +1,5 @@
 import { Button, Form, Switch, Input, Modal } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
-import CommonPopup from "@/components/common-popup";
+import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import WarnImg from "@/assets/images/warn.png";
 import LockImg from "@/assets/images/svg/lock.svg";
 import ConnectedImg from "@/assets/images/svg/connected.svg";
@@ -11,12 +10,7 @@ import Wifi3 from "@/assets/images/svg/wifi_3.svg";
 import Wifi4 from "@/assets/images/svg/wifi_4.svg";
 import { useData, OperateType, FormType } from "./hook";
 
-import {
-  WifiAuth,
-  WifiConnectedStatus,
-  NetworkStatus,
-  WifiIpAssignmentRule,
-} from "@/enum/network";
+import { WifiAuth, NetworkStatus, WifiIpAssignmentRule } from "@/enum/network";
 import { requiredTrimValidate } from "@/utils/validate";
 
 const wifiImg: {
@@ -52,6 +46,7 @@ function Network() {
     onConnect,
     onHandleOperate,
     onClickWifiItem,
+    onClickWifiInfo,
     onClickEthernetItem,
     handleSwitchWifi,
   } = useData();
@@ -117,7 +112,7 @@ function Network() {
                     {wifiItem.ssid}
                   </span>
                 </span>
-                <div className="flex">
+                <div className="flex items-center">
                   {wifiItem.auth == WifiAuth.Need && (
                     <div className="px-12">
                       <img
@@ -135,6 +130,15 @@ function Network() {
                     className="w-18"
                     src={wifiImg[getSignalIcon(wifiItem.signal)]}
                     alt=""
+                  />
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<InfoCircleOutlined />}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onClickWifiInfo(wifiItem);
+                    }}
                   />
                 </div>
               </div>
@@ -166,7 +170,7 @@ function Network() {
                     {wifiItem.ssid}
                   </span>
                 </span>
-                <div className="flex">
+                <div className="flex items-center">
                   {wifiItem.auth == WifiAuth.Need && (
                     <div className="px-12">
                       <img
@@ -185,16 +189,30 @@ function Network() {
                     src={wifiImg[getSignalIcon(wifiItem.signal)]}
                     alt=""
                   />
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<InfoCircleOutlined />}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onClickWifiInfo(wifiItem);
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-      <CommonPopup
-        visible={state.visible}
-        title={titleObj[state.formType]}
+      <Modal
+        open={state.visible}
         onCancel={toggleVisible}
+        footer={null}
+        centered
+        width="90%"
+        style={{ maxWidth: 480 }}
+        title={titleObj[state.formType]}
+        destroyOnClose
       >
         {state.formType === FormType.Disabled && (
           <div>
@@ -240,7 +258,7 @@ function Network() {
             </Button>
           </Form>
         )}
-      </CommonPopup>
+      </Modal>
       <Modal
         open={state.wifiVisible}
         onCancel={() => {
@@ -252,6 +270,7 @@ function Network() {
         centered
         width="90%"
         style={{ maxWidth: 480 }}
+        closable
         destroyOnClose
       >
         <div className="p-20 pr-6">
@@ -261,54 +280,84 @@ function Network() {
                 {state.selectedWifiInfo?.ssid}
               </div>
             </div>
-            {state.selectedWifiInfo &&
-              state.selectedWifiInfo !== state.etherInfo && (
-                <div className="flex mt-20">
-                  {state.selectedWifiInfo?.connectedStatus ==
-                  WifiConnectedStatus.No ? (
+            {state.selectedWifiInfo && state.selectedWifiInfo?.ssid && (
+              <div className="flex mt-20">
+                {state.selectedWifiInfo?.status === NetworkStatus.Connected ? (
+                  <>
+                    <Button
+                      size="small"
+                      color="danger"
+                      variant="solid"
+                      block
+                      loading={
+                        state.submitLoading &&
+                        state.submitType == OperateType.Forget
+                      }
+                      onClick={() => onHandleOperate(OperateType.Forget)}
+                    >
+                      Forget
+                    </Button>
                     <Button
                       size="small"
                       type="primary"
+                      style={{ marginLeft: "12px" }}
                       block
-                      loading={state.submitLoading}
+                      loading={
+                        state.submitLoading &&
+                        state.submitType == OperateType.DisConnect
+                      }
+                      onClick={() => onHandleOperate(OperateType.DisConnect)}
+                    >
+                      Disconnect
+                    </Button>
+                  </>
+                ) : (state.connectedWifiInfoList || []).some(
+                    (item) => item.ssid === state.selectedWifiInfo?.ssid
+                  ) ? (
+                  <>
+                    <Button
+                      size="small"
+                      color="danger"
+                      variant="solid"
+                      block
+                      loading={
+                        state.submitLoading &&
+                        state.submitType == OperateType.Forget
+                      }
+                      onClick={() => onHandleOperate(OperateType.Forget)}
+                    >
+                      Forget
+                    </Button>
+                    <Button
+                      size="small"
+                      type="primary"
+                      style={{ marginLeft: "12px" }}
+                      block
+                      loading={
+                        state.submitLoading &&
+                        state.submitType == OperateType.Connect
+                      }
                       onClick={() => onHandleOperate(OperateType.Connect)}
                     >
-                      <span className="text-14">Connect</span>
+                      Connect
                     </Button>
-                  ) : (
-                    <>
-                      <Button
-                        size="small"
-                        color="danger"
-                        variant="solid"
-                        block
-                        loading={
-                          state.submitLoading &&
-                          state.submitType == OperateType.Forget
-                        }
-                        onClick={() => onHandleOperate(OperateType.Forget)}
-                      >
-                        Forget
-                      </Button>
-                      <Button
-                        size="small"
-                        type="primary"
-                        style={{
-                          marginLeft: "12px",
-                        }}
-                        block
-                        loading={
-                          state.submitLoading &&
-                          state.submitType == OperateType.DisConnect
-                        }
-                        onClick={() => onHandleOperate(OperateType.DisConnect)}
-                      >
-                        Disconnect
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
+                  </>
+                ) : (
+                  <Button
+                    size="small"
+                    type="primary"
+                    block
+                    loading={
+                      state.submitLoading &&
+                      state.submitType == OperateType.Connect
+                    }
+                    onClick={() => onHandleOperate(OperateType.Connect)}
+                  >
+                    <span className="text-14">Connect</span>
+                  </Button>
+                )}
+              </div>
+            )}
 
             <div className="flex-1 mt-20 border-t">
               <div>
