@@ -15,7 +15,6 @@
 class api_wifi : public api_base {
 private:
     // APIs
-    static api_status_t autoConnectWiFi(request_t req, response_t res);
     static api_status_t connectWiFi(request_t req, response_t res);
     static api_status_t disconnectWiFi(request_t req, response_t res);
     static api_status_t forgetWiFi(request_t req, response_t res);
@@ -27,7 +26,6 @@ public:
         : api_base("wifiMgr")
     {
         LOGV("");
-        REG_API(autoConnectWiFi);
         REG_API(connectWiFi);
         REG_API(disconnectWiFi);
         REG_API(forgetWiFi);
@@ -47,18 +45,20 @@ private:
     static inline int _sta_enable = 1;
     static inline int _ap_enable = 1;
     static inline json _nw_info;
+    static inline int8_t _failed_cnt  = 0;
 
     // thread
     std::thread _worker;
     static inline std::atomic<bool> _running { true };
-    static inline std::condition_variable cv;
-    static inline std::mutex wifi_mutex;
-    static inline uint8_t _need_scan = 1;
- 
+    static inline std::condition_variable _cv;
+    static inline std::mutex _wifi_mutex;
+    static inline bool _need_scan;
+    static void trigger_scan() { _need_scan = true; _cv.notify_one(); }
+
     json get_eth();
     json get_sta_current();
     json get_sta_connected(json& current);
-    json get_scan_list(json& current, json& connected);
+    json get_scan_list(json& connected);
 
     void start_wifi();
     void stop_wifi();

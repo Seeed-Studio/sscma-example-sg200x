@@ -54,28 +54,35 @@ json api_wifi::get_sta_current()
             continue;
         c[line[0]] = line[1];
     }
-    c["ssid"] = parse_escaped_string(c.value("ssid", ""));
 
     std::string ip = c.value("ip_address", "");
     if (ip.find("169.254") == 0) {
         ip = "";
     }
 
+    std::string ssid = parse_escaped_string(c.value("ssid", ""));
     c["auth"] = c.value("key_mgmt", "").find("WPA") != std::string::npos ? 1 : 0;
     c["macAddress"] = c.value("address", "");
     c["ip"] = ip;
     c["ipAssignment"] = 1; // static/dhcp
     c["subnetMask"] = "255.255.255.0";
 
-    int status = 1; // 1=not connected, 2=connecting, 3=connected
-    if (c.value("wpa_state", "") != "DISCONNECTED") {
-        status = 2;
-        if (!c.value("ssid", "").empty() && !ip.empty()
-            && c.value("wpa_state", "") == "COMPLETED") {
-            status = 3;
+    int status = 2; // 1=not connected, 2=connecting, 3=connected
+    if (!ssid.empty() && !ip.empty() && c.value("wpa_state", "") == "COMPLETED") {
+        status = 3;
+    } else {
+        if (_failed_cnt > 0) {
+            _failed_cnt--;
+        }
+        if (_failed_cnt <= 0) {
+            status = 1;
         }
     }
+
+    _wifi_mutex.lock();
+    c["ssid"] = (ssid.empty() ? _nw_info.value("Selected", "") : ssid);
     c["status"] = status;
+    _wifi_mutex.unlock();
 
     return c;
 }
@@ -83,6 +90,9 @@ json api_wifi::get_sta_current()
 json api_wifi::get_sta_connected(json& current)
 {
     json n = json::array();
+    if (!current.value("ssid", "").empty()) {
+        n.push_back(current);
+    }
     for (auto& line : parse_result(script(__func__), '\t', true)) {
         if (line.size() < 3 || line[1].empty())
             continue;
@@ -91,10 +101,8 @@ json api_wifi::get_sta_connected(json& current)
             { "ssid", ssid },
             { "bssid", line[2] },
             { "flags", line.size() > 3 ? line[3] : "" } };
-        j["connectedStatus"] = 1;
-        j["autoConnect"] = j.value("flags", "").find("DISABLED") != std::string::npos ? 0 : 1;
         if (current.value("ssid", "") == ssid) {
-            current.update(j);
+            n[0].update(j);
             continue;
         }
         n.push_back(j);
@@ -117,15 +125,15 @@ void api_wifi::start_wifi()
     _worker = std::thread([&]() {
         bool ap_stopped = false;
         uint8_t timeout = 10;
-        _need_scan = 1;
 
+        _need_scan = true;
         while (_running) {
-            if (_need_scan > 0 || !ap_stopped) {
-                _need_scan--;
+            if (_need_scan || !ap_stopped) {
+                _need_scan = false;
                 auto&& e = get_eth();
                 auto&& c = get_sta_current();
                 auto&& n = get_sta_connected(c);
-                auto&& l = get_scan_list(c, n);
+                auto&& l = get_scan_list(n);
 
                 if ((e.value("status", 0) == 3) || (c.value("status", 0) == 3)) {
                     if (!ap_stopped) {
@@ -135,25 +143,20 @@ void api_wifi::start_wifi()
                     }
                 }
 
-                {// lock_guard
-                    std::lock_guard<std::mutex> lock(wifi_mutex);
-                    _nw_info["etherInfo"] = e;
-                    _nw_info["currentWifiInfo"] = c;
-                    _nw_info["connectedWifiInfoList"] = n;
-                    if (!l.empty()) {
-                        _nw_info["wifiInfoList"] = l;
-                    }
+                _wifi_mutex.lock();
+                _nw_info["etherInfo"] = e;
+                _nw_info["connectedWifiInfoList"] = n;
+                if (!l.empty()) {
+                    _nw_info["wifiInfoList"] = l;
                 }
-                // LOGV("wifi info: %s", _nw_info.dump(4).c_str());
+                _wifi_mutex.unlock();
             }
 
-            std::unique_lock<std::mutex> lock(wifi_mutex);
-            if (!_running)
-                break;
+            std::unique_lock<std::mutex> lock(_wifi_mutex);
             if (timeout == 0) {
-                cv.wait(lock, [] { return !_running || (_need_scan > 0); });
+                _cv.wait(lock, [] { return !_running || _need_scan; });
             } else {
-                cv.wait_for(lock, std::chrono::seconds(timeout), [] { return !_running || (_need_scan > 0); });
+                _cv.wait_for(lock, std::chrono::seconds(timeout), [] { return !_running || _need_scan; });
             }
         }
         LOGV("network thread exit");
@@ -165,11 +168,10 @@ void api_wifi::stop_wifi()
     LOGV("");
     if (_running) {
         _running = false;
-        cv.notify_all();
+        _cv.notify_all();
         if (_worker.joinable())
             _worker.join();
     }
-    // script(__func__);
     LOGV("exited");
 }
 
@@ -184,16 +186,11 @@ api_status_t api_wifi::_wifi_ctrl(request_t req, response_t res, std::string ctr
 
     auto result = script(ctrl, ssid);
     response(res, result == STR_OK ? 0 : -1, result);
+    trigger_scan();
     return API_STATUS_OK;
 }
 
 // APIs
-api_status_t api_wifi::autoConnectWiFi(request_t req, response_t res)
-{
-    response(res);
-    return API_STATUS_OK;
-}
-
 api_status_t api_wifi::connectWiFi(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
@@ -204,14 +201,20 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
     }
 
     int id = -1;
-    std::lock_guard<std::mutex> lock(wifi_mutex);
+    _wifi_mutex.lock();
     auto&& n = _nw_info["connectedWifiInfoList"];
     for (auto& _n : n) {
         if (_n.value("ssid", "") == ssid) {
             id = stoi(_n.value("id", "-1"));
+            break;
         }
     }
+    _nw_info["Selected"] = ssid;
+    _failed_cnt = 10;
+    _wifi_mutex.unlock();
+
     script(__func__, id, ssid, body.value("password", ""));
+    trigger_scan();
     response(res, 0, STR_OK);
     return API_STATUS_OK;
 }
@@ -260,15 +263,13 @@ static json _parse_iw_scan(std::string fname)
     return jlist;
 }
 
-json api_wifi::get_scan_list(json& current, json& connected)
+json api_wifi::get_scan_list(json& connected)
 {
     std::map<std::string, json> m;
     for (auto& j : _parse_iw_scan(script(__func__))) {
         // Compatible with previous
         j["auth"] = j.value("rsn", "").empty() ? 0 : 1;
         j["macAddress"] = j["bssid"];
-        j["connectedStatus"] = 0;
-        j["autoConnect"] = 0;
         m[j["ssid"]] = j;
     }
 
@@ -281,12 +282,6 @@ json api_wifi::get_scan_list(json& current, json& connected)
 
     json result = json::array();
     for (auto& ssid : list) {
-        if (current.value("ssid", "") == ssid) {
-            current.update(m[ssid]);
-            LOGD("Current: %s", current.dump().c_str());
-            continue;
-        }
-
         bool found = false;
         for (auto& j : connected) {
             if (j.value("ssid", "") == ssid) {
@@ -295,21 +290,17 @@ json api_wifi::get_scan_list(json& current, json& connected)
                 break;
             }
         }
-        if (!found) {
+        if (!found)
             result.push_back(std::move(m[ssid]));
-        }
     }
     return result;
 }
 
 api_status_t api_wifi::getWiFiInfoList(request_t req, response_t res)
 {
-    if (_need_scan == 0) {
-        _need_scan = 1;
-        cv.notify_one();
-    }
-    std::lock_guard<std::mutex> lock(wifi_mutex);
+    std::lock_guard<std::mutex> lock(_wifi_mutex);
     response(res, 0, STR_OK, _nw_info);
+    trigger_scan();
     return API_STATUS_OK;
 }
 
