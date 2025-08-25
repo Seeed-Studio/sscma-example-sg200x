@@ -80,6 +80,9 @@ json api_wifi::get_sta_current()
     }
 
     _wifi_mutex.lock();
+    if ((status == 1) || (status == 3)) {
+        _nw_info["Selected"] = "";
+    }
     c["ssid"] = (ssid.empty() ? _nw_info.value("Selected", "") : ssid);
     c["status"] = status;
     _wifi_mutex.unlock();
@@ -186,6 +189,7 @@ api_status_t api_wifi::_wifi_ctrl(request_t req, response_t res, std::string ctr
 
     auto result = script(ctrl, ssid);
     response(res, result == STR_OK ? 0 : -1, result);
+    _failed_cnt = 10;
     trigger_scan();
     return API_STATUS_OK;
 }
@@ -209,11 +213,10 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
             break;
         }
     }
+    script(__func__, id, ssid, body.value("password", ""));
     _nw_info["Selected"] = ssid;
     _failed_cnt = 10;
     _wifi_mutex.unlock();
-
-    script(__func__, id, ssid, body.value("password", ""));
     trigger_scan();
     response(res, 0, STR_OK);
     return API_STATUS_OK;

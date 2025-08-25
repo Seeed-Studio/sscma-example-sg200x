@@ -1,5 +1,6 @@
 #!/bin/bash
-readonly DIR_SCRIPTS=$(dirname $(readlink -f $0))
+
+readonly SCRIPTS_DIR=$(dirname $(readlink -f $0))
 readonly STR_OK="OK"
 readonly STR_FAILED="Failed"
 
@@ -15,10 +16,10 @@ readonly MODELS_PRESET="/usr/share/supervisor/models"
 
 # work_dir
 readonly WORK_DIR="/tmp/supervisor"
-if [ ! -d "$WORK_DIR" ]; then
+[[ ! -d "$WORK_DIR" ]] && {
     mkdir -p "$WORK_DIR"
     chmod 400 -R "$WORK_DIR"
-fi
+}
 
 # private
 _compatible() {
@@ -85,17 +86,20 @@ function updateDeviceName() {
 function queryDeviceInfo() {
     local ch=$(cat $CONF_UPGRADE 2>/dev/null | awk -F',' '{print $1}')
     local url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F',' '{print $2}')
-    printf '{'
-    printf '"channel": "%s",' "$((ch))"
-    printf '"serverUrl": "%s",' "$url"
-    printf '"needRestart": %s,' "$(_upgrade_done)"
-    printf '"ethIp": "%s",' "$(_ip "eth0")"
-    printf '"wifiIp": "%s",' "$(_ip "wlan0")"
-    printf '"mask": "%s",' "$(_mask "wlan0")"
-    printf '"mac": "%s",' "$(_mac "wlan0")"
-    printf '"gateway": "%s",' "$(_gateway "wlan0")"
-    printf '"dns": "%s",' "$(_dns)"
-    printf '"deviceName": "%s" }' "$(cat $HOSTNAME_FILE)"
+    cat <<EOF
+{
+    "channel": "$((ch))",
+    "serverUrl": "$url",
+    "needRestart": $(_upgrade_done),
+    "ethIp": "$(_ip "eth0")",
+    "wlanIp": "$(_ip "wlan0")",
+    "mask": "$(_mask "wlan0")",
+    "mac": "$(_mac "wlan0")",
+    "gateway": "$(_gateway "wlan0")",
+    "dns": "$(_dns)",
+    "deviceName": "$(cat $HOSTNAME_FILE)"
+}
+EOF
 }
 
 # flow
@@ -132,7 +136,7 @@ _check_models() {
 
 # upgrade
 readonly DEFAULT_UPGRADE_URL="https://github.com/Seeed-Studio/reCamera-OS/releases/latest"
-readonly UPGRADE="$DIR_SCRIPTS/upgrade.sh"
+readonly UPGRADE="$SCRIPTS_DIR/upgrade.sh"
 readonly UPGRADE_CANCEL="$WORK_DIR/upgrade.cancel"
 readonly UPGRADE_DONE="$WORK_DIR/upgrade.done"
 readonly UPGRADE_MUTEX="$WORK_DIR/upgrade.mutex"
@@ -150,6 +154,7 @@ function updateChannel() {
     local ch=$2 url=$3
     echo $ch,$url >$CONF_UPGRADE
     echo $STR_OK
+    $UPGRADE clean >/dev/null 2>&1
 }
 
 function cancelUpdate() {
@@ -164,7 +169,8 @@ _upgrade_latest() {
     local url
     local ch=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $1}')
     [ $((ch)) -ne 0 ] && {
-        url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $2}');
+        url=$(cat $CONF_UPGRADE 2>/dev/null | awk -F'[, ]' '{print $2}')
+        [ -z "$url" ] && return
     }
     for i in {1..3}; do
         $UPGRADE latest $url >/dev/null 2>&1
@@ -178,23 +184,22 @@ _upgrade_latest() {
 function getSystemUpdateVersion() {
     local os ver
     local status=3 # querying
-    if [ "$(_upgrading)" = "1" ]; then {
+    if [[ "$(_upgrading)" = "1" ]]; then
         status=2
-    }
-    else {
+    else
         local out=$($UPGRADE latest q)
-        if [ "$(echo $out | cut -d':' -f1)" = "Success" ]; then {
+        if [ "$(echo $out | cut -d':' -f1)" = "Success" ]; then
             status=1
             out2=$(echo $out | cut -d':' -f2)
             os=$(echo $out2 | cut -d' ' -f1)
             ver=$(echo $out2 | cut -d' ' -f2)
-        }
-        else { [ -z "$(pidof $UPGRADE latest)" ] && { _upgrade_latest >/dev/null & } }
+        else
+            [ -z "$(pidof $UPGRADE latest)" ] && { _upgrade_latest >/dev/null & }
         fi
-    }
     fi
-    printf '{"osName": "%s", "osVersion": "%s", "status": %d}' \
-        "$os" "$ver" "${status}"
+    cat <<EOF
+{ "osName": "$os", "osVersion": "$ver", "status": $status }
+EOF
 }
 
 _upgrade_prog() {
@@ -257,42 +262,43 @@ function updateSystem() {
 }
 
 function api_device() {
-    local rollback=0
-    [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
-
     _check_flow >/dev/null &
     _check_models >/dev/null &
 
+    local rollback=0
+    [ "$(fw_printenv boot_rollback)" = "boot_rollback=1" ] && rollback=1
     local wifi=0
     _check_wifi && wifi=1
-    local can=0
-    [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && can=1
+    local canbus=0
+    [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && canbus=1
     local emmc=$(lsblk -b | grep -w mmcblk0 | awk '{print $4}')
+    emmc=${emmc:-0}
     local sensor=0
-    [ -n "$(i2cdetect -y -r 2 36 36 | grep 36)" ] && sensor=1
-    [ -n "$(i2cdetect -y -r 2 3f 3f | grep 3f)" ] && sensor=2
+    [[ -n "$(i2cdetect -y -r 2 36 36 | grep 36)" ]] && sensor=1
+    [[ -n "$(i2cdetect -y -r 2 3f 3f | grep 3f)" ]] && sensor=2
 
-    printf '{'
-    printf '"sn": "%s",' "$(_sn)"
-    printf '"dev_name": "%s",' "$(_dev_name)"
-    printf '"os": "%s",' "$(_os_name)"
-    printf '"ver": "%s",' "$(_os_version)"
-    printf '"cpu": "sg2002",'
-    printf '"ram": "256",'
-    printf '"npu": "1",'
-    printf '"Emmc": %d,' "$emmc"
-    printf '"Wifi": %d,' "$wifi"
-    printf '"CanBus": %d,' "$can"
-    printf '"Sensor": %d,' "$sensor"
-    printf '"ws": "8000",'
-    printf '"ttyd": "%d",' "9090"
-    printf '"rollback": "%d",' "$rollback"
-    printf '"app_dir": "%s",' "$APP_DIR"
-    printf '"url": "%s",' "$DEFAULT_UPGRADE_URL"
-    printf '"platform_info": "%s",' "$CONFIG_DIR/platform.info"
-    printf '"model": { "dir": "%s", "file": "%s", "info": "%s", "preset": "%s" }' \
-        "$MODEL_DIR" "$MODEL_FILE" "$MODEL_INFO" "$MODELS_PRESET"
-    printf '}'
+    cat <<EOF
+{
+    "cpu": "sg2002", "ram": "256", "npu": "1", "ws": "8000", "ttyd": "9090",
+    "emmc": ${emmc:-0},
+    "wifi": $wifi,
+    "canbus": $canbus,
+    "sensor": $sensor,
+    "rollback": $rollback,
+    "sn": "$(_sn)",
+    "dev_name": "$(_dev_name)",
+    "os": "$(_os_name)",
+    "ver": "$(_os_version)",
+    "url": "$DEFAULT_UPGRADE_URL",
+    "platform_info": "$CONFIG_DIR/platform.info",
+    "model": {
+        "dir": "$MODEL_DIR",
+        "file": "$MODEL_FILE",
+        "info": "$MODEL_INFO",
+        "preset": "$MODELS_PRESET"
+    }
+}
+EOF
 }
 # device
 ##################################################
@@ -419,8 +425,11 @@ function queryUserInfo() {
     [ -f "$sshKeyFile" ] || >"$sshKeyFile"
 
     _update_sshkey
-    printf '{"userName": "%s", "firstLogin": %s, "sshEnabled": %s, "sshKeyFile": "%s" }' \
-        "${USER_NAME}" "${firstLogin}" "${sshEnabled}" "${sshKeyFile}"
+    cat <<EOF
+{ "userName": "${USER_NAME}", "firstLogin": ${firstLogin}, 
+    "sshEnabled": ${sshEnabled}, "sshKeyFile": "${sshKeyFile}"
+}
+EOF
 }
 
 function updatePassword() {
@@ -442,7 +451,12 @@ readonly WPA_CLI="wpa_cli -i wlan0"
 
 _check_wifi() { [ -z "$(ifconfig wlan0 2>/dev/null)" ] && return 1 || return 0; }
 _sta_stop() { _stop_pidname "wpa_supplicant"; }
-_ap_stop() { _stop_pidname "hostapd"; ifconfig wlan1 0; ifconfig wlan1 down; /etc/init.d/S80dnsmasq restart; }
+_ap_stop() {
+    _stop_pidname "hostapd"
+    ifconfig wlan1 0
+    ifconfig wlan1 down
+    /etc/init.d/S80dnsmasq restart
+}
 
 _sta_start() {
     _check_wifi || return 0
@@ -498,7 +512,7 @@ function switchWiFi() {
 function get_sta_connected() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     >"$out"
-    [ -z "$1" ] && { $WPA_CLI reconfigure; }
+    [ -z "$1" ] && { $WPA_CLI reconfigure >/dev/null 2>&1; }
     $WPA_CLI list_networks 2>/dev/null | while IFS= read -r line; do
         printf "%b\n" "$line" >>"$out"
     done
@@ -513,10 +527,16 @@ function get_sta_current() {
 
 function get_eth() {
     local ifname="eth0"
-    printf '{"ip": "%s", "subnetMask": "%s", "macAddress": "%s", "gateway": "%s", "dns1": "%s", "dns2": "%s"}' \
-        "$(_ip "$ifname")" "$(_mask "$ifname")" \
-        "$(_mac "$ifname")" "$(_gateway "$ifname")" \
-        "$(_dns "$ifname")" "$(_dns2 "$ifname")"
+    cat <<EOF
+{
+    "ip": "$(_ip "$ifname")",
+    "subnetMask": "$(_mask "$ifname")",
+    "macAddress": "$(_mac "$ifname")",
+    "gateway": "$(_gateway "$ifname")",
+    "dns1": "$(_dns "$ifname")",
+    "dns2": "$(_dns2 "$ifname")"
+}
+EOF
 }
 
 function get_scan_list() {
@@ -529,6 +549,7 @@ function get_scan_list() {
     [ -f "$out" ] || >"$out"
     echo "$out"
     [ -z "$(pidof iw 2>/dev/null)" ] && { iw dev wlan0 scan >"$result" 2>/dev/null & }
+    return 0
 }
 
 function connectWiFi() {
@@ -586,6 +607,7 @@ function disconnectWiFi() {
     echo "$STR_OK"
     _wpa_set_networks "$2" disable_network >/dev/null 2>&1 &
 }
+
 function forgetWiFi() {
     echo "$STR_OK"
     _wpa_set_networks "$2" remove_network >/dev/null 2>&1 &
@@ -600,10 +622,8 @@ function query_sscma() {
         -t "sscma/v0/recamera/node/in/" \
         -e "sscma/v0/recamera/node/out/" \
         -m "{\"name\":\"health\",\"type\":3,\"data\":\"\"}" 2>/dev/null
-    [ $? -ne 0 ] && {
-        echo "$STR_FAILED"
-        return
-    }
+    [ $? -ne 0 ] && { echo "$STR_FAILED"; }
+    return 0
 }
 
 function query_nodered() {

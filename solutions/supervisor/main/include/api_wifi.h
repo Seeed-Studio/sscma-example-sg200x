@@ -45,7 +45,7 @@ private:
     static inline int _sta_enable = 1;
     static inline int _ap_enable = 1;
     static inline json _nw_info;
-    static inline int8_t _failed_cnt  = 0;
+    static inline int8_t _failed_cnt = 10;
 
     // thread
     std::thread _worker;
@@ -53,7 +53,11 @@ private:
     static inline std::condition_variable _cv;
     static inline std::mutex _wifi_mutex;
     static inline bool _need_scan;
-    static void trigger_scan() { _need_scan = true; _cv.notify_one(); }
+    static void trigger_scan()
+    {
+        _need_scan = true;
+        _cv.notify_one();
+    }
 
     json get_eth();
     json get_sta_current();
