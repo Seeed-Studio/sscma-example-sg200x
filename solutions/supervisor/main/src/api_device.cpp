@@ -88,21 +88,21 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
 
     {
         std::string model_type = "Basic";
-        if (_dev_info.value("CanBus", 0)) {
+        if (_dev_info.value("canbus", 0)) {
             model_type = "Gimbal";
         }
-        if (_dev_info.value("Wifi", 0)) {
+        if (_dev_info.value("wifi", 0)) {
             model_type += " WiFi";
         }
 
         // emmc
         uint64_t emmc = 0;
-        if (_dev_info.contains("Emmc")) {
-            if (_dev_info["Emmc"].is_number_integer()) {
-                emmc = _dev_info["Emmc"].get<uint64_t>();
-            } else if (_dev_info["Emmc"].is_string()) {
+        if (_dev_info.contains("emmc")) {
+            if (_dev_info["emmc"].is_number_integer()) {
+                emmc = _dev_info["emmc"].get<uint64_t>();
+            } else if (_dev_info["emmc"].is_string()) {
                 try {
-                    emmc = std::stoull(_dev_info["Emmc"].get<std::string>());
+                    emmc = std::stoull(_dev_info["emmc"].get<std::string>());
                 } catch (const std::exception& e) {
                     LOGW("Failed to parse Emmc value: %s", e.what());
                 }
@@ -122,13 +122,12 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
         }
 
         // sensor
-        int sensor = _dev_info.value("Sensor", 0);
+        int sensor = _dev_info.value("sensor", 0);
         if (sensor == 0) {
             model_type += " (No Sensor)";
         } else if (sensor == 1) {
             model_type += " (OV5647)";
-        }
-        else if (sensor == 2) {
+        } else if (sensor == 2) {
             model_type += " (GC2053)";
         }
 
@@ -140,8 +139,8 @@ api_status_t api_device::queryDeviceInfo(request_t req, response_t res)
 
 api_status_t api_device::getSystemStatus(request_t req, response_t res)
 {
-    std::string rollback = _dev_info.value("rollback", "");
-    if (rollback == "1")
+    int rollback = _dev_info.value("rollback", 0);
+    if (rollback)
         response(res, 0, STR_OK, "System has been recovered from damage.");
     else
         response(res, 0, STR_OK, "System is running normally.");
