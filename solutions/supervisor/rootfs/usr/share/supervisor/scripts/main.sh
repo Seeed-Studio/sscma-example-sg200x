@@ -434,11 +434,15 @@ EOF
 
 function updatePassword() {
     local pwd="$2"
-    passwd $USER_NAME 1>/dev/null 2>/dev/null <<EOF
-"$pwd"
-"$pwd"
-EOF
-    [ 0 -ne $? ] && echo $STR_FAILED || echo $STR_OK
+    {
+        echo "$pwd"
+        echo "$pwd"
+    } | passwd "$USER_NAME" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "$STR_OK"
+    else
+        echo "$STR_FAILED"
+    fi
 }
 # user
 ##################################################
