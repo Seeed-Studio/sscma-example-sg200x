@@ -6,7 +6,7 @@ import { Form, Input, Button } from "antd-mobile";
 import { FormInstance } from "antd-mobile/es/components/form";
 import useConfigStore from "@/store/config";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
-import { requiredTrimValidate } from "@/utils/validate";
+import { hostnameValidate } from "@/utils/validate";
 
 interface FormParams {
   deviceName: string;
@@ -22,7 +22,8 @@ function Header() {
     updateDeviceInfo(res.data);
   };
   const onFinish = async (values: FormParams) => {
-    await updateDeviceInfoApi(values);
+    const deviceName = (values.deviceName || "").trim();
+    await updateDeviceInfoApi({ deviceName });
     onCancel();
     await onQueryDeviceInfo();
   };
@@ -67,9 +68,9 @@ function Header() {
             <Form.Item
               name="deviceName"
               label="Name"
-              rules={[requiredTrimValidate()]}
+              rules={[hostnameValidate(32)]}
             >
-              <Input placeholder="recamera_132456" maxLength={32} clearable />
+              <Input placeholder="recamera-132456" maxLength={32} clearable />
             </Form.Item>
           </Form>
         </CommonPopup>
