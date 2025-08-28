@@ -450,6 +450,7 @@ void SaveNode::threadEntry() {
                 continue;
             }
             if (saveMode_ == "image" && frame->chn == CHN_JPEG) {
+                
                 video = static_cast<videoFrame*>(frame);
 
                 bool shouldSave = false;
@@ -756,6 +757,7 @@ ma_err_t SaveNode::onStart() {
     }
 
     if (saveMode_ == "image") {
+        camera_->config(CHN_JPEG);
         camera_->attach(CHN_JPEG, &frame_);
         MA_LOGI(TAG, "attached to JPEG channel for image saving (using model's configuration)");
     } else {
