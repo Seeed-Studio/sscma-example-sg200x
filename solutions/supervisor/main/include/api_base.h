@@ -99,7 +99,7 @@ public:
     {
         int timeout_sec = 30;
         std::stringstream ss;
-        ((ss << "\"" << std::forward<Args>(args) << "\" "), ...);
+        ((ss << "'" << std::forward<Args>(args) << "' "), ...);
         std::string args_str = ss.str();
         std::string full_cmd = _script + " " + cmd + " " + args_str;
 
