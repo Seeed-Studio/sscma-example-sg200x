@@ -67,6 +67,7 @@ json api_wifi::get_sta_current()
     c["ipAssignment"] = 1; // static/dhcp
     c["subnetMask"] = "255.255.255.0";
 
+    _wifi_mutex.lock();
     int status = 2; // 1=not connected, 2=connecting, 3=connected
     if (!ssid.empty() && !ip.empty() && c.value("wpa_state", "") == "COMPLETED") {
         status = 3;
@@ -78,8 +79,6 @@ json api_wifi::get_sta_current()
             status = 1;
         }
     }
-
-    _wifi_mutex.lock();
     if ((status == 1) || (status == 3)) {
         _nw_info["Selected"] = "";
     }
@@ -204,21 +203,30 @@ api_status_t api_wifi::connectWiFi(request_t req, response_t res)
         return API_STATUS_OK;
     }
 
+    std::string msg = STR_OK;
     int id = -1;
     _wifi_mutex.lock();
-    auto&& n = _nw_info["connectedWifiInfoList"];
-    for (auto& _n : n) {
-        if (_n.value("ssid", "") == ssid) {
-            id = stoi(_n.value("id", "-1"));
-            break;
+    if (_nw_info.value("Selected", "") != ssid) {
+        auto& n = _nw_info["connectedWifiInfoList"];
+        for (auto& _n : n) {
+            if (_n.value("ssid", "") == ssid) {
+                id = stoi(_n.value("id", "-1"));
+                break;
+            }
         }
+        _nw_info["Selected"] = ssid;
+        _failed_cnt = 10;
+    } else {
+        ssid = "";
+        msg = "Connecting...";
     }
-    script(__func__, id, ssid, body.value("password", ""));
-    _nw_info["Selected"] = ssid;
-    _failed_cnt = 10;
     _wifi_mutex.unlock();
+
+    if (!ssid.empty()) {
+        script(__func__, id, ssid, body.value("password", ""));
+    }
     trigger_scan();
-    response(res, 0, STR_OK);
+    response(res, 0, msg);
     return API_STATUS_OK;
 }
 
