@@ -34,12 +34,14 @@ api_status_t api_device::getDeviceList(request_t req, response_t res)
         if (l.size() < 10 || (l[0][0] != '='))
             continue;
         std::string type = l[1];
+        std::string name = l[3];
         std::string service = l[4];
         std::string ip = l[7];
         std::string port = l[8];
         std::string sn = l[9].find("sn=") != std::string::npos ? l[9] : "";
         if (service == "_sscma._tcp" && !sn.empty()) {
             json dev;
+            dev["device"] = name;
             dev["type"] = type;
             dev["ip"] = ip;
             dev["port"] = port;

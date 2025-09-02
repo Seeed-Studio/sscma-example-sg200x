@@ -5,8 +5,10 @@ readonly STR_OK="OK"
 readonly STR_FAILED="Failed"
 
 # conf
+readonly ISSUE_FILE="/etc/issue"
+readonly HOSTNAME_FILE="/etc/hostname"
 readonly USER_NAME="recamera"
-readonly CONFIG_DIR="/etc/$USER_NAME.conf"
+readonly CONFIG_DIR="/etc/recamera.conf"
 readonly CONF_UPGRADE="$CONFIG_DIR/upgrade"
 
 # userdata
@@ -16,17 +18,18 @@ readonly MODELS_PRESET="/usr/share/supervisor/models"
 
 # work_dir
 readonly WORK_DIR="/tmp/supervisor"
-[[ ! -d "$WORK_DIR" ]] && {
+[ ! -d "$WORK_DIR" ] && {
     mkdir -p "$WORK_DIR"
     chmod 400 -R "$WORK_DIR"
-}
 
-# private
-_compatible() {
+    # compatible
     [ ! -d "$CONFIG_DIR" ] && mkdir -p "$CONFIG_DIR"
-    [ -f "/etc/upgrade" ] && mv /etc/upgrade "$CONF_UPGRADE"
+    [ -f "/etc/upgrade" ] && mv -f /etc/upgrade "$CONF_UPGRADE"
+    [ -s "/etc/device-name" ] && {
+        mv -f "/etc/device-name" "$HOSTNAME_FILE"
+        hostname -F "$HOSTNAME_FILE"
+    }
 }
-_compatible
 
 _ip() { ifconfig "$1" 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{print $2}'; }
 _mask() { ifconfig "$1" 2>/dev/null | awk '/Mask:/ {print $4}' | awk -F':' '{print $2}'; }
@@ -53,8 +56,6 @@ api_file() { echo "$USERDATA_DIR"; }
 
 ##################################################
 # device
-readonly ISSUE_FILE="/etc/issue"
-readonly HOSTNAME_FILE="/etc/hostname"
 readonly AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
 readonly AVAHI_SERVICE="/etc/init.d/S50avahi-daemon"
 
