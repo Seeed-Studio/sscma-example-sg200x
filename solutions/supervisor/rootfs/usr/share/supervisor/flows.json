@@ -1881,7 +1881,7 @@
     {
         "id": "d4edfe2d22b78af8",
         "type": "sscma",
-        "host": "192.168.42.1",
+        "host": "localhost",
         "mqttport": "1883",
         "apiport": "80",
         "clientid": "recamera",
