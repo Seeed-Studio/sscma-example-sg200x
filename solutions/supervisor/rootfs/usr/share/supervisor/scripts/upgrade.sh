@@ -420,4 +420,4 @@ for func in ${FUNCS[@]}; do
         exit 0
     }
 done
-echo "Not found $RunCase"
+echo "Usage: $0 {clean|latest|download|start|rollback|recovery}"
