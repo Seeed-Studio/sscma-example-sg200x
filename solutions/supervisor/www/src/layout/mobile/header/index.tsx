@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Sidebar from "../sidebar/index";
 import CommonPopup from "@/components/common-popup";
 import EditImg from "@/assets/images/svg/edit.svg";
@@ -6,8 +6,7 @@ import { Form, Input, Button } from "antd-mobile";
 import { FormInstance } from "antd-mobile/es/components/form";
 import useConfigStore from "@/store/config";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
-import { getWifiStatusApi } from "@/api/network";
-import { requiredTrimValidate } from "@/utils/validate";
+import { hostnameValidate } from "@/utils/validate";
 
 interface FormParams {
   deviceName: string;
@@ -16,10 +15,15 @@ interface FormParams {
 function Header() {
   const [visible, setVisible] = useState(false);
   const formRef = useRef<FormInstance>(null);
-  const { deviceInfo, updateDeviceInfo, updateWifiStatus } = useConfigStore();
+  const { deviceInfo, updateDeviceInfo } = useConfigStore();
 
+  const onQueryDeviceInfo = async () => {
+    const res = await queryDeviceInfoApi();
+    updateDeviceInfo(res.data);
+  };
   const onFinish = async (values: FormParams) => {
-    await updateDeviceInfoApi(values);
+    const deviceName = (values.deviceName || "").trim();
+    await updateDeviceInfoApi({ deviceName });
     onCancel();
     await onQueryDeviceInfo();
   };
@@ -30,18 +34,7 @@ function Header() {
   const resetFields = () => {
     formRef.current?.resetFields();
   };
-  const onQueryDeviceInfo = async () => {
-    const res = await queryDeviceInfoApi();
-    updateDeviceInfo(res.data);
-  };
-  const getWifiStatus = async () => {
-    let { data } = await getWifiStatusApi();
-    updateWifiStatus(data.status);
-  };
-  useEffect(() => {
-    getWifiStatus();
-    onQueryDeviceInfo();
-  }, []);
+
   return (
     <div className="bg-white text-center py-10">
       <div className="text-primary text-18 font-medium relative flex justify-center px-40 pl-50">
@@ -75,9 +68,9 @@ function Header() {
             <Form.Item
               name="deviceName"
               label="Name"
-              rules={[requiredTrimValidate()]}
+              rules={[hostnameValidate(32)]}
             >
-              <Input placeholder="recamera_132456" maxLength={32} clearable />
+              <Input placeholder="recamera-132456" maxLength={32} clearable />
             </Form.Item>
           </Form>
         </CommonPopup>

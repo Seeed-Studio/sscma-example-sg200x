@@ -11,9 +11,10 @@ export enum DeviceNeedRestart {
   Yes = 1, //需要
 }
 
-export enum IsUpgrading {
-  No = 0, //不在升级中
-  Yes = 1, //升级中
+export enum SystemUpdateStatus {
+  Normal = 1, //正常,不需要升级
+  Updating = 2, //升级中
+  Checking = 3, //检查中
 }
 
 export enum ServiceStatus {

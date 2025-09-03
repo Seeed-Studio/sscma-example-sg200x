@@ -68,6 +68,11 @@ function isValidType(type: string): type is keyof typeof typePriority {
   return type in typePriority;
 }
 
+interface Node {
+  type: string;
+  label?: string;
+}
+
 const Workspace = () => {
   const { token, appInfo, nickname, updateAppInfo, updateNickname } =
     usePlatformStore();
@@ -87,7 +92,7 @@ const Workspace = () => {
   const [showDeviceList, setShowDeviceList] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [deviceListRefreshing, setDeviceListRefreshing] = useState(false);
   const [loadingTip, setLoadingTip] = useState("");
 
   const [focusAppid, setFocusAppid] = useState("");
@@ -96,6 +101,8 @@ const Workspace = () => {
 
   const [timestamp, setTimestamp] = useState<number>(1);
 
+  const [appListLoading, setAppListLoading] = useState(false);
+  const [userInfoLoading, setUserInfoLoading] = useState(false);
   useEffect(() => {
     const initPlatform = async () => {
       const param = parseUrlParam(window.location.href);
@@ -139,7 +146,7 @@ const Workspace = () => {
 
   const handleRefreshDeviceList = async () => {
     try {
-      setRefreshing(true);
+      setDeviceListRefreshing(true);
       const { data } = await getDeviceListApi();
       const deviceList = data.deviceList.map((device) => {
         if (device.info && typeof device.info === "string") {
@@ -186,16 +193,18 @@ const Workspace = () => {
         return acc;
       }, [] as typeof deviceList);
       setDevicelist(filteredDeviceList);
-      setRefreshing(false);
+      setDeviceListRefreshing(false);
       setShowDeviceList(filteredDeviceList.length > 0);
     } catch (error) {
-      setRefreshing(false);
+      setDeviceListRefreshing(false);
       console.error("Error fetching DeviceList status:", error);
     }
   };
 
   useEffect(() => {
-    handleRefreshDeviceList();
+    if (deviceInfo?.sn) {
+      handleRefreshDeviceList();
+    }
   }, [deviceInfo?.sn]);
 
   useEffect(() => {
@@ -242,6 +251,7 @@ const Workspace = () => {
 
   const getSensecraftUserInfo = async () => {
     try {
+      setUserInfoLoading(true);
       const response = await getSensecraftUserInfoApi();
       if (response.code == 0) {
         const data = response.data;
@@ -249,12 +259,17 @@ const Workspace = () => {
         updateNickname(nickname);
         savePlatformInfo();
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setUserInfoLoading(false);
+    }
   };
 
   // 获取应用列表
   const getAppList = async () => {
     try {
+      setAppListLoading(true);
       const response = await getAppListApi();
       if (response.code == 0) {
         const data = response.data;
@@ -263,6 +278,8 @@ const Workspace = () => {
       }
     } catch (error) {
       setApplist([]);
+    } finally {
+      setAppListLoading(false);
     }
   };
 
@@ -358,7 +375,7 @@ const Workspace = () => {
   const getLocalModel = async (flowsData: [] | null | undefined) => {
     try {
       //判断flow里面有没有模型积木，如果有模型积木，则需要处理模型文件的下载更新
-      const hasModel = flowsData?.some((node: any) => node.type === "model");
+      const hasModel = flowsData?.some((node: Node) => node.type === "model");
       if (hasModel) {
         // 查询设备本地模型信息与模型MD5
         const { model_data: data, model_md5: md5 } = await getModelInfo();
@@ -388,7 +405,6 @@ const Workspace = () => {
         setTimestamp(new Date().getTime());
       }
     } catch (error) {
-      //
       console.log(error);
     }
   };
@@ -405,10 +421,10 @@ const Workspace = () => {
       localFlows === cloudApp.flow_data;
     // 判断本地模型MD5是否变化
     const isLocalModelUnchanged =
-      cloudApp.model_data.model_id === "0" &&
-      localModel?.model_md5 === cloudApp.model_data.model_md5;
+      cloudApp.model_data?.model_id === "0" &&
+      localModel?.model_md5 === cloudApp.model_data?.model_md5;
     // 判断是否本地模型
-    const isNonLocalModel = cloudApp.model_data.model_id !== "0";
+    const isNonLocalModel = cloudApp.model_data?.model_id !== "0";
     return isFlowDataEqual && (isLocalModelUnchanged || isNonLocalModel);
   };
 
@@ -419,12 +435,8 @@ const Workspace = () => {
       setLoadingTip("Loading app");
       const isSaveSuccess = await checkAndSaveLocalApp();
       if (isSaveSuccess) {
-        //查询应用详情
-        const cloudApp = await getAppInfo(app_id);
-        if (cloudApp) {
-          //更新
-          syncCloudAppToLocal(cloudApp);
-        }
+        //更新
+        syncCloudAppToLocal(app_id);
       } else {
         messageApi.error("Load app failed");
       }
@@ -588,8 +600,8 @@ const Workspace = () => {
           if (confirmed) {
             // 给设备当前应用创建app
             const firstTabNode = localFlowsData?.find(
-              (node: any) => node.type === "tab"
-            ) as any;
+              (node: Node) => node.type === "tab"
+            ) as Node | undefined;
             let app_name;
             if (firstTabNode) {
               app_name = firstTabNode.label;
@@ -657,8 +669,8 @@ const Workspace = () => {
       } else {
         // 给设备当前应用创建app
         const firstTabItem = localFlowsData?.find(
-          (node: any) => node.type === "tab"
-        ) as any;
+          (node: Node) => node.type === "tab"
+        ) as Node | undefined;
         let app_name;
         if (firstTabItem) {
           app_name = firstTabItem.label;
@@ -669,15 +681,29 @@ const Workspace = () => {
           model_data: model_data,
         });
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   //将云端数据同步到本地
-  const syncCloudAppToLocal = async (app?: IAppInfo) => {
-    if (!app) {
-      return;
-    }
+  const syncCloudAppToLocal = async (appOrId?: string | IAppInfo) => {
     try {
+      let app: IAppInfo | undefined | null;
+
+      if (typeof appOrId === "string") {
+        // 如果是字符串，说明是app_id，需要查询app对象
+        const appInfo = await getAppInfo(appOrId);
+        app = appInfo;
+      } else if (appOrId) {
+        // 如果直接传入了app对象，直接使用
+        app = appOrId;
+      }
+
+      if (!app) {
+        return;
+      }
+
       setLoading(true);
       setLoadingTip(
         "Syncing SenseCraft Cloud application to Node-red. The flow will be automatically deploy on the device."
@@ -728,8 +754,8 @@ const Workspace = () => {
           // 如果md5值有变化就重新上传
           // 如果云端应用没有url
           if (
-            !cloudApp.model_data.arguments?.url ||
-            cloudApp.model_data.model_md5 != model_data.model_md5
+            !cloudApp.model_data?.arguments?.url ||
+            cloudApp.model_data?.model_md5 != model_data.model_md5
           ) {
             const model_name = model_data.model_name;
             const file_name = `${model_name}_${cloudApp.app_id}`;
@@ -830,16 +856,20 @@ const Workspace = () => {
           const list = data.list;
           if (needUpdateApp && list.length > 0) {
             const app = list[0];
-            await syncLocalAppToCloud({
-              cloudApp: app,
-              flow_data_str: flow_data,
-              model_data: model_data,
-            });
-            if (needUpdateFlow) {
-              await sendFlow(app.flow_data);
+            app.flow_data = flow_data;
+            app.model_data = model_data;
+            if (app) {
+              await syncLocalAppToCloud({
+                cloudApp: app,
+                flow_data_str: flow_data,
+                model_data: model_data,
+              });
+              if (needUpdateFlow) {
+                await sendFlow(app.flow_data);
+              }
+              updateAppInfo(app);
+              savePlatformInfo();
             }
-            updateAppInfo(app);
-            savePlatformInfo();
           }
           setApplist(list);
           messageApi.success("Create app successful");
@@ -914,11 +944,6 @@ const Workspace = () => {
           flow_data_str: localFlowsDataStr,
           model_data: model_data,
         });
-        const app = applist.find((item) => item.app_id === localAppInfo.app_id);
-        if (app) {
-          app.flow_data = localAppInfo.flow_data;
-          app.model_data = localAppInfo.model_data;
-        }
       }
     } catch (error) {
       console.log(error);
@@ -986,13 +1011,21 @@ const Workspace = () => {
         });
         if (response.code == 0) {
           currApp.app_name = inputRef.current;
-          setApplist(applist);
+          setApplist([...applist]);
         }
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    }
   };
 
-  const handleDeleteApp = async (app: IAppInfo) => {
+  const handleDeleteApp = async (app_id: string) => {
+    const app = await getAppInfo(app_id);
+    if (!app) {
+      messageApi.error("App is not exist");
+      getAppList();
+      return;
+    }
     const config = {
       title: `Are you sure to delete ${app.app_name}`,
       content: (
@@ -1020,7 +1053,7 @@ const Workspace = () => {
       if (response.code == 0) {
         const model_data = app.model_data;
         //如果是本地模型。则把本地模型在云端的存储也删掉
-        if (model_data.model_id == "0") {
+        if (model_data?.model_id == "0") {
           const model_name = model_data.model_name;
           const file_name = `${model_name}_${app.app_id}`;
           //异步删除就好，不需要考虑结果
@@ -1033,15 +1066,15 @@ const Workspace = () => {
         setApplist(updatedAppList);
         // 如果删除的是当前应用则切换为第一个应用
         if (app.app_id == appInfo?.app_id) {
-          syncCloudAppToLocal(updatedAppList[0]);
+          syncCloudAppToLocal(updatedAppList[0]?.app_id);
         }
       }
     }
   };
 
-  const handleSelectApp = async (app: IAppInfo) => {
-    if (app.app_id != appInfo?.app_id) {
-      await syncCloudAppToLocal(app);
+  const handleSelectApp = async (app_id: string) => {
+    if (app_id != appInfo?.app_id) {
+      await syncCloudAppToLocal(app_id);
     }
   };
 
@@ -1175,7 +1208,7 @@ const Workspace = () => {
                   </div>
                 </div>
 
-                <Spin spinning={refreshing}>
+                <Spin spinning={deviceListRefreshing}>
                   <div className="rounded-4 p-8 border border-disable">
                     <div className="flex justify-between items-center text-12 text-primary">
                       <div>View device under same network</div>
@@ -1215,7 +1248,7 @@ const Workspace = () => {
                   <Button
                     className="mx-auto text-12 rounded-24 h-24"
                     type="primary"
-                    disabled={refreshing}
+                    disabled={deviceListRefreshing}
                     onClick={handleRefreshDeviceList}
                   >
                     Refresh
@@ -1224,31 +1257,69 @@ const Workspace = () => {
               </div>
             </div>
           )}
-          <div className="flex flex-col">
-            <div className="flex justify-between mb-12">
-              <div className="text-20 font-semibold">My Application</div>
-              {token && (
-                <PlusCircleOutlined
-                  className="text-primary text-20"
-                  onClick={handleCreateApp}
-                />
-              )}
-            </div>
-            {token ? (
+          {token ? (
+            <Spin spinning={appListLoading || userInfoLoading}>
               <div className="flex flex-col">
-                <div className="max-h-200 overflow-y-auto">
-                  {applist?.length > 0 &&
-                    applist.map((app, index) =>
-                      appInfo?.app_id == app.app_id ? (
-                        <div key={index} className="flex mb-10 mr-6 h-40">
+                <div className="flex justify-between mb-12">
+                  <div className="text-20 font-semibold">My Application</div>
+                  <PlusCircleOutlined
+                    className="text-primary text-20"
+                    onClick={handleCreateApp}
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <div className="h-200 overflow-y-auto">
+                    {applist?.length > 0 &&
+                      applist.map((app, index) =>
+                        appInfo?.app_id == app.app_id ? (
+                          <div key={index} className="flex mb-10 mr-6 h-40">
+                            <div
+                              className="flex flex-1 text-14 text-primary border border-primary rounded-4 p-8"
+                              onMouseEnter={() => handleFocusApp(app.app_id)}
+                              onMouseLeave={() => handleBlurApp()}
+                            >
+                              <div
+                                className="flex flex-1 font-medium cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                                onClick={() => handleSelectApp(app.app_id)}
+                              >
+                                {app.app_name}
+                              </div>
+                              <div
+                                className={`flex ${
+                                  focusAppid == app.app_id ? "flex" : "hidden"
+                                }`}
+                              >
+                                <EditOutlined
+                                  className="mr-5 ml-5 pt-5 pb-5"
+                                  onClick={() => handleEditApp(app.app_id)}
+                                />
+                                {applist.length > 1 && (
+                                  <DeleteOutlined
+                                    className="pt-5 pb-5"
+                                    onClick={() => handleDeleteApp(app.app_id)}
+                                  />
+                                )}
+                              </div>
+                            </div>
+
+                            {syncing && (
+                              <SyncOutlined
+                                className="text-disable ml-10 mr-15 text-20"
+                                spin
+                              />
+                            )}
+                          </div>
+                        ) : (
                           <div
-                            className="flex flex-1 text-14 text-primary border border-primary rounded-4 p-8"
+                            key={index}
+                            className="flex mb-10 mr-6 h-30 text-12 bg-background text-text border border-disable rounded-4 px-8"
                             onMouseEnter={() => handleFocusApp(app.app_id)}
                             onMouseLeave={() => handleBlurApp()}
                           >
                             <div
-                              className="flex flex-1 font-medium cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
-                              onClick={() => handleSelectApp(app)}
+                              className="flex flex-1 items-center cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                              onClick={() => handleSelectApp(app.app_id)}
                             >
                               {app.app_name}
                             </div>
@@ -1264,82 +1335,48 @@ const Workspace = () => {
                               {applist.length > 1 && (
                                 <DeleteOutlined
                                   className="pt-5 pb-5"
-                                  onClick={() => handleDeleteApp(app)}
+                                  onClick={() => handleDeleteApp(app.app_id)}
                                 />
                               )}
                             </div>
                           </div>
-
-                          {syncing && (
-                            <SyncOutlined
-                              className="text-disable ml-10 mr-15 text-20"
-                              spin
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <div
-                          key={index}
-                          className="flex mb-10 mr-6 h-30 text-12 bg-background text-text border border-disable rounded-4 px-8"
-                          onMouseEnter={() => handleFocusApp(app.app_id)}
-                          onMouseLeave={() => handleBlurApp()}
-                        >
-                          <div
-                            className="flex flex-1 items-center cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
-                            onClick={() => handleSelectApp(app)}
-                          >
-                            {app.app_name}
-                          </div>
-                          <div
-                            className={`flex ${
-                              focusAppid == app.app_id ? "flex" : "hidden"
-                            }`}
-                          >
-                            <EditOutlined
-                              className="mr-5 ml-5 pt-5 pb-5"
-                              onClick={() => handleEditApp(app.app_id)}
-                            />
-                            {applist.length > 1 && (
-                              <DeleteOutlined
-                                className="pt-5 pb-5"
-                                onClick={() => handleDeleteApp(app)}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                </div>
-                <div>
-                  <div className="text-text text-12 mt-10 mb-10">
-                    reCamera can only run 1 application at a time
+                        )
+                      )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="flex justify-center items-center w-48 h-48 bg-primary rounded-24">
-                        <UserOutlined className="text-white text-28" />
-                      </div>
-                      <div className="ml-10 max-w-98 overflow-hidden text-ellipsis whitespace-nowrap">
-                        {nickname}
-                      </div>
-                    </div>
 
-                    <ConfigProvider
-                      theme={{
-                        components: {
-                          Button: {
-                            defaultHoverBorderColor: "#ff4d4f",
-                            defaultHoverColor: "#ff4d4f",
+                  <div>
+                    <div className="text-text text-12 mt-10 mb-10">
+                      reCamera can only run 1 application at a time
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className="flex justify-center items-center w-48 h-48 bg-primary rounded-24">
+                          <UserOutlined className="text-white text-28" />
+                        </div>
+                        <div className="ml-10 max-w-98 overflow-hidden text-ellipsis whitespace-nowrap">
+                          {nickname}
+                        </div>
+                      </div>
+
+                      <ConfigProvider
+                        theme={{
+                          components: {
+                            Button: {
+                              defaultHoverBorderColor: "#ff4d4f",
+                              defaultHoverColor: "#ff4d4f",
+                            },
                           },
-                        },
-                      }}
-                    >
-                      <Button onClick={handleLogout}>Log out</Button>
-                    </ConfigProvider>
+                        }}
+                      >
+                        <Button onClick={handleLogout}>Log out</Button>
+                      </ConfigProvider>
+                    </div>
                   </div>
                 </div>
               </div>
-            ) : (
+            </Spin>
+          ) : (
+            <div className="flex-1 flex items-end">
               <Button
                 type="primary"
                 className="block my-24 mx-auto"
@@ -1347,8 +1384,8 @@ const Workspace = () => {
               >
                 Login to SenseCraft
               </Button>
-            )}
-          </div>
+            </div>
+          )}
           <div className={styles.collapse} onClick={handleCollapseExpand}>
             <LeftOutlined />
           </div>

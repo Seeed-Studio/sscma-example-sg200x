@@ -25,16 +25,7 @@ export const getAppListApi = async () =>
   sensecraftRequest<{
     list: IAppInfo[];
   }>({
-    url: "aiserverapi/flow/application/list_app",
-    method: "get",
-  });
-
-// 获取应用列表
-export const getPublicAppListApi = async () =>
-  sensecraftRequest<{
-    list: IAppInfo[];
-  }>({
-    url: "aiserverapi/flow/application/query_by_option",
+    url: "aiserverapi/flow/app/v2/list_app",
     method: "get",
   });
 
@@ -55,7 +46,7 @@ export const createAppApi = async (data: {
 // 查看应用
 export const viewAppApi = async (app_id: string) =>
   sensecraftRequest<IAppInfo>({
-    url: "aiserverapi/flow/application/view_app",
+    url: "aiserverapi/flow/app/v2/view_app",
     method: "get",
     params: {
       app_id,
@@ -72,7 +63,7 @@ export const updateAppApi = async (data: {
   sensecraftRequest<{
     app_id: string;
   }>({
-    url: "aiserverapi/flow/application/update_app",
+    url: "aiserverapi/flow/app/v2/update_app",
     method: "post",
     data,
   });
@@ -82,7 +73,7 @@ export const deleteAppApi = async (data: { app_id: string }) =>
   sensecraftRequest<{
     app_id: string;
   }>({
-    url: "aiserverapi/flow/application/delete_app",
+    url: "aiserverapi/flow/app/v2/delete_app",
     method: "post",
     data,
   });

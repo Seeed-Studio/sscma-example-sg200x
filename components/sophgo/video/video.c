@@ -1,6 +1,8 @@
 #include "video.h"
 
-static bool is_started = false;
+static bool is_started   = false;
+static bool video_mirror = false;
+static bool video_flip   = false;
 
 static int setVbPool(video_ch_index_t ch, const video_ch_param_t* param) {
     APP_PARAM_SYS_CFG_S* sys = app_ipcam_Sys_Param_Get();
@@ -85,6 +87,8 @@ static int setVencChn(video_ch_index_t ch, const video_ch_param_t* param) {
 
 int initVideo(void) {
     APP_CHK_RET(app_ipcam_Param_Load(), "load global parameter");
+    video_mirror = false;
+    video_flip = false;
 
     return 0;
 }
@@ -99,7 +103,7 @@ int deinitVideo(void) {
     }
 }
 
-int startVideo(void) {
+int startVideo() {
     /* init modules include <Peripheral; Sys; VI; VB; OSD; Venc; AI; Audio; etc.> */
     APP_CHK_RET(app_ipcam_Sys_Init(), "init systerm");
     APP_CHK_RET(app_ipcam_Vi_Init(), "init vi module");
@@ -136,4 +140,17 @@ int setupVideo(video_ch_index_t ch, const video_ch_param_t* param) {
 int registerVideoFrameHandler(video_ch_index_t ch, int index, pfpDataConsumes handler, void* pUserData) {
     app_ipcam_Venc_Consumes_Set(ch, index, handler, pUserData);
     return 0;
+}
+
+int setVideoMirror(bool mirror) {
+    video_mirror = mirror;
+}
+int setVideoFlip(bool flip) {
+    video_flip = flip;
+}
+int getVideoMirror() {
+    return video_mirror;
+}
+int getVideoFlip() {
+    return video_flip;
 }

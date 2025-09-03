@@ -1,0 +1,1 @@
+This solution provides a way to attach BT UART to the system.

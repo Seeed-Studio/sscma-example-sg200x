@@ -12,7 +12,7 @@
 #define MA_BOARD_RECAMERA               1
 #define MA_BOARD_NAME                   "recamera"
 #define MA_CONFIG_FILE                  "/etc/sscma.conf"
-#define MA_MODEL_DIR                    "/userdata/MODEL/"
+#define MA_MODEL_DIR                    "/userdata/Models/"
 #define MA_OSAL_PTHREAD                 1
 #define MA_USE_FILESYSTEM               1
 #define MA_USE_FILESYSTEM_POSIX         1

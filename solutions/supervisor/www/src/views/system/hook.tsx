@@ -5,7 +5,7 @@ import {
   DeviceChannleMode,
   PowerMode,
   DeviceNeedRestart,
-  IsUpgrading,
+  SystemUpdateStatus,
   UpdateStatus,
 } from "@/enum";
 import { IChannelParams } from "@/api/device/device";
@@ -34,6 +34,8 @@ export function useData() {
   } = useConfigStore();
 
   const addressFormRef = useRef<FormInstance>(null);
+  const checkCountRef = useRef(0);
+  const maxCheckCount = 10;
 
   const onQueryDeviceInfo = async () => {
     const res = await queryDeviceInfoApi();
@@ -94,9 +96,7 @@ export function useData() {
   };
   const onUpdateApply = async () => {
     try {
-      await updateSystemApi({
-        downloadUrl: systemUpdateState.downloadUrl || "",
-      });
+      await updateSystemApi();
       getProgress();
     } catch (err) {
       onCancleReset();
@@ -120,58 +120,92 @@ export function useData() {
     });
   };
   const onUpdateCheck = async (click?: boolean) => {
-    let status: UpdateStatus = UpdateStatus.Check;
+    // 重置检查计数器
+    checkCountRef.current = 0;
 
-    const url =
-      deviceInfo.channel == DeviceChannleMode.Official
-        ? deviceInfo.officialUrl
-        : deviceInfo.serverUrl;
-    if (!url) {
-      // 只有第一次使用时，没有url，重置为check
-      setSystemUpdateState({
-        status: UpdateStatus.Check,
-      });
-      return;
-    }
-    try {
-      const { code, data } = await getSystemUpdateVesionInfoApi({
-        channel: deviceInfo.channel,
-        url: url,
-      });
-      if (code == -1) {
-        message.warning(
-          "Failed to get system version update from the server, please check the Beta Participation Channel"
-        );
+    const performCheck = async () => {
+      let status: UpdateStatus = UpdateStatus.Check;
+
+      const url =
+        deviceInfo.channel == DeviceChannleMode.Official
+          ? deviceInfo.officialUrl
+          : deviceInfo.serverUrl;
+      if (!url) {
+        // 只有第一次使用时，没有url，重置为check
+        setSystemUpdateState({
+          status: UpdateStatus.Check,
+        });
         return;
       }
-      if (data.isUpgrading === IsUpgrading.Yes) {
-        getProgress();
-        return;
-      }
-      if (!data.osName || !data.osVersion) {
+
+      // 检查是否超过最大检查次数
+      if (checkCountRef.current >= maxCheckCount) {
         status = UpdateStatus.NoNeedUpdate;
         setStatus(status, click);
         return;
       }
-      if (
-        deviceInfo.osName != data.osName ||
-        deviceInfo.osVersion != data.osVersion
-      ) {
-        status = UpdateStatus.NeedUpdate;
-      } else {
-        status = UpdateStatus.NoNeedUpdate;
 
+      try {
+        const { code, data } = await getSystemUpdateVesionInfoApi({
+          channel: deviceInfo.channel,
+          url: url,
+        });
+
+        checkCountRef.current++;
+
+        if (code == -1) {
+          message.warning(
+            "Failed to get system version update from the server, please check the Beta Participation Channel"
+          );
+          return;
+        }
+
+        if (data.status === SystemUpdateStatus.Checking) {
+          // 如果是检查中状态，5秒后继续查询
+          setTimeout(() => {
+            performCheck();
+          }, 5000);
+          return;
+        }
+
+        if (data.status === SystemUpdateStatus.Updating) {
+          // 升级中状态，获取进度
+          getProgress();
+          return;
+        }
+
+        if (data.status === SystemUpdateStatus.Normal) {
+          // 正常状态，通过版本对比决定是否更新
+          if (!data.osName || !data.osVersion) {
+            status = UpdateStatus.NoNeedUpdate;
+            setStatus(status, click);
+            return;
+          }
+
+          if (
+            deviceInfo.osName != data.osName ||
+            deviceInfo.osVersion != data.osVersion
+          ) {
+            status = UpdateStatus.NeedUpdate;
+          } else {
+            status = UpdateStatus.NoNeedUpdate;
+            setStatus(status, click);
+          }
+
+          setSystemUpdateState({
+            status: status,
+          });
+          return;
+        }
+      } catch (err) {
+        console.log(err);
+        status = UpdateStatus.NoNeedUpdate;
         setStatus(status, click);
       }
-      setSystemUpdateState({
-        status: status,
-        downloadUrl: data.downloadUrl + "/upgrade.zip",
-      });
-    } catch (err) {
-      console.log(err, 999);
-      status = UpdateStatus.NoNeedUpdate;
-      setStatus(status, click);
-    }
+    };
+
+    // 开始执行检查
+    await performCheck();
   };
   const onChannelChange = () => {
     setSystemUpdateState({

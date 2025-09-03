@@ -20,6 +20,7 @@ interface IDeviceInfo {
   osName: string;
   osUpdateTime: string;
   needRestart: DeviceNeedRestart;
+  type: string; //Gimbal with Wifi - 8G
   [prop: string]: string;
 }
 

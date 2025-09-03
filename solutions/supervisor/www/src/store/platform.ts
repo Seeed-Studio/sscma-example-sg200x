@@ -49,7 +49,9 @@ export const savePlatformInfo = async () => {
       app_info: JSON.stringify(appInfo),
     };
     await savePlatformInfoApi({ platform_info: JSON.stringify(platform_info) });
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const initPlatformStore = async (
@@ -96,7 +98,9 @@ export const initPlatformStore = async (
         });
       }
     }
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const getLocalPlatformInfo = async () => {

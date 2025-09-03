@@ -5,6 +5,7 @@
 #include "model.h"
 #include "save.h"
 #include "stream.h"
+#include "qrcode.h"
 
 namespace ma::node {
 
@@ -153,6 +154,7 @@ NodeServer::NodeServer(std::string client_id) : m_client(nullptr), m_connected(f
     NodeFactory::registerNode("model", [](const std::string& id) { return new ModelNode(id); });
     NodeFactory::registerNode("save", [](const std::string& id) { return new SaveNode(id); });
     NodeFactory::registerNode("stream", [](const std::string& id) { return new StreamNode(id); });
+    NodeFactory::registerNode("qrcode", [](const std::string& id) { return new QRCodeNode(id); });
 #endif
 }
 NodeServer::~NodeServer() {

@@ -21,6 +21,7 @@ using namespace ma::node;
 
 void show_version() {
     std::cout << PROJECT_VERSION << std::endl;
+    std::cout << "build: " << __DATE__ " " __TIME__ << std::endl;
 }
 
 void show_help() {

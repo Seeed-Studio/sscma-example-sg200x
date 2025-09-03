@@ -1,5 +1,5 @@
 import { supervisorRequest } from "@/utils/request";
-import { PowerMode, DeviceChannleMode, IsUpgrading } from "@/enum";
+import { PowerMode, DeviceChannleMode, SystemUpdateStatus } from "@/enum";
 import {
   IDeviceInfo,
   IChannelParams,
@@ -68,11 +68,10 @@ export const setDevicePowerApi = async (data: { mode: PowerMode }) =>
     data,
   });
 // 更新设备系统
-export const updateSystemApi = async (data: { downloadUrl: string }) =>
+export const updateSystemApi = async () =>
   supervisorRequest({
     url: "api/deviceMgr/updateSystem",
     method: "post",
-    data,
   });
 // 获取设备更新进度
 export const getUpdateSystemProgressApi = async () =>
@@ -97,11 +96,10 @@ export const getSystemUpdateVesionInfoApi = async (data: {
   supervisorRequest<{
     osName: string;
     osVersion: string;
-    downloadUrl: string;
-    isUpgrading: IsUpgrading;
+    status: SystemUpdateStatus;
   }>(
     {
-      url: "api/deviceMgr/getSystemUpdateVesionInfo",
+      url: "api/deviceMgr/getSystemUpdateVersion",
       method: "post",
       data,
     },
@@ -110,7 +108,7 @@ export const getSystemUpdateVesionInfoApi = async (data: {
     }
   );
 
-// 获取设备信息
+// 获取模型信息
 export const getModelInfoApi = async () =>
   supervisorRequest<IDeviceInfo>(
     {

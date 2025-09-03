@@ -10,7 +10,7 @@ set(AUDIO_INC
 
 set(AUDIO_RREQIRDS atomic pthread 
     tinyalsa cvi_audio cvi_dnvqe cvi_ssp cvi_ssp2 cvi_vqe cvi_VoiceEngine cvi_RES1
-    aacdec2 aacenc2 aaccomm2 aacsbrdec2 aacsbrenc2
+    aacdec2 aacenc2 aaccomm2 aacsbrdec2 aacsbrenc2 
 )
 
 # set(SUPPORT_EXTERNAL_AAC yes)

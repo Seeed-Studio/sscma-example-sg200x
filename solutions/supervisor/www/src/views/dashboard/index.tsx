@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, FloatButton, Tooltip } from "antd";
-import { baseIP } from "@/utils/noderedRequest";
+import { baseIP } from "@/utils/supervisorRequest";
 import DashboardImg from "@/assets/images/svg/dashboard.svg";
 import { getFlows } from "@/api/nodered";
 

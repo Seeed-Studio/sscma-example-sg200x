@@ -1,26 +1,25 @@
 import {
   WifiConnectedStatus,
-  WifiAutoConnect,
   WifiIpAssignmentRule,
-} from '@/enum/network'
+  NetworkStatus,
+} from "@/enum/network";
+
 interface IWifiInfo {
-  ssid: string
-  auth: number
-  signal: number
-  connectedStatus: WifiConnectedStatus
-  connectChecked: boolean
-  connectedStatusText: string
-  macAddress: string
-  ip: string
-  ipAssignment: WifiIpAssignmentRule
-  type: number
-  autoConnect: WifiAutoConnect
-  subnetMask: string
-  ipAssignmentText: string
-  loading?: boolean
+  ssid: string;
+  auth: number;
+  signal: number;
+  connectedStatus: WifiConnectedStatus;
+  status: NetworkStatus;
+  macAddress: string;
+  ip: string;
+  ipAssignment: WifiIpAssignmentRule;
+  subnetMask: string;
+  dns1?: string;
+  dns2?: string;
+  loading?: boolean;
 }
 
 interface IConnectParams {
-  ssid: string
-  password?: string
+  ssid: string;
+  password?: string;
 }

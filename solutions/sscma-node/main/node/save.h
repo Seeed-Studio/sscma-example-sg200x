@@ -1,3 +1,4 @@
+// save.h
 #pragma once
 
 extern "C" {
@@ -35,17 +36,23 @@ protected:
 
 private:
     std::string generateFileName();
+    std::string generateImageFileName();
     bool recycle(uint32_t req_size = 0);
     bool openFile(videoFrame* frame);
+    bool saveImage(videoFrame* frame);
     void closeFile();
 
 protected:
     std::string storage_;
+    std::string saveMode_;  // "video" or "image"
     int slice_;
     int duration_;
     ma_tick_t begin_;
+    ma_tick_t start_;  // For tracking interval timing
+    bool manual_capture_requested_;  // For manual capture mode
     int vcount_;
     int acount_;
+    int imageCount_;  // Counter for saved images
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
@@ -53,6 +60,9 @@ protected:
     AVFormatContext* avFmtCtx_;
     AVStream* avStream_;
     AVStream* audioStream_;
+    const AVCodec* audioCodec_;
+    AVCodecContext* audioCodecCtx_;
+    std::vector<uint8_t> audio_buffer_;
 };
 
 }  // namespace ma::node

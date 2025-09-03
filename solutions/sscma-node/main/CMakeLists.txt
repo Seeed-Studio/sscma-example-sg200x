@@ -8,7 +8,7 @@ component_register(
     COMPONENT_NAME main
     SRCS ${srcs}
     INCLUDE_DIRS ${incs}
-    PRIVATE_REQUIREDS sscma-micro avformat avcodec avutil asound opencv_core opencv_imgcodecs opencv_imgproc
+    PRIVATE_REQUIREDS sscma-micro avformat avcodec avutil swresample asound opencv_core opencv_imgcodecs opencv_imgproc quirc z
 )
 
 

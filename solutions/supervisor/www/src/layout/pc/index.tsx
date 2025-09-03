@@ -8,9 +8,10 @@ import NetworkImg from "@/assets/images/svg/network.svg";
 import TerminalImg from "@/assets/images/svg/terminal.svg";
 import SystemImg from "@/assets/images/svg/system.svg";
 import PowerImg from "@/assets/images/svg/power.svg";
+import FilesImg from "@/assets/images/svg/files.svg";
 import ApplicationImg from "@/assets/images/svg/application.svg";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
-import { requiredTrimValidate } from "@/utils/validate";
+import { hostnameValidate } from "@/utils/validate";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface Props {
@@ -26,6 +27,7 @@ const menuList = [
       judgeApp: true,
     },
     { label: "Workspace", icon: ApplicationImg, route: "/workspace" },
+    { label: "Files", icon: FilesImg, route: "/files" },
     { label: "Security", icon: SecurityImg, route: "/security" },
     { label: "Network", icon: NetworkImg, route: "/network" },
   ],
@@ -51,17 +53,18 @@ const PCLayout: React.FC<Props> = ({ children }) => {
   };
 
   const handleEditNameOk = async () => {
-    const fieldsValue = form.getFieldsValue();
-    const deviceName = fieldsValue.deviceName?.trim() || "";
-    if (deviceName && deviceName.length > 0) {
+    try {
+      const values = await form.validateFields();
+      const deviceName = (values.deviceName || "").trim();
       setConfirmLoading(true);
-      await updateDeviceInfoApi({
-        deviceName: deviceName,
-      });
+      await updateDeviceInfoApi({ deviceName });
       setIsEditNameModalOpen(false);
-      setConfirmLoading(false);
       form.resetFields();
       await onQueryDeviceInfo();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -149,9 +152,9 @@ const PCLayout: React.FC<Props> = ({ children }) => {
           <Form.Item
             name="deviceName"
             label="Name"
-            rules={[requiredTrimValidate()]}
+            rules={[hostnameValidate(32)]}
           >
-            <Input placeholder="recamera_132456" maxLength={32} allowClear />
+            <Input placeholder="recamera-132456" maxLength={32} allowClear />
           </Form.Item>
         </Form>
       </Modal>
