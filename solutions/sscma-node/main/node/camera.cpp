@@ -15,7 +15,7 @@ const char* VIDEO_FORMATS[] = {"raw", "jpeg", "h264"};
         Thread::enterCritical();                                                                                                             \
         Thread::sleep(Tick::fromMilliseconds(100));                                                                                          \
         MA_LOGI(TAG, "start video");                                                                                                         \
-        startVideo();                                                                                                         \
+        startVideo();                                                                                                                        \
         Thread::sleep(Tick::fromSeconds(1));                                                                                                 \
         Thread::exitCritical();                                                                                                              \
         server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "enabled"}, {"code", MA_OK}, {"data", enabled_.load()}})); \
@@ -154,7 +154,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
         if (frame != nullptr) {
             frame->ref(channels_[VencChn].msgboxes.size());
             for (auto& msgbox : channels_[VencChn].msgboxes) {
-                if (!msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[VencChn].fps)))) {
+                if (msgbox->isFull() || !msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[VencChn].fps)))) {
                     frame->release();
                     channels_[VencChn].dropped = true;
                 }
@@ -192,7 +192,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     frame->fps          = channels_[pstVencChnCfg->VencChn].fps;
     frame->ref(channels_[pstVencChnCfg->VencChn].msgboxes.size());
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
-        if (!msgbox->post(frame, Tick::fromMilliseconds(5))) {
+        if (msgbox->isFull() || !msgbox->post(frame, Tick::fromMilliseconds(5))) {
             frame->release();
         }
     }
@@ -349,7 +349,7 @@ void CameraNode::threadAudioEntry() {
         memcpy(frame->data, buffer, chunk_size * bits_per_sample / 8 * 2);
         frame->ref(channels_[CHN_AUDIO].msgboxes.size());
         for (auto& msgbox : channels_[CHN_AUDIO].msgboxes) {
-            if (!msgbox->post(frame, Tick::fromMilliseconds(20))) {
+            if (msgbox->isFull() || !msgbox->post(frame, Tick::fromMilliseconds(20))) {
                 frame->release();
             }
         }
@@ -507,7 +507,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
         transport_ = nullptr;
     }
 
-    if(preview_ || websocket_) {
+    if (preview_ || websocket_) {
         thread_ = new Thread((type_ + "#" + id_).c_str(), &CameraNode::threadEntryStub, this);
         if (thread_ == nullptr) {
             MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
