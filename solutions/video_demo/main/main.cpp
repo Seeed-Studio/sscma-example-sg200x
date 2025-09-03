@@ -135,21 +135,21 @@ int main(int argc, char* argv[]) {
 
     video_ch_param_t param;
 
-    // ch0
-    param.format = VIDEO_FORMAT_RGB888;
-    param.width  = 1920;
-    param.height = 1080;
-    param.fps    = 10;
-    setupVideo(VIDEO_CH0, &param);
-    registerVideoFrameHandler(VIDEO_CH0, 0, fpSaveVpssFrame, (void*)".rgb");
+    // // ch0
+    // param.format = VIDEO_FORMAT_RGB888;
+    // param.width  = 1920;
+    // param.height = 1080;
+    // param.fps    = 10;
+    // setupVideo(VIDEO_CH0, &param);
+    // registerVideoFrameHandler(VIDEO_CH0, 0, fpSaveVpssFrame, (void*)".rgb");
 
-    // ch1
-    param.format = VIDEO_FORMAT_NV21;
-    param.width  = 1920;
-    param.height = 1080;
-    param.fps    = 5;
-    setupVideo(VIDEO_CH1, &param);
-    registerVideoFrameHandler(VIDEO_CH1, 0, fpSaveVpssFrame, (void*)".nv21");
+    // // ch1
+    // param.format = VIDEO_FORMAT_NV21;
+    // param.width  = 1920;
+    // param.height = 1080;
+    // param.fps    = 5;
+    // setupVideo(VIDEO_CH1, &param);
+    // registerVideoFrameHandler(VIDEO_CH1, 0, fpSaveVpssFrame, (void*)".nv21");
 
     // ch2
 #if 0
