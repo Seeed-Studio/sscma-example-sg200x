@@ -61,7 +61,7 @@ public:
         REG_API(getCameraWebsocketUrl);
 
         REG_API(getDeviceInfo);
-        REG_API(getDeviceList);
+        REG_API_NO_AUTH(getDeviceList);
         REG_API(updateDeviceName);
         REG_API_NO_AUTH(queryDeviceInfo);
         REG_API(getSystemStatus);
