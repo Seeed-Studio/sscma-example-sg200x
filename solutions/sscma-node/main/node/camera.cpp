@@ -154,7 +154,7 @@ int CameraNode::vencCallback(void* pData, void* pArgs) {
         if (frame != nullptr) {
             frame->ref(channels_[VencChn].msgboxes.size());
             for (auto& msgbox : channels_[VencChn].msgboxes) {
-                if (msgbox->isFull() || !msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[VencChn].fps)))) {
+                if (!msgbox->post(frame, Tick::fromMilliseconds(static_cast<int>(1000.0 / channels_[VencChn].fps)))) {
                     frame->release();
                     channels_[VencChn].dropped = true;
                 }
