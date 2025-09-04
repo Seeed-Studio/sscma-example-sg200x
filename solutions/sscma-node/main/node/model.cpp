@@ -40,11 +40,11 @@ ModelNode::~ModelNode() {
 }
 void ModelNode::threadEntry() {
 
-    ma_err_t err     = MA_OK;
-    videoFrame* raw  = nullptr;
-    videoFrame* jpeg = nullptr;
-    int32_t width    = 0;
-    int32_t height   = 0;
+    ma_err_t err          = MA_OK;
+    videoFrame* raw       = nullptr;
+    videoFrame* jpeg      = nullptr;
+    int32_t width         = 0;
+    int32_t height        = 0;
     int32_t target_width  = 0;
     int32_t target_height = 0;
     std::vector<std::string> labels;
@@ -232,7 +232,7 @@ void ModelNode::threadEntry() {
                 std::vector<uint16_t> contour;
                 if (maxContour != contours.end()) {
                     contour.reserve(maxContour->size() * 2);
-                    float w_scale = width  * scale_w / result.mask.width;
+                    float w_scale = width * scale_w / result.mask.width;
                     float h_scale = target_height / result.mask.height;
                     for (auto& c : *maxContour) {
                         contour.push_back(static_cast<uint16_t>(c.x * w_scale + offset_x));
@@ -372,11 +372,17 @@ ma_err_t ModelNode::onCreate(const json& config) {
                 counter_.setSplitter(config["splitter"].get<std::vector<int16_t>>());
             }
             if (config.contains("previewResolution") && config["previewResolution"].is_string()) {
-                std::string resolution = config["previewResolution"].get<std::string>();
-                size_t pos             = resolution.find('x');
-                if (pos != std::string::npos) {
-                    preview_width_  = std::stoi(resolution.substr(0, pos));
-                    preview_height_ = std::stoi(resolution.substr(pos + 1));
+                // if previewResolution is auto
+                if (config["previewResolution"].get<std::string>() == "auto") {
+                    preview_width_  = -1;
+                    preview_height_ = -1;
+                } else {
+                    std::string resolution = config["previewResolution"].get<std::string>();
+                    size_t pos             = resolution.find('x');
+                    if (pos != std::string::npos) {
+                        preview_width_  = std::stoi(resolution.substr(0, pos));
+                        preview_height_ = std::stoi(resolution.substr(pos + 1));
+                    }
                 }
             }
             if (config.contains("previewFps") && config["previewFps"].is_number_integer()) {
@@ -543,6 +549,10 @@ ma_err_t ModelNode::onStart() {
     camera_->config(CHN_RAW, img->width, img->height, preview_fps_, img->format);
     camera_->attach(CHN_RAW, &raw_frame_);
     if (debug_) {
+        if (preview_width_ == -1 || preview_height_ == -1) {
+            preview_width_  = img->width;
+            preview_height_ = img->height;
+        }
         camera_->config(CHN_JPEG, preview_width_, preview_height_, preview_fps_, MA_PIXEL_FORMAT_JPEG);
         camera_->attach(CHN_JPEG, &jpeg_frame_);
     }
