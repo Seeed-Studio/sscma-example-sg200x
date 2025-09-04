@@ -391,29 +391,30 @@ function deleteSShkey() {
     echo $STR_OK
 }
 
-function setSShStatus() {
+_set_ssh_status() {
+    local status=$1
     local dir="$DIR_INID"
     local dir_disabled="$DIR_INID_DISABLED"
-    local ret=0
 
-    if [ $(($2)) -eq 0 ]; then
+    if [ $((status)) -eq 0 ]; then
         path=$(ls $dir/$SSH_SERVICE 2>/dev/null)
         if [ -n "$path" ] && [ -f $path ]; then
             mkdir -p $dir_disabled
-            $path stop >/dev/null 2>&1
+            $path stop
             mv $path $dir_disabled/
-            ret=$?
         fi
     else
         path=$(ls $dir_disabled/$SSH_SERVICE 2>/dev/null)
         if [ -n "$path" ] && [ -f $path ]; then
             $path restart >/dev/null 2>&1
             mv $path $dir/
-            ret=$?
         fi
     fi
+}
 
-    [ 0 -ne $((ret)) ] && echo $STR_FAILED || echo $STR_OK
+function setSShStatus() {
+    _set_ssh_status "$2" > /dev/null 2>&1 &
+    echo $STR_OK
 }
 
 function queryUserInfo() {
@@ -422,13 +423,13 @@ function queryUserInfo() {
     local sshKeyFile="$WORK_DIR/sshkey"
 
     [ -f "$FIRST_LOGIN" ] && firstLogin="true"
-    [ -n "$(ls -l $DIR_INID/$SSH_SERVICE 2>/dev/null)" ] && sshEnabled="true"
+    [ -n "$(ls $DIR_INID/$SSH_SERVICE 2>/dev/null)" ] && sshEnabled="true"
     [ -f "$sshKeyFile" ] || >"$sshKeyFile"
 
     _update_sshkey
     cat <<EOF
 { "userName": "${USER_NAME}", "firstLogin": ${firstLogin}, 
-    "sshEnabled": ${sshEnabled}, "sshKeyFile": "${sshKeyFile}"
+"sshEnabled": ${sshEnabled}, "sshKeyFile": "${sshKeyFile}"
 }
 EOF
 }
