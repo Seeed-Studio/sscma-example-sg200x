@@ -125,12 +125,11 @@ void api_wifi::start_wifi()
     _nw_info["wifiEnable"] = sta;
 
     _worker = std::thread([&]() {
-        bool ap_stopped = false;
         uint8_t timeout = 10;
 
         _need_scan = true;
         while (_running) {
-            if (_need_scan || !ap_stopped) {
+            if (_need_scan || (_ap_enable == 1)) {
                 _need_scan = false;
                 auto&& e = get_eth();
                 auto&& c = get_sta_current();
@@ -138,9 +137,9 @@ void api_wifi::start_wifi()
                 auto&& l = get_scan_list(n);
 
                 if ((e.value("status", 0) == 3) || (c.value("status", 0) == 3)) {
-                    if (!ap_stopped) {
+                    if (_ap_enable == 1) {
                         script("_ap_stop");
-                        ap_stopped = true;
+                        _ap_enable = 0;
                         timeout = 0;
                     }
                 }
@@ -321,6 +320,7 @@ api_status_t api_wifi::switchWiFi(request_t req, response_t res)
         response(res, -1, "wifi not supported");
     } else {
         _sta_enable = parse_body(req).value("mode", _sta_enable);
+        _ap_enable = _sta_enable;
         script(__func__, _sta_enable);
         response(res, 0, STR_OK);
     }
