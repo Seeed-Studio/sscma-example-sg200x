@@ -100,9 +100,11 @@ void ModelNode::threadEntry() {
         reply["data"]["resolution"] = json::array({width, height});
 
         ma_tensor_t tensor = {
-            .is_physical = true,
+            .size        = raw->img.size,
+            .is_physical = raw->img.physical,
             .is_variable = false,
         };
+
 
         tensor.data.data = reinterpret_cast<void*>(raw->img.data);
         engine_->setInput(0, tensor);

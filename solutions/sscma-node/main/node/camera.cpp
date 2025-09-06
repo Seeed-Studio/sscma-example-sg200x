@@ -170,6 +170,7 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
     VIDEO_FRAME_INFO_S* VpssFrame     = (VIDEO_FRAME_INFO_S*)pData;
     VIDEO_FRAME_S* f                  = &VpssFrame->stVFrame;
+    uint32_t offset                   = 0;
 
     if (!started_ || !enabled_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
@@ -186,10 +187,23 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     frame->img.height   = channels_[pstVencChnCfg->VencChn].height;
     frame->img.format   = channels_[pstVencChnCfg->VencChn].format;
     frame->img.key      = true;
-    frame->img.physical = true;
-    frame->img.data     = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
-    frame->timestamp    = Tick::current();
-    frame->fps          = channels_[pstVencChnCfg->VencChn].fps;
+    frame->img.physical = false;
+    frame->img.data     = new uint8_t[frame->img.size];
+    if (frame->img.data == nullptr) {
+        delete frame;
+        return CVI_FAILURE;
+    }
+
+    for (int i = 0; i < 3; i++) {
+        if (f->u32Length[i]) {
+            f->pu8VirAddr[i] = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[i], f->u32Length[i]);
+            memcpy(frame->img.data + offset, f->pu8VirAddr[i], f->u32Length[i]);
+            CVI_SYS_Munmap(f->pu8VirAddr[i], f->u32Length[i]);
+            offset += f->u32Length[i];
+        }
+    }
+    frame->timestamp = Tick::current();
+    frame->fps       = channels_[pstVencChnCfg->VencChn].fps;
     frame->ref(channels_[pstVencChnCfg->VencChn].msgboxes.size());
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
         if (msgbox->isFull() || !msgbox->post(frame, Tick::fromMilliseconds(5))) {
