@@ -19,6 +19,8 @@ readonly MODELS_PRESET="/usr/share/supervisor/models"
 # work_dir
 readonly WORK_DIR="/tmp/supervisor"
 [ ! -d "$WORK_DIR" ] && {
+    /usr/bin/ssh-keygen -A >/dev/null 2>&1 &
+
     mkdir -p "$WORK_DIR"
     chmod 400 -R "$WORK_DIR"
 
@@ -311,7 +313,7 @@ readonly SSH_KEY_FILE="$SSH_DIR/authorized_keys"
 readonly FIRST_LOGIN="/etc/.first_login"
 readonly DIR_INID="/etc/init.d"
 readonly DIR_INID_DISABLED="$DIR_INID/disabled"
-readonly SSH_SERVICE="S*sshd"
+readonly SSH_SERVICE="S50sshd"
 
 # private
 function _is_key_valid() {
@@ -396,25 +398,25 @@ _set_ssh_status() {
     local dir="$DIR_INID"
     local dir_disabled="$DIR_INID_DISABLED"
 
-    if [ $((status)) -eq 0 ]; then
-        path=$(ls $dir/$SSH_SERVICE 2>/dev/null)
-        if [ -n "$path" ] && [ -f $path ]; then
-            mkdir -p $dir_disabled
+    if [ $((status)) -eq 0 ]; then # disable
+        path="$dir/$SSH_SERVICE"
+        [[ -f "$path" ]] && {
+            [[ ! -d "$dir_disabled" ]] && mkdir -p "$dir_disabled"
             $path stop
-            mv $path $dir_disabled/
-        fi
+            mv "$path" "$dir_disabled"/
+        }
     else
-        path=$(ls $dir_disabled/$SSH_SERVICE 2>/dev/null)
-        if [ -n "$path" ] && [ -f $path ]; then
-            $path restart >/dev/null 2>&1
-            mv $path $dir/
-        fi
+        path="$dir_disabled/$SSH_SERVICE"
+        [[ -f "$path" ]] && {
+            $path start
+            mv "$path" "$dir"/
+        }
     fi
 }
 
 function setSShStatus() {
-    _set_ssh_status "$2" > /dev/null 2>&1 &
     echo $STR_OK
+    _set_ssh_status "$2" >/dev/null 2>&1 &
 }
 
 function queryUserInfo() {
@@ -422,9 +424,9 @@ function queryUserInfo() {
     local sshEnabled="false"
     local sshKeyFile="$WORK_DIR/sshkey"
 
-    [ -f "$FIRST_LOGIN" ] && firstLogin="true"
-    [ -n "$(ls $DIR_INID/$SSH_SERVICE 2>/dev/null)" ] && sshEnabled="true"
-    [ -f "$sshKeyFile" ] || >"$sshKeyFile"
+    [[ -f "$FIRST_LOGIN" ]] && firstLogin="true"
+    [[ -f "$DIR_INID/$SSH_SERVICE" ]] && sshEnabled="true"
+    [[ -f "$sshKeyFile" ]] || >"$sshKeyFile"
 
     _update_sshkey
     cat <<EOF
