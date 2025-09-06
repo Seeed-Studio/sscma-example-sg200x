@@ -462,6 +462,7 @@ _ap_stop() {
     ifconfig wlan1 0
     ifconfig wlan1 down
     /etc/init.d/S80dnsmasq restart
+    /etc/init.d/S49ntp restart
 }
 
 _sta_start() {
