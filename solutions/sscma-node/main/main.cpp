@@ -39,6 +39,8 @@ int main(int argc, char** argv) {
 
     openlog("sscma", LOG_CONS | LOG_PERROR, LOG_DAEMON);
 
+    setlogmask(LOG_UPTO(LOG_INFO));
+
     MA_LOGD("main", "version: %s build: %s", PROJECT_VERSION, __DATE__ " " __TIME__);
 
     Signal::install({SIGINT, SIGSEGV, SIGABRT, SIGTRAP, SIGTERM, SIGHUP, SIGQUIT, SIGPIPE}, [](int sig) {
