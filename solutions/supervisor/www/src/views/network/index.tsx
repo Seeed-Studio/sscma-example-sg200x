@@ -10,7 +10,12 @@ import Wifi3 from "@/assets/images/svg/wifi_3.svg";
 import Wifi4 from "@/assets/images/svg/wifi_4.svg";
 import { useData, OperateType, FormType } from "./hook";
 
-import { WifiAuth, NetworkStatus, WifiIpAssignmentRule } from "@/enum/network";
+import {
+  WifiAuth,
+  NetworkStatus,
+  WifiIpAssignmentRule,
+  WifiEnable,
+} from "@/enum/network";
 import { requiredTrimValidate } from "@/utils/validate";
 
 const wifiImg: {
@@ -81,13 +86,18 @@ function Network() {
         </div>
       )}
 
-      {/* WiFi开关：始终显示，状态由 state.wifiChecked 控制 */}
-      <div className="mt-30">
-        <div className="flex justify-between mb-20">
-          <div className="font-bold text-18">Enable Wi-Fi</div>
-          <Switch checked={state.wifiChecked} onChange={onSwitchEnabledWifi} />
+      {/* WiFi开关：当 wifiEnable !== 2 时显示，状态由 state.wifiChecked 控制 */}
+      {state.wifiEnable !== WifiEnable.Disable && (
+        <div className="mt-30">
+          <div className="flex justify-between mb-20">
+            <div className="font-bold text-18">Enable Wi-Fi</div>
+            <Switch
+              checked={state.wifiChecked}
+              onChange={onSwitchEnabledWifi}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 我的网络 - 已连接过的WiFi列表（Wi-Fi 开启时显示） */}
       {state.wifiChecked && state.connectedWifiInfoList.length > 0 && (

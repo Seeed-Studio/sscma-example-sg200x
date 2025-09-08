@@ -7,7 +7,12 @@ import {
   connectWifiApi,
   forgetWiFiApi,
 } from "@/api/network";
-import { WifiConnectedStatus, NetworkStatus, WifiAuth } from "@/enum/network";
+import {
+  WifiConnectedStatus,
+  NetworkStatus,
+  WifiAuth,
+  WifiEnable,
+} from "@/enum/network";
 import { IWifiInfo, IConnectParams } from "@/api/network/network";
 import useConfigStore from "@/store/config";
 
@@ -32,6 +37,8 @@ interface IInitialState {
   queryNum: number;
   wifiStatus: NetworkStatus;
   wifiChecked: boolean;
+  // 0: 关闭, 1: 开启, 2: 不可用
+  wifiEnable?: WifiEnable;
   wifiVisible: boolean;
   visible: boolean;
   password: string;
@@ -54,6 +61,7 @@ const initialState: IInitialState = {
   queryNum: 0,
   wifiStatus: NetworkStatus.Disconnected,
   wifiChecked: false,
+  wifiEnable: WifiEnable.Close,
   wifiVisible: false,
   visible: false,
   password: "",
@@ -104,6 +112,7 @@ export function useData() {
       )
         ? NetworkStatus.Connected
         : NetworkStatus.Disconnected,
+      wifiEnable: data.wifiEnable,
       wifiChecked: data.wifiEnable === 1,
       connectedWifiInfoList: data.connectedWifiInfoList || [],
       wifiInfoList: data.wifiInfoList || [],
