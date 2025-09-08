@@ -1,5 +1,13 @@
 [
     {
+        "id": "4faa963833a046c7",
+        "type": "tab",
+        "label": "Dashboard",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "91fe3dae2d3749fd",
         "type": "subflow",
         "name": "Default Pages",
@@ -10,6 +18,385 @@
         "env": [],
         "meta": {},
         "color": "#DDAA99"
+    },
+    {
+        "id": "ec72740f78e40785",
+        "type": "subflow",
+        "name": "Device Info Pages",
+        "info": "",
+        "category": "sscma",
+        "in": [],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "9ab1ee429e233a80",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true
+    },
+    {
+        "id": "234998f63c55af55",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#ffffff",
+            "primary": "#0094ce",
+            "bgPage": "#eeeeee",
+            "groupBg": "#ffffff",
+            "groupOutline": "#cccccc"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "d4edfe2d22b78af8",
+        "type": "sscma",
+        "host": "localhost",
+        "mqttport": "1883",
+        "apiport": "80",
+        "clientid": "recamera",
+        "username": "",
+        "password": ""
+    },
+    {
+        "id": "eb4ea4ad231b87b6",
+        "type": "ui-page",
+        "name": "Preview",
+        "ui": "9ab1ee429e233a80",
+        "path": "/preview",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "4b590614656223c2",
+        "type": "ui-page",
+        "name": "Security",
+        "ui": "9ab1ee429e233a80",
+        "path": "/security",
+        "icon": "security",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 4,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "2788be32a24982e1",
+        "type": "ui-page",
+        "name": "Network",
+        "ui": "9ab1ee429e233a80",
+        "path": "/network",
+        "icon": "wifi",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 2,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
+        "id": "d3e7dcd4b2447549",
+        "type": "ui-page",
+        "name": "Terminal",
+        "ui": "9ab1ee429e233a80",
+        "path": "/terminal",
+        "icon": "console",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 5,
+        "className": "",
+        "visible": true,
+        "disabled": false
+    },
+    {
+        "id": "034b986fab50b7bb",
+        "type": "ui-page",
+        "name": "Device Info",
+        "ui": "9ab1ee429e233a80",
+        "path": "/Deviceinfo",
+        "icon": "cog",
+        "layout": "grid",
+        "theme": "234998f63c55af55",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "order": 3,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "d9c66abde84c734d",
+        "type": "ui-group",
+        "name": "Model Selection",
+        "page": "eb4ea4ad231b87b6",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": false,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "53a493606ee6d430",
+        "type": "ui-group",
+        "name": "Preview",
+        "page": "eb4ea4ad231b87b6",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "7f84e6e11f01d5aa",
+        "type": "ui-group",
+        "name": "Security",
+        "page": "4b590614656223c2",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": false,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "15bec593c23e2df1",
+        "type": "ui-group",
+        "name": "Wi-Fi",
+        "page": "2788be32a24982e1",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": false,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "62e3f90362f475e5",
+        "type": "ui-group",
+        "name": "Terminal",
+        "page": "d3e7dcd4b2447549",
+        "width": "12",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "853d93c4c0f19c38",
+        "type": "ui-group",
+        "name": "Power",
+        "page": "034b986fab50b7bb",
+        "width": "6",
+        "height": "1",
+        "order": 5,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "cb81f9d78a6a3513",
+        "type": "ui-group",
+        "name": "Memory",
+        "page": "034b986fab50b7bb",
+        "width": "6",
+        "height": "1",
+        "order": 4,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "a2f6b486b575c329",
+        "type": "ui-group",
+        "name": "Sys Info",
+        "page": "034b986fab50b7bb",
+        "width": "6",
+        "height": "1",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "35ddf11ddd1ade60",
+        "type": "ui-group",
+        "name": "Load",
+        "page": "034b986fab50b7bb",
+        "width": "6",
+        "height": "1",
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
+    },
+    {
+        "id": "8ee7b1867c318ca3",
+        "type": "ui-group",
+        "name": "Storage",
+        "page": "034b986fab50b7bb",
+        "width": "6",
+        "height": "1",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default"
     },
     {
         "id": "e0e62cca1a727447",
@@ -198,182 +585,6 @@
         "wires": [
             []
         ]
-    },
-    {
-        "id": "7f84e6e11f01d5aa",
-        "type": "ui-group",
-        "name": "Security",
-        "page": "4b590614656223c2",
-        "width": "12",
-        "height": "1",
-        "order": 1,
-        "showTitle": false,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "15bec593c23e2df1",
-        "type": "ui-group",
-        "name": "Wi-Fi",
-        "page": "2788be32a24982e1",
-        "width": "12",
-        "height": "1",
-        "order": 1,
-        "showTitle": false,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "62e3f90362f475e5",
-        "type": "ui-group",
-        "name": "Terminal",
-        "page": "d3e7dcd4b2447549",
-        "width": "12",
-        "height": "1",
-        "order": 1,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "853d93c4c0f19c38",
-        "type": "ui-group",
-        "name": "Power",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 5,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "4b590614656223c2",
-        "type": "ui-page",
-        "name": "Security",
-        "ui": "9ab1ee429e233a80",
-        "path": "/security",
-        "icon": "security",
-        "layout": "grid",
-        "theme": "234998f63c55af55",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 4,
-        "className": "",
-        "visible": "true",
-        "disabled": "false"
-    },
-    {
-        "id": "2788be32a24982e1",
-        "type": "ui-page",
-        "name": "Network",
-        "ui": "9ab1ee429e233a80",
-        "path": "/network",
-        "icon": "wifi",
-        "layout": "grid",
-        "theme": "234998f63c55af55",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 2,
-        "className": "",
-        "visible": true,
-        "disabled": false
-    },
-    {
-        "id": "d3e7dcd4b2447549",
-        "type": "ui-page",
-        "name": "Terminal",
-        "ui": "9ab1ee429e233a80",
-        "path": "/terminal",
-        "icon": "console",
-        "layout": "grid",
-        "theme": "234998f63c55af55",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 5,
-        "className": "",
-        "visible": true,
-        "disabled": false
-    },
-    {
-        "id": "ec72740f78e40785",
-        "type": "subflow",
-        "name": "Device Info Pages",
-        "info": "",
-        "category": "sscma",
-        "in": [],
-        "out": [],
-        "env": [],
-        "meta": {},
-        "color": "#DDAA99"
     },
     {
         "id": "8c6e46a8dc28225b",
@@ -1234,143 +1445,6 @@
         ]
     },
     {
-        "id": "cb81f9d78a6a3513",
-        "type": "ui-group",
-        "name": "Memory",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 4,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "a2f6b486b575c329",
-        "type": "ui-group",
-        "name": "Sys Info",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 1,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "35ddf11ddd1ade60",
-        "type": "ui-group",
-        "name": "Load",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 3,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "8ee7b1867c318ca3",
-        "type": "ui-group",
-        "name": "Storage",
-        "page": "034b986fab50b7bb",
-        "width": "6",
-        "height": "1",
-        "order": 2,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "034b986fab50b7bb",
-        "type": "ui-page",
-        "name": "Device Info",
-        "ui": "9ab1ee429e233a80",
-        "path": "/Deviceinfo",
-        "icon": "cog",
-        "layout": "grid",
-        "theme": "234998f63c55af55",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 3,
-        "className": "",
-        "visible": "true",
-        "disabled": "false"
-    },
-    {
-        "id": "9ab1ee429e233a80",
-        "type": "ui-base",
-        "name": "My Dashboard",
-        "path": "/dashboard",
-        "appIcon": "",
-        "includeClientData": true,
-        "acceptsClientConfig": [
-            "ui-notification",
-            "ui-control"
-        ],
-        "showPathInSidebar": false,
-        "navigationStyle": "default",
-        "titleBarStyle": "default",
-        "showReconnectNotification": true,
-        "notificationDisplayTime": 1,
-        "showDisconnectNotification": true
-    },
-    {
-        "id": "234998f63c55af55",
-        "type": "ui-theme",
-        "name": "Default Theme",
-        "colors": {
-            "surface": "#ffffff",
-            "primary": "#0094ce",
-            "bgPage": "#eeeeee",
-            "groupBg": "#ffffff",
-            "groupOutline": "#cccccc"
-        },
-        "sizes": {
-            "density": "default",
-            "pagePadding": "12px",
-            "groupGap": "12px",
-            "groupBorderRadius": "4px",
-            "widgetGap": "12px"
-        }
-    },
-    {
-        "id": "4faa963833a046c7",
-        "type": "tab",
-        "label": "Dashboard",
-        "disabled": false,
-        "info": "",
-        "env": []
-    },
-    {
         "id": "b74bd72421bda93c",
         "type": "ui-dropdown",
         "z": "4faa963833a046c7",
@@ -1527,6 +1601,8 @@
         "draw": false,
         "classes": "person,bicycle,car,motorcycle,airplane,bus,train,truck,boat,traffic light,fire hydrant,stop sign,parking meter,bench,bird,cat,dog,horse,sheep,cow,elephant,bear,zebra,giraffe,backpack,umbrella,handbag,tie,suitcase,frisbee,skis,snowboard,sports ball,kite,baseball bat,baseball glove,skateboard,surfboard,tennis racket,bottle,wine glass,cup,fork,knife,spoon,bowl,banana,apple,sandwich,orange,broccoli,carrot,hot dog,pizza,donut,cake,chair,couch,potted plant,bed,dining table,toilet,tv,laptop,mouse,remote,keyboard,cell phone,microwave,oven,toaster,sink,refrigerator,book,clock,vase,scissors,teddy bear,hair drier,toothbrush",
         "splitter": "0,0,0,0",
+        "previewResolution": "1920x1080",
+        "previewFps": "30",
         "client": "d4edfe2d22b78af8",
         "x": 590,
         "y": 260,
@@ -1544,6 +1620,10 @@
         "client": "d4edfe2d22b78af8",
         "audio": false,
         "volume": "50",
+        "option": "0",
+        "fps": "30",
+        "mirror": false,
+        "flip": false,
         "x": 320,
         "y": 140,
         "wires": [
@@ -1564,7 +1644,7 @@
         "width": 0,
         "height": 0,
         "head": "",
-        "format": "<template>\n    <div :id=\"containerId\" style=\"width: 100%; height: 100%\">\n        <svg :id=\"svgId\" viewBox=\"0 50 640 640\"></svg>\n        <p v-if=\"connectionStatus\" :style=\"{ color: connectionStatus === 'Connected' ? 'green' : 'red' }\">\n            WebSocket: {{ connectionStatus }}\n        </p>\n    </div>\n</template>\n\n<script>\n    export default {\n        data() {\n            return {\n                ws: null,\n                connectionStatus: 'Disconnected',\n                socketURL: `ws://${window.location.hostname}:8090`,\n                previewData: null\n            }\n        },\n        computed: {\n            containerId() {\n                return `container`;\n            },\n            svgId() {\n                return `svg`;\n            },\n        },\n        methods: {\n            // WebSocket相关方法\n            initializeWebSocket() {\n                if (this.ws) {\n                    this.ws.close();\n                }\n\n                this.ws = new WebSocket(this.socketURL);\n                this.ws.binaryType = 'arraybuffer';\n\n                this.ws.addEventListener('open', () => {\n                    this.connectionStatus = 'Connected';\n                });\n\n                this.ws.addEventListener('message', (event) => {\n                    try {\n                        const buffer = event.data;\n                        const uint8Array = new Uint8Array(buffer);\n                        \n                        // 将 Uint8Array 转换为字符串\n                        const string = new TextDecoder().decode(uint8Array);\n                        \n                        const obj = JSON.parse(string);\n                        // 更新预览数据并触发渲染\n                        this.previewData = obj.data || obj;\n                        this.$nextTick(() => {\n                            this.renderAll();\n                        });\n                    } catch (e) {\n                        console.error('Error processing data:', e);\n                    }\n                });\n\n                this.ws.addEventListener('error', (e) => {\n                    console.error('WebSocket Error:', e);\n                    this.connectionStatus = 'Error';\n                });\n\n                this.ws.addEventListener('close', () => {\n                    this.connectionStatus = 'Disconnected';\n                    setTimeout(() => this.initializeWebSocket(), 5000);\n                });\n            },\n\n            // SVG绘图相关方法\n            createSVGElement(type, attributes = {}) {\n                const element = document.createElementNS(\"http://www.w3.org/2000/svg\", type);\n                Object.keys(attributes).forEach((attr) => element.setAttribute(attr, attributes[attr]));\n                return element;\n            },\n            getColor(index, opacity = 1) {\n                const COLORS = [\n                    \"#FF0000\",\n                    \"#FF4500\",\n                    \"#FF6347\",\n                    \"#FF8C00\",\n                    \"#FFA500\",\n                    \"#FFD700\",\n                    \"#32CD32\",\n                    \"#006400\",\n                    \"#4169E1\",\n                    \"#0000FF\",\n                    \"#1E90FF\",\n                    \"#00FFFF\",\n                    \"#00CED1\",\n                    \"#20B2AA\",\n                    \"#FF1493\",\n                    \"#FF69B4\",\n                    \"#800080\",\n                    \"#8A2BE2\",\n                    \"#9400D3\",\n                    \"#9932CC\",\n                ];\n                const color = COLORS[index % COLORS.length];\n                if (opacity < 1 && opacity >= 0) {\n                    const r = parseInt(color.slice(1, 3), 16);\n                    const g = parseInt(color.slice(3, 5), 16);\n                    const b = parseInt(color.slice(5, 7), 16);\n                    return `rgba(${r}, ${g}, ${b}, ${opacity})`;\n                }\n                return color;\n            },\n            renderImage(container, group, data) {\n                if (data.image) {\n                    let img = document.getElementById(`image-output-img`);\n                    if (!img) {\n                        img = this.createSVGElement(\"image\", {\n                            id: `image-output-img`,\n                            x: \"0\",\n                            y: \"50\",\n                        });\n                        img.addEventListener(\"click\", () => this.removeGroup(group), { once: false });\n                        container.prepend(img);\n                    }\n                    img.setAttribute(\"href\", `data:image/jpeg;base64,${data.image}`);\n                } else if (data?.resolution) {\n                    const rect = this.createSVGElement(\"rect\", {\n                        x: \"0\",\n                        y: \"0\",\n                        width: data.resolution[0],\n                        height: data.resolution[1],\n                        fill: \"black\",\n                    });\n                    const text = this.createSVGElement(\"text\", {\n                        x: 10,\n                        y: 20,\n                        \"font-size\": \"16\",\n                        fill: \"yellow\",\n                        stroke: \"yellow\",\n                        \"font-family\": \"Arial\",\n                    });\n                    text.textContent = \"Warning: Please enable the model node's debug mode to display the actual image.\";\n                    group.appendChild(rect);\n                    group.appendChild(text);\n                }\n            },\n            renderLines(group, data) {\n                if (data?.lines) {\n                    data.lines.forEach((line, i) => {\n                        const x1 = line[0] * 0.01 * data.resolution[0];\n                        const y1 = line[1] * 0.01 * data.resolution[1];\n                        const x2 = line[2] * 0.01 * data.resolution[0];\n                        const y2 = line[3] * 0.01 * data.resolution[1];\n                        const color = this.getColor(i);\n                        const lineElement = this.createSVGElement(\"line\", {\n                            x1,\n                            y1,\n                            x2,\n                            y2,\n                            stroke: color,\n                            \"stroke-width\": \"1\",\n                        });\n                        group.appendChild(lineElement);\n                    });\n                }\n            },\n            renderBoxes(group, data) {\n                if (data?.boxes) {\n                    data.boxes.forEach((box, i) => {\n                        if (box?.length === 6) {\n                            const [x, y, w, h, score, tar] = box;\n                            const color = this.getColor(tar);\n                            const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n                            const rect = this.createSVGElement(\"rect\", {\n                                x: x - w / 2,\n                                y: y - h / 2,\n                                width: w,\n                                height: h,\n                                fill: \"none\",\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(rect);\n\n                            const rectText = this.createSVGElement(\"rect\", {\n                                x: x - w / 2,\n                                y: y - h / 2 - 14,\n                                width: w,\n                                height: 16,\n                                fill: color,\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(rectText);\n\n                            const text = this.createSVGElement(\"text\", {\n                                x: x - w / 2 + 5,\n                                y: y - h / 2 - 2,\n                                \"font-size\": \"14\",\n                                fill: \"white\",\n                                \"font-family\": \"Arial\",\n                            });\n                            text.textContent = data?.tracks ? `#${data.tracks[i]}: ${tarStr}(${score})` : `${tarStr}(${score})`;\n                            group.appendChild(text);\n                        }\n                    });\n                }\n            },\n            renderClasses(group, data) {\n                if (data?.classes) {\n                    const rectHeight = data.resolution[1] / 16;\n                    data.classes.forEach(([score, tar], i) => {\n                        const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n                        const rectWidth = data.resolution[0] / data.classes.length;\n                        const rect = this.createSVGElement(\"rect\", {\n                            x: rectWidth * i,\n                            y: 0,\n                            width: rectWidth,\n                            height: rectHeight,\n                            fill: this.getColor(tar),\n                            \"fill-opacity\": 0.3,\n                        });\n                        group.appendChild(rect);\n\n                        const text = this.createSVGElement(\"text\", {\n                            x: rectWidth * i,\n                            y: data.resolution[1] / 24,\n                            \"font-size\": data.resolution[1] / 24,\n                            \"font-weight\": \"bold\",\n                            \"font-family\": \"arial\",\n                            fill: \"#ffffff\",\n                        });\n                        text.textContent = `${tarStr}: ${score}`;\n                        group.appendChild(text);\n                    });\n                }\n            },\n            renderSegments(group, data) {\n                if (data?.segments) {\n                    data.segments.forEach((segment, i) => {\n                        const box = segment[0];\n                        const polygon = segment[1];\n                        let color = this.getColor(i);\n                        let rgba = this.getColor(i, 0.3);\n                        if (box?.length === 6) {\n                            const [x, y, w, h, score, tar] = box;\n                            color = this.getColor(tar);\n                            rgba = this.getColor(tar, 0.3);\n                            const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n                            const rect = this.createSVGElement(\"rect\", {\n                                x: x - w / 2,\n                                y: y - h / 2,\n                                width: w,\n                                height: h,\n                                fill: \"none\",\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(rect);\n\n                            const rectText = this.createSVGElement(\"rect\", {\n                                x: x - w / 2,\n                                y: y - h / 2 - 14,\n                                width: w,\n                                height: 16,\n                                fill: color,\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(rectText);\n\n                            const text = this.createSVGElement(\"text\", {\n                                x: x - w / 2 + 5,\n                                y: y - h / 2 - 2,\n                                \"font-size\": \"14\",\n                                fill: \"white\",\n                                \"font-family\": \"Arial\",\n                            });\n                            text.textContent = data?.tracks ? `#${data.tracks[i]}: ${tarStr}(${score})` : `${tarStr}(${score})`;\n                            group.appendChild(text);\n                        }\n                        if (polygon) {\n                            function convertToPoints(polygon) {\n                                let points = \"\";\n                                for (let i = 0; i < polygon.length; i += 2) {\n                                    points += `${polygon[i]},${polygon[i + 1]} `;\n                                }\n                                return points.trim();\n                            }\n\n                            // Convert the data array to SVG points format\n                            const points = convertToPoints(polygon);\n\n                            const polygonElement = this.createSVGElement(\"polygon\", {\n                                points: points,\n                                fill: rgba,\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(polygonElement);\n                        }\n                    });\n                }\n            },\n            renderKeypoints(group, data) {\n                if (!data?.keypoints) {\n                    return;\n                }\n                data.keypoints.forEach((keypoint, i) => {\n                    const box = keypoint[0];\n                    const keypoints = keypoint[1];\n                    let points = new Set();\n                    if (box?.length === 6) {\n                        const [x, y, w, h, score, tar] = box;\n                        const color = this.getColor(tar);\n                        const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n                        const rect = this.createSVGElement(\"rect\", {\n                            x: x - w / 2,\n                            y: y - h / 2,\n                            width: w,\n                            height: h,\n                            fill: \"none\",\n                            stroke: color,\n                            \"stroke-width\": \"2\",\n                        });\n                        group.appendChild(rect);\n\n                        const rectText = this.createSVGElement(\"rect\", {\n                            x: x - w / 2,\n                            y: y - h / 2 - 14,\n                            width: w,\n                            height: 16,\n                            fill: color,\n                            stroke: color,\n                            \"stroke-width\": \"2\",\n                        });\n                        group.appendChild(rectText);\n\n                        const text = this.createSVGElement(\"text\", {\n                            x: x - w / 2 + 5,\n                            y: y - h / 2 - 2,\n                            \"font-size\": \"14\",\n                            fill: \"white\",\n                            stroke: \"white\",\n                            \"font-family\": \"Arial\",\n                        });\n                        text.textContent = data?.tracks ? `#${data.tracks[i]}: ${tarStr}(${score})` : `${tarStr}(${score})`;\n                        group.appendChild(text);\n                    }\n\n                    for (let j = 0; j < keypoints.length; j += 1) {\n                        const point = keypoints[j];\n                        const x = point[0];\n                        const y = point[1];\n                        const target = point[3] ? point[3] : j;\n                        // draw if point in the box\n                        if (x > box[0] - box[2] / 2 && x < box[0] + box[2] / 2 && y > box[1] - box[3] / 2 && y < box[1] + box[3] / 2) {\n                            points.add(target);\n                        }\n                    }\n\n                    if (keypoints?.length === 17) {\n                        // 绘制人体骨架连接线 (COCO格式)\n                        // 这里保留了原代码中的所有连接线逻辑\n                        // nose to left eye\n                        if (points.has(0) && points.has(1)) {\n                            const color = this.getColor(0);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[0][0],\n                                y1: keypoints[0][1],\n                                x2: keypoints[1][0],\n                                y2: keypoints[1][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // 其他连接线代码保持不变...\n                        // nose to right eye\n                        if (points.has(0) && points.has(2)) {\n                            const color = this.getColor(0);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[0][0],\n                                y1: keypoints[0][1],\n                                x2: keypoints[2][0],\n                                y2: keypoints[2][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left eye to left ear\n                        if (points.has(1) && points.has(3)) {\n                            const color = this.getColor(0);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[1][0],\n                                y1: keypoints[1][1],\n                                x2: keypoints[3][0],\n                                y2: keypoints[3][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right eye to right ear\n                        if (points.has(2) && points.has(4)) {\n                            const color = this.getColor(0);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[2][0],\n                                y1: keypoints[2][1],\n                                x2: keypoints[4][0],\n                                y2: keypoints[4][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left ear to left shoulder\n                        if (points.has(3) && points.has(5)) {\n                            const color = this.getColor(0);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[3][0],\n                                y1: keypoints[3][1],\n                                x2: keypoints[5][0],\n                                y2: keypoints[5][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right ear to right shoulder\n                        if (points.has(4) && points.has(6)) {\n                            const color = this.getColor(0);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[4][0],\n                                y1: keypoints[4][1],\n                                x2: keypoints[6][0],\n                                y2: keypoints[6][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left shoulder to right shoulder\n                        if (points.has(5) && points.has(6)) {\n                            const color = this.getColor(1);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[5][0],\n                                y1: keypoints[5][1],\n                                x2: keypoints[6][0],\n                                y2: keypoints[6][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left shoulder to left hip\n                        if (points.has(5) && points.has(11)) {\n                            const color = this.getColor(2);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[5][0],\n                                y1: keypoints[5][1],\n                                x2: keypoints[11][0],\n                                y2: keypoints[11][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right shoulder to right hip\n                        if (points.has(6) && points.has(12)) {\n                            const color = this.getColor(2);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[6][0],\n                                y1: keypoints[6][1],\n                                x2: keypoints[12][0],\n                                y2: keypoints[12][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left hip to right hip\n                        if (points.has(11) && points.has(12)) {\n                            const color = this.getColor(2);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[11][0],\n                                y1: keypoints[11][1],\n                                x2: keypoints[12][0],\n                                y2: keypoints[12][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left shoulder to left elbow\n                        if (points.has(5) && points.has(7)) {\n                            const color = this.getColor(1);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[5][0],\n                                y1: keypoints[5][1],\n                                x2: keypoints[7][0],\n                                y2: keypoints[7][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left elbow to left wrist\n                        if (points.has(7) && points.has(9)) {\n                            const color = this.getColor(1);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[7][0],\n                                y1: keypoints[7][1],\n                                x2: keypoints[9][0],\n                                y2: keypoints[9][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right shoulder to right elbow\n                        if (points.has(6) && points.has(8)) {\n                            const color = this.getColor(6);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[6][0],\n                                y1: keypoints[6][1],\n                                x2: keypoints[8][0],\n                                y2: keypoints[8][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right elbow to right wrist\n                        if (points.has(8) && points.has(10)) {\n                            const color = this.getColor(1);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[8][0],\n                                y1: keypoints[8][1],\n                                x2: keypoints[10][0],\n                                y2: keypoints[10][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left hip to left knee\n                        if (points.has(11) && points.has(13)) {\n                            const color = this.getColor(3);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[11][0],\n                                y1: keypoints[11][1],\n                                x2: keypoints[13][0],\n                                y2: keypoints[13][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // left knee to left ankle\n                        if (points.has(13) && points.has(15)) {\n                            const color = this.getColor(3);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[13][0],\n                                y1: keypoints[13][1],\n                                x2: keypoints[15][0],\n                                y2: keypoints[15][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right hip to right knee\n                        if (points.has(12) && points.has(14)) {\n                            const color = this.getColor(3);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[12][0],\n                                y1: keypoints[12][1],\n                                x2: keypoints[14][0],\n                                y2: keypoints[14][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                        // right knee to right ankle\n                        if (points.has(14) && points.has(16)) {\n                            const color = this.getColor(3);\n                            const line = this.createSVGElement(\"line\", {\n                                x1: keypoints[14][0],\n                                y1: keypoints[14][1],\n                                x2: keypoints[16][0],\n                                y2: keypoints[16][1],\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                            });\n                            group.appendChild(line);\n                        }\n                    }\n\n                    // 绘制关键点\n                    for (let j = 0; j < keypoints.length; j += 1) {\n                        const point = keypoints[j];\n                        const x = point[0];\n                        const y = point[1];\n                        const target = point[3] ? point[3] : j;\n                        // draw if point in the box\n                        if (x > box[0] - box[2] / 2 && x < box[0] + box[2] / 2 && y > box[1] - box[3] / 2 && y < box[1] + box[3] / 2) {\n                            const color = this.getColor(target);\n                            const circle = this.createSVGElement(\"circle\", {\n                                cx: x,\n                                cy: y,\n                                r: 3,\n                                stroke: color,\n                                \"stroke-width\": \"2\",\n                                fill: color,\n                            });\n                            group.appendChild(circle);\n                        }\n                    }\n                });\n            },\n            renderAll() {\n                const container = document.getElementById(this.containerId);\n                const svg = document.getElementById(this.svgId);\n                if (!container || !svg) return;\n\n                let group = document.getElementById(`image-output-group`);\n                if (!group) {\n                    group = this.createSVGElement(\"g\", {\n                        id: `image-output-group`,\n                        transform: \"translate(0, 50)\",\n                    });\n                    svg.appendChild(group);\n                }\n                group.innerHTML = \"\"; // Clear existing content\n\n                if (!this.previewData) {\n                    return;\n                }\n                \n                this.renderImage(svg, group, this.previewData);\n                this.renderLines(group, this.previewData);\n                this.renderBoxes(group, this.previewData);\n                this.renderClasses(group, this.previewData);\n                this.renderSegments(group, this.previewData);\n                this.renderKeypoints(group, this.previewData);\n            },\n            removeGroup(group) {\n                if (group && group.parentNode) {\n                    group.parentNode.removeChild(group);\n                }\n            }\n        },\n        mounted() {\n            this.initializeWebSocket();\n        },\n        unmounted() {\n            if (this.ws) {\n                this.ws.close();\n                this.ws = null;\n            }\n        }\n    };\n</script>\n\n<style>\n    #container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n    }\n\n    svg {\n        width: 100%;\n        height: 100%;\n        background-color: #000;\n    }\n\n    p {\n        position: absolute;\n        bottom: 10px;\n        left: 10px;\n        margin: 0;\n        padding: 5px;\n        background-color: rgba(0, 0, 0, 0.5);\n        border-radius: 4px;\n    }\n</style>",
+        "format": "<template>\n    <div :id=\"containerId\" style=\"width: 100%; height: 100%;\">\n        <svg :id=\"svgId\" ref=\"svgEl\" style=\"display: block\"></svg>\n        <p v-if=\"connectionStatus\" :style=\"{ color: connectionStatus === 'Connected' ? 'green' : 'red' }\">\n            WebSocket: {{ connectionStatus }}\n        </p>\n    </div>\n</template>\n\n<script>\n    export default {\n  data() {\n    return {\n      ws: null,\n      connectionStatus: \"Disconnected\",\n      socketURL: `ws://${window.location.hostname}:8090`,\n      previewData: null,\n      svgWidth: 1920,\n      svgHeight: 1080,\n    };\n  },\n  computed: {\n    containerId() {\n      return `container`;\n    },\n    svgId() {\n      return `svg`;\n    },\n  },\n  methods: {\n    updateSvgViewBox() {\n      const svg = this.$refs?.svgEl;\n      if (svg) {\n        svg.setAttribute(\"viewBox\", `0 50 ${this.svgWidth} ${this.svgHeight}`);\n      }\n    },\n    // WebSocket相关方法\n    initializeWebSocket() {\n      if (this.ws) {\n        this.ws.close();\n      }\n\n      this.ws = new WebSocket(this.socketURL);\n      this.ws.binaryType = \"arraybuffer\";\n\n      this.ws.addEventListener(\"open\", () => {\n        this.connectionStatus = \"Connected\";\n      });\n\n      this.ws.addEventListener(\"message\", (event) => {\n        try {\n          const buffer = event.data;\n          const uint8Array = new Uint8Array(buffer);\n\n          // 将 Uint8Array 转换为字符串\n          const string = new TextDecoder().decode(uint8Array);\n\n          const obj = JSON.parse(string);\n          console.log(obj);\n          // 更新预览数据并触发渲染\n          this.previewData = obj.data || obj;\n          const resolution = obj.data.resolution;\n          const width = resolution[0];\n          const height = resolution[1];\n          if (Number.isFinite(width) && Number.isFinite(height)) {\n            this.svgWidth = width;\n            this.svgHeight = height;\n            this.updateSvgViewBox();\n          }\n          this.$nextTick(() => {\n            this.renderAll();\n          });\n        } catch (e) {\n          console.error(\"Error processing data:\", e);\n        }\n      });\n\n      this.ws.addEventListener(\"error\", (e) => {\n        console.error(\"WebSocket Error:\", e);\n        this.connectionStatus = \"Error\";\n      });\n\n      this.ws.addEventListener(\"close\", () => {\n        this.connectionStatus = \"Disconnected\";\n        setTimeout(() => this.initializeWebSocket(), 5000);\n      });\n    },\n\n    // SVG绘图相关方法\n    createSVGElement(type, attributes = {}) {\n      const element = document.createElementNS(\n        \"http://www.w3.org/2000/svg\",\n        type\n      );\n      Object.keys(attributes).forEach((attr) =>\n        element.setAttribute(attr, attributes[attr])\n      );\n      return element;\n    },\n    getColor(index, opacity = 1) {\n      const COLORS = [\n        \"#FF0000\",\n        \"#FF4500\",\n        \"#FF6347\",\n        \"#FF8C00\",\n        \"#FFA500\",\n        \"#FFD700\",\n        \"#32CD32\",\n        \"#006400\",\n        \"#4169E1\",\n        \"#0000FF\",\n        \"#1E90FF\",\n        \"#00FFFF\",\n        \"#00CED1\",\n        \"#20B2AA\",\n        \"#FF1493\",\n        \"#FF69B4\",\n        \"#800080\",\n        \"#8A2BE2\",\n        \"#9400D3\",\n        \"#9932CC\",\n      ];\n      const color = COLORS[index % COLORS.length];\n      if (opacity < 1 && opacity >= 0) {\n        const r = parseInt(color.slice(1, 3), 16);\n        const g = parseInt(color.slice(3, 5), 16);\n        const b = parseInt(color.slice(5, 7), 16);\n        return `rgba(${r}, ${g}, ${b}, ${opacity})`;\n      }\n      return color;\n    },\n    renderImage(container, group, data) {\n      if (data.image) {\n        let img = document.getElementById(`image-output-img`);\n        if (!img) {\n          img = this.createSVGElement(\"image\", {\n            id: `image-output-img`,\n            x: \"0\",\n            y: \"50\",\n          });\n\n          img.addEventListener(\"click\", () => this.removeGroup(group), {\n            once: false,\n          });\n          container.prepend(img);\n        }\n        img.setAttribute(\"href\", `data:image/jpeg;base64,${data.image}`);\n      } else if (data?.resolution) {\n        const rect = this.createSVGElement(\"rect\", {\n          x: \"0\",\n          y: \"0\",\n          width: data.resolution[0],\n          height: data.resolution[1],\n          fill: \"black\",\n        });\n        const text = this.createSVGElement(\"text\", {\n          x: 10,\n          y: 20,\n          \"font-size\": \"16\",\n          fill: \"yellow\",\n          stroke: \"yellow\",\n          \"font-family\": \"Arial\",\n        });\n        text.textContent =\n          \"Warning: Please enable the model node's debug mode to display the actual image.\";\n        group.appendChild(rect);\n        group.appendChild(text);\n      }\n    },\n    renderLines(group, data) {\n      if (data?.lines) {\n        data.lines.forEach((line, i) => {\n          const x1 = line[0] * 0.01 * data.resolution[0];\n          const y1 = line[1] * 0.01 * data.resolution[1];\n          const x2 = line[2] * 0.01 * data.resolution[0];\n          const y2 = line[3] * 0.01 * data.resolution[1];\n          const color = this.getColor(i);\n          const lineElement = this.createSVGElement(\"line\", {\n            x1,\n            y1,\n            x2,\n            y2,\n            stroke: color,\n            \"stroke-width\": \"1\",\n          });\n          group.appendChild(lineElement);\n        });\n      }\n    },\n    renderBoxes(group, data) {\n      if (data?.boxes) {\n        data.boxes.forEach((box, i) => {\n          if (box?.length === 6) {\n            const [x, y, w, h, score, tar] = box;\n            const color = this.getColor(tar);\n            const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n            const rect = this.createSVGElement(\"rect\", {\n              x: x - w / 2,\n              y: y - h / 2,\n              width: w,\n              height: h,\n              fill: \"none\",\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(rect);\n\n            const rectText = this.createSVGElement(\"rect\", {\n              x: x - w / 2,\n              y: y - h / 2 - 14,\n              width: w,\n              height: 16,\n              fill: color,\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(rectText);\n\n            const text = this.createSVGElement(\"text\", {\n              x: x - w / 2 + 5,\n              y: y - h / 2 - 2,\n              \"font-size\": \"14\",\n              fill: \"white\",\n              \"font-family\": \"Arial\",\n            });\n            text.textContent = data?.tracks\n              ? `#${data.tracks[i]}: ${tarStr}(${score})`\n              : `${tarStr}(${score})`;\n            group.appendChild(text);\n          }\n        });\n      }\n    },\n    renderClasses(group, data) {\n      if (data?.classes) {\n        const rectHeight = data.resolution[1] / 16;\n        data.classes.forEach(([score, tar], i) => {\n          const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n          const rectWidth = data.resolution[0] / data.classes.length;\n          const rect = this.createSVGElement(\"rect\", {\n            x: rectWidth * i,\n            y: 0,\n            width: rectWidth,\n            height: rectHeight,\n            fill: this.getColor(tar),\n            \"fill-opacity\": 0.3,\n          });\n          group.appendChild(rect);\n\n          const text = this.createSVGElement(\"text\", {\n            x: rectWidth * i,\n            y: data.resolution[1] / 24,\n            \"font-size\": data.resolution[1] / 24,\n            \"font-weight\": \"bold\",\n            \"font-family\": \"arial\",\n            fill: \"#ffffff\",\n          });\n          text.textContent = `${tarStr}: ${score}`;\n          group.appendChild(text);\n        });\n      }\n    },\n    renderSegments(group, data) {\n      if (data?.segments) {\n        data.segments.forEach((segment, i) => {\n          const box = segment[0];\n          const polygon = segment[1];\n          let color = this.getColor(i);\n          let rgba = this.getColor(i, 0.3);\n          if (box?.length === 6) {\n            const [x, y, w, h, score, tar] = box;\n            color = this.getColor(tar);\n            rgba = this.getColor(tar, 0.3);\n            const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n            const rect = this.createSVGElement(\"rect\", {\n              x: x - w / 2,\n              y: y - h / 2,\n              width: w,\n              height: h,\n              fill: \"none\",\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(rect);\n\n            const rectText = this.createSVGElement(\"rect\", {\n              x: x - w / 2,\n              y: y - h / 2 - 14,\n              width: w,\n              height: 16,\n              fill: color,\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(rectText);\n\n            const text = this.createSVGElement(\"text\", {\n              x: x - w / 2 + 5,\n              y: y - h / 2 - 2,\n              \"font-size\": \"14\",\n              fill: \"white\",\n              \"font-family\": \"Arial\",\n            });\n            text.textContent = data?.tracks\n              ? `#${data.tracks[i]}: ${tarStr}(${score})`\n              : `${tarStr}(${score})`;\n            group.appendChild(text);\n          }\n          if (polygon) {\n            function convertToPoints(polygon) {\n              let points = \"\";\n              for (let i = 0; i < polygon.length; i += 2) {\n                points += `${polygon[i]},${polygon[i + 1]} `;\n              }\n              return points.trim();\n            }\n\n            // Convert the data array to SVG points format\n            const points = convertToPoints(polygon);\n\n            const polygonElement = this.createSVGElement(\"polygon\", {\n              points: points,\n              fill: rgba,\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(polygonElement);\n          }\n        });\n      }\n    },\n    renderKeypoints(group, data) {\n      if (!data?.keypoints) {\n        return;\n      }\n      data.keypoints.forEach((keypoint, i) => {\n        const box = keypoint[0];\n        const keypoints = keypoint[1];\n        let points = new Set();\n        if (box?.length === 6) {\n          const [x, y, w, h, score, tar] = box;\n          const color = this.getColor(tar);\n          const tarStr = data.labels?.[i] ?? `NA-${tar}`;\n          const rect = this.createSVGElement(\"rect\", {\n            x: x - w / 2,\n            y: y - h / 2,\n            width: w,\n            height: h,\n            fill: \"none\",\n            stroke: color,\n            \"stroke-width\": \"2\",\n          });\n          group.appendChild(rect);\n\n          const rectText = this.createSVGElement(\"rect\", {\n            x: x - w / 2,\n            y: y - h / 2 - 14,\n            width: w,\n            height: 16,\n            fill: color,\n            stroke: color,\n            \"stroke-width\": \"2\",\n          });\n          group.appendChild(rectText);\n\n          const text = this.createSVGElement(\"text\", {\n            x: x - w / 2 + 5,\n            y: y - h / 2 - 2,\n            \"font-size\": \"14\",\n            fill: \"white\",\n            stroke: \"white\",\n            \"font-family\": \"Arial\",\n          });\n          text.textContent = data?.tracks\n            ? `#${data.tracks[i]}: ${tarStr}(${score})`\n            : `${tarStr}(${score})`;\n          group.appendChild(text);\n        }\n\n        for (let j = 0; j < keypoints.length; j += 1) {\n          const point = keypoints[j];\n          const x = point[0];\n          const y = point[1];\n          const target = point[3] ? point[3] : j;\n          // draw if point in the box\n          if (\n            x > box[0] - box[2] / 2 &&\n            x < box[0] + box[2] / 2 &&\n            y > box[1] - box[3] / 2 &&\n            y < box[1] + box[3] / 2\n          ) {\n            points.add(target);\n          }\n        }\n\n        if (keypoints?.length === 17) {\n          // 绘制人体骨架连接线 (COCO格式)\n          // 这里保留了原代码中的所有连接线逻辑\n          // nose to left eye\n          if (points.has(0) && points.has(1)) {\n            const color = this.getColor(0);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[0][0],\n              y1: keypoints[0][1],\n              x2: keypoints[1][0],\n              y2: keypoints[1][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // 其他连接线代码保持不变...\n          // nose to right eye\n          if (points.has(0) && points.has(2)) {\n            const color = this.getColor(0);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[0][0],\n              y1: keypoints[0][1],\n              x2: keypoints[2][0],\n              y2: keypoints[2][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left eye to left ear\n          if (points.has(1) && points.has(3)) {\n            const color = this.getColor(0);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[1][0],\n              y1: keypoints[1][1],\n              x2: keypoints[3][0],\n              y2: keypoints[3][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right eye to right ear\n          if (points.has(2) && points.has(4)) {\n            const color = this.getColor(0);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[2][0],\n              y1: keypoints[2][1],\n              x2: keypoints[4][0],\n              y2: keypoints[4][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left ear to left shoulder\n          if (points.has(3) && points.has(5)) {\n            const color = this.getColor(0);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[3][0],\n              y1: keypoints[3][1],\n              x2: keypoints[5][0],\n              y2: keypoints[5][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right ear to right shoulder\n          if (points.has(4) && points.has(6)) {\n            const color = this.getColor(0);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[4][0],\n              y1: keypoints[4][1],\n              x2: keypoints[6][0],\n              y2: keypoints[6][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left shoulder to right shoulder\n          if (points.has(5) && points.has(6)) {\n            const color = this.getColor(1);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[5][0],\n              y1: keypoints[5][1],\n              x2: keypoints[6][0],\n              y2: keypoints[6][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left shoulder to left hip\n          if (points.has(5) && points.has(11)) {\n            const color = this.getColor(2);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[5][0],\n              y1: keypoints[5][1],\n              x2: keypoints[11][0],\n              y2: keypoints[11][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right shoulder to right hip\n          if (points.has(6) && points.has(12)) {\n            const color = this.getColor(2);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[6][0],\n              y1: keypoints[6][1],\n              x2: keypoints[12][0],\n              y2: keypoints[12][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left hip to right hip\n          if (points.has(11) && points.has(12)) {\n            const color = this.getColor(2);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[11][0],\n              y1: keypoints[11][1],\n              x2: keypoints[12][0],\n              y2: keypoints[12][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left shoulder to left elbow\n          if (points.has(5) && points.has(7)) {\n            const color = this.getColor(1);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[5][0],\n              y1: keypoints[5][1],\n              x2: keypoints[7][0],\n              y2: keypoints[7][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left elbow to left wrist\n          if (points.has(7) && points.has(9)) {\n            const color = this.getColor(1);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[7][0],\n              y1: keypoints[7][1],\n              x2: keypoints[9][0],\n              y2: keypoints[9][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right shoulder to right elbow\n          if (points.has(6) && points.has(8)) {\n            const color = this.getColor(6);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[6][0],\n              y1: keypoints[6][1],\n              x2: keypoints[8][0],\n              y2: keypoints[8][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right elbow to right wrist\n          if (points.has(8) && points.has(10)) {\n            const color = this.getColor(1);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[8][0],\n              y1: keypoints[8][1],\n              x2: keypoints[10][0],\n              y2: keypoints[10][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left hip to left knee\n          if (points.has(11) && points.has(13)) {\n            const color = this.getColor(3);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[11][0],\n              y1: keypoints[11][1],\n              x2: keypoints[13][0],\n              y2: keypoints[13][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // left knee to left ankle\n          if (points.has(13) && points.has(15)) {\n            const color = this.getColor(3);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[13][0],\n              y1: keypoints[13][1],\n              x2: keypoints[15][0],\n              y2: keypoints[15][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right hip to right knee\n          if (points.has(12) && points.has(14)) {\n            const color = this.getColor(3);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[12][0],\n              y1: keypoints[12][1],\n              x2: keypoints[14][0],\n              y2: keypoints[14][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n          // right knee to right ankle\n          if (points.has(14) && points.has(16)) {\n            const color = this.getColor(3);\n            const line = this.createSVGElement(\"line\", {\n              x1: keypoints[14][0],\n              y1: keypoints[14][1],\n              x2: keypoints[16][0],\n              y2: keypoints[16][1],\n              stroke: color,\n              \"stroke-width\": \"2\",\n            });\n            group.appendChild(line);\n          }\n        }\n\n        // 绘制关键点\n        for (let j = 0; j < keypoints.length; j += 1) {\n          const point = keypoints[j];\n          const x = point[0];\n          const y = point[1];\n          const target = point[3] ? point[3] : j;\n          // draw if point in the box\n          if (\n            x > box[0] - box[2] / 2 &&\n            x < box[0] + box[2] / 2 &&\n            y > box[1] - box[3] / 2 &&\n            y < box[1] + box[3] / 2\n          ) {\n            const color = this.getColor(target);\n            const circle = this.createSVGElement(\"circle\", {\n              cx: x,\n              cy: y,\n              r: 3,\n              stroke: color,\n              \"stroke-width\": \"2\",\n              fill: color,\n            });\n            group.appendChild(circle);\n          }\n        }\n      });\n    },\n    renderAll() {\n      const container = document.getElementById(this.containerId);\n      const svg = this.$refs?.svgEl || document.getElementById(this.svgId);\n      if (!container || !svg) return;\n\n      let group = document.getElementById(`image-output-group`);\n      if (!group) {\n        group = this.createSVGElement(\"g\", {\n          id: `image-output-group`,\n          transform: \"translate(0, 50)\",\n        });\n        svg.appendChild(group);\n      }\n      group.innerHTML = \"\"; // Clear existing content\n\n      if (!this.previewData) {\n        return;\n      }\n\n      this.renderImage(svg, group, this.previewData);\n      this.renderLines(group, this.previewData);\n      this.renderBoxes(group, this.previewData);\n      this.renderClasses(group, this.previewData);\n      this.renderSegments(group, this.previewData);\n      this.renderKeypoints(group, this.previewData);\n    },\n    removeGroup(group) {\n      if (group && group.parentNode) {\n        group.parentNode.removeChild(group);\n      }\n    },\n  },\n  mounted() {\n    this.initializeWebSocket();\n  },\n  unmounted() {\n    if (this.ws) {\n      this.ws.close();\n      this.ws = null;\n    }\n  },\n};\n</script>\n\n<style>\n    #container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n    }\n\n    svg {\n        width: 100%;\n        height: 100%;\n        background-color: #000;\n    }\n\n    p {\n        position: absolute;\n        bottom: 10px;\n        left: 10px;\n        margin: 0;\n        padding: 5px;\n        background-color: rgba(0, 0, 0, 0.5);\n        border-radius: 4px;\n    }\n</style>",
         "storeOutMessages": true,
         "passthru": true,
         "resendOnRefresh": true,
@@ -1863,77 +1943,14 @@
         "wires": []
     },
     {
-        "id": "d9c66abde84c734d",
-        "type": "ui-group",
-        "name": "Model Selection",
-        "page": "eb4ea4ad231b87b6",
-        "width": "6",
-        "height": "1",
-        "order": 2,
-        "showTitle": false,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "d4edfe2d22b78af8",
-        "type": "sscma",
-        "host": "localhost",
-        "mqttport": "1883",
-        "apiport": "80",
-        "clientid": "recamera",
-        "username": "",
-        "password": ""
-    },
-    {
-        "id": "53a493606ee6d430",
-        "type": "ui-group",
-        "name": "Preview",
-        "page": "eb4ea4ad231b87b6",
-        "width": "6",
-        "height": "1",
-        "order": 1,
-        "showTitle": true,
-        "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
-    },
-    {
-        "id": "eb4ea4ad231b87b6",
-        "type": "ui-page",
-        "name": "Preview",
-        "ui": "9ab1ee429e233a80",
-        "path": "/preview",
-        "icon": "home",
-        "layout": "grid",
-        "theme": "234998f63c55af55",
-        "breakpoints": [
-            {
-                "name": "Default",
-                "px": "0",
-                "cols": "3"
-            },
-            {
-                "name": "Tablet",
-                "px": "576",
-                "cols": "6"
-            },
-            {
-                "name": "Small Desktop",
-                "px": "768",
-                "cols": "9"
-            },
-            {
-                "name": "Desktop",
-                "px": "1024",
-                "cols": "12"
-            }
-        ],
-        "order": 1,
-        "className": "",
-        "visible": "true",
-        "disabled": "false"
+        "id": "0f42437c2bb1ad97",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@flowfuse/node-red-dashboard": "1.26.0",
+            "node-red-contrib-sscma": "0.3.1",
+            "node-red-contrib-os": "0.2.1",
+            "node-red-contrib-seeed-recamera": "0.0.8"
+        }
     }
 ]
