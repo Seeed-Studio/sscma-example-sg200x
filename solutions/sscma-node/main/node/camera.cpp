@@ -170,7 +170,6 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     APP_VENC_CHN_CFG_S* pstVencChnCfg = (APP_VENC_CHN_CFG_S*)pArgs;
     VIDEO_FRAME_INFO_S* VpssFrame     = (VIDEO_FRAME_INFO_S*)pData;
     VIDEO_FRAME_S* f                  = &VpssFrame->stVFrame;
-    uint32_t offset                   = 0;
 
     if (!started_ || !enabled_ || channels_[pstVencChnCfg->VencChn].msgboxes.empty()) {
         return CVI_SUCCESS;
@@ -187,23 +186,10 @@ int CameraNode::vpssCallback(void* pData, void* pArgs) {
     frame->img.height   = channels_[pstVencChnCfg->VencChn].height;
     frame->img.format   = channels_[pstVencChnCfg->VencChn].format;
     frame->img.key      = true;
-    frame->img.physical = false;
-    frame->img.data     = new uint8_t[frame->img.size];
-    if (frame->img.data == nullptr) {
-        delete frame;
-        return CVI_FAILURE;
-    }
-
-    for (int i = 0; i < 3; i++) {
-        if (f->u32Length[i]) {
-            f->pu8VirAddr[i] = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[i], f->u32Length[i]);
-            memcpy(frame->img.data + offset, f->pu8VirAddr[i], f->u32Length[i]);
-            CVI_SYS_Munmap(f->pu8VirAddr[i], f->u32Length[i]);
-            offset += f->u32Length[i];
-        }
-    }
-    frame->timestamp = Tick::current();
-    frame->fps       = channels_[pstVencChnCfg->VencChn].fps;
+    frame->img.physical = true;
+    frame->img.data     = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
+    frame->timestamp    = Tick::current();
+    frame->fps          = channels_[pstVencChnCfg->VencChn].fps;
     frame->ref(channels_[pstVencChnCfg->VencChn].msgboxes.size());
     for (auto& msgbox : channels_[pstVencChnCfg->VencChn].msgboxes) {
         if (msgbox->isFull() || !msgbox->post(frame, Tick::fromMilliseconds(5))) {
@@ -407,13 +393,13 @@ ma_err_t CameraNode::onCreate(const json& config) {
             option_ = 0;
         } else if (option.find("720p") != std::string::npos) {
             option_ = 1;
-        } else if (option.find("480p") != std::string::npos) {
+        } else if (option.find("360p") != std::string::npos) {
             option_ = 2;
         }
     }
 
     if (config.contains("option") && config["option"].is_number()) {
-        int option = config["option"].get<int>();
+        option_ = config["option"].get<int>();
     }
 
     if (config.contains("preview") && config["preview"].is_boolean()) {
@@ -470,8 +456,8 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].height = 720;
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
-            channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 640;
+            channels_[CHN_JPEG].width  = 1280;
+            channels_[CHN_JPEG].height = 720;
             channels_[CHN_JPEG].fps    = 30;
             break;
         case 2:
@@ -481,7 +467,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 640;
+            channels_[CHN_JPEG].height = 480;
             channels_[CHN_JPEG].fps    = 30;
             break;
         default:
@@ -490,8 +476,8 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].height = 1080;
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
-            channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 640;
+            channels_[CHN_JPEG].width  = 1920;
+            channels_[CHN_JPEG].height = 1080;
             channels_[CHN_JPEG].fps    = 30;
             break;
     }
