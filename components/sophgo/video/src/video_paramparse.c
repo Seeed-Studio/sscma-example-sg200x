@@ -8,7 +8,7 @@ static const APP_PARAM_VB_CFG_S vbpool = {
     .fmt        = PIXEL_FORMAT_NV21,
     .enBitWidth = DATA_BITWIDTH_8,
     .enCmpMode  = COMPRESS_MODE_NONE,
-    .vb_blk_num = 2,
+    .vb_blk_num = 4,
 };
 
 // VI
