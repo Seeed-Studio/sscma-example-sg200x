@@ -405,7 +405,6 @@ void SaveNode::closeFile() {
                 ret = av_write_frame(avFmtCtx_, &pkt);
                 av_packet_unref(&pkt);
                 if (ret != 0) {
-                    MA_LOGW(TAG, "write flushed audio failed %d", ret);
                     break;
                 }
             }
@@ -450,7 +449,7 @@ void SaveNode::threadEntry() {
                 continue;
             }
             if (saveMode_ == "image" && frame->chn == CHN_JPEG) {
-                
+
                 video = static_cast<videoFrame*>(frame);
 
                 bool shouldSave = false;
@@ -555,12 +554,12 @@ void SaveNode::threadEntry() {
                     size_t sample_bytes = CHANNELS * 2;  // Bytes per sample (S16LE)
                     size_t needed_bytes = audioCodecCtx_->frame_size * sample_bytes;
                     while (audio_buffer_.size() >= needed_bytes) {
-                        AVFrame* audioFrame = av_frame_alloc();
+                        AVFrame* audioFrame        = av_frame_alloc();
                         audioFrame->nb_samples     = audioCodecCtx_->frame_size;
                         audioFrame->format         = AV_SAMPLE_FMT_FLTP;
                         audioFrame->channel_layout = audioCodecCtx_->channel_layout;
                         audioFrame->sample_rate    = audioCodecCtx_->sample_rate;
-                        int ret = av_frame_get_buffer(audioFrame, 0);
+                        int ret                    = av_frame_get_buffer(audioFrame, 0);
                         if (ret < 0) {
                             MA_LOGW(TAG, "could not allocate audio frame buffer: %d", ret);
                             av_frame_free(&audioFrame);
