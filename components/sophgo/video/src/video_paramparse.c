@@ -95,7 +95,7 @@ static const VPSS_CHN_ATTR_S chn_attr = {
         },
     .bMirror  = 0,
     .bFlip    = 0,
-    .u32Depth = 0,
+    .u32Depth = 3,
     .stAspectRatio =
         {
             .enMode         = ASPECT_RATIO_AUTO,

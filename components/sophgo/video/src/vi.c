@@ -349,7 +349,7 @@ static int app_ipcam_Vi_Chn_Start() {
         stViChnAttr.enCompressMode   = pstChnCfg->enCompressMode;
         stViChnAttr.enPixelFormat    = pstChnCfg->enPixFormat;
 
-        stViChnAttr.u32Depth = 0;  // depth
+        stViChnAttr.u32Depth = 3;  // depth
         // stViChnAttr.bLVDSflow        = (stViDevAttr.enIntfMode == VI_MODE_LVDS) ? 1 : 0;
         // stViChnAttr.u8TotalChnNum    = vt->ViConfig.s32WorkingViNum;
 
