@@ -323,8 +323,6 @@ static int app_ipcam_Vi_Chn_Start() {
     VI_DEV_ATTR_S stViDevAttr;
     VI_CHN_ATTR_S stViChnAttr;
     ISP_SNS_OBJ_S* pstSnsObj = CVI_NULL;
-    bool mirror = getVideoMirror();
-    bool flip = getVideoFlip();
 
     for (CVI_U32 i = 0; i < g_pstViCtx->u32WorkSnsCnt; i++) {
         APP_PARAM_SNS_CFG_T* pstSnsCfg = &g_pstViCtx->astSensorCfg[i];
@@ -354,18 +352,8 @@ static int app_ipcam_Vi_Chn_Start() {
         // stViChnAttr.u8TotalChnNum    = vt->ViConfig.s32WorkingViNum;
 
         /* fill the sensor orientation */
-        if (pstSnsCfg->u8Orien <= 3) {
-            stViChnAttr.bMirror = pstSnsCfg->u8Orien & 0x1;
-            stViChnAttr.bFlip   = pstSnsCfg->u8Orien & 0x2;
-        }
-
-        /* Coordinate transform */
-        if (mirror) {
-            stViChnAttr.bMirror = !stViChnAttr.bMirror;
-        }
-        if (flip) {
-            stViChnAttr.bFlip = !stViChnAttr.bFlip;
-        }
+        stViChnAttr.bMirror = pstSnsCfg->u8Orien & ISP_SNS_MIRROR;
+        stViChnAttr.bFlip   = pstSnsCfg->u8Orien & ISP_SNS_FLIP;
 
         s32Ret = CVI_VI_SetChnAttr(ViPipe, ViChn, &stViChnAttr);
         APP_IPCAM_CHECK_RET(s32Ret, "CVI_VI_SetChnAttr(%d) failed!\n", ViPipe);
@@ -375,6 +363,20 @@ static int app_ipcam_Vi_Chn_Start() {
         }
 
         s32Ret = CVI_VI_EnableChn(ViPipe, ViChn);
+
+        {
+            bool flip = false;
+            bool mirror = false;
+            CVI_VI_GetChnFlipMirror(ViPipe, ViChn, &flip, &mirror);
+            if (getVideoFlip()) {
+                flip = !flip;
+            }
+            if (getVideoMirror()) {
+                mirror = !mirror;
+            }
+            CVI_VI_SetChnFlipMirror(ViPipe, ViChn, flip, mirror);
+        }
+
         APP_IPCAM_CHECK_RET(s32Ret, "CVI_VI_EnableChn(%d) failed!\n", ViPipe);
     }
     return CVI_SUCCESS;
