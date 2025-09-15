@@ -46,6 +46,7 @@ SaveNode::SaveNode(std::string id)
       begin_(0),
       start_(0),
       manual_capture_requested_(false),
+      first_video_ts_(0),
       vcount_(0),
       acount_(0),
       imageCount_(0),
@@ -171,7 +172,7 @@ bool SaveNode::openFile(videoFrame* frame) {
     }
 
     avStream_->id                   = avFmtCtx_->nb_streams - 1;
-    avStream_->time_base            = av_d2q(1.0 / frame->fps, INT_MAX);
+    avStream_->time_base            = {1, 1000000};  // Time base in milliseconds
     avStream_->codecpar->codec_id   = AV_CODEC_ID_H264;
     avStream_->codecpar->width      = frame->img.width;
     avStream_->codecpar->height     = frame->img.height;
@@ -511,7 +512,6 @@ void SaveNode::threadEntry() {
                         closeFile();
                         if (!openFile(video)) {
                             enabled_ = false;
-                            video->release();
                             server_->response(id_, json::object({{"type", MA_MSG_TYPE_RESP}, {"name", "save"}, {"code", MA_ENOMEM}, {"data", "No space left on device"}}));
                             frame->release();
                             continue;
@@ -519,14 +519,20 @@ void SaveNode::threadEntry() {
                     }
                 }
                 if (avFmtCtx_ != nullptr) {
-                    packet.pts          = vcount_++;
+                    if (vcount_ == 0) {
+                        first_video_ts_ = video->timestamp;
+                        packet.pts      = 0;
+                    } else {
+                        packet.pts = ma::Tick::toMicroseconds(video->timestamp - first_video_ts_);
+                    }
+                    
                     packet.dts          = packet.pts;
                     packet.data         = video->img.data;
                     packet.size         = video->img.size;
                     packet.flags        = video->img.key ? AV_PKT_FLAG_KEY : 0;
                     packet.stream_index = avStream_->index;
-                    AVRational r        = av_d2q(1.0 / video->fps, INT_MAX);
-                    av_packet_rescale_ts(&packet, r, avStream_->time_base);
+                    vcount_++;
+
                     int ret = av_write_frame(avFmtCtx_, &packet);
                     if (ret != 0) {
                         MA_LOGW(TAG, "write video (%d: size %d) failed %d", ret, vcount_, video->img.size);
