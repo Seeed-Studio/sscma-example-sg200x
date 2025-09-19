@@ -55,7 +55,7 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_gc2053 = {
     .as8PNSwap    = {0, 0, 0, 0, 0},
     .bMclkEn      = 1,
     .u8Mclk       = 0,
-    .u8Orien      = ISP_SNS_MIRROR,
+    .u8Orien      = ISP_SNS_NORMAL,
     .bHwSync      = 0,
     .u8UseDualSns = 0,
 };
