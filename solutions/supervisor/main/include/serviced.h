@@ -28,8 +28,8 @@ public:
         LOGV("");
         thread_ = std::thread([this]() {
             bool sys_booting = true;
-            uint8_t wait_nodered = 0;
             bool restart_flow = false;
+            uint32_t nodered_failed = 0;
 
             running_ = true;
             while (running_) {
@@ -41,26 +41,22 @@ public:
                 query_sscma();
                 LOGV("nodered_status_=%d, sscma_status_=%d", nodered_status_, sscma_status_);
 
-                if (sys_booting) {
-                    uint64_t t = api_base::uptime();
-                    LOGD("uptime: %llu", t);
-                    if (t >= 2 * 60 * 1000) // 2 minutes
-                        sys_booting = false;
-                }
-                if (sys_booting)
+                if (sys_booting && (api_base::uptime() < 2 * 60 * 1000)) {
                     continue;
+                }
+                sys_booting = false;
 
                 if (nodered_status_ != STATUS_NORMAL) {
-                    LOGV("wait_nodered=%d", wait_nodered);
-                    if (3 == wait_nodered) { // Continuous failure
+                    LOGV("nodered_failed=%d", nodered_failed);
+                    if (10 == nodered_failed) { // Continuous failure
                         start_service("nodered");
                     }
-                    if (wait_nodered++ > 20) { // Timeout, will start again
-                        wait_nodered = 0;
+                    if (nodered_failed++ > 30) { // Timeout, will start again
+                        nodered_failed = 0;
                     }
                     continue;
                 }
-                wait_nodered = 0;
+                nodered_failed = 0;
 
                 if (sscma_status_ != STATUS_NORMAL) {
                     start_service("sscma");
@@ -104,12 +100,12 @@ private:
 
     void query_sscma()
     {
+        sscma_status_ = STATUS_NORMAL;
         std::string result = api_base::script(__func__);
         if (result.empty() || (result == "Timed out") || (result == "Failed")) {
             sscma_status_ = STATUS_FAILED;
             return;
         }
-        sscma_status_ = STATUS_NORMAL;
     }
 
     // void query_flow()
