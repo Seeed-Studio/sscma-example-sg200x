@@ -58,6 +58,16 @@ public:
         _dev_info = parse_result(script(__func__));
         LOGD("%s", _dev_info.dump().c_str());
 
+        try {
+            _model_dir = _dev_info["model"]["preset"];
+            _model_suffix = _dev_info["model"]["file"];
+            _model_suffix = _model_suffix.substr(_model_suffix.find_last_of("."));
+        } catch (const json::exception& e) {
+            LOGE("Invalid model preset.");
+            _model_dir = "";
+            _model_suffix = "";
+        }
+
         REG_API(getCameraWebsocketUrl);
 
         REG_API(getDeviceInfo);
@@ -99,6 +109,8 @@ public:
 
 private:
     static inline json _dev_info;
+    static inline std::string _model_dir = "";
+    static inline std::string _model_suffix = "";
 };
 
 #endif // API_DEVICE_H
