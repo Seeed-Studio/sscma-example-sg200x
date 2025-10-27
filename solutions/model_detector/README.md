@@ -2,70 +2,79 @@
 
 ## Overview
 
-This example demonstrates how to combine real-time camera capture with AI model inference using the SSCMA-Micro framework. The program captures video frames from the camera, performs object detection using a pre-trained model, and displays the results with timing statistics.
+**model_detector** is an example application demonstrating how to combine real-time camera capture with AI model inference using the **SSCMA-Micro** framework. This application captures video frames from the camera, performs object detection using a pre-trained model, and displays the results with timing statistics.
 
-## Features
+## Getting Started
 
-- Real-time camera capture with configurable resolution
-- AI model inference for object detection
-- Configurable confidence threshold for detections
-- Performance timing statistics (capture, inference, total processing time)
-- Physical address support for zero-copy tensor input
-- RTSP streaming capabilities
+Before building this solution, ensure that you have set up the **ReCamera-OS** environment as described in the main project documentation:
 
-## Building
+🔗 **[SSCMA Example for SG200X - Main README](../../README.md)**
 
-1. Navigate to the model_detector directory:
-   ```
-   cd solutions/model_detector
-   ```
+This includes:
 
-2. Create a build directory:
-   ```
-   mkdir build && cd build
-   ```
+- Setting up **ReCamera-OS**
+- Configuring the SDK path
+- Preparing the necessary toolchain
 
-3. Configure the build with CMake:
-   ```
-   cmake .. -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain-riscv64-linux-musl-x86_64.cmake
-   ```
+If you haven't completed these steps, follow the instructions in the main project README before proceeding.
 
-4. Build the project:
-   ```
-   make -j$(nproc)
-   ```
+## Building & Installing
 
-## Running
+### 1. Navigate to the `model_detector` Solution
 
-Run the compiled binary with optional parameters:
-
-```
-./model_detector [model_path] [confidence_threshold]
+```bash
+cd solutions/model_detector
 ```
 
-- `model_path`: Path to the AI model file (default: "yolo11n.int8")
-- `confidence_threshold`: Minimum confidence for detections (default: 0.5)
+### 2. Build the Application
 
-Example:
+```bash
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain-riscv64-linux-musl-x86_64.cmake
+make
 ```
-./model_detector yolov8  0.7
+
+### 3. Run the Application
+
+To run the application, use the following command:
+
+```bash
+./model_detector <model_file> [<confidence_threshold>]
 ```
 
-## Output
+- `<model_file>`: Path to the model file (e.g., `yolo11n_detection_cv181x_int8.cvimodel`).
+- `<confidence_threshold>` (optional): Minimum confidence for detections (default: 0.5).
 
-The program will output timing statistics and detection results for each frame:
+**Example:**
+
+```bash
+./model_detector yolo11n_detection_cv181x_int8.cvimodel 0.7
+```
+
+## Expected Output
+
+Upon executing the application, the following occurs:
+
+1. The specified model is loaded.
+2. The camera starts capturing frames in real-time.
+3. For each frame, inference is performed, and detection results are displayed.
+4. Timing statistics are shown for capture, inference, and total processing time.
+5. Detection results include the number of objects found and their bounding boxes with confidence scores.
+
+### Example Output Messages
 
 ```
-Frame 1: Capture: 15 ms, Inference: 25 ms, Total: 40 ms
+Frame 1: Capture: 15 ms, Inference: 25 ms, Total: 48 ms
 Detections: 2 objects found
 - Class 0: 0.85 confidence at [100,200,150,250]
 - Class 1: 0.72 confidence at [300,400,350,450]
 ```
 
-Every 10 frames, it will output the average processing time:
+Every 10 frames:
 
 ```
-Average processing time per frame: 40.00 ms (over 10 frames)
+Average processing time per frame: 50.00 ms (over 10 frames)
 ```
 
 ## Configuration
@@ -74,8 +83,8 @@ Average processing time per frame: 40.00 ms (over 10 frames)
 - Physical address mode is enabled for efficient memory handling
 - RTSP streaming is available for remote viewing
 
-## Dependencies
+## Conclusion
 
-- SSCMA-Micro framework
-- Sophgo camera components
-- Cross-compilation toolchain for RISC-V
+This example serves as a basic introduction to real-time object detection using the SSCMA framework with camera input. Users can modify the code and adapt it for their specific needs, experimenting with different models and thresholds.
+
+For further details on the SSCMA framework, refer to the [SSCMA-Micro documentation](https://github.com/Seeed-Studio/SSCMA-Micro).

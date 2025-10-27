@@ -136,8 +136,7 @@ int main(int argc, char** argv) {
                 size_t num_detections = std::distance(_results.begin(), _results.end());
                 printf("Detections: %zu objects found\n", num_detections);
                 for (auto result : _results) {
-                    printf("- Class %d: %.2f confidence at [%.0f,%.0f,%.0f,%.0f]\n",
-                           result.target, result.score, result.x, result.y, result.x + result.w, result.y + result.h);
+                    printf("- Class %d: %.2f confidence at [%.0f,%.0f,%.0f,%.0f]\n", result.target, result.score, result.x * input_width, result.y * input_height, (result.x + result.w) * input_width, (result.y + result.h) * input_height);
                 }
 
                 if (frame_count % 10 == 0) {
