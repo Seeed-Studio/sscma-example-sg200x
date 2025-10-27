@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <iterator>
 
 #include <sscma.h>
 #include <video.h>
@@ -80,6 +81,8 @@ int main(int argc, char** argv) {
             value.u16s[0] = input_width;
             value.u16s[1] = input_height;
             camera->commandCtrl(Camera::CtrlType::kWindow, Camera::CtrlMode::kWrite, value);
+            value.i32 = 1;
+            camera->commandCtrl(Camera::CtrlType::kPhysical, Camera::CtrlMode::kWrite, value);
             break;
         }
     }
@@ -97,7 +100,7 @@ int main(int argc, char** argv) {
     while (true) {
         ma_img_t frame;
         if (camera->retrieveFrame(frame, MA_PIXEL_FORMAT_RGB888) == MA_OK) {
-            auto start_time = std::chrono::high_resolution_clock::now();
+            auto capture_start = std::chrono::high_resolution_clock::now();
 
             ma_tensor_t tensor = {
                 .size        = frame.size,
@@ -107,21 +110,34 @@ int main(int argc, char** argv) {
             tensor.data.data = reinterpret_cast<void*>(frame.data);
 
             engine->setInput(0, tensor);
+            auto capture_end = std::chrono::high_resolution_clock::now();
+
             model->setPreprocessDone([camera, &frame](void* ctx) { camera->returnFrame(frame); });
 
             if (model->getOutputType() == MA_OUTPUT_TYPE_BBOX) {
                 ma::model::Detector* detector = static_cast<ma::model::Detector*>(model);
                 detector->setConfig(MA_MODEL_CFG_OPT_THRESHOLD, threshold);
+
+                auto inference_start = std::chrono::high_resolution_clock::now();
                 detector->run(nullptr);
                 auto _results = detector->getResults();
+                auto inference_end = std::chrono::high_resolution_clock::now();
 
-                auto end_time = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-                total_time += duration.count();
+                auto capture_duration = std::chrono::duration_cast<std::chrono::milliseconds>(capture_end - capture_start);
+                auto inference_duration = std::chrono::duration_cast<std::chrono::milliseconds>(inference_end - inference_start);
+                auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(inference_end - capture_start);
+
+                total_time += total_duration.count();
                 frame_count++;
 
+                printf("Frame %d: Capture: %lld ms, Inference: %lld ms, Total: %lld ms\n",
+                       frame_count, capture_duration.count(), inference_duration.count(), total_duration.count());
+
+                size_t num_detections = std::distance(_results.begin(), _results.end());
+                printf("Detections: %zu objects found\n", num_detections);
                 for (auto result : _results) {
-                    printf("Detected: x: %f, y: %f, w: %f, h: %f, score: %f, target: %d\n", result.x, result.y, result.w, result.h, result.score, result.target);
+                    printf("- Class %d: %.2f confidence at [%.0f,%.0f,%.0f,%.0f]\n",
+                           result.target, result.score, result.x, result.y, result.x + result.w, result.y + result.h);
                 }
 
                 if (frame_count % 10 == 0) {
