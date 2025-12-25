@@ -22,7 +22,9 @@
  *                    单一线程依次执行
  *
  *    - 并行模式（mode="parallel"）：
- *      并行执行流程：
+ *      并行模式分为两种子模式，由 parallel_mode 参数控制：
+ *
+ *      【并行独立模式 (parallel_mode="independent")】
  *      ┌─────────────────────────────────────────────────────────┐
  *      │                      摄像头                             │
  *      │                         │                               │
@@ -34,7 +36,30 @@
  *      │      └─────────┘  └─────────┘  └─────────┘             │
  *      │           │             │             │                 │
  *      │           └─────────────┴─────────────┘                 │
-      └─────────────────────────────────────────────────────────┘
+ *      │                         │                               │
+ *      │           各自独立获取帧，速度快的处理更多帧               │
+ *      └─────────────────────────────────────────────────────────┘
+ *
+ *      【并行同步模式 (parallel_mode="sync")】
+ *      ┌─────────────────────────────────────────────────────────┐
+ *      │                      摄像头                             │
+ *      │                         │                               │
+ *      │           ┌─────────────▼─────────────┐                 │
+ *      │           │      帧分发线程           │                 │
+ *      │           │  (主线程，统一管理帧)     │                 │
+ *      │           └─────────────┬─────────────┘                 │
+ *      │                    │                                   │
+ *      │     ┌───────────────┼───────────────┐                  │
+ *      │     │               │               │                  │
+ *      │     ▼               ▼               ▼                  │
+ *      │┌─────────┐     ┌─────────┐     ┌─────────┐            │
+ *      ││ Model1  │     │ Model2  │     │ Model3  │  独立线程  │
+ *      │└─────────┘     └─────────┘     └─────────┘            │
+ *      │     │               │               │                  │
+ *      │     └───────────────┴───────────────┘                  │
+ *      │                         │                               │
+ *      │           所有模型处理同一帧，时间戳一致                 │
+ *      └─────────────────────────────────────────────────────────┘
  *
  * ==================== 数据流说明 ====================
  *
@@ -42,9 +67,14 @@
  *   ModelInstance[i].output_frame ──> ModelInstance[i+1].input_frame
  *   使用 Mutex + Event 机制保证线程安全
  *
- * 并行模式数据获取：
+ * 并行独立模式数据获取：
  *   每个模型独立从 raw_frame_/jpeg_frame_ 获取摄像头帧
  *   无需数据传递，帧释放由各模型自行管理
+ *
+ * 并行同步模式数据获取：
+ *   帧分发线程统一从摄像头获取帧，复制到 shared_frame_
+ *   模型线程通过 frame_ready_event_ 同步，复制到本地 local_frame_
+ *   使用 sync_mutex_ 保护共享帧缓冲区访问
  *
  * @note 使用 cv2 命名空间作为 cv 的别名
  */
@@ -55,9 +85,7 @@
 namespace cv2 = cv;
 
 #include "model.h"
-
 namespace ma::node {
-
 using namespace ma::engine;
 using namespace ma::model;
 
@@ -84,7 +112,12 @@ ModelNode::ModelNode(std::string id)
       camera_(nullptr),
       preview_width_(640),
       preview_height_(640),
-      preview_fps_(30) {}
+      preview_fps_(30),
+      mode_("serial"),
+      parallel_mode_("independent"),
+      batch_size_(1),
+      frame_sequence_(0),
+      completed_count_(0) {}
 
 ModelNode::~ModelNode() {
     onDestroy();
@@ -298,12 +331,12 @@ void ModelNode::threadEntry() {
                 for (auto& pt : result.pts) {
                     pts.push_back({static_cast<int16_t>(pt.x * target_width + offset_x), static_cast<int16_t>(pt.y * target_height + offset_y), static_cast<int8_t>(pt.z * 100)});
                 }
-                json box = {static_cast<int16_t>(result.box.x * target_width + offset_x),
-                            static_cast<int16_t>(result.box.y * target_height + offset_y),
-                            static_cast<int16_t>(result.box.w * target_width),
-                            static_cast<int16_t>(result.box.h * target_height),
-                            static_cast<int8_t>(result.box.score * 100),
-                            result.box.target};
+                json box = json::array({static_cast<int16_t>(result.box.x * target_width + offset_x),
+                                        static_cast<int16_t>(result.box.y * target_height + offset_y),
+                                        static_cast<int16_t>(result.box.w * target_width),
+                                        static_cast<int16_t>(result.box.h * target_height),
+                                        static_cast<int8_t>(result.box.score * 100),
+                                        result.box.target});
                 if (labels_.size() > result.box.target) {
                     reply["data"]["labels"].push_back(labels_[result.box.target]);
                 } else {
@@ -317,12 +350,12 @@ void ModelNode::threadEntry() {
             auto _results             = segmentor->getResults();
             reply["data"]["segments"] = json::array();
             for (auto& result : _results) {
-                json box = {static_cast<int16_t>(result.box.x * target_width + offset_x),
-                            static_cast<int16_t>(result.box.y * target_height + offset_y),
-                            static_cast<int16_t>(result.box.w * target_width),
-                            static_cast<int16_t>(result.box.h * target_height),
-                            static_cast<int8_t>(result.box.score * 100),
-                            result.box.target};
+                json box = json::array({static_cast<int16_t>(result.box.x * target_width + offset_x),
+                                        static_cast<int16_t>(result.box.y * target_height + offset_y),
+                                        static_cast<int16_t>(result.box.w * target_width),
+                                        static_cast<int16_t>(result.box.h * target_height),
+                                        static_cast<int8_t>(result.box.score * 100),
+                                        result.box.target});
                 if (labels_.size() > result.box.target) {
                     reply["data"]["labels"].push_back(labels_[result.box.target]);
                 } else {
@@ -365,9 +398,12 @@ void ModelNode::threadEntry() {
         reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
 
         if (debug_) {
-            char* base64   = new char[4 * ((jpeg->img.size + 2) / 3 + 2)];
-            int base64_len = 4 * ((jpeg->img.size + 2) / 3 + 2);
-            ma::utils::base64_encode(jpeg->img.data, jpeg->img.size, base64, &base64_len);
+            size_t max_image_size = MAX_BASE64_SIZE;
+            size_t actual_size = std::min(static_cast<size_t>(jpeg->img.size), max_image_size);
+            
+            char* base64 = new char[4 * ((actual_size + 2) / 3 + 2)];
+            int base64_len = 4 * ((actual_size + 2) / 3 + 2);
+            ma::utils::base64_encode(jpeg->img.data, actual_size, base64, &base64_len);
             reply["data"]["image"] = std::string(base64, base64_len);
             delete[] base64;
             jpeg->release();
@@ -408,43 +444,65 @@ void ModelNode::modelInstanceThreadEntryStub(void* obj) {
  *
  * ==================== 并行模式执行流程 ====================
  *
+ * 并行模式分为两种子模式，由 parallel_mode_ 参数控制：
+ *
+ * 【并行独立模式 (parallel_mode_="independent")】
+ *
  *     ┌──────────────────────────────────────────────────────────┐
- *     │                  modelInstanceThreadEntry()              │
- *     │                    每个模型实例独立运行                    │
+ *     │  Model 1 线程                    Model 2 线程             │
+ *     │  ────────────                    ────────────             │
+ *     │  从摄像头获取帧                    从摄像头获取帧            │
+ *     │  raw_frame_.fetch()              raw_frame_.fetch()       │
+ *     │       │                              │                    │
+ *     │       ▼                              ▼                    │
+ *     │  预处理 + 推理                      预处理 + 推理            │
+ *     │       │                              │                    │
+ *     │       ▼                              ▼                    │
+ *     │  发送结果                          发送结果                  │
+ *     │       │                              │                    │
+ *     │       │  速度快则更快获取下一帧        │                    │
+ *     │       ▼                              ▼                    │
+ *     │  获取帧N+1                        获取帧M (M≠N+1)           │
+ *     └──────────────────────────────────────────────────────────┘
+ *
+ *     特点：每个模型独立从摄像头获取帧，处理速度快的模型处理更多帧
+ *
+ * 【并行同步模式 (parallel_mode_="sync")】
+ *
+ *     ┌──────────────────────────────────────────────────────────┐
+ *     │  帧分发线程 (frameDispatchEntry)                          │
+ *     │  ├─ 从摄像头获取帧                                        │
+ *     │  ├─ 复制到 shared_frame_                                  │
+ *     │  ├─ 设置 frame_ready_event_ 唤醒所有模型                  │
+ *     │  └─ 等待 all_done_event_                                  │
  *     └──────────────────────────────────────────────────────────┘
  *                                │
  *                                ▼
  *     ┌──────────────────────────────────────────────────────────┐
- *     │  从摄像头获取帧                                            │
- *     │  raw_frame_.fetch() / jpeg_frame_.fetch()                │
- *     │  （每个模型独立获取，互不干扰）                              │
+ *     │  Model 1 线程              Model 2 线程                   │
+ *     │  ────────────              ────────────                   │
+ *     │  等待帧就绪事件              等待帧就绪事件                 │
+ *     │  frame_ready_event_        frame_ready_event_            │
+ *     │       │                        │                         │
+ *     │       ▼                        ▼                         │
+ *     │  复制共享帧到本地              复制共享帧到本地              │
+ *     │  local_frame_ =              local_frame_ =              │
+ *     │  shared_frame_               shared_frame_               │
+ *     │       │                        │                         │
+ *     │       ▼                        ▼                         │
+ *     │  completed_count_++          completed_count_++          │
+ *     │       │                        │                         │
+ *     │       │  如果是最后一个模型:       │                       │
+ *     │       │  all_done_event_.set()   │                       │
+ *     │       │                        │                         │
+ *     │       ▼                        ▼                         │
+ *     │  预处理 + 推理              预处理 + 推理                  │
+ *     │       │                        │                         │
+ *     │       ▼                        ▼                         │
+ *     │  发送结果                    发送结果                      │
  *     └──────────────────────────────────────────────────────────┘
- *                                │
- *                                ▼
- *     ┌──────────────────────────────────────────────────────────┐
- *     │  输入预处理                                                │
- *     │  preprocessImage() / convertResultToInput()              │
- *     └──────────────────────────────────────────────────────────┘
- *                                │
- *                                ▼
- *     ┌──────────────────────────────────────────────────────────┐
- *     │  模型推理                                                  │
- *     │  Detector/Classifier/PoseDetector/Segmentor.run()        │
- *     └──────────────────────────────────────────────────────────┘
- *                                │
- *                                ▼
- *     ┌──────────────────────────────────────────────────────────┐
- *     │  结果后处理                                                │
- *     │  - 坐标转换                                               │
- *     │  - BYTETracker 跟踪（可选）                               │
- *     │  - Counter 计数（可选）                                   │
- *     └──────────────────────────────────────────────────────────┘
- *                                │
- *                                ▼
- *     ┌──────────────────────────────────────────────────────────┐
- *     │  发送结果                                                  │
- *     │  transport_->send()                                      │
- *     └──────────────────────────────────────────────────────────┘
+ *
+ *     特点：所有模型处理同一帧，保证时间戳一致性
  *
  * ==================== 串行模式执行流程 ====================
  *
@@ -494,8 +552,9 @@ void ModelNode::modelInstanceThreadEntryStub(void* obj) {
  *
  * @param instance 模型实例指针，包含模型配置和状态
  *
- * @note 在并行模式下，所有模型实例的线程同时运行
- * @note 在串行模式下，此函数仅被 serialExecutionEntry 调用
+ * @note 在并行独立模式下，所有模型实例的线程同时运行，各自独立获取摄像头帧
+ * @note 在并行同步模式下，模型线程等待 frame_ready_event_ 事件，由帧分发线程统一调度
+ * @note 在串行模式下，此函数仅被 serialExecutionEntry 调用（不会创建模型线程）
  * @note 使用 Thread::enterCritical()/exitCritical() 保护推理过程
  */
 void ModelNode::modelInstanceThreadEntry(ModelInstance* instance) {
@@ -563,13 +622,35 @@ void ModelNode::modelInstanceThreadEntry(ModelInstance* instance) {
         cv2::Mat input_mat;
         
         if (mode_ == "parallel") {
-            if (instance->debug) {
-                input_mat = cv2::Mat(jpeg->img.height, jpeg->img.width, CV_8UC3, jpeg->img.data);
+            if (parallel_mode_ == "sync") {
+                // 同步模式：等待帧就绪事件
+                uint32_t event_value = 0;
+                if (!frame_ready_event_.wait(1, &event_value, Tick::fromSeconds(2), true)) {
+                    continue;
+                }
+                
+                Guard sync_guard(sync_mutex_);
+                if (!shared_frame_.empty()) {
+                    input_mat = shared_frame_.clone();
+                }
+                
+                // 标记处理完成
+                completed_count_++;
+                
+                // 如果所有模型都完成了，通知主线程
+                if (completed_count_ >= static_cast<int>(models_.size())) {
+                    all_done_event_.set(1);
+                }
             } else {
-                input_mat = cv2::Mat(raw->img.height, raw->img.width, CV_8UC3, raw->img.data);
-            }
-            if (!instance->debug) {
-                raw->release();
+                // 独立模式：每个模型独立获取帧
+                if (instance->debug) {
+                    input_mat = cv2::Mat(jpeg->img.height, jpeg->img.width, CV_8UC3, jpeg->img.data);
+                } else {
+                    input_mat = cv2::Mat(raw->img.height, raw->img.width, CV_8UC3, raw->img.data);
+                }
+                if (!instance->debug) {
+                    raw->release();
+                }
             }
         } else {
             if (!instance->is_first) {
@@ -593,6 +674,7 @@ void ModelNode::modelInstanceThreadEntry(ModelInstance* instance) {
         cv2::Mat output_mat;
         cv2::Mat processed_mat;
         ma_tensor_t tensor = {0};
+        std::vector<float>* tensor_buffer = nullptr;
         
         if (!input_mat.empty()) {
             output_mat = convertResultToInput(input_mat, instance->model, instance->preprocess_config);
@@ -601,14 +683,17 @@ void ModelNode::modelInstanceThreadEntry(ModelInstance* instance) {
             tensor.is_physical = false;
             tensor.is_variable = false;
             
-            tensor.data.f32 = new float[output_mat.cols * output_mat.rows * output_mat.channels()];
+            tensor_buffer = getTensorBuffer(tensor.size);
+            tensor.data.f32 = tensor_buffer->data();
             std::memcpy(tensor.data.f32, output_mat.data, tensor.size);
             
             instance->engine->setInput(0, tensor);
         }
         
-        auto preprocess_done_callback = [this, tensor](void* ctx) {
-            delete[] tensor.data.f32;
+        auto preprocess_done_callback = [this, tensor_buffer](void* ctx) {
+            if (tensor_buffer) {
+                returnTensorBuffer(tensor_buffer);
+            }
         };
         instance->model->setPreprocessDone(preprocess_done_callback);
         
@@ -799,6 +884,146 @@ void ModelNode::serialExecutionEntryStub(void* obj) {
     reinterpret_cast<ModelNode*>(obj)->serialExecutionEntry();
 }
 
+void ModelNode::frameDispatchEntryStub(void* obj) {
+    reinterpret_cast<ModelNode*>(obj)->frameDispatchEntry();
+}
+
+/**
+ * @brief 同步并行模式的帧分发主线程函数
+ *
+ * 该函数实现了同步并行模式下的帧分发逻辑：
+ * 1. 从摄像头获取原始帧
+ * 2. 复制到共享帧缓冲区
+ * 3. 唤醒所有等待的模型线程
+ * 4. 等待所有模型完成处理
+ * 5. 重复下一帧
+ *
+ * ==================== 同步模式帧分发流程 ====================
+ *
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │                    frameDispatchEntry()                     │
+     │                      帧分发主线程                              │
+ *     └─────────────────────────────────────────────────────────────┘
+ *                               │
+ *                               ▼
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │  步骤1: 初始化同步变量                                       │
+ *     │  ├─ frame_sequence_ = 0                                    │
+ *     │  ├─ completed_count_ = 0                                   │
+ *     │  └─ 清空共享帧缓冲区                                         │
+ *     └─────────────────────────────────────────────────────────────┘
+ *                               │
+ *                               ▼
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │  步骤2: 循环获取帧                                           │
+ *     │  while (started_)                                           │
+ *     │  ├─ raw_frame_.fetch(&raw)                                  │
+ *     │  └─ debug模式：jpeg_frame_.fetch(&jpeg)                     │
+ *     └─────────────────────────────────────────────────────────────┘
+ *                               │
+ *                               ▼
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │  步骤3: 复制到共享缓冲区                                     │
+ *     │  ├─ Guard sync_guard(sync_mutex_)                           │
+ *     │  ├─ shared_frame_ = cv::Mat(raw->img.height,               │
+ *     │  │                       raw->img.width,                    │
+ *     │  │                       CV_8UC3, raw->img.data)            │
+ *     │  ├─ frame_sequence_++                                       │
+ *     │  └─ completed_count_ = 0                                    │
+ *     └─────────────────────────────────────────────────────────────┘
+ *                               │
+ *                               ▼
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │  步骤4: 唤醒所有模型线程                                     │
+ *     │  └─ for (i = 0; i < models_.size(); i++)                   │
+ *     │     └─ frame_ready_event_.set(1)                            │
+ *     └─────────────────────────────────────────────────────────────┘
+ *                               │
+ *                               ▼
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │  步骤5: 等待所有模型完成                                     │
+ *     │  └─ all_done_event_.wait()                                  │
+ *     │                                                             │
+ *     │  [时序图]                                                    │
+ *     │  主线程        模型线程1    模型线程2    模型线程3          │
+ *     │     │            │            │            │                 │
+ *     │     │----fetch-->│            │            │                 │
+ *     │     │----copy--->│            │            │                 │
+ *     │     │----set---> │            │            │                 │
+ *     │     │            │----wait--->│            │                 │
+ *     │     │            │            │----wait--->│                 │
+ *     │     │            │            │            │----wait-->      │
+ *     │     │            │            │            │                 │
+ *     │     │<---wait----│<---wait----│<---wait----│                 │
+ *     │     │            │            │            │                 │
+ *     │     │            │----process--->          │                 │
+ *     │     │            │            │----process--->              │
+ *     │     │            │            │            │----process-->   │
+ *     │     │            │            │            │                 │
+ *     │     │            │----done--->│            │                 │
+ *     │     │            │            │----done--->│                 │
+ *     │     │            │            │            │----done--->     │
+ *     │     │<---wait----│<---wait----│<---wait----│                 │
+ *     │     │                         │            │                 │
+ *     │     └───────下一帧─────────────┴────────────┘                 │
+ *     └─────────────────────────────────────────────────────────────┘
+ *                               │
+ *                               ▼
+ *     ┌─────────────────────────────────────────────────────────────┐
+ *     │  步骤6: 释放帧资源                                           │
+ *     │  ├─ raw->release()                                          │
+ *     │  └─ if (debug) jpeg->release()                              │
+ *     └─────────────────────────────────────────────────────────────┘
+ *
+ * @note 此函数仅在 parallel_mode="sync" 时使用
+ * @note 使用 sync_mutex_ 保护共享帧缓冲区的访问
+ * @note 模型线程通过 frame_ready_event_ 同步获取帧
+ */
+void ModelNode::frameDispatchEntry() {
+    videoFrame* raw = nullptr;
+    videoFrame* jpeg = nullptr;
+    
+    frame_sequence_ = 0;
+    completed_count_ = 0;
+    
+    while (started_) {
+        if (!raw_frame_.fetch(reinterpret_cast<void**>(&raw), Tick::fromSeconds(2))) {
+            continue;
+        }
+        
+        bool has_jpeg = false;
+        if (debug_ && !jpeg_frame_.fetch(reinterpret_cast<void**>(&jpeg), Tick::fromSeconds(2))) {
+            raw->release();
+            continue;
+        }
+        has_jpeg = debug_ && (jpeg != nullptr);
+        
+        {
+            Guard sync_guard(sync_mutex_);
+            if (!shared_frame_.empty()) {
+                shared_frame_.release();
+            }
+            shared_frame_ = cv2::Mat(raw->img.height, raw->img.width, CV_8UC3, raw->img.data);
+            frame_sequence_++;
+            completed_count_ = 0;
+        }
+        
+        for (size_t i = 0; i < models_.size(); ++i) {
+            frame_ready_event_.set(1);
+        }
+        
+        if (!all_done_event_.wait(1, nullptr, Tick::fromSeconds(5), true)) {
+            MA_LOGW(TAG, "Sync mode: wait for models timeout, reset completed_count");
+            completed_count_ = 0;
+        }
+        
+        raw->release();
+        if (has_jpeg && jpeg != nullptr) {
+            jpeg->release();
+        }
+    }
+}
+
 /**
  * @brief 串行执行模式的主线程入口函数
  *
@@ -890,14 +1115,15 @@ void ModelNode::serialExecutionEntryStub(void* obj) {
  *
  * ==================== 与并行模式的对比 ====================
  *
- * | 特性         | 串行模式 (serial)          | 并行模式 (parallel)        |
- * |--------------|----------------------------|----------------------------|
- * | 线程数量     | 1个主线程                  | N个模型线程 (N=模型数量)   |
- * | 数据来源     | 模型间传递                 | 每个模型独立获取摄像头帧    |
- * | 同步机制     | Mutex + Event              | 无需同步                   |
- * | 适用场景     | 模型级联 (检测→分类→分割)   | 多模型独立推理              |
- * | 内存使用     | 共享 input_frame 缓冲区    | 各自独立处理               |
- * | 延迟         | 累加 (每帧处理时间求和)    | 最大值 (并行处理取最大)    |
+ * | 特性         | 串行模式 (serial)          | 并行独立模式 (independent) | 并行同步模式 (sync)    |
+ * |--------------|----------------------------|---------------------------|------------------------|
+ * | 线程数量     | 1个主线程                  | N个模型线程               | N+1个线程              |
+ * | 数据来源     | 模型间传递                 | 每个模型独立获取摄像头帧   | 帧分发线程统一分发      |
+ * | 同步机制     | Mutex + Event              | 无需同步                  | sync_mutex + events    |
+ * | 适用场景     | 模型级联 (检测→分类→分割)   | 多模型独立推理             | 多模型结果时间对齐      |
+ * | 内存使用     | 共享 input_frame 缓冲区    | 各自独立处理               | 共享帧 + 本地副本       |
+ * | 延迟         | 累加 (每帧处理时间求和)    | 最大值 (并行处理取最大)   | 最大值 (同步等待)       |
+ * | 时间戳一致性 | 严格顺序                   | 不一致                    | 严格一致               |
  *
  * @note 此函数仅在 mode_ == "serial" 时被调用
  * @note 使用 Thread::enterCritical()/exitCritical() 保护整个处理流程
@@ -944,7 +1170,7 @@ void ModelNode::serialExecutionEntry() {
             cv2::Mat output_mat;
 
             if (instance->is_first) {
-                input_mat = current_frame.clone();
+                input_mat = current_frame;
             } else {
                 instance->mutex.lock();
                 while (!instance->data_ready && started_) {
@@ -967,13 +1193,14 @@ void ModelNode::serialExecutionEntry() {
                 tensor.size = processed_mat.cols * processed_mat.rows * processed_mat.channels() * sizeof(float);
                 tensor.is_physical = false;
                 tensor.is_variable = false;
-                tensor.data.f32 = new float[processed_mat.cols * processed_mat.rows * processed_mat.channels()];
+                auto tensor_buffer = getTensorBuffer(tensor.size);
+                tensor.data.f32 = tensor_buffer->data();
                 std::memcpy(tensor.data.f32, processed_mat.data, tensor.size);
 
                 instance->engine->setInput(0, tensor);
 
-                auto preprocess_done_callback = [tensor](void* ctx) {
-                    delete[] tensor.data.f32;
+                auto preprocess_done_callback = [this, tensor_buffer](void* ctx) {
+                    returnTensorBuffer(const_cast<std::vector<float>*>(tensor_buffer));
                 };
                 instance->model->setPreprocessDone(preprocess_done_callback);
 
@@ -1032,11 +1259,11 @@ void ModelNode::serialExecutionEntry() {
                             pts.push_back({static_cast<int16_t>(pt.x * target_width), static_cast<int16_t>(pt.y * target_height), static_cast<int8_t>(pt.z * 100)});
                         }
                         json box = {static_cast<int16_t>(result.box.x * target_width),
-                                    static_cast<int16_t>(result.box.y * target_height),
-                                    static_cast<int16_t>(result.box.w * target_width),
-                                    static_cast<int16_t>(result.box.h * target_height),
-                                    static_cast<int8_t>(result.box.score * 100),
-                                    result.box.target};
+                                                static_cast<int16_t>(result.box.y * target_height),
+                                                static_cast<int16_t>(result.box.w * target_width),
+                                                static_cast<int16_t>(result.box.h * target_height),
+                                                static_cast<int8_t>(result.box.score * 100),
+                                                result.box.target};
                         instance_reply["keypoints"].push_back({box, pts});
                     }
                 } else if (instance->model->getOutputType() == MA_OUTPUT_TYPE_SEGMENT) {
@@ -1046,12 +1273,12 @@ void ModelNode::serialExecutionEntry() {
                     instance_reply["segments"] = json::array();
                     for (auto& result : _results) {
                         json box = {static_cast<int16_t>(result.box.x * width),
-                                    static_cast<int16_t>(result.box.y * height),
-                                    static_cast<int16_t>(result.box.w * width),
-                                    static_cast<int16_t>(result.box.h * height),
-                                    static_cast<int8_t>(result.box.score * 100),
-                                    result.box.target};
-                        instance_reply["segments"].push_back({box});
+                                                static_cast<int16_t>(result.box.y * height),
+                                                static_cast<int16_t>(result.box.w * width),
+                                                static_cast<int16_t>(result.box.h * height),
+                                                static_cast<int8_t>(result.box.score * 100),
+                                                result.box.target};
+                        instance_reply["segments"].push_back(box);
                     }
                 }
 
@@ -1247,6 +1474,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
 
     // 设置运行模式和批处理大小
     mode_ = config.value("mode", "serial");
+    parallel_mode_ = config.value("parallel_mode", "independent");
     batch_size_ = config.value("batch_size", 1);
 
     // 加载多个模型配置
@@ -1262,7 +1490,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
             // 模型路径
             std::string model_uri = model_config.value("uri", DEFAULT_MODEL);
             if (access(model_uri.c_str(), R_OK) != 0) {
-                MA_THROW(Exception(MA_ENOENT, "Model file not found " + model_uri));
+                MA_THROW(::ma::Exception(MA_ENOENT, "Model file not found " + model_uri));
             }
             
             // 模型算法类型
@@ -1275,7 +1503,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
                 if (access(path.c_str(), R_OK) == 0) {
                     std::ifstream ifs(path);
                     if (!ifs.is_open()) {
-                        MA_THROW(Exception(MA_EINVAL, "Model config file not found " + path));
+                        MA_THROW(::ma::Exception(MA_EINVAL, "Model config file not found " + path));
                     }
                     ifs >> instance->info;
                     if (instance->info.is_object()) {
@@ -1295,17 +1523,17 @@ ma_err_t ModelNode::onCreate(const json& config) {
             MA_TRY {
                 instance->engine = new EngineDefault();
                 if (instance->engine == nullptr) {
-                    MA_THROW(Exception(MA_ENOMEM, "Engine init failed"));
+                    MA_THROW(::ma::Exception(MA_ENOMEM, "Engine init failed"));
                 }
                 if (instance->engine->init() != MA_OK) {
-                    MA_THROW(Exception(MA_EINVAL, "Engine init failed"));
+                    MA_THROW(::ma::Exception(MA_EINVAL, "Engine init failed"));
                 }
                 if (instance->engine->load(model_uri) != MA_OK) {
-                    MA_THROW(Exception(MA_EINVAL, "Engine load failed"));
+                    MA_THROW(::ma::Exception(MA_EINVAL, "Engine load failed"));
                 }
                 instance->model = ModelFactory::create(instance->engine, model_algorithm);
                 if (instance->model == nullptr) {
-                    MA_THROW(Exception(MA_ENOTSUP, "Model not supported"));
+                    MA_THROW(::ma::Exception(MA_ENOTSUP, "Model not supported"));
                 }
                 
                 MA_LOGI(TAG, "model: %s %s", model_uri.c_str(), instance->model->getName());
@@ -1398,7 +1626,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
                 }
                 
                 models_.push_back(instance);
-            } MA_CATCH(ma::Exception & e) {
+            } MA_CATCH(::ma::Exception & e) {
                 if (instance->engine != nullptr) {
                     delete instance->engine;
                     instance->engine = nullptr;
@@ -1435,7 +1663,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
                     instance->transport = nullptr;
                 }
                 delete instance;
-                MA_THROW(Exception(MA_EINVAL, e.what()));
+                MA_THROW(::ma::Exception(MA_EINVAL, e.what()));
             }
         }
     } else {
@@ -1455,7 +1683,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
         }
         
         if (access(uri_.c_str(), R_OK) != 0) {
-            MA_THROW(Exception(MA_ENOENT, "Model file not found " + uri_));
+            MA_THROW(::ma::Exception(MA_ENOENT, "Model file not found " + uri_));
         }
         
         // find model.json
@@ -1465,7 +1693,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
             if (access(path.c_str(), R_OK) == 0) {
                 std::ifstream ifs(path);
                 if (!ifs.is_open()) {
-                    MA_THROW(Exception(MA_EINVAL, "Model config file not found " + path));
+                    MA_THROW(::ma::Exception(MA_EINVAL, "Model config file not found " + path));
                 }
                 ifs >> info_;
                 if (info_.is_object()) {
@@ -1488,17 +1716,17 @@ ma_err_t ModelNode::onCreate(const json& config) {
         MA_TRY {
             instance->engine = new EngineDefault();
             if (instance->engine == nullptr) {
-                MA_THROW(Exception(MA_ENOMEM, "Engine init failed"));
+                MA_THROW(::ma::Exception(MA_ENOMEM, "Engine init failed"));
             }
             if (instance->engine->init() != MA_OK) {
-                MA_THROW(Exception(MA_EINVAL, "Engine init failed"));
+                MA_THROW(::ma::Exception(MA_EINVAL, "Engine init failed"));
             }
             if (instance->engine->load(uri_) != MA_OK) {
-                MA_THROW(Exception(MA_EINVAL, "Engine load failed"));
+                MA_THROW(::ma::Exception(MA_EINVAL, "Engine load failed"));
             }
             instance->model = ModelFactory::create(instance->engine, algorithm_);
             if (instance->model == nullptr) {
-                MA_THROW(Exception(MA_ENOTSUP, "Model not supported"));
+                MA_THROW(::ma::Exception(MA_ENOTSUP, "Model not supported"));
             }
             
             MA_LOGI(TAG, "model: %s %s", uri_.c_str(), instance->model->getName());
@@ -1562,7 +1790,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
             
             models_.push_back(instance);
         }
-        MA_CATCH(ma::Exception & e) {
+        MA_CATCH(::ma::Exception & e) {
             if (instance->engine != nullptr) {
                 delete instance->engine;
                 instance->engine = nullptr;
@@ -1600,7 +1828,7 @@ ma_err_t ModelNode::onCreate(const json& config) {
                 instance->transport = nullptr;
             }
             delete instance;
-            MA_THROW(Exception(MA_EINVAL, e.what()));
+            MA_THROW(::ma::Exception(MA_EINVAL, e.what()));
         }
     }
 
@@ -1806,9 +2034,9 @@ ma_err_t ModelNode::onDestroy() {
  *     │      │  │ 创建单一串行执行线程:                             │    │
  *     │      │  │   ├─ Thread(name, serialExecutionEntry)          │    │
  *     │      │  │   └─ 启动线程                                    │    │
- *     │      │  └──────────────────────────────────────────────── *     │          │      └─ [图示 │                                                         │
- *─┘    │
-: 串行模式线程结构]                                │
+ *     │      │  └─────────────────────────────────────────────────┘    │
+ *     │      │                                                         │
+ *     │      └─ [图示: 串行模式线程结构]                                │
  *     │              ┌─────────────────────────────────────┐           │
  *     │              │            主线程 onStart           │           │
  *     │              └──────────────────┬──────────────────┘           │
@@ -1860,7 +2088,7 @@ ma_err_t ModelNode::onStart() {
     }
 
     if (camera_ == nullptr) {
-        MA_THROW(Exception(MA_ENOTSUP, "No camera node found"));
+        MA_THROW(::ma::Exception(MA_ENOTSUP, "No camera node found"));
         return MA_ENOTSUP;
     }
 
@@ -1901,16 +2129,36 @@ ma_err_t ModelNode::onStart() {
 
     // 根据运行模式创建线程
     if (mode_ == "parallel") {
-        // 并行模式：为每个模型实例创建独立线程
-        for (size_t i = 0; i < models_.size(); ++i) {
-            auto instance = models_[i];
-            instance->node = this;
-            instance->is_first = (i == 0);
-            instance->is_last = (i == models_.size() - 1);
-            if (instance->thread == nullptr) {
-                instance->thread = new Thread((type_ + "#" + instance->id).c_str(), modelInstanceThreadEntryStub, instance);
+        if (parallel_mode_ == "sync") {
+            // 同步模式：创建主线程进行帧分发
+            for (size_t i = 0; i < models_.size(); ++i) {
+                auto instance = models_[i];
+                instance->node = this;
+                instance->is_first = (i == 0);
+                instance->is_last = (i == models_.size() - 1);
+                if (instance->thread == nullptr) {
+                    instance->thread = new Thread((type_ + "#" + instance->id).c_str(), modelInstanceThreadEntryStub, instance);
+                }
+                instance->thread->start();
             }
-            instance->thread->start();
+            
+            // 创建帧分发线程
+            if (thread_ == nullptr) {
+                thread_ = new Thread((type_ + "#dispatch").c_str(), frameDispatchEntryStub, this);
+            }
+            thread_->start();
+        } else {
+            // 独立模式：为每个模型实例创建独立线程
+            for (size_t i = 0; i < models_.size(); ++i) {
+                auto instance = models_[i];
+                instance->node = this;
+                instance->is_first = (i == 0);
+                instance->is_last = (i == models_.size() - 1);
+                if (instance->thread == nullptr) {
+                    instance->thread = new Thread((type_ + "#" + instance->id).c_str(), modelInstanceThreadEntryStub, instance);
+                }
+                instance->thread->start();
+            }
         }
     } else {
         // 串行模式（默认）：只创建一个线程，依次执行所有模型
@@ -2423,4 +2671,37 @@ cv2::Mat ModelNode::convertResultToInput(const ::cv::Mat& original_frame, Model*
     return roi;
 }
 
-}  // namespace ma::node
+std::vector<float>* ModelNode::getTensorBuffer(size_t size) {
+    Guard guard(tensor_pool_mutex_);
+    size_t required_elements = size / sizeof(float);
+
+    for (auto& buf : tensor_pool_) {
+        if (buf.capacity() >= required_elements) {
+            buf.resize(required_elements);
+            return &buf;
+        }
+    }
+
+    if (tensor_pool_.size() >= MAX_TENSOR_POOL_SIZE) {
+        MA_LOGW(TAG, "Tensor pool exhausted, allocating new buffer");
+        tensor_pool_.emplace_back();
+        tensor_pool_.back().resize(required_elements);
+        return &tensor_pool_.back();
+    }
+
+    tensor_pool_.emplace_back();
+    tensor_pool_.back().resize(required_elements);
+    return &tensor_pool_.back();
+}
+
+void ModelNode::returnTensorBuffer(std::vector<float>* buffer) {
+    if (buffer == nullptr) {
+        return;
+    }
+
+    Guard guard(tensor_pool_mutex_);
+    buffer->clear();
+    buffer->shrink_to_fit();
+}
+
+}
