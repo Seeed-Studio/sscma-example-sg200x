@@ -30,10 +30,23 @@ sudo opkg install /userdata/supervisor_1.0.0_riscv64.ipk
 
 | Command | Description |
 |---------|-------------|
-| `make opkg` | Build complete opkg package (frontend + backend) |
+| `make opkg` | Build complete opkg package (frontend + backend) for deployment |
+| `make build` | Build binary for current platform |
+| `make build-riscv` | Cross-compile for RISC-V (no CGO) |
+| `make build-riscv-cgo` | Cross-compile for RISC-V with CGO (requires cross-compiler) |
 | `make build-static` | Build static binary for RISC-V |
-| `make www` | Build frontend only |
+| `make www` | Build web frontend only |
+| `make package` | Create release tarball package |
+| `make test` | Run tests |
+| `make test-coverage` | Run tests with coverage report |
+| `make fmt` | Format Go code |
+| `make lint` | Lint code (requires golangci-lint) |
+| `make deps` | Install/update Go dependencies |
+| `make run` | Run locally with auth disabled |
+| `make dev` | Run with auto-reload (requires air) |
+| `make install` | Install binary to ~/.local/bin |
 | `make clean` | Clean build artifacts |
+| `make help` | Show all available targets |
 
 ## Why Go?
 
