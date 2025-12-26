@@ -18,6 +18,17 @@ import useConfigStore from "@/store/config";
 import Network from "@/views/network";
 import styles from "./index.module.css";
 
+const typePriority: Record<string, number> = {
+  IPv: 1,
+  wlan: 2,
+  eth: 3,
+  usb: 4,
+};
+
+const isValidType = (type: string): type is keyof typeof typePriority => {
+  return type in typePriority;
+};
+
 const Workspace = () => {
   const { deviceInfo } = useConfigStore();
 
@@ -88,8 +99,6 @@ const Workspace = () => {
       handleRefreshDeviceList();
     }
   }, [deviceInfo?.sn]);
-
-  const [isExpand, setIsExpand] = useState(true;
 
   const handleShowDeviceList = () => {
     if (!showDeviceList) {
