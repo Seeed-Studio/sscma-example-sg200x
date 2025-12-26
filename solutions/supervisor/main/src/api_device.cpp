@@ -263,13 +263,30 @@ api_status_t api_device::getModelList(request_t req, response_t res)
 
 api_status_t api_device::uploadModel(request_t req, response_t res)
 {
-    std::string model, info;
-    try {
-        model = _dev_info["model"]["file"];
-        info = _dev_info["model"]["info"];
-    } catch (const json::exception& e) {
-        response(res, -1, "Invalid model dir.");
-        return API_STATUS_OK;
+    std::string modelFilename = get_param(req, "model_filename");
+    std::string infoFilename = get_param(req, "info_filename");
+
+    if (modelFilename.empty()) {
+        modelFilename = "model.cvimodel";
+    }
+
+    std::string model = modelFilename;
+    std::string info;
+    if (!infoFilename.empty()) {
+        info = infoFilename;
+    } else {
+        info = modelFilename + ".json";
+    }
+
+    std::string offsetStr = get_param(req, "offset");
+    size_t offset = 0;
+    if (!offsetStr.empty()) {
+        try {
+            offset = std::stoull(offsetStr);
+        } catch (...) {
+            response(res, -1, "Invalid offset parameter. Must be a non-negative integer.");
+            return API_STATUS_OK;
+        }
     }
 
     bool has_model = false;
@@ -292,9 +309,27 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
             continue;
         }
 
-        std::ofstream file(path + ".tmp", std::ios::binary | std::ios::trunc);
-        if (!file.is_open())
+        std::fstream file(path + ".tmp", std::ios::in | std::ios::out | std::ios::binary);
+        bool fileExisted = file.is_open();
+
+        if (!fileExisted) {
+            file.open(path + ".tmp", std::ios::out | std::ios::binary);
+            if (!file.is_open()) {
+                continue;
+            }
+            file.close();
+            file.open(path + ".tmp", std::ios::in | std::ios::out | std::ios::binary);
+            if (!file.is_open()) {
+                continue;
+            }
+        }
+
+        file.seekp(offset);
+        if (file.fail()) {
+            file.close();
             continue;
+        }
+
         file.write(part.data, part.len);
         file.close();
         data["list"].push_back({ { part.name, path } });
@@ -307,7 +342,7 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
     if (!has_model) {
         auto&& js = parse_result(std::ifstream(info + ".tmp"));
         std::string file = js.value("file", "");
-        if (file.empty()) { // model not exist
+        if (file.empty()) {
             for (auto& entry : std::filesystem::directory_iterator(_model_dir)) {
                 if (entry.path().extension() == ".json") {
                     auto _path = entry.path().string();
@@ -347,7 +382,11 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
         }
     }
 
-    response(res, 0, STR_OK, data);
+    json result = json::object();
+    result["model"] = model;
+    result["info"] = info;
+    result["files"] = data["list"];
+    response(res, 0, STR_OK, result);
     return API_STATUS_OK;
 }
 
