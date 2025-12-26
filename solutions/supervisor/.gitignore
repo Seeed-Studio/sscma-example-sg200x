@@ -1,3 +1,48 @@
-www/dist/
+# Build output
+/build/
+/bin/
+/dist/
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+supervisor
+supervisor-*
+
+# Test files
+*.test
+coverage.out
+coverage.html
+
+# Go dependency directories
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env.local
+.envrc.local
+
+# Temp files
+*.tmp
+*.log
+
+# Air (live reload)
+tmp/
+
+# Web frontend
 www/node_modules/
+www/dist/
 rootfs/usr/share/supervisor/www/

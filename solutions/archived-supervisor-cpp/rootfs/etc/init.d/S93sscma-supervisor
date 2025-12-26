@@ -1,0 +1,72 @@
+#!/bin/sh
+
+DAEMON=supervisor
+DAEMON_PATH=/usr/local/bin
+
+JOYSTICK_SRC="/usr/share/supervisor/nipplejs.min.js"
+JOYSTICK_DIR="/home/recamera/.node-red/public"
+if [ -f $JOYSTICK_SRC ]; then
+    mkdir -p "$JOYSTICK_DIR"
+    cp -f "$JOYSTICK_SRC" "$JOYSTICK_DIR/"
+    sync
+fi
+
+check_avahi() {
+    local service_file="/etc/avahi/services/sscma.service"
+    local sn_value=$(fw_printenv sn | awk -F'=' '{print $NF}')
+    if [ -z "$sn_value" ]; then
+        sn_value="0000000000000000"
+    fi
+
+    local txt_record="<txt-record>sn=$sn_value</txt-record>"
+    if ! grep -q "$txt_record" "$service_file"; then
+        sed -i '/<type>_sscma._tcp<\/type>/a \ \ \ \ '"$txt_record" "$service_file"
+        sync
+
+        /etc/init.d/S50avahi-daemon stop
+        sleep 1
+        /etc/init.d/S50avahi-daemon start
+    fi
+}
+check_avahi
+
+start() {
+    printf 'Starting Supervisor Service: '
+    PID="$(pidof $DAEMON)"
+
+    if [ "$PID" ]; then
+        echo "$DAEMON is already running."
+    else
+        $DAEMON_PATH/$DAEMON >/dev/null 2>&1 &
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+    fi
+}
+
+stop() {
+    printf 'Stopping Supervisor Service: '
+    PID="$(pidof $DAEMON)"
+
+    if [ "$PID" ]; then
+        kill $PID
+        [ $? = 0 ] && echo "OK" || echo "FAIL"
+        sleep 0.1
+    else
+        echo "$DAEMON is not running."
+    fi
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+case "$1" in
+start | stop | restart)
+    "$1"
+    ;;
+*)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac

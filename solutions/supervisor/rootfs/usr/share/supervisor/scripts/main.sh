@@ -16,25 +16,6 @@ readonly USERDATA_DIR="/userdata"
 readonly MODEL_DIR="$USERDATA_DIR/Models"
 readonly MODELS_PRESET="/usr/share/supervisor/models"
 
-# flow
-_check_flow() {
-    local src_flow="/usr/share/supervisor/flows.json"
-    local src_flow_gimbal="/usr/share/supervisor/flows_gimbal.json"
-    local dst_flow="/home/recamera/.node-red/flows.json"
-
-    [[ ! -f "$dst_flow" ]] && {
-        [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && {
-            [ -f "$src_flow_gimbal" ] && src_flow=$src_flow_gimbal
-        }
-        [ -f "$src_flow" ] && {
-            cp -f "$src_flow" "$dst_flow"
-        }
-    }
-    [[ -f "$dst_flow" ]] && {
-        chown "$USER_NAME":"$USER_NAME" "$dst_flow"
-    }
-}
-
 # work_dir
 readonly WORK_DIR="/tmp/supervisor"
 [[ ! -d "$WORK_DIR" ]] && {
@@ -50,8 +31,6 @@ readonly WORK_DIR="/tmp/supervisor"
         mv -f "/etc/device-name" "$HOSTNAME_FILE"
         hostname -F "$HOSTNAME_FILE"
     }
-
-    _check_flow >/dev/null &
 }
 
 _ip() { ifconfig "$1" 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{print $2}'; }
@@ -638,44 +617,11 @@ function query_sscma() {
     return 0
 }
 
-function query_nodered() {
-    local result="$(curl -I --connect-timeout 2 --max-time 10 "localhost:1880" 2>/dev/null)"
-    [ -z "$result" ] && {
-        echo "$STR_FAILED"
-        return
-    }
-    echo "$STR_OK"
-}
-
-function query_flow() {
-    local result="$(curl --connect-timeout 2 --max-time 10 "localhost:1880/flows/state" 2>/dev/null)"
-    [ -z "$result" ] && {
-        echo "$STR_FAILED"
-        return
-    }
-    echo "$result"
-}
-
-function ctrl_flow() {
-    local state="$2"
-    curl -s -X POST -H "Content-Type: application/json" -d "{\"state\":\"$state\"}" http://localhost:1880/flows/state
-}
-
 function start_service() {
     local service="$2"
     case "$service" in
     "sscma")
         /etc/init.d/S91sscma-node restart >/dev/null 2>&1
-        [ $? -ne 0 ] && {
-            echo "$STR_FAILED"
-            return
-        }
-        echo "$STR_OK"
-        ;;
-    "nodered")
-        _stop_pidname "sscma-node" 1
-        _stop_pidname "node"
-        /etc/init.d/S03node-red restart >/dev/null 2>&1
         [ $? -ne 0 ] && {
             echo "$STR_FAILED"
             return

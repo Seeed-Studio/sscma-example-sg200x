@@ -1,161 +1,287 @@
-# Supervisor Solution  
+# Supervisor (Go Version)
 
-## Overview  
+A secure HTTP supervisor daemon for reCamera devices, rewritten in Go for improved security and performance. This is a **standalone** replacement for the C++ supervisor - it includes all necessary source files and resources.
 
-**Supervisor** is a built-in service for **ReCamera-OS** that provides:  
+## Why Go?
 
-- An **HTTP service** for remote communication.  
-- A **Web UI** for device management and monitoring.  
-- **System status monitoring** to ensure stable device operation.  
+The original C++ supervisor had several security concerns that are addressed in this Go rewrite:
 
+### Security Improvements
 
-![](../../images/recam_OS_structure.png)
+1. **Removed Hardcoded AES Key**: The original code had `KEY_AES_128 = "zqCwT7H7!rNdP3wL"` hardcoded. The Go version uses:
+   - JWT tokens with cryptographically random secrets generated at runtime
+   - HMAC-SHA256 signing
+   - Configurable via environment variable (`SUPERVISOR_JWT_SECRET`)
 
-The foundational system service providing:
-- System Services:
-    - Device management: Identify and configure connected devices, storage devices, etc.
-    - User Management: Manage user accounts, credentials, and SSH keys.
-    - Network configuration: Configure wired and wireless network connections.
-    - File system operations: Manage device files.
-    - Device Discovery: Uses mDNS to broadcast device information. The device hostname is recamera.local.When a web interface sends a request, the recamera device scans the local network for other recamera devices via mDNS, generates a list of discovered devices, formats the data, and returns it to the web interface. (Note: Currently, only one device’s information is returned.)
+2. **Token Security**:
+   - JWT tokens with proper expiration
+   - HMAC-SHA256 signing
+   - No hardcoded secrets in source code
 
-- Update Service:
-    - Package/firmware download management
-    - Security verification
-    - Installation automation
+3. **Rate Limiting**:
+   - Built-in login attempt limiting
+   - Account lockout after too many failed attempts
+   - Per-IP request rate limiting
 
-- Daemon Service:
-    - System health monitoring
-    - Automatic application recovery
+4. **Input Validation**:
+   - Path traversal prevention
+   - Proper input sanitization
+   - Shell command injection prevention via argument escaping
 
-- Logging Service:
-    - Runtime status tracking
-    - Error diagnostics
+5. **Security Headers**:
+   - X-Frame-Options (clickjacking protection)
+   - X-Content-Type-Options (MIME type sniffing prevention)
+   - X-XSS-Protection
+   - Content-Security-Policy
+   - Referrer-Policy
 
-- Application Service:
-    - Application Deployment
-    - Application Packaging
+6. **Memory Safety**:
+   - Go's garbage collection eliminates memory leaks
+   - No buffer overflows
+   - Safe string handling
 
+## Features
 
-## Getting Started  
+- HTTP/HTTPS server with TLS support
+- RESTful API for device management
+- User authentication and authorization
+- WiFi network management
+- File system operations (with security restrictions)
+- LED control
+- System power management
+- Model file management
+- Platform configuration
 
-Before building this solution, ensure that you have set up the **ReCamera-OS** environment as described in the main project documentation:  
+## Building
 
-🔗 **[SSCMA Example for SG200X - Main README](../../README.md)**  
+### Prerequisites
 
-This includes:  
+- Go 1.21 or later
+- Node.js and npm (for web frontend, optional)
+- For cross-compilation: RISC-V musl cross-compiler (optional, for CGO)
 
-- Setting up **ReCamera-OS**  
-- Configuring the SDK path  
-- Preparing the necessary toolchain  
-
-If you haven't completed these steps, follow the instructions in the main project README before proceeding.
-
-## Building & Installing  
-
-### 1. Navigate to the `supervisor` Solution  
+### Build for Current Platform
 
 ```bash
-cd solutions/supervisor
+make build
 ```
 
-### 2. Build the Application  
-
-By default, the application is built **without** the Web UI.  
+### Build for Target Device (RISC-V)
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release .
-cmake --build build
+# Static binary (recommended)
+make build-static
+
+# Or standard build
+make build-riscv
 ```
 
-#### ⚙️ Enabling Web UI  
-
-If you want to include the Web UI, enable the `WEB` option before building. This will:  
-
-1. Recompile the front-end project in `www/`.  
-2. Copy the output to `rootfs/usr/share/supervisor/www/`.  
-
-To enable Web UI:  
+### Build Web Frontend
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DWEB=ON .
-cmake --build build
+make www
 ```
 
-**Note:** The Web UI build process requires **Node.js** to be installed.
-
-### 3. Package the Application  
+### Using CMake
 
 ```bash
-cd build && cpack
+mkdir build && cd build
+cmake -DTARGET_ARCH=riscv64 ..
+make
 ```
 
-This will generate an `.ipk` package for installation.
+## Installation
 
-## Deploying & Running  
-
-### 1. Transfer the Package to Your Device  
-
-Copy the package to the ReCamera device using `scp`:  
+### Quick Install
 
 ```bash
-scp build/supervisor-1.0.0-1.ipk recamera@192.168.42.1:/tmp/
-```
+# Build the package
+make package
 
-Replace `recamera@192.168.42.1` with your device's IP address.
+# Copy to device
+scp build/supervisor-1.0.0-riscv64.tar.gz recamera@192.168.42.1:/tmp/
 
-### 2. Install the Package  
-
-SSH into the device and install the package:  
-
-```bash
+# On the device
 ssh recamera@192.168.42.1
-sudo opkg install /tmp/supervisor-1.0.0-1.ipk
+cd /
+sudo tar -xzf /tmp/supervisor-1.0.0-riscv64.tar.gz
 ```
 
-### 3. Run the Supervisor Service  
+### Manual Installation
 
-Once installed, start the service:  
+1. Copy the binary to `/usr/local/bin/supervisor`
+2. Copy scripts to `/usr/share/supervisor/scripts/`
+3. Copy web files to `/usr/share/supervisor/www/`
+4. Install the init script to `/etc/init.d/S93sscma-supervisor`
+
+## Usage
 
 ```bash
-sudo supervisor
+supervisor [options]
+
+Options:
+  -v            Show version
+  -B            Run as daemon
+  -r <dir>      Set root directory (default: /usr/share/supervisor/www/)
+  -p <port>     Set HTTP port (default: 80)
+  -s <script>   Set script path (default: /usr/share/supervisor/scripts/main.sh)
+  -a            Disable authentication
+  -D <level>    Log level (0=Error, 1=Warning, 2=Info, 3=Debug, 4=Verbose)
 ```
 
-If running correctly, the HTTP server should be accessible.
+### Environment Variables
 
-### 4. Access the Web UI  
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SUPERVISOR_HTTP_PORT` | HTTP port | 80 |
+| `SUPERVISOR_HTTPS_PORT` | HTTPS port | (disabled) |
+| `SUPERVISOR_ROOT_DIR` | Web root directory | /usr/share/supervisor/www/ |
+| `SUPERVISOR_SCRIPT_PATH` | Main script path | /usr/share/supervisor/scripts/main.sh |
+| `SUPERVISOR_NO_AUTH` | Disable authentication | false |
+| `SUPERVISOR_JWT_SECRET` | JWT signing secret | (auto-generated) |
+| `SUPERVISOR_LOG_LEVEL` | Log level (0-4) | 1 (Warning) |
+| `SUPERVISOR_LOCAL_DIR` | Local storage directory | /userdata |
+| `SUPERVISOR_SD_DIR` | SD card mount point | /mnt/sd |
 
-If built with Web UI enabled, open a browser and visit:  
+## API Endpoints
 
-```
-http://<device-ip>:<port>
-```
+### Authentication
 
-Replace `<device-ip>` with the actual IP of your ReCamera device.
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/version` | GET | No | Get version info |
+| `/api/userMgr/login` | POST | No | User login |
+| `/api/userMgr/queryUserInfo` | GET | No | Get user info |
+| `/api/userMgr/updatePassword` | POST | No | Update password |
+| `/api/userMgr/setSShStatus` | POST | Yes | Enable/disable SSH |
+| `/api/userMgr/addSShkey` | POST | Yes | Add SSH key |
+| `/api/userMgr/deleteSShkey` | POST | Yes | Delete SSH key |
 
-## Disabling the Supervisor Service  
+### Device Management
 
-If you want to **disable** the `supervisor` service from running automatically on startup, remove or move the init script:  
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/deviceMgr/queryDeviceInfo` | GET | No | Get device info |
+| `/api/deviceMgr/getDeviceInfo` | GET | Yes | Get detailed device info |
+| `/api/deviceMgr/updateDeviceName` | POST | Yes | Update device name |
+| `/api/deviceMgr/setPower` | POST | Yes | Set power mode |
+| `/api/deviceMgr/getModelList` | GET | No | List available models |
+| `/api/deviceMgr/uploadModel` | POST | No | Upload a model file |
+
+### WiFi Management
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/wifiMgr/getWiFiInfoList` | GET | Yes | Get WiFi networks |
+| `/api/wifiMgr/connectWiFi` | POST | Yes | Connect to WiFi |
+| `/api/wifiMgr/disconnectWiFi` | POST | Yes | Disconnect from WiFi |
+| `/api/wifiMgr/forgetWiFi` | POST | Yes | Forget WiFi network |
+| `/api/wifiMgr/switchWiFi` | POST | Yes | Enable/disable WiFi |
+
+### File Management
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/fileMgr/list` | GET | Yes | List directory |
+| `/api/fileMgr/mkdir` | POST | Yes | Create directory |
+| `/api/fileMgr/remove` | POST | Yes | Remove file/directory |
+| `/api/fileMgr/upload` | POST | Yes | Upload file |
+| `/api/fileMgr/download` | GET | Yes | Download file |
+| `/api/fileMgr/rename` | POST | Yes | Rename file/directory |
+| `/api/fileMgr/info` | GET | Yes | Get file/directory info |
+
+### LED Management
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/ledMgr/getLEDs` | GET | Yes | Get all LEDs |
+| `/api/ledMgr/getLED` | GET | Yes | Get LED info |
+| `/api/ledMgr/setLED` | POST | Yes | Set LED brightness/trigger |
+| `/api/ledMgr/getLEDTriggers` | GET | Yes | Get LED triggers |
+
+## Development
+
+### Running Tests
 
 ```bash
-mv /etc/init.d/S93sscma-supervisor /etc/init.d/S93sscma-supervisor.bak
+make test
 ```
 
-To **reenable** it, move it back:  
+### Running Locally
 
 ```bash
-mv /etc/init.d/S93sscma-supervisor.bak /etc/init.d/S93sscma-supervisor
+# Run with authentication disabled for development
+make run
 ```
 
-## Directory Structure  
+### Code Formatting
+
+```bash
+make fmt
+```
+
+## Project Structure
 
 ```
-supervisor/
-├── CMakeLists.txt    # CMake build configuration
-├── control           # OPKG packaging script
-├── main              # Source code directory
-├── README.md         # This README file
-├── rootfs            # Resource files (installed to system root)
-│   └── usr/share/supervisor/www  # Web UI files (if enabled)
-└── www               # Web UI source code (requires Node.js)
+supervisor-go/
+├── cmd/
+│   └── supervisor/
+│       └── main.go           # Entry point
+├── internal/
+│   ├── api/
+│   │   └── response.go       # API response helpers
+│   ├── auth/
+│   │   └── auth.go           # Authentication (JWT, bcrypt)
+│   ├── config/
+│   │   └── config.go         # Configuration management
+│   ├── handler/
+│   │   ├── device.go         # Device API handlers
+│   │   ├── file.go           # File API handlers
+│   │   ├── led.go            # LED API handlers
+│   │   ├── user.go           # User API handlers
+│   │   └── wifi.go           # WiFi API handlers
+│   ├── middleware/
+│   │   └── middleware.go     # HTTP middleware
+│   ├── script/
+│   │   └── script.go         # Script execution
+│   └── server/
+│       └── server.go         # HTTP server
+├── pkg/
+│   └── logger/
+│       └── logger.go         # Logging package
+├── rootfs/                   # Root filesystem resources
+│   ├── etc/
+│   │   ├── avahi/            # Avahi service config
+│   │   └── init.d/           # Init scripts
+│   └── usr/share/supervisor/
+│       ├── flows.json        # Node-RED flows
+│       ├── models/           # Pre-installed models
+│       └── scripts/          # Shell scripts
+├── www/                      # Web frontend source
+│   ├── src/                  # React/TypeScript source
+│   └── package.json          # NPM dependencies
+├── control/                  # Package control scripts
+├── CMakeLists.txt            # CMake build configuration
+├── Makefile                  # Make build configuration
+├── go.mod                    # Go modules
+└── README.md                 # This file
 ```
+
+## License
+
+See the [LICENSE](../../LICENSE) file for details.
+
+## Comparison with C++ Version
+
+| Feature | C++ Version | Go Version |
+|---------|------------|------------|
+| Authentication | Hardcoded AES key | JWT with random secrets |
+| Token signing | None | HMAC-SHA256 |
+| Rate limiting | None | Built-in |
+| Security headers | None | Full suite |
+| Memory safety | Manual | Automatic (GC) |
+| Cross-compilation | Complex (toolchain) | Simple (`GOOS/GOARCH`) |
+| Static binary | Requires musl | Native support |
+| Dependencies | Mongoose, OpenSSL, etc. | Minimal (stdlib + 2 libs) |
+
+The Go version is a complete standalone replacement that includes all necessary resources (scripts, models, web UI source, init scripts).

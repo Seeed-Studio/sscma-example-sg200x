@@ -3,14 +3,6 @@
 DAEMON=supervisor
 DAEMON_PATH=/usr/local/bin
 
-JOYSTICK_SRC="/usr/share/supervisor/nipplejs.min.js"
-JOYSTICK_DIR="/home/recamera/.node-red/public"
-if [ -f $JOYSTICK_SRC ]; then
-    mkdir -p "$JOYSTICK_DIR"
-    cp -f "$JOYSTICK_SRC" "$JOYSTICK_DIR/"
-    sync
-fi
-
 check_avahi() {
     local service_file="/etc/avahi/services/sscma.service"
     local sn_value=$(fw_printenv sn | awk -F'=' '{print $NF}')
