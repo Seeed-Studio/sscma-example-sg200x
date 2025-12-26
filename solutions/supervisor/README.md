@@ -2,6 +2,39 @@
 
 A secure HTTP supervisor daemon for reCamera devices, rewritten in Go for improved security and performance. This is a **standalone** replacement for the C++ supervisor - it includes all necessary source files and resources.
 
+## Development Workflow
+
+### Prerequisites
+
+This project uses [Nix](https://nixos.org/) for reproducible development environments.
+
+### Quick Start
+
+```bash
+# Enter the development environment
+nix develop
+
+# Build the opkg package (includes frontend and backend)
+cd solutions/supervisor
+make opkg
+
+# Deploy to device
+scp build/supervisor_1.0.0_riscv64.ipk recamera@192.168.10.115:/userdata
+
+# On the device, install the package
+ssh recamera@192.168.10.115
+sudo opkg install /userdata/supervisor_1.0.0_riscv64.ipk
+```
+
+### Build Commands
+
+| Command | Description |
+|---------|-------------|
+| `make opkg` | Build complete opkg package (frontend + backend) |
+| `make build-static` | Build static binary for RISC-V |
+| `make www` | Build frontend only |
+| `make clean` | Clean build artifacts |
+
 ## Why Go?
 
 The original C++ supervisor had several security concerns that are addressed in this Go rewrite:
