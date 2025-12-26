@@ -1,6 +1,4 @@
-import CryptoJS from "crypto-js";
-
-//信号强度转换
+// Signal strength conversion
 export function getSignalStrengthLevel(rssi: number) {
   if (rssi >= -60) {
     return 4;
@@ -14,7 +12,7 @@ export function getSignalStrengthLevel(rssi: number) {
 }
 
 /**
- * @description 将url请求参数转为json格式
+ * @description Convert URL parameters to JSON format
  * @param url
  * @returns {{}|any}
  */
@@ -38,22 +36,13 @@ export function parseUrlParam(url: string): {} | any {
   }
 }
 
-//是否开发环境
+// Is development environment
 export const isDev = import.meta.env.MODE === "development";
 
-const EncryptKey = "zqCwT7H7!rNdP3wL"; // 16 字节密钥
-
+// Password encryption removed - now sends plain text
+// The old AES encryption with static key was security theater
 export const encryptPassword = (password: string) => {
-  const key = CryptoJS.enc.Utf8.parse(EncryptKey); // 16 字节密钥
-
-  const encrypted = CryptoJS.AES.encrypt(password, key, {
-    mode: CryptoJS.mode.ECB,
-    padding: CryptoJS.pad.ZeroPadding,
-  });
-
-  const encryptedPassword = encrypted.ciphertext.toString(CryptoJS.enc.Hex);
-
-  return encryptedPassword;
+  return password;
 };
 
 export const Version = "2025-08-15 18:00";

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Form, Input, Modal } from "antd";
+import { LogoutOutlined } from "@ant-design/icons";
 import useConfigStore from "@/store/config";
+import { clearCurrentUser } from "@/store/user";
 import EditImg from "@/assets/images/svg/edit.svg";
 import OverviewImg from "@/assets/images/svg/overview.svg";
 import SecurityImg from "@/assets/images/svg/security.svg";
@@ -9,7 +11,6 @@ import TerminalImg from "@/assets/images/svg/terminal.svg";
 import SystemImg from "@/assets/images/svg/system.svg";
 import PowerImg from "@/assets/images/svg/power.svg";
 import FilesImg from "@/assets/images/svg/files.svg";
-import ApplicationImg from "@/assets/images/svg/application.svg";
 import { updateDeviceInfoApi, queryDeviceInfoApi } from "@/api/device/index";
 import { hostnameValidate } from "@/utils/validate";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -26,7 +27,6 @@ const menuList = [
       route: "/overview",
       judgeApp: true,
     },
-    { label: "Workspace", icon: ApplicationImg, route: "/workspace" },
     { label: "Files", icon: FilesImg, route: "/files" },
     { label: "Security", icon: SecurityImg, route: "/security" },
     { label: "Network", icon: NetworkImg, route: "/network" },
@@ -50,6 +50,12 @@ const PCLayout: React.FC<Props> = ({ children }) => {
   const onQueryDeviceInfo = async () => {
     const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
+  };
+
+  const handleLogout = async () => {
+    await clearCurrentUser();
+    // Reset URL to root - App.tsx will show Login component when token is cleared
+    window.location.hash = "#/";
   };
 
   const handleEditNameOk = async () => {
@@ -92,42 +98,54 @@ const PCLayout: React.FC<Props> = ({ children }) => {
       </div>
 
       <div className="flex flex-1">
-        <div className="h-full w-300 bg-white">
-          {menuList.map((item, index) => {
-            return (
-              <div key={index}>
-                <div className={`${index && "border-t"}  mx-20`}></div>
-                <div className={`py-14`}>
-                  {item.map((citem, cindex) => {
-                    return (
-                      (deviceInfo.isReCamera || !citem.judgeApp) && (
-                        <div
-                          className={`px-40 py-10 text-17 flex ${
-                            currentRoute === citem.route ? "active" : ""
-                          }`}
-                          key={`${index}${cindex}`}
-                          style={{
-                            background:
-                              currentRoute === citem.route ? "#ECF4D9" : "",
-                          }}
-                          onClick={() => {
-                            navigate(citem.route);
-                          }}
-                        >
-                          <img
-                            className="w-24 h-24 mr-12"
-                            src={citem.icon}
-                            alt=""
-                          />
-                          <span>{citem.label}</span>
-                        </div>
-                      )
-                    );
-                  })}
+        <div className="h-full w-300 bg-white flex flex-col">
+          <div className="flex-1">
+            {menuList.map((item, index) => {
+              return (
+                <div key={index}>
+                  <div className={`${index && "border-t"}  mx-20`}></div>
+                  <div className={`py-14`}>
+                    {item.map((citem, cindex) => {
+                      return (
+                        (deviceInfo.isReCamera || !citem.judgeApp) && (
+                          <div
+                            className={`px-40 py-10 text-17 flex ${
+                              currentRoute === citem.route ? "active" : ""
+                            }`}
+                            key={`${index}${cindex}`}
+                            style={{
+                              background:
+                                currentRoute === citem.route ? "#ECF4D9" : "",
+                            }}
+                            onClick={() => {
+                              navigate(citem.route);
+                            }}
+                          >
+                            <img
+                              className="w-24 h-24 mr-12"
+                              src={citem.icon}
+                              alt=""
+                            />
+                            <span>{citem.label}</span>
+                          </div>
+                        )
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          <div className="border-t mx-20"></div>
+          <div className="py-14">
+            <div
+              className="px-40 py-10 text-17 flex cursor-pointer hover:bg-gray-100"
+              onClick={handleLogout}
+            >
+              <LogoutOutlined className="w-24 h-24 mr-12 text-24" />
+              <span>Logout</span>
+            </div>
+          </div>
         </div>
         <div style={{ maxWidth: "900px" }} className="w-full px-48">
           {children}

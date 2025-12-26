@@ -1,18 +1,18 @@
 import { supervisorRequest } from "@/utils/request";
-// 获取用户信息
+// Get user info
 export const getUserInfoApi = async () =>
   supervisorRequest<IUserInfo>({
     url: "api/userMgr/queryUserInfo",
     method: "get",
   });
-// 修改用户信息
+// Update user info
 export const updateUserInfoApi = async (data: { userName: string }) =>
   supervisorRequest({
     url: "api/userMgr/updateUserName",
     method: "post",
     data,
   });
-// 修改用户密码
+// Update user password
 export const updateUserPasswordApi = async (data: {
   oldPassword: string;
   newPassword: string;
@@ -22,7 +22,7 @@ export const updateUserPasswordApi = async (data: {
     method: "post",
     data,
   });
-// 登录
+// Login
 export const loginApi = async (data: { userName: string; password: string }) =>
   supervisorRequest<{ token: string; retryCount?: number }>(
     {
@@ -34,7 +34,7 @@ export const loginApi = async (data: { userName: string; password: string }) =>
       catchs: true,
     }
   );
-// 设置ssh开关
+// Set SSH status
 export const setSShStatusApi = async (data: {
   enabled: boolean;
 }) =>
@@ -43,7 +43,7 @@ export const setSShStatusApi = async (data: {
     method: "post",
     data,
   });
-// 新增ssh key
+// Add SSH key
 export const addSshKeyApi = async (data: {
   name: string;
   value: string;
@@ -54,7 +54,7 @@ export const addSshKeyApi = async (data: {
     method: "post",
     data,
   });
-// 删除ssh key
+// Delete SSH key
 export const delSshKeyApi = async (data: { id: string }) =>
   supervisorRequest({
     url: "api/userMgr/deleteSShkey",

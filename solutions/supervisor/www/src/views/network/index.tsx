@@ -1,5 +1,5 @@
 import { Button, Form, Switch, Input, Modal } from "antd";
-import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { LoadingOutlined, InfoCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import WarnImg from "@/assets/images/warn.png";
 import LockImg from "@/assets/images/svg/lock.svg";
 import ConnectedImg from "@/assets/images/svg/connected.svg";
@@ -27,14 +27,14 @@ const wifiImg: {
   4: Wifi4,
 };
 
-// 将信号强度值转换为图标索引
+// Convert signal strength value to icon index
 const getSignalIcon = (signal: number): number => {
-  // 信号强度是负值，数值越大（越接近0）信号越强
-  if (signal >= -50) return 4; // 信号很强
-  if (signal >= -60) return 3; // 信号强
-  if (signal >= -70) return 2; // 信号中等
-  if (signal >= -80) return 1; // 信号弱
-  return 1; // 信号很弱
+  // Signal strength is negative, larger values (closer to 0) are stronger
+  if (signal >= -50) return 4; // Very strong signal
+  if (signal >= -60) return 3; // Strong signal
+  if (signal >= -70) return 2; // Medium signal
+  if (signal >= -80) return 1; // Weak signal
+  return 1; // Very weak signal
 };
 
 const titleObj = {
@@ -54,6 +54,7 @@ function Network() {
     onClickWifiInfo,
     onClickEthernetItem,
     handleSwitchWifi,
+    onRefreshNetworks,
   } = useData();
 
   return (
@@ -68,7 +69,7 @@ function Network() {
             </span>
           </div>
         )}
-      {/* 有线网络 */}
+      {/* Ethernet */}
       {state.etherInfo && (
         <div className="mt-30">
           <div className="font-bold text-18 mb-20">Internet</div>
@@ -78,15 +79,29 @@ function Network() {
               onClick={onClickEthernetItem}
             >
               <span className="flex flex-1 truncate">
+                {state.etherStatus === NetworkStatus.Connected && (
+                  <img className="w-18 mr-12" src={ConnectedImg} alt="" />
+                )}
                 <img className="w-18 mr-12" src={WireImg} alt="" />
                 <span className="self-center truncate">Ethernet</span>
               </span>
+              <div className="flex items-center">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<InfoCircleOutlined />}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onClickEthernetItem();
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* WiFi开关：当 wifiEnable !== 2 时显示，状态由 state.wifiChecked 控制 */}
+      {/* WiFi switch: displayed when wifiEnable !== 2, state controlled by state.wifiChecked */}
       {state.wifiEnable !== WifiEnable.Disable && (
         <div className="mt-30">
           <div className="flex justify-between mb-20">
@@ -99,7 +114,7 @@ function Network() {
         </div>
       )}
 
-      {/* 我的网络 - 已连接过的WiFi列表（Wi-Fi 开启时显示） */}
+      {/* My Networks - connected WiFi list (shown when Wi-Fi is enabled) */}
       {state.wifiChecked && state.connectedWifiInfoList.length > 0 && (
         <div className="mt-30">
           <div className="font-bold text-18 mb-20">My Networks</div>
@@ -157,10 +172,21 @@ function Network() {
         </div>
       )}
 
-      {/* 其他发现的网络（Wi-Fi 开启时显示） */}
+      {/* Other discovered networks (shown when Wi-Fi is enabled) */}
       {state.wifiChecked && state.wifiInfoList.length > 0 && (
         <div className="mt-30">
-          <div className="font-bold text-18 mb-20">Networks Found</div>
+          <div className="flex justify-between items-center mb-20">
+            <div className="font-bold text-18">Networks Found</div>
+            <Button
+              type="text"
+              size="small"
+              icon={
+                state.refreshLoading ? <LoadingOutlined /> : <ReloadOutlined />
+              }
+              onClick={onRefreshNetworks}
+              disabled={state.refreshLoading}
+            />
+          </div>
           <div className="border-b text-16">
             {state.wifiInfoList.map((wifiItem, index) => (
               <div

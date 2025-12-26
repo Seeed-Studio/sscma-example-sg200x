@@ -1,31 +1,31 @@
-// wifi是否加密
+// WiFi encryption status
 export enum WifiAuth {
   NoNeed = 0,
   Need = 1,
 }
 
-// IP 分配规则
+// IP assignment rule
 export enum WifiIpAssignmentRule {
-  Automatic = 1, //动态
-  Static = 0, //静态
+  Automatic = 1, // Dynamic
+  Static = 0, // Static
 }
 
-// wifi是否连接过
+// WiFi connection status (previously connected)
 export enum WifiConnectedStatus {
   No = 0,
   Yes = 1,
 }
 
-// wifi是否开启（对应getWiFiInfoList接口的wifiEnable字段）
+// WiFi enable status (corresponds to getWiFiInfoList wifiEnable field)
 export enum WifiEnable {
-  Close = 0, //有wifi，未开启
-  Open = 1, //有wifi，已开启
-  Disable = 2, //没有wifi
+  Close = 0, // Has WiFi, not enabled
+  Open = 1, // Has WiFi, enabled
+  Disable = 2, // No WiFi
 }
 
-// 网络连接状态（对应WiFiInfo里面的status字段）
+// Network connection status (corresponds to WiFiInfo status field)
 export enum NetworkStatus {
-  Disconnected = 1, //未连接
-  Connecting = 2, //连接中
-  Connected = 3, //已连接
+  Disconnected = 1, // Disconnected
+  Connecting = 2, // Connecting
+  Connected = 3, // Connected
 }

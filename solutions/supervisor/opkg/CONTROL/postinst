@@ -1,0 +1,24 @@
+#!/bin/sh
+# Post-installation script for supervisor
+
+INIT_SCRIPT=/etc/init.d/S93sscma-supervisor
+
+# Stop existing supervisor
+echo "Stopping supervisor..."
+if [ -x "$INIT_SCRIPT" ]; then
+    $INIT_SCRIPT stop || true
+else
+    killall supervisor 2>/dev/null || true
+fi
+sleep 1
+
+# Start the new supervisor
+echo "Starting supervisor..."
+if [ -x "$INIT_SCRIPT" ]; then
+    $INIT_SCRIPT start
+else
+    /usr/local/bin/supervisor -d &
+fi
+
+echo "Supervisor installation complete."
+exit 0

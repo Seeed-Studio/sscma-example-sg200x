@@ -63,14 +63,14 @@ const isProtectedRootDir = (name: string) =>
   PROTECTED_ROOT_DIRS.includes(normalizePath(name));
 
 const Files = () => {
-  // 状态管理
+  // State management
   const [currentStorage, setCurrentStorage] = useState<StorageType>("local");
   const [currentPath, setCurrentPath] = useState<string>("");
   const [fileListData, setFileListData] = useState<FileListData | null>(null);
   const [loading, setLoading] = useState(false);
   const [sdCardAvailable, setSdCardAvailable] = useState(false);
 
-  // 文件操作状态
+  // File operation state
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const sortConfig: SortConfig = {
     field: "name",
@@ -83,7 +83,7 @@ const Files = () => {
   const [newFileName, setNewFileName] = useState("");
   const [uploadFileList, setUploadFileList] = useState<UploadFile[]>([]);
 
-  // 上传进度状态
+  // Upload progress state
   const [uploadProgress, setUploadProgress] = useState<{
     visible: boolean;
     progress: number;
@@ -96,26 +96,26 @@ const Files = () => {
     progress: 0,
   });
 
-  // 图片预览状态
+  // Image preview state
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [previewFileName, setPreviewFileName] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  // 导航历史
+  // Navigation history
   const [navigationHistory, setNavigationHistory] = useState<
     Array<{ storage: StorageType; path: string }>
   >([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // 初始化
+  // Initialize
   useEffect(() => {
     checkSdCardAvailability();
-    // 默认加载local storage的根目录
+    // Load local storage root directory by default
     loadFileList("local", "");
   }, []);
 
-  // 检查 SD 卡可用性
+  // Check SD card availability
   const checkSdCardAvailability = async () => {
     try {
       const available = await checkSdAvailable();
@@ -126,10 +126,10 @@ const Files = () => {
     }
   };
 
-  // 消息实例
+  // Message instance
   const [messageApi, messageContextHolder] = message.useMessage();
 
-  // 加载文件列表
+  // Load file list
   const loadFileList = async (storage: StorageType, path: string = "") => {
     setLoading(true);
     try {
@@ -138,7 +138,7 @@ const Files = () => {
       setCurrentStorage(storage);
       setCurrentPath(path);
 
-      // 更新导航历史
+      // Update navigation history
       const newHistory = [
         ...navigationHistory.slice(0, historyIndex + 1),
         { storage, path },
@@ -153,13 +153,13 @@ const Files = () => {
     }
   };
 
-  // 导航到目录
+  // Navigate to directory
   const navigateToDirectory = (dirName: string) => {
     const newPath = currentPath ? `${currentPath}/${dirName}` : dirName;
     loadFileList(currentStorage, newPath);
   };
 
-  // 获取排序后的文件列表
+  // Get sorted file list
   const getSortedItems = () => {
     if (!fileListData) return { directories: [], files: [] };
 
@@ -191,7 +191,7 @@ const Files = () => {
     };
   };
 
-  // 获取文件图标（支持自定义尺寸）
+  // Get file icon (supports custom size)
   const getFileIcon = (
     filename: string,
     isDirectory: boolean,
@@ -224,7 +224,7 @@ const Files = () => {
     }
   };
 
-  // 通用磁贴渲染
+  // Generic tile rendering
   type TileOptions = {
     key: string;
     name: string;
@@ -277,13 +277,13 @@ const Files = () => {
     return <div key={key}>{content}</div>;
   };
 
-  // 检查是否为图片文件
+  // Check if image file
   const isImageFile = (filename: string): boolean => {
     const ext = filename.split(".").pop()?.toLowerCase();
     return ["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(ext || "");
   };
 
-  // 检查是否为视频文件
+  // Check if video file
   const isVideoFile = (filename: string): boolean => {
     const ext = filename.split(".").pop()?.toLowerCase();
     return ["mp4", "avi", "mov", "mkv", "wmv", "flv", "webm"].includes(
@@ -291,7 +291,7 @@ const Files = () => {
     );
   };
 
-  // 预览图片
+  // Preview image
   const handleImagePreview = async (filename: string) => {
     if (!isImageFile(filename)) {
       messageApi.warning("This file is not an image");
@@ -305,13 +305,13 @@ const Files = () => {
     )}&storage=${encodeURIComponent(currentStorage)}&authorization=${token}`;
     const imageUrl = `${baseIP}${url}`;
 
-    // 显示加载状态
+    // Show loading state
     setPreviewLoading(true);
     setPreviewImageUrl("");
     setPreviewFileName(filename);
     setPreviewModalVisible(true);
 
-    // 预加载图片
+    // Preload image
     const img = new Image();
     img.onload = () => {
       setPreviewImageUrl(imageUrl);
@@ -325,7 +325,7 @@ const Files = () => {
     img.src = imageUrl;
   };
 
-  // 预览视频
+  // Preview video
   const handleVideoPreview = async (filename: string) => {
     if (!isVideoFile(filename)) {
       messageApi.warning("This file is not a video");
@@ -338,12 +338,12 @@ const Files = () => {
       fullPath
     )}&storage=${encodeURIComponent(currentStorage)}&authorization=${token}`;
     const videoUrl = `${baseIP}${url}`;
-    setPreviewImageUrl(videoUrl); // 复用同一个状态
+    setPreviewImageUrl(videoUrl); // Reuse the same state
     setPreviewFileName(filename);
     setPreviewModalVisible(true);
   };
 
-  // 关闭图片预览
+  // Close media preview
   const handleCloseMediaPreview = () => {
     setPreviewModalVisible(false);
     setPreviewImageUrl("");
@@ -351,7 +351,7 @@ const Files = () => {
     setPreviewLoading(false);
   };
 
-  // 构建文件浏览器面包屑
+  // Build file browser breadcrumb
   const buildBrowserBreadcrumbItems = (): NonNullable<
     BreadcrumbProps["items"]
   > => {
@@ -363,7 +363,7 @@ const Files = () => {
         href: "#",
         onClick: (e: React.MouseEvent) => {
           e.preventDefault();
-          // 返回storage根目录并刷新数据
+          // Return to storage root directory and refresh data
           setCurrentPath("");
           setSelectedFile(null);
           loadFileList(currentStorage, "");
@@ -386,7 +386,7 @@ const Files = () => {
     return items;
   };
 
-  // 新建文件夹
+  // Create new folder
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
       messageApi.error("Please enter a folder name");
@@ -408,7 +408,7 @@ const Files = () => {
     }
   };
 
-  // 上传文件
+  // Upload files
   const handleUpload = async () => {
     if (uploadFileList.length === 0) {
       messageApi.error("Please select files to upload");
@@ -416,7 +416,7 @@ const Files = () => {
     }
 
     try {
-      // 将 uploadFileList 转换为 FileList
+      // Convert uploadFileList to FileList
       const filesArray = uploadFileList
         .map((f) => f.originFileObj)
         .filter((f): f is RcFile => Boolean(f));
@@ -425,7 +425,7 @@ const Files = () => {
       filesArray.forEach((file) => dataTransfer.items.add(file));
       const fileList = dataTransfer.files;
 
-      // 显示上传进度
+      // Show upload progress
       setUploadProgress({
         visible: true,
         progress: 0,
@@ -435,7 +435,7 @@ const Files = () => {
         completedFiles: 0,
       });
 
-      // 统一使用分片上传
+      // Use chunked upload uniformly
       await uploadFiles(
         currentStorage,
         currentPath,
@@ -451,7 +451,7 @@ const Files = () => {
         }
       );
 
-      // 隐藏进度弹窗
+      // Hide progress modal
       setUploadProgress({ visible: false, progress: 0 });
       messageApi.success("Files uploaded successfully");
       setUploadModalVisible(false);
@@ -460,14 +460,14 @@ const Files = () => {
     } catch (error) {
       console.error("Failed to upload files:", error);
       messageApi.error("Failed to upload files");
-      // 隐藏进度弹窗
+      // Hide progress modal
       setUploadProgress({ visible: false, progress: 0 });
     }
   };
 
-  // 删除文件/文件夹
+  // Delete file/folder
   const handleDelete = async (name: string, isDirectory: boolean) => {
-    // 保护：根目录的受保护文件夹本身不能被删除
+    // Protection: protected folders in root cannot be deleted
     if (currentPath === "" && isDirectory && isProtectedRootDir(name)) {
       messageApi.warning("This directory cannot be deleted");
       return;
@@ -493,14 +493,14 @@ const Files = () => {
     });
   };
 
-  // 重命名文件/文件夹
+  // Rename file/folder
   const handleRename = async () => {
     if (!selectedFile || !newFileName.trim()) {
       messageApi.error("Please enter a new name");
       return;
     }
 
-    // 保护：根目录的受保护文件夹本身不能被重命名
+    // Protection: protected folders in root cannot be renamed
     if (currentPath === "" && isProtectedRootDir(selectedFile)) {
       messageApi.warning("This directory cannot be renamed");
       return;
@@ -525,7 +525,7 @@ const Files = () => {
     }
   };
 
-  // 下载文件
+  // Download file
   const handleDownload = async (name: string) => {
     try {
       setLoading(true);
@@ -550,12 +550,12 @@ const Files = () => {
     }
   };
 
-  // 文件操作菜单（Dropdown.menu）
+  // File operation menu (Dropdown.menu)
   const buildFileMenu = (
     item: DirectoryEntry | FileEntry,
     isDirectory: boolean
   ): NonNullable<DropdownProps["menu"]> => {
-    // 保护：根目录的受保护文件夹本身不能被删除或重命名
+    // Protection: protected folders in root cannot be deleted or renamed
     const disableModify =
       currentPath === "" && isDirectory && isProtectedRootDir(item.name);
 
@@ -631,7 +631,7 @@ const Files = () => {
     };
   };
 
-  // 渲染文件浏览器界面
+  // Render file browser interface
   const renderFileBrowser = () => {
     const { directories, files } = getSortedItems();
 
@@ -673,7 +673,7 @@ const Files = () => {
 
     return (
       <div className="h-full flex flex-col">
-        {/* 顶部区域：面包屑与操作按钮 */}
+        {/* Top area: breadcrumb and action buttons */}
         <div className="bg-white rounded-lg p-8">
           <div className="flex items-center justify-between">
             <Breadcrumb items={buildBrowserBreadcrumbItems()} />
@@ -695,7 +695,7 @@ const Files = () => {
           </div>
         </div>
 
-        {/* 文件列表 */}
+        {/* File list */}
         <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="flex justify-center items-center h-full">
@@ -729,7 +729,7 @@ const Files = () => {
     );
   };
 
-  // 渲染storage选择器
+  // Render storage selector
   const renderStorageSelector = () => {
     const handleStorageChange = (e: RadioChangeEvent) => {
       const newStorage = e.target.value as StorageType;
@@ -767,10 +767,10 @@ const Files = () => {
     <div className="h-full mt-24">
       {messageContextHolder}
 
-      {/* Storage选择器 */}
+      {/* Storage selector */}
       {renderStorageSelector()}
 
-      {/* 文件浏览器 */}
+      {/* File browser */}
       {renderFileBrowser()}
 
       {/* Media Preview Modal */}
@@ -903,7 +903,7 @@ const Files = () => {
         width={500}
       >
         <div className="space-y-4">
-          {/* 当前文件进度 */}
+          {/* Current file progress */}
           {uploadProgress.currentFile && (
             <div>
               <Progress

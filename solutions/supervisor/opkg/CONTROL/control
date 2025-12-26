@@ -1,0 +1,9 @@
+Package: supervisor
+Version: 1.0.1
+Architecture: riscv64
+Maintainer: Seeed Studio <techsupport@seeed.io>
+Section: admin
+Priority: optional
+Description: Supervisor web interface for reCamera
+ A web-based supervisor interface for managing the reCamera device,
+ including WiFi configuration, device management, and system updates.

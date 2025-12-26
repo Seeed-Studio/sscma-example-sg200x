@@ -1,18 +1,18 @@
 package handler
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"supervisor/internal/api"
-	"supervisor/internal/script"
+	"supervisor/internal/device"
+	"supervisor/internal/system"
+	"supervisor/internal/upgrade"
 	"supervisor/pkg/logger"
 )
 
@@ -20,7 +20,8 @@ import (
 type DeviceHandler struct {
 	modelDir    string
 	modelSuffix string
-	deviceInfo  map[string]interface{}
+	deviceInfo  *device.APIDeviceInfo
+	upgradeMgr  *upgrade.UpgradeManager
 }
 
 // NewDeviceHandler creates a new DeviceHandler.
@@ -28,21 +29,19 @@ func NewDeviceHandler() *DeviceHandler {
 	h := &DeviceHandler{
 		modelDir:    "/usr/share/supervisor/models",
 		modelSuffix: ".cvimodel",
+		upgradeMgr:  upgrade.NewUpgradeManager(),
 	}
 
-	// Load device info from script
-	result, err := script.RunJSON("api_device")
-	if err == nil {
-		h.deviceInfo = result
-		if model, ok := result["model"].(map[string]interface{}); ok {
-			if preset, ok := model["preset"].(string); ok {
-				h.modelDir = preset
-			}
-			if file, ok := model["file"].(string); ok {
-				ext := filepath.Ext(file)
-				if ext != "" {
-					h.modelSuffix = ext
-				}
+	// Load device info
+	h.deviceInfo = device.GetAPIDevice()
+	if h.deviceInfo != nil {
+		if h.deviceInfo.Model.Preset != "" {
+			h.modelDir = h.deviceInfo.Model.Preset
+		}
+		if h.deviceInfo.Model.File != "" {
+			ext := filepath.Ext(h.deviceInfo.Model.File)
+			if ext != "" {
+				h.modelSuffix = ext
 			}
 		}
 	}
@@ -52,38 +51,24 @@ func NewDeviceHandler() *DeviceHandler {
 
 // QueryDeviceInfo returns device information.
 func (h *DeviceHandler) QueryDeviceInfo(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("queryDeviceInfo")
-	if err != nil {
-		api.WriteError(w, -1, "Failed to query device info")
-		return
-	}
-	api.WriteSuccess(w, result)
+	info := device.QueryDeviceInfo()
+	api.WriteSuccess(w, info)
 }
 
 // GetDeviceInfo returns detailed device information.
 func (h *DeviceHandler) GetDeviceInfo(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("getDeviceInfo")
-	if err != nil {
-		api.WriteError(w, -1, "Failed to get device info")
-		return
-	}
-	api.WriteSuccess(w, result)
+	info := device.QueryDeviceInfo()
+	api.WriteSuccess(w, info)
 }
 
 // GetDeviceList returns list of devices on the network.
 func (h *DeviceHandler) GetDeviceList(w http.ResponseWriter, r *http.Request) {
-	result, err := script.Run("getDeviceList")
+	devices, err := device.GetDeviceList()
 	if err != nil {
 		api.WriteSuccess(w, map[string]interface{}{"deviceList": []interface{}{}})
 		return
 	}
-
-	var deviceList []interface{}
-	if err := json.Unmarshal([]byte(result), &deviceList); err != nil {
-		deviceList = []interface{}{}
-	}
-
-	api.WriteSuccess(w, map[string]interface{}{"deviceList": deviceList})
+	api.WriteSuccess(w, map[string]interface{}{"deviceList": devices})
 }
 
 // UpdateDeviceNameRequest represents a device name update request.
@@ -109,8 +94,7 @@ func (h *DeviceHandler) UpdateDeviceName(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err := script.Run("updateDeviceName", req.DeviceName)
-	if err != nil {
+	if err := device.UpdateDeviceName(req.DeviceName); err != nil {
 		api.WriteError(w, -1, "Failed to update device name")
 		return
 	}
@@ -137,22 +121,24 @@ func (h *DeviceHandler) GetCameraWebsocketUrl(w http.ResponseWriter, r *http.Req
 
 // QueryServiceStatus returns the status of services.
 func (h *DeviceHandler) QueryServiceStatus(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("queryServiceStatus")
-	if err != nil {
-		api.WriteSuccess(w, map[string]interface{}{})
-		return
-	}
-	api.WriteSuccess(w, result)
+	// Since sscma-node has been removed, return success status directly
+	// The frontend expects sscmaNode=0 and system=0 for "RUNNING" status
+	api.WriteSuccess(w, map[string]interface{}{
+		"sscmaNode": 0,
+		"system":    0,
+		"uptime":    system.GetUptime(),
+	})
 }
 
 // GetSystemStatus returns system status information.
 func (h *DeviceHandler) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("getSystemStatus")
-	if err != nil {
-		api.WriteError(w, -1, "Failed to get system status")
-		return
-	}
-	api.WriteSuccess(w, result)
+	// Return system status using native Go
+	api.WriteSuccess(w, map[string]interface{}{
+		"uptime":     system.GetUptime(),
+		"deviceName": system.GetDeviceName(),
+		"osName":     system.GetOSName(),
+		"osVersion":  system.GetOSVersion(),
+	})
 }
 
 // SetPowerRequest represents a power mode request.
@@ -233,12 +219,15 @@ func (h *DeviceHandler) GetModelList(w http.ResponseWriter, r *http.Request) {
 
 // GetModelInfo returns information about the current model.
 func (h *DeviceHandler) GetModelInfo(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("getModelInfo")
+	// Read model info from file
+	infoFile := device.ModelDir + "/model.json"
+	data, err := os.ReadFile(infoFile)
 	if err != nil {
 		api.WriteError(w, -1, "Failed to get model info")
 		return
 	}
-	api.WriteSuccess(w, result)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
 }
 
 // GetModelFile serves a model file for download.
@@ -441,15 +430,15 @@ func (h *DeviceHandler) UpdateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Channel string `json:"channel"`
+		Channel int    `json:"channel"`
+		URL     string `json:"url"`
 	}
 	if err := api.ParseJSONBody(r, &req); err != nil {
 		api.WriteError(w, -1, "Invalid request body")
 		return
 	}
 
-	_, err := script.Run("updateChannel", req.Channel)
-	if err != nil {
+	if err := h.upgradeMgr.UpdateChannel(req.Channel, req.URL); err != nil {
 		api.WriteError(w, -1, "Failed to update channel")
 		return
 	}
@@ -459,7 +448,7 @@ func (h *DeviceHandler) UpdateChannel(w http.ResponseWriter, r *http.Request) {
 
 // GetSystemUpdateVersion returns available update version.
 func (h *DeviceHandler) GetSystemUpdateVersion(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("getSystemUpdateVersion")
+	result, err := h.upgradeMgr.GetSystemUpdateVersion()
 	if err != nil {
 		api.WriteError(w, -1, "Failed to get update version")
 		return
@@ -476,7 +465,7 @@ func (h *DeviceHandler) UpdateSystem(w http.ResponseWriter, r *http.Request) {
 
 	// Start update in background
 	go func() {
-		script.Run("updateSystem")
+		h.upgradeMgr.UpdateSystem()
 	}()
 
 	api.WriteSuccess(w, map[string]interface{}{"status": "updating"})
@@ -484,7 +473,7 @@ func (h *DeviceHandler) UpdateSystem(w http.ResponseWriter, r *http.Request) {
 
 // GetUpdateProgress returns the update progress.
 func (h *DeviceHandler) GetUpdateProgress(w http.ResponseWriter, r *http.Request) {
-	result, err := script.RunJSON("getUpdateProgress")
+	result, err := h.upgradeMgr.GetUpdateProgress()
 	if err != nil {
 		api.WriteSuccess(w, map[string]interface{}{"progress": 0, "status": "idle"})
 		return
@@ -499,8 +488,7 @@ func (h *DeviceHandler) CancelUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := script.Run("cancelUpdate")
-	if err != nil {
+	if err := h.upgradeMgr.CancelUpdate(); err != nil {
 		api.WriteError(w, -1, "Failed to cancel update")
 		return
 	}
@@ -512,12 +500,8 @@ func (h *DeviceHandler) CancelUpdate(w http.ResponseWriter, r *http.Request) {
 
 // GetPlatformInfo returns platform configuration.
 func (h *DeviceHandler) GetPlatformInfo(w http.ResponseWriter, r *http.Request) {
-	result, err := script.Run("getPlatformInfo")
-	if err != nil {
-		api.WriteSuccess(w, map[string]interface{}{"platform_info": ""})
-		return
-	}
-	api.WriteSuccess(w, map[string]interface{}{"platform_info": result})
+	info := device.GetPlatformInfo()
+	api.WriteSuccess(w, map[string]interface{}{"platform_info": info})
 }
 
 // SavePlatformInfo saves platform configuration.
@@ -535,28 +519,10 @@ func (h *DeviceHandler) SavePlatformInfo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err := script.Run("savePlatformInfo", req.PlatformInfo)
-	if err != nil {
+	if err := device.SavePlatformInfo(req.PlatformInfo); err != nil {
 		api.WriteError(w, -1, "Failed to save platform info")
 		return
 	}
 
 	api.WriteSuccess(w, map[string]interface{}{"message": "Platform info saved"})
-}
-
-// Uptime returns the system uptime in milliseconds.
-func Uptime() int64 {
-	data, err := os.ReadFile("/proc/uptime")
-	if err != nil {
-		return 0
-	}
-	fields := strings.Fields(string(data))
-	if len(fields) < 1 {
-		return 0
-	}
-	seconds, err := strconv.ParseFloat(fields[0], 64)
-	if err != nil {
-		return 0
-	}
-	return int64(seconds * 1000)
 }

@@ -3,15 +3,15 @@ import { message } from "antd";
 import { getToken, clearCurrentUser } from "@/store/user";
 import { isDev } from "@/utils";
 
-// 根据环境设置 baseURL
+// Set baseURL based on environment
 export const baseIP = isDev ? "http://192.168.42.1" : window.location.origin;
 
-// 和设备通信的
+// Device communication service
 const supervisorService = axios.create({
   baseURL: baseIP,
 });
 
-// 设置token
+// Set token
 supervisorService.interceptors.request.use((config) => {
   config.headers.Authorization = getToken();
   return config;
@@ -54,7 +54,7 @@ const createSupervisorRequest = () => {
         },
         (err: AxiosError) => {
           console.error(err);
-          //鉴权失败，重新登录
+          // Authentication failed, re-login
           if (err.response?.status == 401) {
             clearCurrentUser();
           } else {

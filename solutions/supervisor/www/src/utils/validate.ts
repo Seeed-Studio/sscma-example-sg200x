@@ -1,4 +1,4 @@
-// antd-mobile input 空格required验证
+// antd-mobile input trim required validation
 export const requiredTrimValidate = () => {
   return {
     required: true,
@@ -25,9 +25,9 @@ export const publicKeyValidate = () => {
   };
 };
 
-// 不能输入中文验证
+// Chinese character validation (no Chinese allowed)
 export const chineseValidate = () => {
-  const digitOnly = /^[^一-\u9fa5]+$/; // 匹配任何一个非中文字符
+  const digitOnly = /^[^一-\u9fa5]+$/; // Match any non-Chinese character
   return {
     required: true,
     validator: (_: unknown, value: string) => {
@@ -49,7 +49,7 @@ export const passwordRules = [
   },
 ];
 
-// Linux hostname 验证: 小写字母/数字/中划线，不能以中划线开头或结尾，长度 1-32
+// Linux hostname validation: lowercase letters/digits/hyphens, cannot start or end with hyphen, length 1-32
 export const hostnameValidate = (maxLength = 32) => {
   const hostnameReg = new RegExp(
     `^(?=.{1,${maxLength}}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`

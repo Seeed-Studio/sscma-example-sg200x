@@ -1,5 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { ConfigProvider } from "antd";
+import { ConfigProvider as MobileConfigProvider } from "antd-mobile";
+import enUS from "antd-mobile/es/locales/en-US";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import Routes from "@/router";
 import Login from "@/views/login";
@@ -35,12 +37,12 @@ const App = () => {
     try {
       const response = await queryDeviceInfoApi();
       const deviceInfo = response.data;
-      // 查询设备信息，获取sn
+      // Query device info, get sn
       updateDeviceInfo(deviceInfo);
       const sn = deviceInfo.sn;
       setCurrentSn(sn);
       if (sn) {
-        // 查询设备是否第一次登录，第一次登录，直接进登录页
+        // Check if device is first login, if first login, go to login page
         const response = await getUserInfoApi();
         if (response.code == 0) {
           const data = response.data;
@@ -52,7 +54,7 @@ const App = () => {
         }
       }
     } catch (error) {
-      // 不能清用户信息，很可能是服务没起来超时
+      // Don't clear user info, likely service not started timeout
     }
   };
 
@@ -65,9 +67,11 @@ const App = () => {
         },
       }}
     >
-      <div className="w-full h-full">
-        {token ? <RouterProvider router={router} /> : <Login />}
-      </div>
+      <MobileConfigProvider locale={enUS}>
+        <div className="w-full h-full">
+          {token ? <RouterProvider router={router} /> : <Login />}
+        </div>
+      </MobileConfigProvider>
     </ConfigProvider>
   );
 };

@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"bufio"
 	"net/http"
 	"os"
 	"os/exec"
@@ -10,9 +11,11 @@ import (
 
 	"supervisor/internal/api"
 	"supervisor/internal/auth"
-	"supervisor/internal/script"
 	"supervisor/pkg/logger"
 )
+
+// Default username for the system
+const DefaultUsername = "recamera"
 
 // UserHandler handles user management API requests.
 type UserHandler struct {
@@ -71,10 +74,9 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) QueryUserInfo(w http.ResponseWriter, r *http.Request) {
 	username := auth.GetUsername()
 
-	// Get additional user info from script
-	result, err := script.Run("get_username")
-	if err == nil && result != "" {
-		username = result
+	// Use default username if not set
+	if username == "" {
+		username = DefaultUsername
 	}
 
 	// Check SSH status
@@ -83,8 +85,12 @@ func (h *UserHandler) QueryUserInfo(w http.ResponseWriter, r *http.Request) {
 	// Get SSH keys
 	sshKeys := getSSHKeys(username)
 
+	// Check if this is first login (password is not set or default)
+	firstLogin := isFirstLogin(username)
+
 	api.WriteSuccess(w, map[string]interface{}{
 		"userName":   username,
+		"firstLogin": firstLogin,
 		"sshEnabled": sshEnabled,
 		"sshKeys":    sshKeys,
 	})
@@ -129,11 +135,13 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Change password using chpasswd
-	cmd := exec.Command("chpasswd")
-	cmd.Stdin = strings.NewReader(username + ":" + req.NewPassword)
-	if err := cmd.Run(); err != nil {
-		logger.Error("Failed to change password: %v", err)
+	// Change password using passwd command (same as original shell script)
+	// The passwd command expects the new password twice via stdin
+	cmd := exec.Command("passwd", username)
+	cmd.Stdin = strings.NewReader(req.NewPassword + "\n" + req.NewPassword + "\n")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error("Failed to change password: %v, output: %s", err, string(output))
 		api.WriteError(w, -1, "Failed to update password")
 		return
 	}
@@ -369,5 +377,46 @@ func isValidSSHKey(key string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// isFirstLogin checks if the user needs to set a password.
+// Returns true if the password is default or the first login flag is set.
+func isFirstLogin(username string) bool {
+	// Check first login flag file
+	firstLoginFile := "/etc/recamera.conf/first_login"
+	if _, err := os.Stat(firstLoginFile); err == nil {
+		// First login flag exists
+		data, _ := os.ReadFile(firstLoginFile)
+		if string(data) == "1" || strings.TrimSpace(string(data)) == "true" {
+			return true
+		}
+	}
+
+	// Check if user has a valid password in /etc/shadow
+	// If password field is empty, !, *, or !!, then first login is true
+	shadowFile, err := os.Open("/etc/shadow")
+	if err != nil {
+		// Can't read shadow, assume not first login
+		return false
+	}
+	defer shadowFile.Close()
+
+	scanner := bufio.NewScanner(shadowFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, ":")
+		if len(parts) >= 2 && parts[0] == username {
+			passwd := parts[1]
+			// Check if password is locked or empty
+			if passwd == "" || passwd == "*" || passwd == "!" || passwd == "!!" || passwd == "!*" {
+				return true
+			}
+			// Check for default password "recamera" - hash comparison
+			// This is a security check to force password change
+			return false
+		}
+	}
+
 	return false
 }

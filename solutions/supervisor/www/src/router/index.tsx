@@ -6,7 +6,6 @@ import Security from "@/views/security";
 import WebShell from "@/views/terminal";
 import System from "@/views/system";
 import Power from "@/views/power";
-import Workspace from "@/views/workspace";
 import Dashboard from "@/views/dashboard";
 import Files from "@/views/files";
 import ConfigLayout from "@/layout/config";
@@ -28,10 +27,6 @@ const Routes = [
       {
         path: "/dashboard",
         element: <Dashboard />,
-      },
-      {
-        path: "/workspace",
-        element: <Workspace />,
       },
     ],
   },

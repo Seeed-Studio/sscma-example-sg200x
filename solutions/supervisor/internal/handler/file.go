@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"supervisor/internal/api"
@@ -97,13 +99,82 @@ func (h *FileHandler) getFullPath(relativePath, storage string) string {
 	return filepath.Join(baseDir, relativePath)
 }
 
-// getParam gets a parameter from URL query or body.
+// jsonBodyCache stores parsed JSON body for a request
+type jsonBodyCache struct {
+	mu    sync.RWMutex
+	cache map[*http.Request]map[string]interface{}
+}
+
+var jsonCache = &jsonBodyCache{
+	cache: make(map[*http.Request]map[string]interface{}),
+}
+
+// getJSONBody parses and caches the JSON body of a request
+func getJSONBody(r *http.Request) map[string]interface{} {
+	jsonCache.mu.RLock()
+	if cached, ok := jsonCache.cache[r]; ok {
+		jsonCache.mu.RUnlock()
+		return cached
+	}
+	jsonCache.mu.RUnlock()
+
+	// Check if content type is JSON
+	contentType := r.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return nil
+	}
+
+	// Read and parse body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil
+	}
+	r.Body.Close()
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil
+	}
+
+	// Cache the result
+	jsonCache.mu.Lock()
+	jsonCache.cache[r] = data
+	jsonCache.mu.Unlock()
+
+	return data
+}
+
+// clearJSONCache removes the cached JSON body for a request (call at end of handler)
+func clearJSONCache(r *http.Request) {
+	jsonCache.mu.Lock()
+	delete(jsonCache.cache, r)
+	jsonCache.mu.Unlock()
+}
+
+// getParam gets a parameter from URL query, form body, or JSON body.
 func getParam(r *http.Request, name string) string {
 	// Try URL query first
 	val := r.URL.Query().Get(name)
 	if val != "" {
 		return val
 	}
+
+	// Try JSON body
+	if jsonBody := getJSONBody(r); jsonBody != nil {
+		if v, ok := jsonBody[name]; ok {
+			switch vt := v.(type) {
+			case string:
+				return vt
+			case float64:
+				return strconv.FormatFloat(vt, 'f', -1, 64)
+			case int:
+				return strconv.Itoa(vt)
+			case bool:
+				return strconv.FormatBool(vt)
+			}
+		}
+	}
+
 	// For POST requests, try form value
 	if r.Method == http.MethodPost {
 		return r.FormValue(name)

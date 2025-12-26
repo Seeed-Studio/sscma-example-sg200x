@@ -1,8 +1,8 @@
 interface IUserInfo {
   userName: string;
-  firstLogin: boolean; //默认true；表示第一次登录，如果是第一次登录，需要修改密码
+  firstLogin: boolean; // Default true; indicates first login, if first login, user needs to change password
   sshkeyList: ISshItem[];
-  sshEnabled: boolean; //是否开启ssh，默认false
+  sshEnabled: boolean; // Whether SSH is enabled, default false
 }
 interface ISshItem {
   id: string;

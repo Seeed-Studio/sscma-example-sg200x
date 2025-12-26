@@ -4,7 +4,7 @@ import { Progress, Alert } from "antd";
 import { queryServiceStatusApi } from "@/api/device";
 import gif from "@/assets/gif/loading.gif";
 
-const totalDuration = 100 * 1000; // 100秒
+const totalDuration = 100 * 1000; // 100 seconds
 
 const Loading = ({
   onServiceStatusChange,

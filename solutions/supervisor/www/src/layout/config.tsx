@@ -23,10 +23,10 @@ const Config: React.FC<Props> = ({ children }) => {
       {isDashboard ? (
         <div className="w-full h-full">{children}</div>
       ) : isMobile ? (
-        // 移动端布局
+        // Mobile layout
         <MobileLayout>{children}</MobileLayout>
       ) : (
-        // PC端布局
+        // PC layout
         <PCLayout>{children}</PCLayout>
       )}
     </div>

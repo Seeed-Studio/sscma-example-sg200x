@@ -102,11 +102,11 @@ dev:
 # Build web frontend (requires npm)
 .PHONY: www
 www:
-	@if [ -d "$(WWW_SRC_DIR)" ] && [ -f "$(WWW_SRC_DIR)/package.json" ]; then \
+	@if [ -d "$(CURDIR)/$(WWW_SRC_DIR)" ] && [ -f "$(CURDIR)/$(WWW_SRC_DIR)/package.json" ]; then \
 		echo "Building web frontend..."; \
-		cd $(WWW_SRC_DIR) && npm install && npm run build; \
-		mkdir -p $(WWW_DST_DIR); \
-		cp -r $(WWW_SRC_DIR)/dist/* $(WWW_DST_DIR)/; \
+		cd "$(CURDIR)/$(WWW_SRC_DIR)" && npm install && npm run build && \
+		mkdir -p "$(CURDIR)/$(WWW_DST_DIR)" && \
+		cp -r "$(CURDIR)/$(WWW_SRC_DIR)/dist/." "$(CURDIR)/$(WWW_DST_DIR)/"; \
 	else \
 		echo "Web frontend source not found at $(WWW_SRC_DIR)"; \
 	fi
@@ -122,6 +122,31 @@ package: build-riscv
 	fi
 	@tar -czf $(BUILD_DIR)/supervisor-$(VERSION)-riscv64.tar.gz -C $(BUILD_DIR)/package .
 	@echo "Package created: $(BUILD_DIR)/supervisor-$(VERSION)-riscv64.tar.gz"
+
+# Create opkg package
+.PHONY: opkg
+opkg: build-riscv www
+	@echo "Creating opkg package..."
+	@rm -rf $(BUILD_DIR)/opkg-stage
+	@mkdir -p $(BUILD_DIR)/opkg-stage/CONTROL
+	@mkdir -p $(BUILD_DIR)/opkg-stage/usr/local/bin
+	@# Copy CONTROL files
+	@cp opkg/CONTROL/control $(BUILD_DIR)/opkg-stage/CONTROL/
+	@cp opkg/CONTROL/postinst $(BUILD_DIR)/opkg-stage/CONTROL/
+	@chmod 755 $(BUILD_DIR)/opkg-stage/CONTROL/postinst
+	@# Install the supervisor binary
+	@cp $(BUILD_DIR)/$(BIN_NAME)-riscv64 $(BUILD_DIR)/opkg-stage/usr/local/bin/$(BIN_NAME)
+	@chmod 755 $(BUILD_DIR)/opkg-stage/usr/local/bin/$(BIN_NAME)
+	@# Copy all rootfs files (includes etc/, usr/share/supervisor/scripts, models, and www after build)
+	@cp -r $(ROOTFS_DIR)/* $(BUILD_DIR)/opkg-stage/
+	@# Create the opkg package
+	@cd $(BUILD_DIR)/opkg-stage && \
+		tar -czf ../data.tar.gz --owner=0 --group=0 ./usr ./etc && \
+		tar -czf ../control.tar.gz --owner=0 --group=0 -C CONTROL . && \
+		echo "2.0" > ../debian-binary && \
+		cd .. && ar r supervisor_$(VERSION)_riscv64.ipk debian-binary control.tar.gz data.tar.gz
+	@rm -f $(BUILD_DIR)/debian-binary $(BUILD_DIR)/control.tar.gz $(BUILD_DIR)/data.tar.gz
+	@echo "opkg package created: $(BUILD_DIR)/supervisor_$(VERSION)_riscv64.ipk"
 
 # Build static binary (for maximum compatibility)
 .PHONY: build-static
@@ -158,3 +183,5 @@ help:
 	@echo "  package       - Create release package"
 	@echo "  install       - Install locally"
 	@echo "  help          - Show this help"
+	@echo "  opkg          - Create opkg package"
+	@echo "  build-static  - Build static binary for RISC-V"

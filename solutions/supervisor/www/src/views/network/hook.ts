@@ -55,6 +55,7 @@ interface IInitialState {
   needRefresh: boolean;
   etherStatus: NetworkStatus;
   connectLoading: boolean;
+  refreshLoading: boolean;
 }
 type ActionType = { type: "setState"; payload: Partial<IInitialState> };
 const initialState: IInitialState = {
@@ -76,6 +77,7 @@ const initialState: IInitialState = {
   needRefresh: true,
   etherStatus: NetworkStatus.Disconnected,
   connectLoading: false,
+  refreshLoading: false,
 };
 function reducer(state: IInitialState, action: ActionType): IInitialState {
   switch (action.type) {
@@ -345,6 +347,21 @@ export function useData() {
 
     updateEtherStatus(etherStatus);
   };
+  const onRefreshNetworks = async () => {
+    if (state.refreshLoading) return;
+    setStates({
+      refreshLoading: true,
+    });
+    try {
+      await getWifiResults();
+    } catch (err) {
+      // Error handling
+    } finally {
+      setStates({
+        refreshLoading: false,
+      });
+    }
+  };
   const onHandleOperate = async (type: OperateType) => {
     const info = state.selectedWifiInfo;
     if (!info) return;
@@ -433,5 +450,6 @@ export function useData() {
     onClickWifiInfo,
     onClickEthernetItem,
     handleSwitchWifi,
+    onRefreshNetworks,
   };
 }

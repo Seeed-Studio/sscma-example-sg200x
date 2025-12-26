@@ -1,9 +1,8 @@
 import {
   LockOutlined,
   UserOutlined,
-  InfoCircleOutlined,
 } from "@ant-design/icons";
-import { Button, Form, Input, Modal, message, Checkbox } from "antd";
+import { Button, Form, Input, Modal, message } from "antd";
 import { useState } from "react";
 import recameraLogo from "@/assets/images/recamera.png";
 import useUserStore from "@/store/user";
@@ -16,8 +15,6 @@ const Login = () => {
 
   const [form] = Form.useForm();
   const [messageApi, messageContextHolder] = message.useMessage();
-  const [agreed, setAgreed] = useState(false);
-  const [showAgreement, setShowAgreement] = useState(false);
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string | null>(null);
 
   const handleChangePassword = async () => {
@@ -63,7 +60,7 @@ const Login = () => {
         });
         return { success: true };
       }
-      // 统一错误信息
+      // Unified error message
       let errorMsg = response.msg || "Login failed";
       if (code === -1 && data && typeof data.retryCount !== "undefined") {
         errorMsg =
@@ -97,18 +94,6 @@ const Login = () => {
       setPasswordErrorMsg(null);
     }
   };
-
-  const handleAcknowledge = () => {
-    setShowAgreement(false);
-    setAgreed(true);
-  };
-
-  const agreementTitle = (
-    <div className="flex items-center">
-      <InfoCircleOutlined className="text-primary text-24 mr-12" />
-      <span>reCamera Connection Agreement</span>
-    </div>
-  );
 
   return (
     <div className="h-full flex flex-col justify-center items-center text-18">
@@ -160,123 +145,11 @@ const Login = () => {
           />
         </Form.Item>
         <Form.Item className="w-full" noStyle>
-          <Button block type="primary" htmlType="submit" disabled={!agreed}>
+          <Button block type="primary" htmlType="submit">
             Login
           </Button>
         </Form.Item>
       </Form>
-
-      <div className="mt-16 w-750 flex items-center">
-        <Checkbox
-          checked={agreed}
-          onChange={(e) => setAgreed(e.target.checked)}
-          className="mt-1"
-        />
-        <div className="ml-10 text-14">
-          Please view{" "}
-          <span
-            className="text-primary cursor-pointer underline"
-            onClick={() => setShowAgreement(true)}
-          >
-            reCamera Connection Agreement
-          </span>
-          . By checking the box, users understand reCamera operates solely on
-          local networks and commit to maintaining enterprise-grade network
-          security for all vision AI operations.
-        </div>
-      </div>
-
-      <Modal
-        title={agreementTitle}
-        open={showAgreement}
-        closable={false}
-        onCancel={() => setShowAgreement(false)}
-        footer={
-          <Button type="primary" onClick={handleAcknowledge}>
-            Acknowledge
-          </Button>
-        }
-        width={1000}
-      >
-        <div className="text-left text-14 leading-relaxed ml-36">
-          <p className="text-15 font-medium mb-16">
-            Welcome to reCamera Vision AI System. To ensure secure operation of
-            your AI-powered camera, please review and confirm:
-          </p>
-
-          <h3 className="text-15 font-semibold mb-8 mt-24">
-            Local Network Operation
-          </h3>
-          <p className="mb-4">
-            This vision AI camera functions exclusively within local networks.
-            You agree:
-          </p>
-          <ul className="list-none p-0 mt-4">
-            <li className="mb-4">
-              • Not to configure external/remote access capabilities
-            </li>
-            <li className="mb-4">
-              • To maintain all connections within your private network
-              environment
-            </li>
-            <li className="mb-4">
-              • To disable UPnP/WAN exposure features if present
-            </li>
-          </ul>
-
-          <h3 className="text-15 font-semibold mb-8 mt-24">
-            Network Security Requirements
-          </h3>
-          <p className="mb-4">By proceeding, you confirm that your network:</p>
-          <ul className="list-none p-0 mt-4">
-            <li className="mb-4">
-              • Implements WPA2/WPA3 encryption standards
-            </li>
-            <li className="mb-4">
-              • Maintains updated firewall/security protocols
-            </li>
-            <li className="mb-4">• Restricts unauthorized device access</li>
-            <li className="mb-4">
-              • Uses strong unique credentials (recommended 12+ character
-              password)
-            </li>
-          </ul>
-
-          <h3 className="text-15 font-semibold mb-8 mt-24">
-            Data Protection Understanding
-          </h3>
-          <p className="mb-4">As a vision AI camera, reCamera:</p>
-          <ul className="list-none p-0 mt-4">
-            <li className="mb-4">
-              • Processes video data locally unless otherwise specified
-            </li>
-            <li className="mb-4">
-              • Requires user-configured storage solutions
-            </li>
-            <li className="mb-4">
-              • Excludes cloud connectivity by default design
-            </li>
-          </ul>
-
-          <h3 className="text-15 font-semibold mb-8 mt-24">
-            User Responsibilities
-          </h3>
-          <p className="mb-4">
-            You acknowledge that Seeed Studio is not liable for:
-          </p>
-          <ul className="list-none p-0 mt-4">
-            <li className="mb-4">
-              • Security incidents from unsecured network environments
-            </li>
-            <li className="mb-4">
-              • Unauthorized access through compromised credentials
-            </li>
-            <li className="mb-4">
-              • Performance issues when used beyond local network parameters
-            </li>
-          </ul>
-        </div>
-      </Modal>
 
       <Modal
         title="Change password"

@@ -7,11 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/GehirnInc/crypt"
+	_ "github.com/GehirnInc/crypt/md5_crypt"
+	_ "github.com/GehirnInc/crypt/sha256_crypt"
+	_ "github.com/GehirnInc/crypt/sha512_crypt"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
@@ -73,7 +76,7 @@ func (am *AuthManager) Authenticate(username, password string) (string, error) {
 		}
 	}
 
-	// Verify credentials
+	// Verify credentials (password is now plaintext from frontend)
 	if !am.verifySystemPassword(username, password) {
 		am.recordFailedAttempt(username)
 		return "", ErrInvalidCredentials
@@ -88,18 +91,9 @@ func (am *AuthManager) Authenticate(username, password string) (string, error) {
 
 // verifySystemPassword verifies the password against the system shadow file.
 func (am *AuthManager) verifySystemPassword(username, password string) bool {
-	// Use chpasswd for verification in a safe manner
-	// This approach is more secure than reading /etc/shadow directly
-	// We use `su` with the provided credentials
-
-	// Method 1: Try using PAM via su command
-	cmd := exec.Command("su", "-c", "true", username)
-	cmd.Stdin = strings.NewReader(password + "\n")
-	if err := cmd.Run(); err == nil {
-		return true
-	}
-
-	// Method 2: Fallback to reading shadow file (requires root)
+	// Always use shadow file verification since supervisor runs as root
+	// The `su` command doesn't work for verification when run as root
+	// because root can switch to any user without a password
 	return am.verifyShadowPassword(username, password)
 }
 
@@ -134,26 +128,27 @@ func (am *AuthManager) verifyShadowPassword(username, password string) bool {
 
 // verifyHashedPassword compares a password with a crypt-style hash.
 func (am *AuthManager) verifyHashedPassword(password, hashedPassword string) bool {
-	// Use external crypt verification via openssl or python
-	// This handles various crypt algorithms (SHA-512, SHA-256, MD5, etc.)
-	cmd := exec.Command("python3", "-c", fmt.Sprintf(`
-import crypt
-import sys
-result = crypt.crypt('%s', '%s')
-sys.exit(0 if result == '%s' else 1)
-`, escapeForPython(password), hashedPassword, hashedPassword))
+	// Use the GehirnInc/crypt library to verify shadow passwords
+	// This handles SHA-512 ($6$), SHA-256 ($5$), and MD5 ($1$) algorithms
 
-	if err := cmd.Run(); err == nil {
-		return true
+	// Get the crypt implementation based on hash prefix
+	crypter := crypt.NewFromHash(hashedPassword)
+	if crypter == nil {
+		logger.Error("Unsupported password hash algorithm for hash: %s...", hashedPassword[:min(10, len(hashedPassword))])
+		return false
 	}
-	return false
+
+	// Verify the password
+	err := crypter.Verify(hashedPassword, []byte(password))
+	return err == nil
 }
 
-// escapeForPython escapes a string for use in Python.
-func escapeForPython(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "'", "\\'")
-	return s
+// min returns the smaller of a and b
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // recordFailedAttempt records a failed login attempt.

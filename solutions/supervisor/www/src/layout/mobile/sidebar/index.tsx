@@ -6,11 +6,11 @@ import NetworkImg from "@/assets/images/svg/network.svg";
 import TerminalImg from "@/assets/images/svg/terminal.svg";
 import SystemImg from "@/assets/images/svg/system.svg";
 import PowerImg from "@/assets/images/svg/power.svg";
-import ApplicationImg from "@/assets/images/svg/application.svg";
 import FilesImg from "@/assets/images/svg/files.svg";
 import { useLocation, useNavigate } from "react-router-dom";
 import useConfigStore from "@/store/config";
-import { MenuOutlined } from "@ant-design/icons";
+import { clearCurrentUser } from "@/store/user";
+import { MenuOutlined, LogoutOutlined } from "@ant-design/icons";
 
 function Sidebar() {
   const location = useLocation();
@@ -18,6 +18,13 @@ function Sidebar() {
   const [visible, setVisible] = useState(false);
   const navigate = useNavigate();
   const { deviceInfo } = useConfigStore();
+
+  const handleLogout = async () => {
+    await clearCurrentUser();
+    setVisible(false);
+    // Reset URL to root - App.tsx will show Login component when token is cleared
+    window.location.hash = "#/";
+  };
 
   const menuList = [
     [
@@ -27,7 +34,6 @@ function Sidebar() {
         route: "/overview",
         judgeApp: true,
       },
-      { label: "Workspace", icon: ApplicationImg, route: "/workspace" },
       { label: "Files", icon: FilesImg, route: "/files" },
       { label: "Security", icon: SecurityImg, route: "/security" },
       { label: "Network", icon: NetworkImg, route: "/network" },
@@ -57,11 +63,11 @@ function Sidebar() {
         position="left"
         bodyStyle={{ width: "290px" }}
       >
-        <div className="pt-80">
+        <div className="pt-80 flex flex-col h-full">
           <div className="font-bold text-24 pl-40 pb-24 truncate pr-20">
             {deviceInfo.deviceName}
           </div>
-          <div className="border-t ">
+          <div className="border-t flex-1">
             {menuList.map((item, index) => {
               return (
                 <div key={index}>
@@ -98,6 +104,16 @@ function Sidebar() {
                 </div>
               );
             })}
+          </div>
+          <div className="border-t mx-20"></div>
+          <div className="py-14">
+            <div
+              className="px-40 py-10 text-17 flex cursor-pointer"
+              onClick={handleLogout}
+            >
+              <LogoutOutlined className="w-24 h-24 mr-12 text-24" />
+              <span>Logout</span>
+            </div>
           </div>
         </div>
       </Popup>

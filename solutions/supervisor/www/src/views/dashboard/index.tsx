@@ -5,7 +5,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/workspace");
+    navigate("/overview");
   }, [navigate]);
 
   return null;

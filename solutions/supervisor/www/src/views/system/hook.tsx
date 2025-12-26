@@ -105,7 +105,7 @@ export function useData() {
   const setStatus = (status: UpdateStatus, click?: boolean) => {
     if (click) {
       status = UpdateStatus.NoNeedUpdate;
-      // 一分钟后才允许再次check
+      // Wait one minute before allowing another check
       const timer = setTimeout(() => {
         setSystemUpdateState({
           status: UpdateStatus.Check,
@@ -120,7 +120,7 @@ export function useData() {
     });
   };
   const onUpdateCheck = async (click?: boolean) => {
-    // 重置检查计数器
+    // Reset check counter
     checkCountRef.current = 0;
 
     const performCheck = async () => {
@@ -131,14 +131,14 @@ export function useData() {
           ? deviceInfo.officialUrl
           : deviceInfo.serverUrl;
       if (!url) {
-        // 只有第一次使用时，没有url，重置为check
+        // Only on first use when no url is set, reset to check
         setSystemUpdateState({
           status: UpdateStatus.Check,
         });
         return;
       }
 
-      // 检查是否超过最大检查次数
+      // Check if exceeded max check count
       if (checkCountRef.current >= maxCheckCount) {
         status = UpdateStatus.NoNeedUpdate;
         setStatus(status, click);
@@ -161,7 +161,7 @@ export function useData() {
         }
 
         if (data.status === SystemUpdateStatus.Checking) {
-          // 如果是检查中状态，5秒后继续查询
+          // If checking status, continue query after 5 seconds
           setTimeout(() => {
             performCheck();
           }, 5000);
@@ -169,13 +169,13 @@ export function useData() {
         }
 
         if (data.status === SystemUpdateStatus.Updating) {
-          // 升级中状态，获取进度
+          // Updating status, get progress
           getProgress();
           return;
         }
 
         if (data.status === SystemUpdateStatus.Normal) {
-          // 正常状态，通过版本对比决定是否更新
+          // Normal status, decide whether to update by version comparison
           if (!data.osName || !data.osVersion) {
             status = UpdateStatus.NoNeedUpdate;
             setStatus(status, click);
@@ -204,7 +204,7 @@ export function useData() {
       }
     };
 
-    // 开始执行检查
+    // Start executing check
     await performCheck();
   };
   const onChannelChange = () => {

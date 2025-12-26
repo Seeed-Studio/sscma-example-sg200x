@@ -13,6 +13,7 @@ import (
 	"supervisor/internal/config"
 	"supervisor/internal/handler"
 	"supervisor/internal/middleware"
+	"supervisor/internal/system"
 	"supervisor/pkg/logger"
 )
 
@@ -122,19 +123,13 @@ func (s *Server) setupRoutes() http.Handler {
 	ledHandler := handler.NewLEDHandler()
 
 	// Paths that don't require authentication
+	// Only include endpoints needed before login
 	noAuthPaths := map[string]bool{
 		"/api/version":                      true,
 		"/api/userMgr/login":                true,
-		"/api/userMgr/queryUserInfo":        true,
-		"/api/userMgr/updatePassword":       true,
-		"/api/deviceMgr/queryDeviceInfo":    true,
-		"/api/deviceMgr/getDeviceList":      true,
-		"/api/deviceMgr/queryServiceStatus": true,
-		"/api/deviceMgr/getModelFile":       true,
-		"/api/deviceMgr/getModelInfo":       true,
-		"/api/deviceMgr/getModelList":       true,
-		"/api/deviceMgr/uploadModel":        true,
-		"/api/deviceMgr/getPlatformInfo":    true,
+		"/api/userMgr/queryUserInfo":        true, // Needed to check firstLogin status
+		"/api/deviceMgr/queryDeviceInfo":    true, // Needed for App init (gets SN)
+		"/api/deviceMgr/queryServiceStatus": true, // Needed for loading screen
 	}
 
 	// Auth middleware
@@ -253,7 +248,7 @@ func (s *Server) setupRoutes() http.Handler {
 // handleVersion handles the version endpoint.
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	api.WriteSuccess(w, map[string]interface{}{
-		"uptime":    handler.Uptime(),
+		"uptime":    system.GetUptime(),
 		"timestamp": time.Now().Unix(),
 		"version":   "1.0.0", // Will be set at build time
 	})
