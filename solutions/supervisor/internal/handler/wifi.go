@@ -30,10 +30,43 @@ func NewWiFiHandler() *WiFiHandler {
 		stopChan:    make(chan struct{}),
 	}
 
+	// Start WiFi interfaces (STA and AP mode)
+	h.initWiFi()
+
 	// Start background WiFi monitoring
 	go h.monitorWiFi()
 
 	return h
+}
+
+// initWiFi starts WiFi interfaces by calling start_wifi script.
+func (h *WiFiHandler) initWiFi() {
+	result, err := script.Run("start_wifi")
+	if err != nil {
+		logger.Warning("Failed to initialize WiFi: %v", err)
+		return
+	}
+
+	// Parse result to get STA and AP enable states
+	var wifiState struct {
+		STA int `json:"sta"`
+		AP  int `json:"ap"`
+	}
+	if err := json.Unmarshal([]byte(result), &wifiState); err != nil {
+		logger.Debug("Could not parse WiFi state: %v", err)
+		return
+	}
+
+	h.mu.Lock()
+	if wifiState.STA >= 0 {
+		h.staEnable = wifiState.STA
+	}
+	if wifiState.AP >= 0 {
+		h.apEnable = wifiState.AP
+	}
+	h.mu.Unlock()
+
+	logger.Info("WiFi initialized: STA=%d, AP=%d", wifiState.STA, wifiState.AP)
 }
 
 // Stop stops the WiFi monitoring goroutine.
