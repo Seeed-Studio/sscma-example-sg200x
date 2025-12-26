@@ -3,14 +3,14 @@
 /bin/
 /dist/
 
-# Go binaries
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-supervisor
-supervisor-*
+# Go binaries (root level only to not ignore cmd/supervisor dir)
+/*.exe
+/*.exe~
+/*.dll
+/*.so
+/*.dylib
+/supervisor
+/supervisor-*
 
 # Test files
 *.test
