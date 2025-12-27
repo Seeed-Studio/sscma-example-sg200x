@@ -29,10 +29,11 @@ func main() {
 	var (
 		showVersion = flag.Bool("version", false, "Show version information")
 		daemon      = flag.Bool("d", false, "Run as daemon")
-		httpPort    = flag.String("p", "", "HTTP port (default: 80)")
-		httpsPort   = flag.String("P", "", "HTTPS port")
+		httpPort    = flag.String("p", "", "HTTP port for redirect (default: 80)")
+		httpsPort   = flag.String("P", "", "HTTPS port (default: 443)")
 		rootDir     = flag.String("r", "", "Web root directory")
 		scriptPath  = flag.String("s", "", "Script path")
+		certDir     = flag.String("c", "", "TLS certificate directory")
 		noAuth      = flag.Bool("n", false, "Disable authentication")
 		logLevel    = flag.Int("v", -1, "Log level (0-4)")
 	)
@@ -61,6 +62,9 @@ func main() {
 	}
 	if *scriptPath != "" {
 		cfg.ScriptPath = *scriptPath
+	}
+	if *certDir != "" {
+		cfg.CertDir = *certDir
 	}
 	if *noAuth {
 		cfg.NoAuth = true

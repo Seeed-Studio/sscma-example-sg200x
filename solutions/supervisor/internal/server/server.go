@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"supervisor/internal/handler"
 	"supervisor/internal/middleware"
 	"supervisor/internal/system"
+	"supervisor/internal/tls"
 	"supervisor/pkg/logger"
 )
 
@@ -24,6 +26,7 @@ type Server struct {
 	httpsServer *http.Server
 	authManager *auth.AuthManager
 	wifiHandler *handler.WiFiHandler
+	tlsManager  *tls.Manager
 }
 
 // New creates a new Server.
@@ -31,11 +34,23 @@ func New(cfg *config.Config) *Server {
 	return &Server{
 		cfg:         cfg,
 		authManager: auth.NewAuthManager(cfg),
+		tlsManager:  tls.NewManager(cfg.CertDir),
 	}
 }
 
 // Start starts the HTTP server.
 func (s *Server) Start() error {
+	// Ensure TLS certificates exist
+	if err := s.tlsManager.EnsureCertificates(); err != nil {
+		return fmt.Errorf("failed to ensure TLS certificates: %w", err)
+	}
+
+	// Get TLS configuration
+	tlsConfig, err := s.tlsManager.GetTLSConfig()
+	if err != nil {
+		return fmt.Errorf("failed to get TLS config: %w", err)
+	}
+
 	mux := s.setupRoutes()
 
 	// Apply middleware
@@ -47,44 +62,64 @@ func (s *Server) Start() error {
 		middleware.CORS,
 	)
 
-	// HTTP server
+	// HTTP server - redirects all traffic to HTTPS
 	if s.cfg.HTTPPort != "" {
 		s.httpServer = &http.Server{
 			Addr:         ":" + s.cfg.HTTPPort,
-			Handler:      handler,
+			Handler:      s.httpsRedirectHandler(),
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
 			IdleTimeout:  120 * time.Second,
 		}
 
 		go func() {
-			logger.Info("HTTP server starting on port %s", s.cfg.HTTPPort)
+			logger.Info("HTTP redirect server starting on port %s (redirecting to HTTPS)", s.cfg.HTTPPort)
 			if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				logger.Error("HTTP server error: %v", err)
 			}
 		}()
 	}
 
-	// HTTPS server (if configured)
-	if s.cfg.HTTPSPort != "" {
-		s.httpsServer = &http.Server{
-			Addr:         ":" + s.cfg.HTTPSPort,
-			Handler:      handler,
-			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
-			IdleTimeout:  120 * time.Second,
-		}
-
-		go func() {
-			logger.Info("HTTPS server starting on port %s", s.cfg.HTTPSPort)
-			// TLS configuration would go here
-			// if err := s.httpsServer.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
-			// 	logger.Error("HTTPS server error: %v", err)
-			// }
-		}()
+	// HTTPS server (required)
+	s.httpsServer = &http.Server{
+		Addr:         ":" + s.cfg.HTTPSPort,
+		Handler:      handler,
+		TLSConfig:    tlsConfig,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
+	go func() {
+		logger.Info("HTTPS server starting on port %s", s.cfg.HTTPSPort)
+		if err := s.httpsServer.ListenAndServeTLS(s.tlsManager.CertFile(), s.tlsManager.KeyFile()); err != nil && err != http.ErrServerClosed {
+			logger.Error("HTTPS server error: %v", err)
+		}
+	}()
+
 	return nil
+}
+
+// httpsRedirectHandler returns a handler that redirects all HTTP requests to HTTPS.
+func (s *Server) httpsRedirectHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Build the HTTPS URL
+		host := r.Host
+		// Remove port if present
+		if idx := strings.Index(host, ":"); idx != -1 {
+			host = host[:idx]
+		}
+
+		// Add HTTPS port if not default
+		var targetURL string
+		if s.cfg.HTTPSPort == "443" {
+			targetURL = fmt.Sprintf("https://%s%s", host, r.RequestURI)
+		} else {
+			targetURL = fmt.Sprintf("https://%s:%s%s", host, s.cfg.HTTPSPort, r.RequestURI)
+		}
+
+		http.Redirect(w, r, targetURL, http.StatusMovedPermanently)
+	})
 }
 
 // Stop gracefully stops the server.
@@ -205,35 +240,6 @@ func (s *Server) setupRoutes() http.Handler {
 	// Static file server for web UI
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
-
-		// Redirect logic for non-static paths
-		if path != "/" && !strings.HasSuffix(path, ".png") &&
-			!strings.HasSuffix(path, ".html") &&
-			!strings.HasSuffix(path, ".js") &&
-			!strings.HasSuffix(path, ".css") &&
-			!strings.Contains(path, "assets") {
-
-			// Check if it's an IP address
-			host := r.Host
-			if idx := strings.Index(host, ":"); idx != -1 {
-				host = host[:idx]
-			}
-
-			isIP := true
-			for _, part := range strings.Split(host, ".") {
-				for _, c := range part {
-					if c < '0' || c > '9' {
-						isIP = false
-						break
-					}
-				}
-			}
-
-			if !isIP {
-				http.Redirect(w, r, "http://192.168.16.1/", http.StatusTemporaryRedirect)
-				return
-			}
-		}
 
 		// Serve static files
 		filePath := filepath.Join(s.cfg.RootDir, path)
