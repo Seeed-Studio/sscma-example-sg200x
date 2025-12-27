@@ -148,3 +148,13 @@ export const getPlatformInfoApi = async () =>
       catchs: true,
     }
   );
+
+// Factory reset - sets the factory reset flag
+export const factoryResetApi = async () =>
+  supervisorRequest<{
+    status: string;
+    message: string;
+  }>({
+    url: "api/deviceMgr/factoryReset",
+    method: "post",
+  });

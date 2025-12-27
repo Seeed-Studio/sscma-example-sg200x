@@ -526,3 +526,24 @@ func (h *DeviceHandler) SavePlatformInfo(w http.ResponseWriter, r *http.Request)
 
 	api.WriteSuccess(w, map[string]interface{}{"message": "Platform info saved"})
 }
+
+// FactoryReset sets the factory reset flag for the next reboot.
+// This will reset the device to factory defaults on next restart.
+func (h *DeviceHandler) FactoryReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		api.WriteError(w, -1, "Method not allowed")
+		return
+	}
+
+	// Set factory reset flag using fw_setenv
+	if err := h.upgradeMgr.Recovery(); err != nil {
+		logger.Error("Failed to set factory reset flag: %v", err)
+		api.WriteError(w, -1, "Failed to initiate factory reset")
+		return
+	}
+
+	api.WriteSuccess(w, map[string]interface{}{
+		"status":  "scheduled",
+		"message": "Factory reset scheduled. Please reboot the device to apply.",
+	})
+}

@@ -7,13 +7,15 @@ import {
   PickerValue,
   PickerValueExtend,
 } from "antd-mobile/es/components/picker";
-import { Button } from "antd";
+import { Button, Modal, message } from "antd";
+import { ExclamationCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import moment from "moment";
 import { useData } from "./hook";
-import { DeviceChannleMode, UpdateStatus } from "@/enum";
+import { DeviceChannleMode, UpdateStatus, PowerMode } from "@/enum";
 import { requiredTrimValidate } from "@/utils/validate";
 import { parseUrlParam } from "@/utils";
 import useConfigStore from "@/store/config";
+import { factoryResetApi, setDevicePowerApi } from "@/api/device/index";
 
 const channelList = [
   { label: "Self-Host", value: DeviceChannleMode.Self },
@@ -44,6 +46,8 @@ function System() {
   const { systemUpdateState, setSystemUpdateState } = useConfigStore();
 
   const [isDashboard, setIsDashboard] = useState(false);
+  const [factoryResetLoading, setFactoryResetLoading] = useState(false);
+  
   useEffect(() => {
     const param = parseUrlParam(window.location.href);
     const dashboard = param.dashboard || param.disablelayout;
@@ -56,6 +60,52 @@ function System() {
     );
     return index > -1 && channelList[index].label;
   }, [systemUpdateState.channel]);
+
+  const handleFactoryReset = () => {
+    Modal.confirm({
+      title: "Factory Reset",
+      icon: <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />,
+      content: (
+        <div>
+          <p>This will reset the device to factory defaults.</p>
+          <p className="text-red-500 font-bold mt-8">
+            All data and settings will be lost!
+          </p>
+          <p className="mt-8">The device will reboot to complete the reset.</p>
+        </div>
+      ),
+      okText: "Reset",
+      okType: "danger",
+      cancelText: "Cancel",
+      centered: true,
+      onOk: async () => {
+        setFactoryResetLoading(true);
+        try {
+          const response = await factoryResetApi();
+          if (response.code === 0) {
+            message.success("Factory reset scheduled. Rebooting device...");
+            // Reboot after a short delay
+            setTimeout(async () => {
+              await setDevicePowerApi({ mode: PowerMode.Restart });
+              Modal.info({
+                title: "Device rebooting...",
+                icon: <ReloadOutlined spin style={{ color: "#8fc31f" }} />,
+                content: "Please wait for the device to restart and then refresh the page.",
+                centered: true,
+                footer: null,
+              });
+            }, 1000);
+          } else {
+            message.error(response.msg || "Failed to initiate factory reset");
+          }
+        } catch (error) {
+          message.error("Failed to initiate factory reset");
+        } finally {
+          setFactoryResetLoading(false);
+        }
+      },
+    });
+  };
 
   return (
     <div className="my-8 p-16">
@@ -194,6 +244,25 @@ function System() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="font-bold text-18 mb-14 my-24">Factory Reset</div>
+          <div className="bg-white rounded-20 px-24 py-24">
+            <div className="flex justify-between items-center">
+              <div className="flex-1 mr-20">
+                <span className="opacity-60 text-black">Reset Device</span>
+                <p className="text-12 opacity-40 mt-4">
+                  Reset the device to factory defaults. All data and settings will be lost.
+                </p>
+              </div>
+              <Button 
+                danger 
+                onClick={handleFactoryReset}
+                loading={factoryResetLoading}
+              >
+                Factory Reset
+              </Button>
+            </div>
           </div>
         </div>
       )}

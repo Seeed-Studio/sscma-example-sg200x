@@ -173,6 +173,7 @@ func (s *Server) setupRoutes() http.Handler {
 	apiHandler.HandleFunc("/api/deviceMgr/updateSystem", deviceHandler.UpdateSystem)
 	apiHandler.HandleFunc("/api/deviceMgr/getUpdateProgress", deviceHandler.GetUpdateProgress)
 	apiHandler.HandleFunc("/api/deviceMgr/cancelUpdate", deviceHandler.CancelUpdate)
+	apiHandler.HandleFunc("/api/deviceMgr/factoryReset", deviceHandler.FactoryReset)
 	apiHandler.HandleFunc("/api/deviceMgr/getPlatformInfo", deviceHandler.GetPlatformInfo)
 	apiHandler.HandleFunc("/api/deviceMgr/savePlatformInfo", deviceHandler.SavePlatformInfo)
 
