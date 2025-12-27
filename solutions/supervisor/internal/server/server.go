@@ -128,6 +128,7 @@ func (s *Server) setupRoutes() http.Handler {
 		"/api/version":                      true,
 		"/api/userMgr/login":                true,
 		"/api/userMgr/queryUserInfo":        true, // Needed to check firstLogin status
+		"/api/userMgr/updatePassword":       true, // Needed for first login password change
 		"/api/deviceMgr/queryDeviceInfo":    true, // Needed for App init (gets SN)
 		"/api/deviceMgr/queryServiceStatus": true, // Needed for loading screen
 	}

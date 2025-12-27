@@ -6,7 +6,6 @@ import { Button, Form, Input, Modal, message } from "antd";
 import { useState } from "react";
 import recameraLogo from "@/assets/images/recamera.png";
 import useUserStore from "@/store/user";
-import { encryptPassword } from "@/utils";
 import { requiredTrimValidate, passwordRules } from "@/utils/validate";
 import { loginApi, updateUserPasswordApi } from "@/api/user";
 
@@ -16,46 +15,59 @@ const Login = () => {
   const [form] = Form.useForm();
   const [messageApi, messageContextHolder] = message.useMessage();
   const [passwordErrorMsg, setPasswordErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChangePassword = async () => {
-    const fieldsValue = form.getFieldsValue();
-    const oldpassword = fieldsValue.oldpassword;
-    const newpassword = fieldsValue.newpassword;
-    const confirmpassword = fieldsValue.confirmpassword;
-    if (
-      oldpassword &&
-      newpassword &&
-      confirmpassword &&
-      newpassword == confirmpassword
-    ) {
-      const encryptedOldpassword = encryptPassword(oldpassword);
-      const encryptedNewPassword = encryptPassword(newpassword);
+    try {
+      // Validate form first
+      const fieldsValue = await form.validateFields();
+      const oldpassword = fieldsValue.oldpassword;
+      const newpassword = fieldsValue.newpassword;
+      const confirmpassword = fieldsValue.confirmpassword;
+
+      if (newpassword !== confirmpassword) {
+        messageApi.error("New passwords do not match");
+        return;
+      }
+
+      setLoading(true);
       const response = await updateUserPasswordApi({
-        oldPassword: encryptedOldpassword,
-        newPassword: encryptedNewPassword,
+        oldPassword: oldpassword,
+        newPassword: newpassword,
       });
+
       if (response.code == 0) {
         messageApi.success("Password changed successfully");
         updateFirstLogin(false);
+        form.resetFields();
       } else {
-        messageApi.error("Password changed failed");
+        messageApi.error(response.msg || "Password change failed");
       }
+    } catch (error: unknown) {
+      // Form validation failed - error will have fields that failed
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        // This is a validation error from antd
+        console.log("Form validation failed:", error);
+      } else {
+        messageApi.error("An error occurred");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const loginAction = async (userName: string, password: string) => {
     try {
-      const encryptedPassword = encryptPassword(password);
       const response = await loginApi({
         userName,
-        password: encryptedPassword,
+        password,
       });
       const code = response.code;
       const data = response.data;
       if (code === 0) {
         updateUserInfo({
           userName,
-          password: encryptedPassword,
+          password,
           token: data.token,
         });
         return { success: true };
@@ -159,6 +171,7 @@ const Login = () => {
           <Button
             className="w-1/2 m-auto block"
             type="primary"
+            loading={loading}
             onClick={handleChangePassword}
           >
             Confirm

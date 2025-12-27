@@ -12,6 +12,8 @@ import (
 	"supervisor/internal/api"
 	"supervisor/internal/auth"
 	"supervisor/pkg/logger"
+
+	"github.com/GehirnInc/crypt"
 )
 
 // Default username for the system
@@ -103,10 +105,32 @@ type UpdatePasswordRequest struct {
 }
 
 // UpdatePassword handles password updates.
+// This endpoint allows unauthenticated access ONLY during first login.
+// After first login, authentication is required.
 func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		api.WriteError(w, -1, "Method not allowed")
 		return
+	}
+
+	username := auth.GetUsername()
+
+	// Check if this is first login - only allow unauthenticated access for first login
+	if !isFirstLogin(username) {
+		// Not first login - require authentication
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			api.WriteError(w, -1, "Authentication required")
+			return
+		}
+		// Validate the token
+		_, err := h.authManager.ValidateToken(authHeader)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			api.WriteError(w, -1, "Invalid or expired token")
+			return
+		}
 	}
 
 	var req UpdatePasswordRequest
@@ -126,8 +150,6 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := auth.GetUsername()
-
 	// Verify old password first
 	_, err := h.authManager.Authenticate(username, req.OldPassword)
 	if err != nil {
@@ -145,6 +167,9 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		api.WriteError(w, -1, "Failed to update password")
 		return
 	}
+
+	// Clear the first login flag after successful password change
+	clearFirstLoginFlag()
 
 	logger.Info("Password updated for user %s", username)
 	api.WriteSuccess(w, map[string]interface{}{"message": "Password updated successfully"})
@@ -412,11 +437,30 @@ func isFirstLogin(username string) bool {
 			if passwd == "" || passwd == "*" || passwd == "!" || passwd == "!!" || passwd == "!*" {
 				return true
 			}
-			// Check for default password "recamera" - hash comparison
-			// This is a security check to force password change
+			// Check for default password "recamera" - verify using crypt
+			if verifyDefaultPassword(passwd) {
+				return true
+			}
 			return false
 		}
 	}
 
 	return false
+}
+
+// verifyDefaultPassword checks if the password hash matches the default password "recamera"
+func verifyDefaultPassword(hashedPassword string) bool {
+	// Use the GehirnInc/crypt library to verify if the hash matches "recamera"
+	crypter := crypt.NewFromHash(hashedPassword)
+	if crypter == nil {
+		return false
+	}
+	err := crypter.Verify(hashedPassword, []byte("recamera"))
+	return err == nil
+}
+
+// clearFirstLoginFlag removes the first login flag file
+func clearFirstLoginFlag() {
+	firstLoginFile := "/etc/recamera.conf/first_login"
+	os.Remove(firstLoginFile)
 }
