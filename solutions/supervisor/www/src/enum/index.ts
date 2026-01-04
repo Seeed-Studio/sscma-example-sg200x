@@ -31,3 +31,11 @@ export enum UpdateStatus {
   Updating = "Updating", //更新中
   UpdateDone = "UpdateDone", //更新完毕
 }
+
+// 模型转换状态
+export enum ModelConversionStatus {
+  Init = "init", // 初始化
+  Done = "done", // 转换完成
+  Error = "error", // 转换失败
+  // 数值字符串表示进行中（进度百分比）
+}

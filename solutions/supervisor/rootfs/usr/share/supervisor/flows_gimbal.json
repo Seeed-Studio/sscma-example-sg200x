@@ -251,9 +251,8 @@
         "order": 5,
         "showTitle": true,
         "className": "",
-        "visible": "true",
-        "disabled": "false",
-        "groupType": "default"
+        "visible": true,
+        "disabled": false
     },
     {
         "id": "572548c1b2a5b3e5",

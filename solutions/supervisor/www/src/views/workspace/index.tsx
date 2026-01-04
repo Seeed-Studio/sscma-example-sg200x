@@ -2,18 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import {
   Modal,
   Button,
-  Input,
   ConfigProvider,
   Spin,
   message,
   ButtonProps,
+  Tabs,
 } from "antd";
 import {
-  PlusCircleOutlined,
   WifiOutlined,
-  SyncOutlined,
-  EditOutlined,
-  DeleteOutlined,
   UserOutlined,
   LeftOutlined,
   RightOutlined,
@@ -39,10 +35,8 @@ import {
   createAppApi,
   viewAppApi,
   updateAppApi,
-  deleteAppApi,
   getSensecraftUserInfoApi,
   acquireFileUrlApi,
-  removeFileApi,
   applyModelApi,
 } from "@/api/sensecraft";
 import recamera_logo from "@/assets/images/recamera_logo.png";
@@ -58,6 +52,8 @@ import useConfigStore from "@/store/config";
 import { getToken } from "@/store/user";
 import Network from "@/views/network";
 import NodeRed from "@/views/nodered";
+import ApplicationList from "./ApplicationList";
+import ModelConversion from "./ModelConversion";
 import styles from "./index.module.css";
 
 // 定义 type 优先级
@@ -85,7 +81,6 @@ const Workspace = () => {
 
   const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false);
 
-  const [applist, setApplist] = useState<IAppInfo[]>([]);
   const [devicelist, setDevicelist] = useState<IIPDevice[]>([]);
 
   const [isExpand, setIsExpand] = useState(true);
@@ -95,14 +90,12 @@ const Workspace = () => {
   const [deviceListRefreshing, setDeviceListRefreshing] = useState(false);
   const [loadingTip, setLoadingTip] = useState("");
 
-  const [focusAppid, setFocusAppid] = useState("");
   const revRef = useRef<string>("");
-  const inputRef = useRef<string>("");
 
   const [timestamp, setTimestamp] = useState<number>(1);
 
-  const [appListLoading, setAppListLoading] = useState(false);
   const [userInfoLoading, setUserInfoLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("application");
   useEffect(() => {
     const initPlatform = async () => {
       const param = parseUrlParam(window.location.href);
@@ -210,7 +203,6 @@ const Workspace = () => {
   useEffect(() => {
     if (token && deviceInfo?.ip) {
       getSensecraftUserInfo();
-      getAppList();
     }
   }, [deviceInfo?.ip, token]);
 
@@ -263,23 +255,6 @@ const Workspace = () => {
       console.log(error);
     } finally {
       setUserInfoLoading(false);
-    }
-  };
-
-  // 获取应用列表
-  const getAppList = async () => {
-    try {
-      setAppListLoading(true);
-      const response = await getAppListApi();
-      if (response.code == 0) {
-        const data = response.data;
-        const list = data.list;
-        setApplist(list);
-      }
-    } catch (error) {
-      setApplist([]);
-    } finally {
-      setAppListLoading(false);
     }
   };
 
@@ -871,7 +846,7 @@ const Workspace = () => {
               savePlatformInfo();
             }
           }
-          setApplist(list);
+          // App list is now managed by ApplicationList component
           messageApi.success("Create app successful");
           setLoading(false);
           setLoadingTip("");
@@ -918,7 +893,7 @@ const Workspace = () => {
 
       if (appInfo?.app_id != localAppInfo.app_id) {
         setTimestamp(new Date().getTime());
-        getAppList();
+        // App list is now managed by ApplicationList component
         Modal.info({
           title: "Flow has been changed",
           content: (
@@ -959,125 +934,6 @@ const Workspace = () => {
     }
   };
 
-  const handleCreateApp = async () => {
-    try {
-      inputRef.current = "";
-      const config = {
-        title: "New Application",
-        content: (
-          <Input
-            placeholder="Please input application name"
-            maxLength={32}
-            defaultValue={inputRef.current}
-            onChange={handleInputNameChange}
-          />
-        ),
-      };
-      const confirmed = await modal.confirm(config);
-      if (confirmed) {
-        await createAppAndUpdateFlow({
-          app_name: inputRef.current,
-          needUpdateFlow: true,
-        });
-      }
-    } catch (error) {
-      messageApi.error("Create app failed");
-    }
-  };
-
-  const handleEditApp = async (appId: string) => {
-    try {
-      const currApp = applist.find((app) => app.app_id == appId);
-      if (!currApp) {
-        return;
-      }
-      inputRef.current = currApp.app_name;
-      const config = {
-        title: "Edit Application name",
-        content: (
-          <Input
-            placeholder="Please input application name"
-            maxLength={32}
-            defaultValue={inputRef.current}
-            onChange={handleInputNameChange}
-          />
-        ),
-      };
-      const confirmed = await modal.confirm(config);
-      if (confirmed) {
-        const response = await updateAppApi({
-          app_id: appId,
-          app_name: inputRef.current,
-        });
-        if (response.code == 0) {
-          currApp.app_name = inputRef.current;
-          setApplist([...applist]);
-        }
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const handleDeleteApp = async (app_id: string) => {
-    const app = await getAppInfo(app_id);
-    if (!app) {
-      messageApi.error("App is not exist");
-      getAppList();
-      return;
-    }
-    const config = {
-      title: `Are you sure to delete ${app.app_name}`,
-      content: (
-        <div>
-          <p className="mb-16">
-            You are about to permanently delete this project. This action cannot
-            be undone.
-          </p>
-          <p>
-            Please ensure that you have backed up any essential information
-            before proceeding. Are you sure you want to continue with the
-            deletion?
-          </p>
-        </div>
-      ),
-      okButtonProps: {
-        type: "primary",
-        danger: true,
-      } as ButtonProps,
-      okText: "Delete",
-    };
-    const confirmed = await modal.confirm(config);
-    if (confirmed) {
-      const response = await deleteAppApi({ app_id: app.app_id });
-      if (response.code == 0) {
-        const model_data = app.model_data;
-        //如果是本地模型。则把本地模型在云端的存储也删掉
-        if (model_data?.model_id == "0") {
-          const model_name = model_data.model_name;
-          const file_name = `${model_name}_${app.app_id}`;
-          //异步删除就好，不需要考虑结果
-          removeFileApi(file_name);
-        }
-
-        const updatedAppList = applist.filter(
-          (item) => item.app_id !== app.app_id
-        );
-        setApplist(updatedAppList);
-        // 如果删除的是当前应用则切换为第一个应用
-        if (app.app_id == appInfo?.app_id) {
-          syncCloudAppToLocal(updatedAppList[0]?.app_id);
-        }
-      }
-    }
-  };
-
-  const handleSelectApp = async (app_id: string) => {
-    if (app_id != appInfo?.app_id) {
-      await syncCloudAppToLocal(app_id);
-    }
-  };
-
   const handleLogout = async () => {
     const config = {
       title: "Are you sure to log out?",
@@ -1105,16 +961,10 @@ const Workspace = () => {
     }
   };
 
-  const handleInputNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    inputRef.current = e.target.value;
-  };
-
-  const handleFocusApp = async (appId: string) => {
-    setFocusAppid(appId);
-  };
-
-  const handleBlurApp = async () => {
-    setFocusAppid("");
+  const handleSelectApp = async (app_id: string) => {
+    if (app_id != appInfo?.app_id) {
+      await syncCloudAppToLocal(app_id);
+    }
   };
 
   const handleCollapseExpand = () => {
@@ -1258,123 +1108,67 @@ const Workspace = () => {
             </div>
           )}
           {token ? (
-            <Spin spinning={appListLoading || userInfoLoading}>
-              <div className="flex flex-col">
-                <div className="flex justify-between mb-12">
-                  <div className="text-20 font-semibold">My Application</div>
-                  <PlusCircleOutlined
-                    className="text-primary text-20"
-                    onClick={handleCreateApp}
-                  />
-                </div>
-
-                <div className="flex flex-col">
-                  <div className="h-200 overflow-y-auto">
-                    {applist?.length > 0 &&
-                      applist.map((app, index) =>
-                        appInfo?.app_id == app.app_id ? (
-                          <div key={index} className="flex mb-10 mr-6 h-40">
-                            <div
-                              className="flex flex-1 text-14 text-primary border border-primary rounded-4 p-8"
-                              onMouseEnter={() => handleFocusApp(app.app_id)}
-                              onMouseLeave={() => handleBlurApp()}
-                            >
-                              <div
-                                className="flex flex-1 font-medium cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
-                                onClick={() => handleSelectApp(app.app_id)}
-                              >
-                                {app.app_name}
-                              </div>
-                              <div
-                                className={`flex ${
-                                  focusAppid == app.app_id ? "flex" : "hidden"
-                                }`}
-                              >
-                                <EditOutlined
-                                  className="mr-5 ml-5 pt-5 pb-5"
-                                  onClick={() => handleEditApp(app.app_id)}
-                                />
-                                {applist.length > 1 && (
-                                  <DeleteOutlined
-                                    className="pt-5 pb-5"
-                                    onClick={() => handleDeleteApp(app.app_id)}
-                                  />
-                                )}
-                              </div>
-                            </div>
-
-                            {syncing && (
-                              <SyncOutlined
-                                className="text-disable ml-10 mr-15 text-20"
-                                spin
-                              />
-                            )}
-                          </div>
-                        ) : (
-                          <div
-                            key={index}
-                            className="flex mb-10 mr-6 h-30 text-12 bg-background text-text border border-disable rounded-4 px-8"
-                            onMouseEnter={() => handleFocusApp(app.app_id)}
-                            onMouseLeave={() => handleBlurApp()}
-                          >
-                            <div
-                              className="flex flex-1 items-center cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
-                              onClick={() => handleSelectApp(app.app_id)}
-                            >
-                              {app.app_name}
-                            </div>
-                            <div
-                              className={`flex ${
-                                focusAppid == app.app_id ? "flex" : "hidden"
-                              }`}
-                            >
-                              <EditOutlined
-                                className="mr-5 ml-5 pt-5 pb-5"
-                                onClick={() => handleEditApp(app.app_id)}
-                              />
-                              {applist.length > 1 && (
-                                <DeleteOutlined
-                                  className="pt-5 pb-5"
-                                  onClick={() => handleDeleteApp(app.app_id)}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        )
-                      )}
-                  </div>
-
-                  <div>
-                    <div className="text-text text-12 mt-10 mb-10">
-                      reCamera can only run 1 application at a time
+            <div className="flex flex-col h-full">
+              <Spin spinning={userInfoLoading}>
+                <Tabs
+                  activeKey={activeTab}
+                  onChange={setActiveTab}
+                  items={[
+                    {
+                      key: "application",
+                      label: "My Application",
+                      children: (
+                        <ApplicationList
+                          onSelectApp={handleSelectApp}
+                          onSyncApp={syncCloudAppToLocal}
+                          onCreateAppAndUpdateFlow={createAppAndUpdateFlow}
+                          syncing={syncing}
+                          messageApi={messageApi}
+                          modal={modal}
+                        />
+                      ),
+                    },
+                    {
+                      key: "model",
+                      label: "Model Conversion",
+                      children: (
+                        <ModelConversion
+                          setLoading={setLoading}
+                          setLoadingTip={setLoadingTip}
+                          messageApi={messageApi}
+                          modal={modal}
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              </Spin>
+              <div className="mt-auto pt-8">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <div className="flex justify-center items-center w-48 h-48 bg-primary rounded-24">
+                      <UserOutlined className="text-white text-28" />
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <div className="flex justify-center items-center w-48 h-48 bg-primary rounded-24">
-                          <UserOutlined className="text-white text-28" />
-                        </div>
-                        <div className="ml-10 max-w-98 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {nickname}
-                        </div>
-                      </div>
-
-                      <ConfigProvider
-                        theme={{
-                          components: {
-                            Button: {
-                              defaultHoverBorderColor: "#ff4d4f",
-                              defaultHoverColor: "#ff4d4f",
-                            },
-                          },
-                        }}
-                      >
-                        <Button onClick={handleLogout}>Log out</Button>
-                      </ConfigProvider>
+                    <div className="ml-10 max-w-98 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {nickname}
                     </div>
                   </div>
+
+                  <ConfigProvider
+                    theme={{
+                      components: {
+                        Button: {
+                          defaultHoverBorderColor: "#ff4d4f",
+                          defaultHoverColor: "#ff4d4f",
+                        },
+                      },
+                    }}
+                  >
+                    <Button onClick={handleLogout}>Log out</Button>
+                  </ConfigProvider>
                 </div>
               </div>
-            </Spin>
+            </div>
           ) : (
             <div className="flex-1 flex items-end">
               <Button

@@ -393,7 +393,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
             option_ = 0;
         } else if (option.find("720p") != std::string::npos) {
             option_ = 1;
-        } else if (option.find("480p") != std::string::npos) {
+        } else if (option.find("360p") != std::string::npos) {
             option_ = 2;
         }
     }
@@ -456,8 +456,8 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].height = 720;
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
-            channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 640;
+            channels_[CHN_JPEG].width  = 1280;
+            channels_[CHN_JPEG].height = 720;
             channels_[CHN_JPEG].fps    = 30;
             break;
         case 2:
@@ -467,7 +467,7 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
             channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 640;
+            channels_[CHN_JPEG].height = 480;
             channels_[CHN_JPEG].fps    = 30;
             break;
         default:
@@ -476,8 +476,8 @@ ma_err_t CameraNode::onCreate(const json& config) {
             channels_[CHN_H264].height = 1080;
             channels_[CHN_H264].fps    = 30;
             channels_[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
-            channels_[CHN_JPEG].width  = 640;
-            channels_[CHN_JPEG].height = 640;
+            channels_[CHN_JPEG].width  = 1920;
+            channels_[CHN_JPEG].height = 1080;
             channels_[CHN_JPEG].fps    = 30;
             break;
     }

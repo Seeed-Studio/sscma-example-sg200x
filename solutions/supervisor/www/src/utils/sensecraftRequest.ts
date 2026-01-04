@@ -16,6 +16,7 @@ interface SensecraftResponse<T> {
 
 const portalApi = import.meta.env.VITE_PORTAL_URL;
 const sensecraftApi = import.meta.env.VITE_SENSECRAFT_URL;
+const sensecraftTrainApi = import.meta.env.VITE_SENSECRAFT_TRAIN_API_URL;
 
 // 和平台通信的接口
 const sensecraftService = axios.create({});
@@ -27,6 +28,9 @@ sensecraftService.interceptors.request.use((config) => {
     config.baseURL = portalApi;
   } else if (config.url?.startsWith("aiserverapi")) {
     config.baseURL = sensecraftApi;
+  } else if (config.url?.startsWith("v1/api")) {
+    // 模型转换 API 使用独立的 baseURL
+    config.baseURL = sensecraftTrainApi;
   }
   return config;
 });
@@ -36,6 +40,10 @@ sensecraftService.interceptors.request.use((config) => {
  */
 sensecraftService.interceptors.response.use(
   async (response) => {
+    // blob 响应直接返回，不检查 code
+    if (response.config.responseType === "blob") {
+      return response;
+    }
     const code = response.data?.code;
     if (
       (code == 11101 || code == 11102) &&
@@ -47,6 +55,24 @@ sensecraftService.interceptors.response.use(
   },
   async (error) => {
     const { response = {} } = error;
+    // blob 错误响应需要特殊处理
+    if (
+      error.config?.responseType === "blob" &&
+      response.data instanceof Blob
+    ) {
+      try {
+        const text = await response.data.text();
+        const jsonData = JSON.parse(text);
+        const code = jsonData.code;
+        if (code === 11101 || code === 11102) {
+          return handleTokenRefresh(error.config);
+        }
+        return Promise.reject(new Error(jsonData.msg || "Download failed"));
+      } catch (e) {
+        // 解析失败，可能是真正的二进制文件错误，继续抛出原始错误
+        return Promise.reject(error);
+      }
+    }
     const code = response.data?.code;
     if (code === 11101 || code === 11102) {
       return handleTokenRefresh(error.config);
@@ -55,7 +81,7 @@ sensecraftService.interceptors.response.use(
   }
 );
 
-async function handleTokenRefresh(config: InternalAxiosRequestConfig<any>) {
+async function handleTokenRefresh(config: InternalAxiosRequestConfig) {
   try {
     const newToken = await refreshToken();
     config.headers.Authorization = newToken;
@@ -99,15 +125,24 @@ const createSensecraftRequest = () => {
     config: AxiosRequestConfig
   ): Promise<SensecraftResponse<T>> => {
     return await new Promise((resolve, reject) => {
-      sensecraftService.request<SensecraftResponse<T>>(config).then(
+      sensecraftService.request<SensecraftResponse<T> | Blob>(config).then(
         (res) => {
-          if (res.data.code != 0 && res.data.code != "0") {
-            reject(res.data);
+          // blob 响应直接返回，不检查 code
+          if (config.responseType === "blob") {
+            // 对于 blob 响应，res.data 就是 Blob，需要包装成 SensecraftResponse 格式
+            // 但实际上调用方会进行类型断言，所以这里直接返回 res.data
+            resolve(res.data as unknown as SensecraftResponse<T>);
             return;
           }
-          resolve(res.data);
+          // 非 blob 响应，检查 code
+          const data = res.data as SensecraftResponse<T>;
+          if (data.code != 0 && data.code != "0") {
+            reject(data);
+            return;
+          }
+          resolve(data);
         },
-        (err: any) => {
+        (err: unknown) => {
           reject(err);
         }
       );

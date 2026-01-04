@@ -42,3 +42,8 @@
     max-height: 70vh;
     overflow-y: auto;
 }
+
+.listContainer {
+    height: calc(100vh - 540px);
+    overflow-y: auto;
+}
