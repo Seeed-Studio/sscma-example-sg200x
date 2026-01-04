@@ -25,6 +25,12 @@ import {
 } from "@/api/model";
 import type { IModelRecord } from "@/api/model/model.d";
 import { uploadModelApi } from "@/api/device";
+import {
+  getFlows,
+  saveFlows,
+  getFlowsState,
+  setFlowsState,
+} from "@/api/nodered";
 import { ModelConversionStatus } from "@/enum";
 import usePlatformStore from "@/store/platform";
 import useConfigStore from "@/store/config";
@@ -411,6 +417,21 @@ const ModelConversion = ({
     }
   };
 
+  // 发送 flow 到 Node-RED
+  const sendFlow = async (flows?: string) => {
+    try {
+      const revision = await saveFlows(flows);
+      if (revision) {
+        const response = await getFlowsState();
+        if (response?.state == "stop") {
+          await setFlowsState({ state: "start" });
+        }
+      }
+    } catch (error) {
+      console.error("Send flow error:", error);
+    }
+  };
+
   // 处理模型下载到本地
   const handleDownloadModel = async (modelId: string, prompt: string) => {
     const blob = await downloadModel(modelId);
@@ -463,6 +484,29 @@ const ModelConversion = ({
       const resp = await uploadModelApi(formData);
       if (resp.code == 0) {
         messageApi.success("Model uploaded to device successfully");
+
+        // 更新 flow 以使 Node-RED 生效
+        setLoadingTip("Updating flow");
+        try {
+          const flows = await getFlows();
+          if (flows && Array.isArray(flows)) {
+            // 找到 type 为 "model" 的节点，将其 uri 设置为空字符串
+            const updatedFlows = flows.map((node: Record<string, unknown>) => {
+              if (node.type === "model") {
+                return {
+                  ...node,
+                  uri: "",
+                };
+              }
+              return node;
+            });
+            const flowsStr = JSON.stringify(updatedFlows);
+            await sendFlow(flowsStr);
+          }
+        } catch (error) {
+          console.error("Update flow error:", error);
+          // 不显示错误，因为模型已经上传成功
+        }
       } else {
         messageApi.error("Upload model to device failed");
       }
