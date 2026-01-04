@@ -79,8 +79,7 @@ const Security = () => {
                     <div className="text-16 flex justify-between">
                       <span className="">{item.name}</span>
                       <DeleteOutlined
-                        className="font-bold cursor-pointer"
-                        style={{ fontSize: 18, color: "#D54941" }}
+                        className="font-bold cursor-pointer text-error"
                         onClick={() => onDelete(item)}
                       />
                     </div>
