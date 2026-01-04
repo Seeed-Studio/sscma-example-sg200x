@@ -16,9 +16,28 @@ readonly USERDATA_DIR="/userdata"
 readonly MODEL_DIR="$USERDATA_DIR/Models"
 readonly MODELS_PRESET="/usr/share/supervisor/models"
 
+# flow
+_check_flow() {
+    local src_flow="/usr/share/supervisor/flows.json"
+    local src_flow_gimbal="/usr/share/supervisor/flows_gimbal.json"
+    local dst_flow="/home/recamera/.node-red/flows.json"
+
+    [[ ! -f "$dst_flow" ]] && {
+        [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && {
+            [ -f "$src_flow_gimbal" ] && src_flow=$src_flow_gimbal
+        }
+        [ -f "$src_flow" ] && {
+            cp -f "$src_flow" "$dst_flow"
+        }
+    }
+    [[ -f "$dst_flow" ]] && {
+        chown "$USER_NAME":"$USER_NAME" "$dst_flow"
+    }
+}
+
 # work_dir
 readonly WORK_DIR="/tmp/supervisor"
-[ ! -d "$WORK_DIR" ] && {
+[[ ! -d "$WORK_DIR" ]] && {
     /usr/bin/ssh-keygen -A >/dev/null 2>&1 &
 
     mkdir -p "$WORK_DIR"
@@ -31,6 +50,8 @@ readonly WORK_DIR="/tmp/supervisor"
         mv -f "/etc/device-name" "$HOSTNAME_FILE"
         hostname -F "$HOSTNAME_FILE"
     }
+
+    _check_flow >/dev/null &
 }
 
 _ip() { ifconfig "$1" 2>/dev/null | awk '/inet addr:/ {print $2}' | awk -F':' '{print $2}'; }
@@ -103,24 +124,6 @@ function queryDeviceInfo() {
     "deviceName": "$(cat $HOSTNAME_FILE)"
 }
 EOF
-}
-
-# flow
-_check_flow() {
-    local src_flow="/usr/share/supervisor/flows.json"
-    local src_flow_gimbal="/usr/share/supervisor/flows_gimbal.json"
-    local dst_flow="/home/recamera/.node-red/flows.json"
-
-    [ ! -f "$dst_flow" ] && {
-        [ -n "$(ifconfig can0 2>/dev/null | grep "HWaddr")" ] && {
-            [ -f "$src_flow_gimbal" ] && src_flow=$src_flow_gimbal
-        }
-        [ -f "$src_flow" ] && {
-            cp -f "$src_flow" "$dst_flow"
-            chown "$USER_NAME":"$USER_NAME" "$dst_flow"
-            sync
-        }
-    }
 }
 
 # model
@@ -265,7 +268,6 @@ function updateSystem() {
 }
 
 function api_device() {
-    _check_flow >/dev/null &
     _check_models >/dev/null &
 
     local rollback=0
@@ -463,6 +465,7 @@ _ap_stop() {
     _stop_pidname "hostapd"
     ifconfig wlan1 0
     ifconfig wlan1 down
+    sleep 0.5
     /etc/init.d/S80dnsmasq restart
     /etc/init.d/S49ntp restart
 }

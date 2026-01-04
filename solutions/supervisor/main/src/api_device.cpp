@@ -239,23 +239,12 @@ api_status_t api_device::getModelInfo(request_t req, response_t res)
 
 api_status_t api_device::getModelList(request_t req, response_t res)
 {
-    std::string dir;
-    std::string suffix;
-    try {
-        dir = _dev_info["model"]["preset"];
-        suffix = _dev_info["model"]["file"];
-        suffix = suffix.substr(suffix.find_last_of("."));
-    } catch (const json::exception& e) {
-        response(res, -1, "Invalid model preset.");
-        return API_STATUS_OK;
-    }
-
     json data = json::object();
-    for (auto& entry : std::filesystem::directory_iterator(dir)) {
-        auto info = entry.path().string();
+    for (auto& entry : std::filesystem::directory_iterator(_model_dir)) {
         if (entry.path().extension() == ".json") {
+            auto info = entry.path().string();
             size_t pos = info.find(".json");
-            std::string model = info.substr(0, pos) + suffix;
+            std::string model = info.substr(0, pos) + _model_suffix;
             LOGD("%s", info.c_str());
             if (!std::filesystem::exists(model))
                 continue;
@@ -318,10 +307,28 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
     if (!has_model) {
         auto&& js = parse_result(std::ifstream(info + ".tmp"));
         std::string file = js.value("file", "");
-        if (file.empty() || !std::filesystem::exists(file)) { // model not exist
-            std::filesystem::remove(info + ".tmp");
-            response(res, -1, "Model file is missing in model info.");
-            return API_STATUS_OK;
+        if (file.empty()) { // model not exist
+            for (auto& entry : std::filesystem::directory_iterator(_model_dir)) {
+                if (entry.path().extension() == ".json") {
+                    auto _path = entry.path().string();
+                    std::string _model_file = _path.substr(0, _path.find(".json")) + _model_suffix;
+                    if (!std::filesystem::exists(_model_file))
+                        continue;
+
+                    json _js = parse_result(std::ifstream(_path));
+                    if (!_js.value("model_id", "").empty()
+                        && _js.value("model_id", "") == js.value("model_id", "")) {
+                        file = _model_file;
+                        break;
+                    }
+                }
+            }
+
+            if (file.empty() || !std::filesystem::exists(file)) {
+                std::filesystem::remove(info + ".tmp");
+                response(res, -1, "Model file is missing in model info.");
+                return API_STATUS_OK;
+            }
         }
         try {
             std::filesystem::copy_file(file, model, std::filesystem::copy_options::overwrite_existing);

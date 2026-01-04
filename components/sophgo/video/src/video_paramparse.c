@@ -23,7 +23,7 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_ov5647 = {
     .as8PNSwap    = {0, 0, 0, 0, 0},
     .bMclkEn      = 1,
     .u8Mclk       = 0,
-    .u8Orien      = 1,
+    .u8Orien      = ISP_SNS_MIRROR,
     .bHwSync      = 0,
     .u8UseDualSns = 0,
 };
@@ -55,7 +55,7 @@ static const APP_PARAM_SNS_CFG_T sns_cfg_gc2053 = {
     .as8PNSwap    = {0, 0, 0, 0, 0},
     .bMclkEn      = 1,
     .u8Mclk       = 0,
-    .u8Orien      = ISP_SNS_MIRROR,
+    .u8Orien      = ISP_SNS_NORMAL,
     .bHwSync      = 0,
     .u8UseDualSns = 0,
 };
@@ -95,7 +95,7 @@ static const VPSS_CHN_ATTR_S chn_attr = {
         },
     .bMirror  = 0,
     .bFlip    = 0,
-    .u32Depth = 0,
+    .u32Depth = 3,
     .stAspectRatio =
         {
             .enMode         = ASPECT_RATIO_AUTO,
@@ -387,7 +387,17 @@ static void fix_vi_grp_attr(const APP_PARAM_SNS_CFG_T* pstSnsCfg, VPSS_GRP_ATTR_
 
 #define APP_IPCAM_CHN_NUM 3
 
+extern ISP_SNS_MIRRORFLIP_TYPE_E g_aeOv5647_MirrorFip[VI_MAX_PIPE_NUM];
+extern ISP_SNS_MIRRORFLIP_TYPE_E g_aeGc2053_MirrorFip[VI_MAX_PIPE_NUM];
+// extern ISP_SNS_MIRRORFLIP_TYPE_E g_aesc530ai_MirrorFip[VI_MAX_PIPE_NUM];
+
 int app_ipcam_Param_Load(void) {
+    for (int i = 0; i < VI_MAX_PIPE_NUM; i++) {
+        g_aeOv5647_MirrorFip[i] = ISP_SNS_NORMAL;
+        g_aeGc2053_MirrorFip[i] = ISP_SNS_NORMAL;
+        // g_aesc530ai_MirrorFip[i] = ISP_SNS_NORMAL;
+    }
+
     // sys
     APP_PARAM_SYS_CFG_S* sys = app_ipcam_Sys_Param_Get();
     sys->vb_pool_num         = APP_IPCAM_CHN_NUM;

@@ -45,6 +45,7 @@ private:
     channel m_channels[CHN_MAX];
 
     int chn;
+    bool m_use_physical;
     int vencCallback(void* pData, void* pArgs);
     int vpssCallback(void* pData, void* pArgs);
     static int vencCallbackStub(void* pData, void* pArgs, void* pUserData);

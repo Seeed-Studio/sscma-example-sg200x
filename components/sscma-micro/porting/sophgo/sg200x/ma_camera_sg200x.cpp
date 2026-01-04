@@ -102,9 +102,7 @@ int CameraSG200X::vpssCallback(void* pData, void* pArgs) {
         return CVI_SUCCESS;
     }
     ma_img_t* frame  = new ma_img_t;
-    frame->physical  = false;
     frame->size      = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
-    frame->data      = new uint8_t[f->u32Length[0] + f->u32Length[1] + f->u32Length[2]];
     frame->width     = m_channels[pstVencChnCfg->VencChn].width;
     frame->height    = m_channels[pstVencChnCfg->VencChn].height;
     frame->format    = m_channels[pstVencChnCfg->VencChn].format;
@@ -112,18 +110,28 @@ int CameraSG200X::vpssCallback(void* pData, void* pArgs) {
     frame->count     = 1;
     frame->index     = 1;
 
-    uint32_t offset = 0;
-    for (int i = 0; i < 3; i++) {
-        if (f->u32Length[i]) {
-            f->pu8VirAddr[i] = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[i], f->u32Length[i]);
-            memcpy(frame->data + offset, f->pu8VirAddr[i], f->u32Length[i]);
-            CVI_SYS_Munmap(f->pu8VirAddr[i], f->u32Length[i]);
-            offset += f->u32Length[i];
+    if (m_use_physical) {
+        frame->physical = true;
+        frame->data     = reinterpret_cast<uint8_t*>(f->u64PhyAddr[0]);
+    } else {
+        frame->physical = false;
+        frame->data     = new uint8_t[f->u32Length[0] + f->u32Length[1] + f->u32Length[2]];
+
+        uint32_t offset = 0;
+        for (int i = 0; i < 3; i++) {
+            if (f->u32Length[i]) {
+                f->pu8VirAddr[i] = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[i], f->u32Length[i]);
+                memcpy(frame->data + offset, f->pu8VirAddr[i], f->u32Length[i]);
+                CVI_SYS_Munmap(f->pu8VirAddr[i], f->u32Length[i]);
+                offset += f->u32Length[i];
+            }
         }
     }
 
     if (!m_channels[pstVencChnCfg->VencChn].queue->post(frame, Tick::fromMilliseconds(1000 / m_channels[pstVencChnCfg->VencChn].fps))) {
-        delete[] frame->data;
+        if (!frame->physical) {
+            delete[] frame->data;
+        }
         delete frame;
     }
 
@@ -154,6 +162,7 @@ CameraSG200X::CameraSG200X(size_t id) : Camera(id) {
     m_channels[CHN_RAW].format  = MA_PIXEL_FORMAT_RGB888;
     m_channels[CHN_JPEG].format = MA_PIXEL_FORMAT_JPEG;
     m_channels[CHN_H264].format = MA_PIXEL_FORMAT_H264;
+    m_use_physical              = false;
 }
 
 
@@ -311,6 +320,14 @@ ma_err_t CameraSG200X::commandCtrl(CtrlType ctrl, CtrlMode mode, CtrlValue& valu
                 m_channels[chn].fps = value.i32;
             } else if (mode == kRead) {
                 value.i32 = m_channels[chn].fps;
+            }
+            break;
+        case kPhysical:
+            if (mode == kWrite) {
+                MA_LOGD(TAG, "kPhysical: %d", value.i32);
+                m_use_physical = value.i32 != 0;
+            } else if (mode == kRead) {
+                value.i32 = m_use_physical ? 1 : 0;
             }
             break;
         default:

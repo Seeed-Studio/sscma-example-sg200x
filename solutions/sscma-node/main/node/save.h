@@ -50,9 +50,10 @@ protected:
     ma_tick_t begin_;
     ma_tick_t start_;  // For tracking interval timing
     bool manual_capture_requested_;  // For manual capture mode
-    int vcount_;
-    int acount_;
-    int imageCount_;  // Counter for saved images
+    ma_tick_t first_video_ts_;
+    uint64_t vcount_;
+    uint64_t acount_;
+    uint64_t imageCount_;  // Counter for saved images
     CameraNode* camera_;
     MessageBox frame_;
     Thread* thread_;
