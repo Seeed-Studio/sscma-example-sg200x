@@ -272,79 +272,165 @@ api_status_t api_device::uploadModel(request_t req, response_t res)
         return API_STATUS_OK;
     }
 
+    // First pass: extract offset and size from multipart data
+    long long offset = -1;
+    long long total_size = -1;
+    auto&& parts = get_multiparts(req);
+    
+    for (auto& part : parts) {
+        if (part.name == "offset" && part.len > 0) {
+            try {
+                offset = std::stoll(std::string(part.data, part.len));
+            } catch (const std::exception& e) {
+                LOGW("Failed to parse offset: %s", e.what());
+            }
+        } else if (part.name == "size" && part.len > 0) {
+            try {
+                total_size = std::stoll(std::string(part.data, part.len));
+            } catch (const std::exception& e) {
+                LOGW("Failed to parse size: %s", e.what());
+            }
+        }
+    }
+    
+    bool is_chunked = (offset >= 0 && total_size > 0);
+    LOGD("Upload mode: %s, offset: %lld, size: %lld", is_chunked ? "chunked" : "legacy", offset, total_size);
+
     bool has_model = false;
     bool has_info = false;
     json data = json::object();
-    auto&& parts = get_multiparts(req);
+    
     for (auto& part : parts) {
         LOGD("name: %s, filename: %s, len: %d", part.name.c_str(), part.filename.c_str(), part.len);
         if (part.len == 0)
+            continue;
+
+        // Skip offset/size parameters
+        if (part.name == "offset" || part.name == "size")
             continue;
 
         std::string path;
         if (part.name == "model_file") {
             path = model;
             has_model = true;
+            
+            if (is_chunked) {
+                // Chunked upload mode
+                FILE* file = nullptr;
+                if (offset == 0) {
+                    // First chunk: create/truncate file
+                    file = fopen((path + ".tmp").c_str(), "wb");
+                } else {
+                    // Subsequent chunks: append at offset
+                    file = fopen((path + ".tmp").c_str(), "r+b");
+                }
+                
+                if (!file) {
+                    response(res, -1, "Failed to open model file for writing.");
+                    return API_STATUS_OK;
+                }
+                
+                if (fseek(file, offset, SEEK_SET) != 0) {
+                    fclose(file);
+                    response(res, -1, "Failed to seek to offset.");
+                    return API_STATUS_OK;
+                }
+                
+                size_t written = fwrite(part.data, 1, part.len, file);
+                fclose(file);
+                
+                if (written != part.len) {
+                    response(res, -1, "Failed to write chunk data.");
+                    return API_STATUS_OK;
+                }
+                
+                data["offset"] = offset + part.len;
+                data["received"] = offset + part.len;
+                
+                // Check if this is the final chunk
+                bool is_final_chunk = (offset + part.len >= total_size);
+                if (!is_final_chunk) {
+                    // Not final chunk, return success without processing model_info
+                    response(res, 0, STR_OK, data);
+                    return API_STATUS_OK;
+                }
+                // If final chunk, continue to process model_info below
+            } else {
+                // Legacy mode: single upload
+                std::ofstream file(path + ".tmp", std::ios::binary | std::ios::trunc);
+                if (!file.is_open())
+                    continue;
+                file.write(part.data, part.len);
+                file.close();
+            }
+            
+            data["list"].push_back({ { part.name, path } });
         } else if (part.name == "model_info") {
             path = info;
             has_info = true;
+            
+            std::ofstream file(path + ".tmp", std::ios::binary | std::ios::trunc);
+            if (!file.is_open())
+                continue;
+            file.write(part.data, part.len);
+            file.close();
+            data["list"].push_back({ { part.name, path } });
         } else {
             continue;
         }
-
-        std::ofstream file(path + ".tmp", std::ios::binary | std::ios::trunc);
-        if (!file.is_open())
-            continue;
-        file.write(part.data, part.len);
-        file.close();
-        data["list"].push_back({ { part.name, path } });
     }
 
-    if (!has_info) {
-        response(res, -1, "Upload model failed.");
+    // Support flexible upload: model only, info only, or both
+    if (!has_model && !has_info) {
+        response(res, -1, "No model file or model info provided.");
         return API_STATUS_OK;
     }
-    if (!has_model) {
-        auto&& js = parse_result(std::ifstream(info + ".tmp"));
-        std::string file = js.value("file", "");
-        if (file.empty()) { // model not exist
-            for (auto& entry : std::filesystem::directory_iterator(_model_dir)) {
-                if (entry.path().extension() == ".json") {
-                    auto _path = entry.path().string();
-                    std::string _model_file = _path.substr(0, _path.find(".json")) + _model_suffix;
-                    if (!std::filesystem::exists(_model_file))
-                        continue;
 
-                    json _js = parse_result(std::ifstream(_path));
-                    if (!_js.value("model_id", "").empty()
-                        && _js.value("model_id", "") == js.value("model_id", "")) {
-                        file = _model_file;
-                        break;
-                    }
-                }
-            }
-
-            if (file.empty() || !std::filesystem::exists(file)) {
-                std::filesystem::remove(info + ".tmp");
-                response(res, -1, "Model file is missing in model info.");
-                return API_STATUS_OK;
-            }
-        }
-        try {
-            std::filesystem::copy_file(file, model, std::filesystem::copy_options::overwrite_existing);
-            std::filesystem::rename(info + ".tmp", info);
-        } catch (const std::exception& e) {
-            response(res, -1, "Upload model failed. " + std::string(e.what()));
-            return API_STATUS_OK;
-        }
-    } else {
-        try {
+    try {
+        if (has_model && has_info) {
+            // Both model and info uploaded
             std::filesystem::rename(model + ".tmp", model);
             std::filesystem::rename(info + ".tmp", info);
-        } catch (const std::exception& e) {
-            response(res, -1, "Upload model failed. " + std::string(e.what()));
-            return API_STATUS_OK;
+        } else if (has_model && !has_info) {
+            // Only model uploaded, keep existing info if present
+            std::filesystem::rename(model + ".tmp", model);
+        } else if (!has_model && has_info) {
+            // Only info uploaded, try to find matching model in preset directory
+            auto&& js = parse_result(std::ifstream(info + ".tmp"));
+            std::string file = js.value("file", "");
+            
+            if (file.empty()) {
+                // Search for matching model by model_id
+                for (auto& entry : std::filesystem::directory_iterator(_model_dir)) {
+                    if (entry.path().extension() == ".json") {
+                        auto _path = entry.path().string();
+                        std::string _model_file = _path.substr(0, _path.find(".json")) + _model_suffix;
+                        if (!std::filesystem::exists(_model_file))
+                            continue;
+
+                        json _js = parse_result(std::ifstream(_path));
+                        if (!_js.value("model_id", "").empty()
+                            && _js.value("model_id", "") == js.value("model_id", "")) {
+                            file = _model_file;
+                            break;
+                        }
+                    }
+                }
+
+                if (file.empty() || !std::filesystem::exists(file)) {
+                    std::filesystem::remove(info + ".tmp");
+                    response(res, -1, "Model file is missing in model info.");
+                    return API_STATUS_OK;
+                }
+                // Copy preset model to active model path
+                std::filesystem::copy_file(file, model, std::filesystem::copy_options::overwrite_existing);
+            }
+            // Rename info file
+            std::filesystem::rename(info + ".tmp", info);
         }
+    } catch (const std::exception& e) {
+        response(res, -1, "Upload model failed. " + std::string(e.what()));
+        return API_STATUS_OK;
     }
 
     response(res, 0, STR_OK, data);
