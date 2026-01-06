@@ -158,14 +158,14 @@ const Security = () => {
               label="Old Password"
               rules={[requiredTrimValidate()]}
             >
-              <Input placeholder="" allowClear maxLength={16} />
+              <Input placeholder="" allowClear maxLength={32} />
             </Form.Item>
             <Form.Item
               name="newPassword"
               label="New Password"
               rules={passwordRules}
             >
-              <Input placeholder="" allowClear maxLength={16} />
+              <Input placeholder="" allowClear maxLength={32} />
             </Form.Item>
             <Form.Item>
               <Button type="primary" block htmlType="submit">

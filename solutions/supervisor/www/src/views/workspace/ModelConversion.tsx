@@ -481,7 +481,11 @@ const ModelConversion = ({
       };
       formData.append("model_info", JSON.stringify(modelInfo));
 
-      const resp = await uploadModelApi(formData);
+      // 使用分片上传并显示进度
+      const resp = await uploadModelApi(formData, (progress) => {
+        setLoadingTip(`Uploading model to device: ${progress.toFixed(1)}%`);
+      });
+      
       if (resp.code == 0) {
         messageApi.success("Model uploaded to device successfully");
 
