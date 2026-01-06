@@ -15,6 +15,7 @@
 #include "api_led.h"
 #include "api_user.h"
 #include "api_wifi.h"
+#include "api_halow.h"
 
 class http_server {
 public:
@@ -30,6 +31,7 @@ public:
         _apis.emplace_back(std::make_unique<api_led>());
         _apis.emplace_back(std::make_unique<api_user>());
         _apis.emplace_back(std::make_unique<api_wifi>());
+        _apis.emplace_back(std::make_unique<api_halow>());
         mg_mgr_init(&mgr);
     }
 

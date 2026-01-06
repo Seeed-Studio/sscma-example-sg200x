@@ -80,7 +80,7 @@ public:
 
 private:
     static inline std::mutex _log_mutex;
-    static inline uint8_t _log_level = LOG_WARNING;
+    static inline uint8_t _log_level = LOG_DEBUG;
     static inline int _log_mask = LOG_UPTO(_log_level);
 };
 
