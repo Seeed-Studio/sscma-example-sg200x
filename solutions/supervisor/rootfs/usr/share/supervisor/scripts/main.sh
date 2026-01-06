@@ -628,6 +628,137 @@ function forgetWiFi() {
 ##################################################
 
 ##################################################
+# halow
+readonly CONF_HALOW="$CONFIG_DIR/halow"
+readonly WPA_CLI_S1G="wpa_cli_s1g -i halow0"
+
+_check_halow() { [ -z "$(ifconfig halow0 2>/dev/null)" ] && return 1 || return 0; }
+_halow_stop() { _stop_pidname "wpa_supplicant_s1g"; }
+
+_halow_start() {
+    _check_halow || return 0
+    [ -z "$(pidof wpa_supplicant_s1g 2>/dev/null)" ] && {
+        ifconfig halow0 down
+        ifconfig halow0 up
+        wpa_supplicant_s1g -B -Dnl80211 -ihalow0 -c "/etc/wpa_supplicant_s1g.conf" >/dev/null 2>&1
+    }
+}
+
+function start_halow() {
+    local halow=-1
+    _check_halow && {
+        [ ! -f "$CONF_HALOW" ] && echo 1 >"$CONF_HALOW"
+        halow=$(cat "$CONF_HALOW")
+        [ $((halow)) -eq 1 ] && { _halow_start >/dev/null 2>&1 & }
+    }
+    printf '{"halow": %d}' $((halow))
+}
+
+function stop_halow() {
+    _halow_stop >/dev/null 2>&1 &
+}
+
+function switchHalow() {
+    echo $2 >"$CONF_HALOW"
+    [ "$2" = "0" ] && stop_halow || start_halow
+}
+
+function get_halow_current() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    $WPA_CLI_S1G status 2>/dev/null > "$out"
+    echo "$out"
+}
+
+function get_halow_connected() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    >"$out"
+    [ -z "$1" ] && { $WPA_CLI_S1G reconfigure >/dev/null 2>&1; }
+    $WPA_CLI_S1G list_networks 2>/dev/null | while IFS= read -r line; do
+        printf "%b\n" "$line" >>"$out"
+    done
+    echo "$out"
+}
+
+function get_halow_scan_list() {
+    local out=$WORK_DIR/${FUNCNAME[0]}
+    local result="$out.tmp"
+    [ -s "$result" ] && {
+        cp "$result" "$out"
+        rm "$result"
+    }
+    [ -f "$out" ] || >"$out"
+    echo "$out"
+    $WPA_CLI_S1G scan_results >"$result" 2>/dev/null &
+    return 0
+}
+
+function connectHalow() {
+    local id="$2" ssid="$3" pwd="$4"
+
+    # Todo: filter duplicate ssid
+    $WPA_CLI_S1G reconfigure >/dev/null 2>&1
+    [ $((id)) -lt 0 ] && { # create new
+        id=$($WPA_CLI_S1G add_network)
+
+        local ret=$($WPA_CLI_S1G set_network "$id" ssid "\"$ssid\"")
+        [ "$ret" != "OK" ] && {
+            $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
+            return
+        }
+
+        if [ "$pwd" == "" ]; then
+            $WPA_CLI_S1G set_network "$id" key_mgmt NONE >/dev/null 2>&1
+        else
+            ret=$($WPA_CLI_S1G set_network "$id" psk "\"$pwd\"")
+            [ "$ret" != "OK" ] && {
+                $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
+                return
+            }
+            $WPA_CLI_S1G set_network "$id" key_mgmt SAE WPA-PSK >/dev/null 2>&1
+            $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
+        fi
+    }
+    [ $((id)) -lt 0 ] && {
+        echo "$STR_FAILED"
+        return
+    }
+
+    local ids=$(cat $(get_halow_connected "0") | grep "^[0-9]" | awk -F'\t' '{print $1}')
+    for i in $ids; do
+        local pri=0
+        [ $((i)) -eq $((id)) ] && { pri=100; }
+        $WPA_CLI_S1G set_network "$i" priority "$pri" >/dev/null 2>&1
+    done
+
+    $WPA_CLI_S1G enable_network "$id" >/dev/null 2>&1
+    $WPA_CLI_S1G save_config >/dev/null 2>&1
+    $WPA_CLI_S1G disconnect >/dev/null 2>&1
+    $WPA_CLI_S1G select_network "$id" >/dev/null 2>&1
+    echo "$STR_OK"
+}
+
+_halow_set_networks() {
+    local ssid="$1" status="$2"
+    local id=$(cat $(get_halow_connected) | grep -w "$ssid" | awk -F'\t' '{print $1}')
+    [ -z "$id" ] && return 0
+    $WPA_CLI_S1G "$status" "$id"
+    $WPA_CLI_S1G save_config
+}
+
+function disconnectHalow() {
+    echo "$STR_OK"
+    _halow_set_networks "$2" disable_network >/dev/null 2>&1 &
+}
+
+function forgetHalow() {
+    echo "$STR_OK"
+    _halow_set_networks "$2" remove_network >/dev/null 2>&1 &
+}
+
+# halow
+##################################################
+
+##################################################
 # deamon
 function query_sscma() {
     mosquitto_rr -h localhost -p 1883 -q 1 -v -W 3 \
