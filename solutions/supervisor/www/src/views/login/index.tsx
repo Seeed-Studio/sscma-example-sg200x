@@ -157,6 +157,8 @@ const Login = () => {
             prefix={<LockOutlined />}
             placeholder="Password"
             visibilityToggle
+            minLength={8}
+            maxLength={32}
           />
         </Form.Item>
         <Form.Item className="w-full" noStyle>
@@ -310,16 +312,19 @@ const Login = () => {
               </>
             }
           >
-            <Input.Password placeholder="recamera" visibilityToggle />
+            <Input.Password placeholder="recamera" visibilityToggle minLength={8} maxLength={32} />
           </Form.Item>
           <Form.Item
             name="newpassword"
             label="New Password"
             rules={passwordRules}
+            extra="Password must be 8-32 characters and include letters, numbers, and symbols"
           >
             <Input.Password
               placeholder="Enter new password here"
               visibilityToggle
+              minLength={8}
+              maxLength={32}
             />
           </Form.Item>
 
@@ -346,6 +351,8 @@ const Login = () => {
             <Input.Password
               placeholder="Confirm new password"
               visibilityToggle
+              minLength={8}
+              maxLength={32}
             />
           </Form.Item>
         </Form>

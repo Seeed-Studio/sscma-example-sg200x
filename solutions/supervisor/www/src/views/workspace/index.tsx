@@ -310,7 +310,12 @@ const Workspace = () => {
             formData.append("model_file", blob); // 文件名可以根据需要修改
           }
           formData.append("model_info", JSON.stringify(model_data));
-          const resp = await uploadModelApi(formData);
+          
+          // 使用分片上传并显示进度
+          const resp = await uploadModelApi(formData, (progress) => {
+            setLoadingTip(`Uploading model to reCamera: ${progress.toFixed(1)}%`);
+          });
+          
           setLoading(false);
           setLoadingTip("");
           const ret = resp.code == 0;

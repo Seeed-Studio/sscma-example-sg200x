@@ -120,12 +120,74 @@ export const getModelInfoApi = async () =>
     }
   );
 
-export const uploadModelApi = async (data: FormData) =>
-  supervisorRequest<IDeviceInfo>({
-    url: "api/deviceMgr/uploadModel",
-    method: "post",
-    data,
-  });
+// 上传模型（支持分片上传）
+export const uploadModelApi = async (
+  data: FormData,
+  onProgress?: (progress: number) => void
+) => {
+  const CHUNK_SIZE = 512 * 1024; // 512KB
+  
+  // 提取文件和其他数据
+  let modelFile: File | Blob | null = null;
+  let modelInfo: string | null = null;
+  
+  for (const [key, value] of data.entries()) {
+    if (key === "model_file" && (value instanceof File || value instanceof Blob)) {
+      modelFile = value;
+    } else if (key === "model_info" && typeof value === "string") {
+      modelInfo = value;
+    }
+  }
+  
+  // 如果没有模型文件或文件小于阈值，使用传统上传
+  if (!modelFile || modelFile.size <= CHUNK_SIZE) {
+    return supervisorRequest<IDeviceInfo>({
+      url: "api/deviceMgr/uploadModel",
+      method: "post",
+      data,
+    });
+  }
+  
+  // 分片上传大文件
+  const totalSize = modelFile.size;
+  let offset = 0;
+  
+  while (offset < totalSize) {
+    const chunk = modelFile.slice(offset, offset + CHUNK_SIZE);
+    const chunkFormData = new FormData();
+    
+    chunkFormData.append("model_file", chunk);
+    chunkFormData.append("offset", offset.toString());
+    chunkFormData.append("size", totalSize.toString());
+    
+    // 只在最后一个分片附加 model_info
+    if (offset + CHUNK_SIZE >= totalSize && modelInfo) {
+      chunkFormData.append("model_info", modelInfo);
+    }
+    
+    const response = await supervisorRequest<IDeviceInfo>({
+      url: "api/deviceMgr/uploadModel",
+      method: "post",
+      data: chunkFormData,
+    });
+    
+    offset += CHUNK_SIZE;
+    
+    // 报告进度
+    if (onProgress) {
+      const progress = Math.min((offset / totalSize) * 100, 100);
+      onProgress(progress);
+    }
+    
+    // 如果这是最后一个分片，返回响应
+    if (offset >= totalSize) {
+      return response;
+    }
+  }
+  
+  // 理论上不会到达这里，但为了类型安全
+  throw new Error("Upload failed");
+};
 
 // 保存平台信息
 export const savePlatformInfoApi = async (data: { platform_info: string }) =>
