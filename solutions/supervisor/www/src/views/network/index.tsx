@@ -1,4 +1,13 @@
-import { Button, Form, Switch, Input, Modal } from "antd";
+import {
+  Button,
+  Form,
+  Switch,
+  Input,
+  Modal,
+  Tabs,
+  Select,
+  InputNumber,
+} from "antd";
 import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import WarnImg from "@/assets/images/warn.png";
 import LockImg from "@/assets/images/svg/lock.svg";
@@ -15,6 +24,7 @@ import {
   NetworkStatus,
   WifiIpAssignmentRule,
   WifiEnable,
+  AntennaEnable,
 } from "@/enum/network";
 import { requiredTrimValidate } from "@/utils/validate";
 
@@ -40,6 +50,7 @@ const getSignalIcon = (signal: number): number => {
 const titleObj = {
   [FormType.Password]: "Password",
   [FormType.Disabled]: "Disable Wi-Fi",
+  [FormType.HalowConfig]: "HaLow Configuration",
 };
 function Network() {
   const {
@@ -54,6 +65,13 @@ function Network() {
     onClickWifiInfo,
     onClickEthernetItem,
     handleSwitchWifi,
+    onSwitchEnabledHalow,
+    handleSwitchHalow,
+    handleSwitchAntenna,
+    onClickHalowItem,
+    onClickHalowInfo,
+    onHandleHalowOperate,
+    onConnectHalow,
   } = useData();
 
   return (
@@ -86,134 +104,345 @@ function Network() {
         </div>
       )}
 
-      {/* WiFi开关：当 wifiEnable !== 2 时显示，状态由 state.wifiChecked 控制 */}
-      {state.wifiEnable !== WifiEnable.Disable && (
-        <div className="mt-30">
-          <div className="flex justify-between mb-20">
-            <div className="font-bold text-18">Enable Wi-Fi</div>
-            <Switch
-              checked={state.wifiChecked}
-              onChange={onSwitchEnabledWifi}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 我的网络 - 已连接过的WiFi列表（Wi-Fi 开启时显示） */}
-      {state.wifiChecked && state.connectedWifiInfoList.length > 0 && (
-        <div className="mt-30">
-          <div className="font-bold text-18 mb-20">My Networks</div>
-          <div className="border-b text-16">
-            {state.connectedWifiInfoList.map((wifiItem, index) => (
-              <div
-                className="flex justify-between border-t py-10"
-                key={index}
-                onClick={() => onClickWifiItem(wifiItem)}
-              >
-                <span className="flex flex-1 truncate">
-                  <span className="self-center truncate flex items-center">
-                    {wifiItem.status === NetworkStatus.Connecting ? (
-                      <span className="mr-12 flex items-center">
-                        <LoadingOutlined />
-                      </span>
-                    ) : wifiItem.status === NetworkStatus.Connected ? (
-                      <img className="w-18 mr-12" src={ConnectedImg} alt="" />
-                    ) : null}
-                    {wifiItem.ssid}
-                  </span>
-                </span>
-                <div className="flex items-center">
-                  {wifiItem.auth == WifiAuth.Need && (
-                    <div className="px-12">
-                      <img
-                        className="w-18"
-                        src={LockImg}
-                        alt=""
-                        onClick={(event: React.MouseEvent) => {
-                          event.stopPropagation();
-                          onClickWifiItem(wifiItem);
-                        }}
-                      />
+      {/* WiFi和Halow Tab切换 */}
+      <div className="mt-30">
+        <Tabs
+          activeKey={state.activeTab}
+          size="large"
+          onChange={(key) => setStates({ activeTab: key as "wifi" | "halow" })}
+          items={[
+            {
+              key: "wifi",
+              label: "Wi-Fi",
+              children: (
+                <>
+                  {/* WiFi开关：当 wifiEnable !== 2 时显示，状态由 state.wifiChecked 控制 */}
+                  {state.wifiEnable !== WifiEnable.Disable && (
+                    <div className="mt-20">
+                      <div className="flex justify-between mb-20">
+                        <div className="font-bold text-18">Enable Wi-Fi</div>
+                        <Switch
+                          checked={state.wifiChecked}
+                          onChange={onSwitchEnabledWifi}
+                        />
+                      </div>
                     </div>
                   )}
-                  <img
-                    className="w-18"
-                    src={wifiImg[getSignalIcon(wifiItem.signal)]}
-                    alt=""
-                  />
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<InfoCircleOutlined />}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onClickWifiInfo(wifiItem);
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* 其他发现的网络（Wi-Fi 开启时显示） */}
-      {state.wifiChecked && state.wifiInfoList.length > 0 && (
-        <div className="mt-30">
-          <div className="font-bold text-18 mb-20">Networks Found</div>
-          <div className="border-b text-16">
-            {state.wifiInfoList.map((wifiItem, index) => (
-              <div
-                className="flex justify-between border-t py-10"
-                key={index}
-                onClick={() => onClickWifiItem(wifiItem)}
-              >
-                <span className="flex flex-1 truncate">
-                  <span className="self-center truncate flex items-center">
-                    {wifiItem.status === NetworkStatus.Connecting ? (
-                      <span className="mr-12 flex items-center">
-                        <LoadingOutlined />
-                      </span>
-                    ) : wifiItem.status === NetworkStatus.Connected ? (
-                      <img className="w-18 mr-12" src={ConnectedImg} alt="" />
-                    ) : null}
-                    {wifiItem.ssid}
-                  </span>
-                </span>
-                <div className="flex items-center">
-                  {wifiItem.auth == WifiAuth.Need && (
-                    <div className="px-12">
-                      <img
-                        className="w-18"
-                        src={LockImg}
-                        alt=""
-                        onClick={(event: React.MouseEvent) => {
-                          event.stopPropagation();
-                          onClickWifiItem(wifiItem);
-                        }}
-                      />
+                  {/* 我的网络 - 已连接过的WiFi列表（Wi-Fi 开启时显示） */}
+                  {state.wifiChecked &&
+                    state.connectedWifiInfoList.length > 0 && (
+                      <div className="mt-30">
+                        <div className="font-bold text-18 mb-20">
+                          My Networks
+                        </div>
+                        <div className="border-b text-16">
+                          {state.connectedWifiInfoList.map(
+                            (wifiItem, index) => (
+                              <div
+                                className="flex justify-between border-t py-10"
+                                key={index}
+                                onClick={() => onClickWifiItem(wifiItem)}
+                              >
+                                <span className="flex flex-1 truncate">
+                                  <span className="self-center truncate flex items-center">
+                                    {wifiItem.status ===
+                                    NetworkStatus.Connecting ? (
+                                      <span className="mr-12 flex items-center">
+                                        <LoadingOutlined />
+                                      </span>
+                                    ) : wifiItem.status ===
+                                      NetworkStatus.Connected ? (
+                                      <img
+                                        className="w-18 mr-12"
+                                        src={ConnectedImg}
+                                        alt=""
+                                      />
+                                    ) : null}
+                                    {wifiItem.ssid}
+                                  </span>
+                                </span>
+                                <div className="flex items-center">
+                                  {wifiItem.auth == WifiAuth.Need && (
+                                    <div className="px-12">
+                                      <img
+                                        className="w-18"
+                                        src={LockImg}
+                                        alt=""
+                                        onClick={(event: React.MouseEvent) => {
+                                          event.stopPropagation();
+                                          onClickWifiItem(wifiItem);
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <img
+                                    className="w-18"
+                                    src={
+                                      wifiImg[getSignalIcon(wifiItem.signal)]
+                                    }
+                                    alt=""
+                                  />
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<InfoCircleOutlined />}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      onClickWifiInfo(wifiItem);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* 其他发现的网络（Wi-Fi 开启时显示） */}
+                  {state.wifiChecked && state.wifiInfoList.length > 0 && (
+                    <div className="mt-30">
+                      <div className="font-bold text-18 mb-20">
+                        Networks Found
+                      </div>
+                      <div className="border-b text-16">
+                        {state.wifiInfoList.map((wifiItem, index) => (
+                          <div
+                            className="flex justify-between border-t py-10"
+                            key={index}
+                            onClick={() => onClickWifiItem(wifiItem)}
+                          >
+                            <span className="flex flex-1 truncate">
+                              <span className="self-center truncate flex items-center">
+                                {wifiItem.status ===
+                                NetworkStatus.Connecting ? (
+                                  <span className="mr-12 flex items-center">
+                                    <LoadingOutlined />
+                                  </span>
+                                ) : wifiItem.status ===
+                                  NetworkStatus.Connected ? (
+                                  <img
+                                    className="w-18 mr-12"
+                                    src={ConnectedImg}
+                                    alt=""
+                                  />
+                                ) : null}
+                                {wifiItem.ssid}
+                              </span>
+                            </span>
+                            <div className="flex items-center">
+                              {wifiItem.auth == WifiAuth.Need && (
+                                <div className="px-12">
+                                  <img
+                                    className="w-18"
+                                    src={LockImg}
+                                    alt=""
+                                    onClick={(event: React.MouseEvent) => {
+                                      event.stopPropagation();
+                                      onClickWifiItem(wifiItem);
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <img
+                                className="w-18"
+                                src={wifiImg[getSignalIcon(wifiItem.signal)]}
+                                alt=""
+                              />
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<InfoCircleOutlined />}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onClickWifiInfo(wifiItem);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <img
-                    className="w-18"
-                    src={wifiImg[getSignalIcon(wifiItem.signal)]}
-                    alt=""
-                  />
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<InfoCircleOutlined />}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onClickWifiInfo(wifiItem);
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+                </>
+              ),
+            },
+            {
+              key: "halow",
+              label: "HaLow",
+              children: (
+                <>
+                  {/* Halow开关：当 halowEnable !== 2 时显示，状态由 state.halowChecked 控制 */}
+                  {state.halowEnable !== 2 && (
+                    <div className="mt-20">
+                      <div className="flex justify-between mb-20">
+                        <div className="font-bold text-18">Enable HaLow</div>
+                        <Switch
+                          checked={state.halowChecked}
+                          onChange={onSwitchEnabledHalow}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Antenna开关：显示天线状态 */}
+                  {state.halowEnable !== 2 && (
+                    <div className="mt-20">
+                      <div className="flex justify-between items-center mb-20">
+                        <div className="font-bold text-18">Antenna</div>
+                        <div className="flex items-center">
+                          <Switch
+                            checked={state.antennaEnable === AntennaEnable.RF2}
+                            onChange={handleSwitchAntenna}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 我的网络 - 已连接过的Halow列表（HaLow 开启时显示） */}
+                  {state.halowChecked &&
+                    state.connectedHalowInfoList.length > 0 && (
+                      <div className="mt-30">
+                        <div className="font-bold text-18 mb-20">
+                          My Networks
+                        </div>
+                        <div className="border-b text-16">
+                          {state.connectedHalowInfoList.map(
+                            (halowItem, index) => (
+                              <div
+                                className="flex justify-between border-t py-10"
+                                key={index}
+                                onClick={() => onClickHalowItem(halowItem)}
+                              >
+                                <span className="flex flex-1 truncate">
+                                  <span className="self-center truncate flex items-center">
+                                    {halowItem.status ===
+                                    NetworkStatus.Connecting ? (
+                                      <span className="mr-12 flex items-center">
+                                        <LoadingOutlined />
+                                      </span>
+                                    ) : halowItem.status ===
+                                      NetworkStatus.Connected ? (
+                                      <img
+                                        className="w-18 mr-12"
+                                        src={ConnectedImg}
+                                        alt=""
+                                      />
+                                    ) : null}
+                                    {halowItem.ssid}
+                                  </span>
+                                </span>
+                                <div className="flex items-center">
+                                  {halowItem.auth == WifiAuth.Need && (
+                                    <div className="px-12">
+                                      <img
+                                        className="w-18"
+                                        src={LockImg}
+                                        alt=""
+                                        onClick={(event: React.MouseEvent) => {
+                                          event.stopPropagation();
+                                          onClickHalowItem(halowItem);
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <img
+                                    className="w-18"
+                                    src={
+                                      wifiImg[getSignalIcon(halowItem.signal)]
+                                    }
+                                    alt=""
+                                  />
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<InfoCircleOutlined />}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      onClickHalowInfo(halowItem);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* 其他发现的网络（HaLow 开启时显示） */}
+                  {state.halowChecked && state.halowInfoList.length > 0 && (
+                    <div className="mt-30">
+                      <div className="font-bold text-18 mb-20">
+                        Networks Found
+                      </div>
+                      <div className="border-b text-16">
+                        {state.halowInfoList.map((halowItem, index) => (
+                          <div
+                            className="flex justify-between border-t py-10"
+                            key={index}
+                            onClick={() => onClickHalowItem(halowItem)}
+                          >
+                            <span className="flex flex-1 truncate">
+                              <span className="self-center truncate flex items-center">
+                                {halowItem.status ===
+                                NetworkStatus.Connecting ? (
+                                  <span className="mr-12 flex items-center">
+                                    <LoadingOutlined />
+                                  </span>
+                                ) : halowItem.status ===
+                                  NetworkStatus.Connected ? (
+                                  <img
+                                    className="w-18 mr-12"
+                                    src={ConnectedImg}
+                                    alt=""
+                                  />
+                                ) : null}
+                                {halowItem.ssid}
+                              </span>
+                            </span>
+                            <div className="flex items-center">
+                              {halowItem.auth == WifiAuth.Need && (
+                                <div className="px-12">
+                                  <img
+                                    className="w-18"
+                                    src={LockImg}
+                                    alt=""
+                                    onClick={(event: React.MouseEvent) => {
+                                      event.stopPropagation();
+                                      onClickHalowItem(halowItem);
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <img
+                                className="w-18"
+                                src={wifiImg[getSignalIcon(halowItem.signal)]}
+                                alt=""
+                              />
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<InfoCircleOutlined />}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onClickHalowInfo(halowItem);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
       <Modal
         open={state.visible}
         onCancel={toggleVisible}
@@ -235,7 +464,11 @@ function Network() {
               danger
               type="primary"
               loading={state.submitLoading}
-              onClick={handleSwitchWifi}
+              onClick={
+                state.activeTab === "wifi"
+                  ? handleSwitchWifi
+                  : handleSwitchHalow
+              }
             >
               Confirm
             </Button>
@@ -246,7 +479,7 @@ function Network() {
             ref={passwordFormRef}
             className="border-b-0"
             requiredMark={false}
-            onFinish={onConnect}
+            onFinish={state.activeTab === "wifi" ? onConnect : onConnectHalow}
             initialValues={{
               password: state.password,
             }}
@@ -258,6 +491,118 @@ function Network() {
             >
               <Input.Password placeholder="" allowClear maxLength={63} />
             </Form.Item>
+            <Button
+              block
+              type="primary"
+              htmlType="submit"
+              loading={state.submitLoading}
+            >
+              Confirm
+            </Button>
+          </Form>
+        )}
+        {state.formType === FormType.HalowConfig && (
+          <Form
+            ref={passwordFormRef}
+            className="border-b-0"
+            requiredMark={false}
+            onFinish={(values) => {
+              const halowConfig = {
+                country: values.country,
+                width: values.width,
+                signal: values.signal,
+                mode: values.mode,
+                encryption: values.encryption,
+              };
+              onConnectHalow({ ...values, halowConfig });
+            }}
+            initialValues={{
+              country: "US",
+              width: 8,
+              signal: 12,
+              mode: 0,
+              encryption: "WPA3-SAE",
+            }}
+          >
+            <Form.Item
+              name="country"
+              label="Country"
+              rules={[{ required: true, message: "Please select country" }]}
+            >
+              <Select
+                options={[
+                  { label: "AU", value: "AU" },
+                  { label: "EU", value: "EU" },
+                  { label: "IN", value: "IN" },
+                  { label: "JP", value: "JP" },
+                  { label: "KR", value: "KR" },
+                  { label: "NZ", value: "NZ" },
+                  { label: "SG", value: "SG" },
+                  { label: "US", value: "US" },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="width"
+              label="Width (MHz)"
+              rules={[{ required: true, message: "Please select width" }]}
+            >
+              <Select
+                options={[
+                  { label: "1 MHz", value: 1 },
+                  { label: "2 MHz", value: 2 },
+                  { label: "4 MHz", value: 4 },
+                  { label: "8 MHz", value: 8 },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="signal"
+              label="Channel"
+              rules={[{ required: true, message: "Please enter channel" }]}
+            >
+              <InputNumber
+                style={{ width: "100%" }}
+                placeholder="Enter channel number"
+                min={1}
+                max={100}
+              />
+            </Form.Item>
+            <Form.Item
+              name="mode"
+              label="Mode"
+              rules={[{ required: true, message: "Please select mode" }]}
+            >
+              <Select
+                options={[
+                  { label: "no WDS", value: 0 },
+                  { label: "WDS", value: 1 },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="encryption"
+              label="Encryption"
+              rules={[{ required: true, message: "Please select encryption" }]}
+            >
+              <Select
+                options={[
+                  { label: "WPA3-SAE", value: "WPA3-SAE" },
+                  { label: "OWE", value: "OWE" },
+                  { label: "WPA3-EAP", value: "WPA3-EAP" },
+                  { label: "No encryption", value: "No encryption" },
+                ]}
+              />
+            </Form.Item>
+            {state.selectedHalowInfo?.auth === WifiAuth.Need && (
+              <Form.Item
+                name="password"
+                label="Password"
+                rules={[requiredTrimValidate()]}
+              >
+                <Input.Password placeholder="" allowClear maxLength={63} />
+              </Form.Item>
+            )}
             <Button
               block
               type="primary"
@@ -287,61 +632,80 @@ function Network() {
           <div className="text-3d pr-14 h-full overflow-y-auto flex-1 flex flex-col justify-between">
             <div className="flex justify-between">
               <div className="font-bold text-16 break-words">
-                {state.selectedWifiInfo?.ssid}
+                {state.activeTab === "wifi"
+                  ? state.selectedWifiInfo?.ssid
+                  : state.selectedHalowInfo?.ssid}
               </div>
             </div>
-            {state.selectedWifiInfo && state.selectedWifiInfo?.ssid && (
-              <div className="flex mt-20">
-                {state.selectedWifiInfo?.status === NetworkStatus.Connected ? (
-                  <>
-                    <Button
-                      size="small"
-                      color="danger"
-                      variant="solid"
-                      block
-                      loading={
-                        state.submitLoading &&
-                        state.submitType == OperateType.Forget
-                      }
-                      onClick={() => onHandleOperate(OperateType.Forget)}
-                    >
-                      Forget
-                    </Button>
+            {state.activeTab === "wifi" &&
+              state.selectedWifiInfo &&
+              state.selectedWifiInfo?.ssid && (
+                <div className="flex mt-20">
+                  {state.selectedWifiInfo?.status ===
+                  NetworkStatus.Connected ? (
+                    <>
+                      <Button
+                        size="small"
+                        color="danger"
+                        variant="solid"
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Forget
+                        }
+                        onClick={() => onHandleOperate(OperateType.Forget)}
+                      >
+                        Forget
+                      </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={{ marginLeft: "12px" }}
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.DisConnect
+                        }
+                        onClick={() => onHandleOperate(OperateType.DisConnect)}
+                      >
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (state.connectedWifiInfoList || []).some(
+                      (item) => item.ssid === state.selectedWifiInfo?.ssid
+                    ) ? (
+                    <>
+                      <Button
+                        size="small"
+                        color="danger"
+                        variant="solid"
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Forget
+                        }
+                        onClick={() => onHandleOperate(OperateType.Forget)}
+                      >
+                        Forget
+                      </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={{ marginLeft: "12px" }}
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Connect
+                        }
+                        onClick={() => onHandleOperate(OperateType.Connect)}
+                      >
+                        Connect
+                      </Button>
+                    </>
+                  ) : (
                     <Button
                       size="small"
                       type="primary"
-                      style={{ marginLeft: "12px" }}
-                      block
-                      loading={
-                        state.submitLoading &&
-                        state.submitType == OperateType.DisConnect
-                      }
-                      onClick={() => onHandleOperate(OperateType.DisConnect)}
-                    >
-                      Disconnect
-                    </Button>
-                  </>
-                ) : (state.connectedWifiInfoList || []).some(
-                    (item) => item.ssid === state.selectedWifiInfo?.ssid
-                  ) ? (
-                  <>
-                    <Button
-                      size="small"
-                      color="danger"
-                      variant="solid"
-                      block
-                      loading={
-                        state.submitLoading &&
-                        state.submitType == OperateType.Forget
-                      }
-                      onClick={() => onHandleOperate(OperateType.Forget)}
-                    >
-                      Forget
-                    </Button>
-                    <Button
-                      size="small"
-                      type="primary"
-                      style={{ marginLeft: "12px" }}
                       block
                       loading={
                         state.submitLoading &&
@@ -349,37 +713,112 @@ function Network() {
                       }
                       onClick={() => onHandleOperate(OperateType.Connect)}
                     >
-                      Connect
+                      <span className="text-14">Connect</span>
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    size="small"
-                    type="primary"
-                    block
-                    loading={
-                      state.submitLoading &&
-                      state.submitType == OperateType.Connect
-                    }
-                    onClick={() => onHandleOperate(OperateType.Connect)}
-                  >
-                    <span className="text-14">Connect</span>
-                  </Button>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            {state.activeTab === "halow" &&
+              state.selectedHalowInfo &&
+              state.selectedHalowInfo?.ssid && (
+                <div className="flex mt-20">
+                  {state.selectedHalowInfo?.status ===
+                  NetworkStatus.Connected ? (
+                    <>
+                      <Button
+                        size="small"
+                        color="danger"
+                        variant="solid"
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Forget
+                        }
+                        onClick={() => onHandleHalowOperate(OperateType.Forget)}
+                      >
+                        Forget
+                      </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={{ marginLeft: "12px" }}
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.DisConnect
+                        }
+                        onClick={() =>
+                          onHandleHalowOperate(OperateType.DisConnect)
+                        }
+                      >
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (state.connectedHalowInfoList || []).some(
+                      (item) => item.ssid === state.selectedHalowInfo?.ssid
+                    ) ? (
+                    <>
+                      <Button
+                        size="small"
+                        color="danger"
+                        variant="solid"
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Forget
+                        }
+                        onClick={() => onHandleHalowOperate(OperateType.Forget)}
+                      >
+                        Forget
+                      </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={{ marginLeft: "12px" }}
+                        block
+                        loading={
+                          state.submitLoading &&
+                          state.submitType == OperateType.Connect
+                        }
+                        onClick={() =>
+                          onHandleHalowOperate(OperateType.Connect)
+                        }
+                      >
+                        Connect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="small"
+                      type="primary"
+                      block
+                      loading={
+                        state.submitLoading &&
+                        state.submitType == OperateType.Connect
+                      }
+                      onClick={() => onHandleHalowOperate(OperateType.Connect)}
+                    >
+                      <span className="text-14">Connect</span>
+                    </Button>
+                  )}
+                </div>
+              )}
 
             <div className="flex-1 mt-20 border-t">
               <div>
                 <div className="flex justify-between border-b py-6">
                   <span className="self-center">MAC Address</span>
                   <span className="text-8d text-black opacity-60">
-                    {state.selectedWifiInfo?.macAddress || "N/A"}
+                    {state.activeTab === "wifi"
+                      ? state.selectedWifiInfo?.macAddress || "N/A"
+                      : state.selectedHalowInfo?.macAddress || "N/A"}
                   </span>
                 </div>
               </div>
 
-              {state.selectedWifiInfo && (
+              {(state.activeTab === "wifi"
+                ? state.selectedWifiInfo
+                : state.selectedHalowInfo) && (
                 <div>
                   <div className="font-bold border-b mt-24 py-6">
                     IPV4 ADDRESS
@@ -387,8 +826,10 @@ function Network() {
                   <div className="flex justify-between border-b py-6">
                     <span className="self-center">IP Address Assignment</span>
                     <span className="text-8d text-black opacity-60">
-                      {state.selectedWifiInfo?.ipAssignment ===
-                      WifiIpAssignmentRule.Automatic
+                      {(state.activeTab === "wifi"
+                        ? state.selectedWifiInfo
+                        : state.selectedHalowInfo
+                      )?.ipAssignment === WifiIpAssignmentRule.Automatic
                         ? "Automatic"
                         : "Static"}
                     </span>
@@ -396,25 +837,37 @@ function Network() {
                   <div className="flex justify-between border-b py-6">
                     <span className="self-center">IP Address</span>
                     <span className="text-8d text-black opacity-60">
-                      {state.selectedWifiInfo?.ip || "N/A"}
+                      {(state.activeTab === "wifi"
+                        ? state.selectedWifiInfo
+                        : state.selectedHalowInfo
+                      )?.ip || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between border-b py-6">
                     <span className="self-center">Subnet Mask</span>
                     <span className="text-8d text-black opacity-60">
-                      {state.selectedWifiInfo?.subnetMask || "N/A"}
+                      {(state.activeTab === "wifi"
+                        ? state.selectedWifiInfo
+                        : state.selectedHalowInfo
+                      )?.subnetMask || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between border-b py-6">
                     <span className="self-center">DNS 1</span>
                     <span className="text-8d text-black opacity-60">
-                      {state.selectedWifiInfo?.dns1 || "N/A"}
+                      {(state.activeTab === "wifi"
+                        ? state.selectedWifiInfo
+                        : state.selectedHalowInfo
+                      )?.dns1 || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between border-b py-6">
                     <span className="self-center">DNS 2</span>
                     <span className="text-8d text-black opacity-60">
-                      {state.selectedWifiInfo?.dns2 || "N/A"}
+                      {(state.activeTab === "wifi"
+                        ? state.selectedWifiInfo
+                        : state.selectedHalowInfo
+                      )?.dns2 || "N/A"}
                     </span>
                   </div>
                 </div>

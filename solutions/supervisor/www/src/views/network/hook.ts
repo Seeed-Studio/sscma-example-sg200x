@@ -6,14 +6,27 @@ import {
   disconnectWifiApi,
   connectWifiApi,
   forgetWiFiApi,
+  getHalowInfoListApi,
+  switchHalowApi,
+  switchAntennaApi,
+  disconnectHalowApi,
+  connectHalowApi,
+  forgetHalowApi,
 } from "@/api/network";
 import {
   WifiConnectedStatus,
   NetworkStatus,
   WifiAuth,
   WifiEnable,
+  HalowEnable,
+  AntennaEnable,
 } from "@/enum/network";
-import { IWifiInfo, IConnectParams } from "@/api/network/network";
+import {
+  IWifiInfo,
+  IConnectParams,
+  IConnectHalowParams,
+  IHalowInfo,
+} from "@/api/network/network";
 import useConfigStore from "@/store/config";
 
 interface FormParams {
@@ -22,6 +35,7 @@ interface FormParams {
 
 const timeGap = 5000;
 let timer: NodeJS.Timeout | null = null;
+let halowTimer: NodeJS.Timeout | null = null;
 
 export enum OperateType {
   Connect = "Connect",
@@ -31,6 +45,7 @@ export enum OperateType {
 export enum FormType {
   Password = "Password",
   Disabled = "Disabled",
+  HalowConfig = "HalowConfig",
 }
 
 interface IInitialState {
@@ -55,6 +70,16 @@ interface IInitialState {
   needRefresh: boolean;
   etherStatus: NetworkStatus;
   connectLoading: boolean;
+  // Halow 相关状态
+  activeTab: "wifi" | "halow";
+  halowChecked: boolean;
+  halowEnable?: HalowEnable;
+  antennaEnable?: AntennaEnable; // 天线状态
+  connectedHalowInfoList: IWifiInfo[];
+  halowInfoList: IWifiInfo[];
+  selectedHalowInfo?: IWifiInfo;
+  halowTimer: NodeJS.Timeout | null;
+  halowConfig?: IHalowInfo; // Halow 配置信息
 }
 type ActionType = { type: "setState"; payload: Partial<IInitialState> };
 const initialState: IInitialState = {
@@ -76,6 +101,15 @@ const initialState: IInitialState = {
   needRefresh: true,
   etherStatus: NetworkStatus.Disconnected,
   connectLoading: false,
+  activeTab: "wifi",
+  halowChecked: false,
+  halowEnable: HalowEnable.Close,
+  antennaEnable: AntennaEnable.RF1,
+  connectedHalowInfoList: [],
+  halowInfoList: [],
+  selectedHalowInfo: undefined,
+  halowTimer: null,
+  halowConfig: undefined,
 };
 function reducer(state: IInitialState, action: ActionType): IInitialState {
   switch (action.type) {
@@ -101,6 +135,8 @@ export function useData() {
     stateDispatch({ type: "setState", payload: payload });
   };
   const passwordFormRef = useRef<FormInstance | null>(null);
+  const prevHalowCheckedRef = useRef<boolean | undefined>(undefined);
+  const isTabSwitchingRef = useRef<boolean>(false);
 
   const getWifiResults = async () => {
     const { data } = await getWiFiInfoListApi();
@@ -141,8 +177,8 @@ export function useData() {
   // 自动刷新wifilist
   const onAutoRefreshWifiList = async () => {
     onStopRefreshWifiList();
-    // wifi没有开启不需要开启自动刷新
-    if (!state.wifiChecked) return;
+    // wifi没有开启或不在wifi tab时不需要开启自动刷新
+    if (!state.wifiChecked || state.activeTab !== "wifi") return;
     timer = setInterval(() => {
       getWifiList();
     }, timeGap);
@@ -399,26 +435,323 @@ export function useData() {
   };
 
   useEffect(() => {
-    if (state.wifiChecked) {
-      getWifiResults();
-      onAutoRefreshWifiList();
-    } else {
-      onStopRefreshWifiList();
+    // WiFi 开关状态变化时的处理
+    if (state.activeTab === "wifi") {
+      if (state.wifiChecked) {
+        getWifiResults();
+        onAutoRefreshWifiList();
+      } else {
+        onStopRefreshWifiList();
+      }
     }
     setStates({
       submitLoading: false,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.wifiChecked]);
 
   useEffect(() => {
     if (state.needRefresh) {
-      onQueryData();
+      if (state.activeTab === "wifi") {
+        onQueryData();
+      } else {
+        getHalowResults();
+      }
     }
-  }, [state.needRefresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.needRefresh, state.activeTab]);
+  // Halow 相关函数
+  const getHalowResults = async () => {
+    const { data } = await getHalowInfoListApi();
+    setStates({
+      halowEnable: data.halowEnable,
+      halowChecked: data.halowEnable === 1,
+      antennaEnable: data.antennaEnable,
+      connectedHalowInfoList: data.connectedHalowInfoList || [],
+      halowInfoList: data.halowInfoList || [],
+    });
+  };
+
+  const getHalowList = async () => {
+    try {
+      if (!state.halowChecked) return;
+      await getHalowResults();
+      return true;
+    } catch (err) {}
+  };
+
+  const onStopRefreshHalowList = () => {
+    halowTimer && clearInterval(halowTimer);
+  };
+
+  const onAutoRefreshHalowList = async () => {
+    onStopRefreshHalowList();
+    // halow没有开启或不在halow tab时不需要开启自动刷新
+    if (!state.halowChecked || state.activeTab !== "halow") return;
+    halowTimer = setInterval(() => {
+      getHalowList();
+    }, timeGap);
+  };
+
+  const handleSwitchHalow = async () => {
+    await switchHalowApi({ mode: Number(!state.halowChecked) as HalowEnable });
+    setStates({
+      halowChecked: !state.halowChecked,
+      visible: false,
+    });
+  };
+
+  const handleSwitchAntenna = async () => {
+    const newMode =
+      state.antennaEnable === AntennaEnable.RF1
+        ? AntennaEnable.RF2
+        : AntennaEnable.RF1;
+    await switchAntennaApi({ mode: newMode });
+    setStates({
+      antennaEnable: newMode,
+    });
+  };
+
+  const onSwitchEnabledHalow = async () => {
+    if (state.halowChecked) {
+      setStates({
+        visible: true,
+        formType: FormType.Disabled,
+      });
+    } else {
+      handleSwitchHalow();
+    }
+  };
+
+  const onShowHalowItemInfo = (item: IWifiInfo) => {
+    setStates({
+      selectedHalowInfo: item,
+      wifiVisible: true,
+      submitLoading: false,
+      submitType: undefined,
+    });
+  };
+
+  const onClickHalowInfo = (halowItem: IWifiInfo) => {
+    onShowHalowItemInfo(halowItem);
+  };
+
+  const onClickHalowItem = (halowItem: IWifiInfo) => {
+    if (state.connectLoading) {
+      return;
+    }
+    setStates({
+      selectedHalowInfo: halowItem,
+    });
+    if (halowItem.status === NetworkStatus.Connected) {
+      onShowHalowItemInfo(halowItem);
+      return;
+    }
+    onHandleConnectHalow(halowItem);
+  };
+
+  const setConnectingHalowVisualState = (targetSsid: string) => {
+    const normalizeList = (list: IWifiInfo[]) =>
+      list.map((item) => {
+        if (item.ssid === targetSsid) {
+          return { ...item, status: NetworkStatus.Connecting };
+        }
+        if (
+          item.status === NetworkStatus.Connected ||
+          item.status === NetworkStatus.Connecting
+        ) {
+          return { ...item, status: NetworkStatus.Disconnected };
+        }
+        return item;
+      });
+
+    setStates({
+      connectedHalowInfoList: normalizeList(state.connectedHalowInfoList),
+      halowInfoList: normalizeList(state.halowInfoList),
+      selectedHalowInfo:
+        state.selectedHalowInfo?.ssid === targetSsid
+          ? { ...state.selectedHalowInfo, status: NetworkStatus.Connecting }
+          : state.selectedHalowInfo &&
+            (state.selectedHalowInfo.status === NetworkStatus.Connected ||
+              state.selectedHalowInfo.status === NetworkStatus.Connecting)
+          ? { ...state.selectedHalowInfo, status: NetworkStatus.Disconnected }
+          : state.selectedHalowInfo,
+    });
+  };
+
+  const onHandleConnectHalow = async (targetHalow?: IWifiInfo) => {
+    try {
+      const selected = targetHalow || state.selectedHalowInfo;
+      if (!selected || !selected.ssid) return;
+
+      // Halow 连接总是需要配置信息，先弹出配置表单
+      // 如果需要密码，会在配置表单提交后再处理
+      setStates({
+        visible: true,
+        formType: FormType.HalowConfig,
+        selectedHalowInfo: selected,
+      });
+    } catch (err) {
+    } finally {
+      setStates({
+        connectLoading: false,
+      });
+    }
+  };
+
+  const onConnectHalow = async (
+    values?: FormParams & { halowConfig?: IHalowInfo },
+    ssid?: string
+  ) => {
+    try {
+      const targetSsid = ssid || state.selectedHalowInfo?.ssid || "";
+      if (!targetSsid) {
+        return;
+      }
+      // 使用用户输入的配置信息或 state 中保存的配置
+      const halowConfig = values?.halowConfig || state.halowConfig;
+      if (!halowConfig) {
+        return;
+      }
+
+      const params: IConnectHalowParams = {
+        ssid: targetSsid,
+        halowInfo: halowConfig,
+      };
+      if (values?.password) {
+        params.password = values.password;
+      }
+      setStates({
+        submitLoading: true,
+      });
+      setConnectingHalowVisualState(targetSsid);
+
+      await connectHalowApi(params);
+      setStates({
+        wifiVisible: false,
+        visible: false,
+        submitLoading: false,
+        submitType: undefined,
+        halowConfig: undefined,
+      });
+      setTimeout(() => {
+        setStates({
+          needRefresh: true,
+        });
+      }, 1000);
+      resetFields();
+    } catch (err) {}
+    setStates({
+      submitLoading: false,
+      submitType: undefined,
+    });
+  };
+
+  const onHandleHalowOperate = async (type: OperateType) => {
+    const info = state.selectedHalowInfo;
+    if (!info || !info.ssid) return;
+    setStates({
+      submitType: type,
+    });
+    try {
+      switch (type) {
+        case OperateType.Connect:
+          onHandleConnectHalow();
+          break;
+        case OperateType.DisConnect:
+          setStates({
+            submitLoading: true,
+          });
+          await disconnectHalowApi({
+            ssid: info.ssid || "",
+          });
+          setStates({
+            wifiVisible: false,
+            needRefresh: true,
+            submitLoading: false,
+            submitType: undefined,
+          });
+          break;
+        case OperateType.Forget:
+          setStates({
+            submitLoading: true,
+          });
+          await forgetHalowApi({
+            ssid: info.ssid || "",
+          });
+          setStates({
+            wifiVisible: false,
+            needRefresh: true,
+            submitLoading: false,
+            submitType: undefined,
+          });
+          break;
+        default:
+          throw new Error();
+      }
+    } catch (err) {
+      setStates({
+        submitLoading: false,
+      });
+    }
+  };
+
+  useEffect(() => {
+    // Halow 开关状态变化时的处理
+    // 只有当 halowChecked 从 false 变为 true 时才请求列表（用户手动打开开关）
+    // Tab 切换时的列表请求由 Tab 切换的 useEffect 处理
+    if (state.activeTab === "halow") {
+      const prevChecked = prevHalowCheckedRef.current;
+      const currentChecked = state.halowChecked;
+
+      // 只有当从 false 变为 true 时才请求列表（用户手动打开开关）
+      if (
+        currentChecked &&
+        prevChecked === false &&
+        !isTabSwitchingRef.current
+      ) {
+        getHalowResults();
+      }
+
+      if (currentChecked) {
+        onAutoRefreshHalowList();
+      } else {
+        onStopRefreshHalowList();
+      }
+
+      prevHalowCheckedRef.current = currentChecked;
+      isTabSwitchingRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.halowChecked]);
+
+  useEffect(() => {
+    // 切换 Tab 时停止另一个 Tab 的定时器，启动当前 Tab 的定时器，并请求对应列表
+    if (state.activeTab === "wifi") {
+      onStopRefreshHalowList();
+      // 切换到 WiFi tab 时，无论 WiFi 是否开启，都请求一次以获取状态
+      getWifiResults();
+      if (state.wifiChecked) {
+        onAutoRefreshWifiList();
+      }
+    } else if (state.activeTab === "halow") {
+      onStopRefreshWifiList();
+      // 切换到 Halow tab 时，无论 Halow 是否开启，都请求一次以获取状态
+      // 标记正在 Tab 切换，避免 halowChecked 的 useEffect 重复请求
+      isTabSwitchingRef.current = true;
+      getHalowResults();
+      if (state.halowChecked) {
+        onAutoRefreshHalowList();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.activeTab]);
+
   useEffect(() => {
     // 清除定时器
     return () => {
       onStopRefreshWifiList();
+      onStopRefreshHalowList();
     };
   }, []);
   return {
@@ -433,5 +766,12 @@ export function useData() {
     onClickWifiInfo,
     onClickEthernetItem,
     handleSwitchWifi,
+    onSwitchEnabledHalow,
+    handleSwitchHalow,
+    handleSwitchAntenna,
+    onClickHalowItem,
+    onClickHalowInfo,
+    onHandleHalowOperate,
+    onConnectHalow,
   };
 }
