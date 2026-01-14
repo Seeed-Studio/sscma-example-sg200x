@@ -28,7 +28,8 @@ export interface IAppInfo {
 }
 
 export interface IActionInfo {
-  action?: string; // new / app / clone / model /normal
+  action?: string; // new / app / clone / model / train /normal
   app_id?: string;
   model_id?: string;
+  model_name?: string; // train action 时使用
 }

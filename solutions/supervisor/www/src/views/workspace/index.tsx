@@ -131,9 +131,10 @@ const Workspace = () => {
       const param = parseUrlParam(window.location.href);
       const token_url = param.token;
       const refresh_token = param.refresh_token;
-      const action = param.action; //new / app / clone / model /normal  action为空默认为normal
+      const action = param.action; //new / app / clone / model / train /normal  action为空默认为normal
       const app_id = param.app_id; //type为app时才需要传
-      const model_id = param.model_id; //type为model时才需要传
+      const model_id = param.model_id; //type为model或train时才需要传
+      const model_name = param.model_name; //type为train时才需要传
 
       if (action) {
         sessionStorage.removeItem("sensecraft_action");
@@ -144,6 +145,7 @@ const Workspace = () => {
           action: action,
           app_id: app_id,
           model_id: model_id,
+          model_name: model_name,
         };
       } else {
         const cachedAction = sessionStorage.getItem("sensecraft_action");
@@ -260,9 +262,10 @@ const Workspace = () => {
   useEffect(() => {
     const initAction = async () => {
       if (actionInfo?.action && token) {
-        const action = actionInfo.action; //new / app / clone / model /normal  action为空默认为normal
+        const action = actionInfo.action; //new / app / clone / model / train /normal  action为空默认为normal
         const app_id = actionInfo.app_id; //type为app时才需要传
-        const model_id = actionInfo.model_id; //type为model时才需要传
+        const model_id = actionInfo.model_id; //type为model或train时才需要传
+        const model_name = actionInfo.model_name; //type为train时才需要传
         if (action == "app") {
           if (app_id) {
             //打开云端应用

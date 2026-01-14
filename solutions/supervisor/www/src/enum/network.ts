@@ -29,3 +29,16 @@ export enum NetworkStatus {
   Connecting = 2, //连接中
   Connected = 3, //已连接
 }
+
+// halow是否开启（对应getHalowInfoList接口的halowEnable字段）
+export enum HalowEnable {
+  Close = 0, //有halow，未开启
+  Open = 1, //有halow，已开启
+  Disable = 2, //没有halow
+}
+
+// 天线状态（对应getHalowInfoList接口的antennaEnable字段）
+export enum AntennaEnable {
+  RF1 = 0, // RF1
+  RF2 = 1, // RF2
+}
