@@ -630,7 +630,9 @@ function forgetWiFi() {
 ##################################################
 # halow
 readonly CONF_HALOW="$CONFIG_DIR/halow"
+readonly CONF_ANTENNA="$CONFIG_DIR/antenna"
 readonly WPA_CLI_S1G="wpa_cli_s1g -i halow0"
+readonly GPIO_ANTENNA=431
 
 _check_halow() { [ -z "$(ifconfig halow0 2>/dev/null)" ] && return 1 || return 0; }
 _halow_stop() { _stop_pidname "wpa_supplicant_s1g"; }
@@ -645,13 +647,17 @@ _halow_start() {
 }
 
 function start_halow() {
-    local halow=-1
+    local halow=-1 antenna=-1
     _check_halow && {
         [ ! -f "$CONF_HALOW" ] && echo 1 >"$CONF_HALOW"
         halow=$(cat "$CONF_HALOW")
         [ $((halow)) -eq 1 ] && { _halow_start >/dev/null 2>&1 & }
+
+        [ ! -f "$CONF_ANTENNA" ] && echo 1 >"$CONF_ANTENNA"
+        antenna=$(cat "$CONF_ANTENNA")
+        switchAntenna "$antenna" >/dev/null 2>&1
     }
-    printf '{"halow": %d}' $((halow))
+    printf '{"halow": %d, "antenna": %d}' $((halow)) $((antenna))
 }
 
 function stop_halow() {
@@ -755,6 +761,23 @@ function forgetHalow() {
     _halow_set_networks "$2" remove_network >/dev/null 2>&1 &
 }
 
+function switchAntenna() {
+    echo "$STR_OK"
+
+    if [ ! -d /sys/class/gpio/gpio$GPIO_ANTENNA ]; then
+        echo $GPIO_ANTENNA > /sys/class/gpio/export
+        echo "out" > /sys/class/gpio/gpio$GPIO_ANTENNA/direction
+    fi
+
+    if [ "$1" == "switchAntenna" ]; then
+        value="$2"
+    else
+        value="$1"
+    fi
+
+    printf $value > /sys/class/gpio/gpio$GPIO_ANTENNA/value
+    echo "$value" > "$CONF_ANTENNA"
+}
 # halow
 ##################################################
 

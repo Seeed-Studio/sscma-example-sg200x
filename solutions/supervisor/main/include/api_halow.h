@@ -20,6 +20,7 @@ private:
     static api_status_t forgetHalow(request_t req, response_t res);
     static api_status_t getHalowInfoList(request_t req, response_t res);
     static api_status_t switchHalow(request_t req, response_t res);
+    static api_status_t switchAntenna(request_t req, response_t res);
 
 public:
     api_halow()
@@ -31,6 +32,7 @@ public:
         REG_API(forgetHalow);
         REG_API(getHalowInfoList);
         REG_API(switchHalow);
+        REG_API(switchAntenna);
 
         start_halow();
     }
@@ -43,6 +45,7 @@ public:
 
 private:
     static inline int _sta_enable = 1;
+    static inline int _antennaMode = 1;
     static inline json _nw_info;
     static inline int8_t _failed_cnt = 10;
 

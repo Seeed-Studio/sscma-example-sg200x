@@ -104,12 +104,14 @@ void api_halow::start_halow()
 {
     auto&& conf = parse_result(script(__func__));
     _sta_enable = conf.value("halow", 1);
+    _antennaMode = conf.value("antenna", 1);
     LOGV("halow_enable: %d", _sta_enable);
 
     int sta = 2; // no halow
     if (_sta_enable != -1)
         sta = _sta_enable;
     _nw_info["halowEnable"] = sta;
+    _nw_info["antennaEnable"] = _antennaMode;
 
     _worker = std::thread([&]() {
         uint8_t timeout = 10;
@@ -313,5 +315,15 @@ api_status_t api_halow::switchHalow(request_t req, response_t res)
     if (_sta_enable != -1)
         sta = _sta_enable;
     _nw_info["halowEnable"] = sta;
+    return API_STATUS_OK;
+}
+
+api_status_t api_halow::switchAntenna(request_t req, response_t res)
+{
+    _antennaMode = parse_body(req).value("mode", _antennaMode);
+    script(__func__, _antennaMode);
+    response(res, 0, STR_OK);
+    // 0 = RF1 1 = RF2
+    _nw_info["antennaEnable"] = _antennaMode;
     return API_STATUS_OK;
 }
