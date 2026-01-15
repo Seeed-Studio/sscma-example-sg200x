@@ -104,7 +104,7 @@ void api_halow::start_halow()
 {
     auto&& conf = parse_result(script(__func__));
     _sta_enable = conf.value("halow", 1);
-    _antennaMode = conf.value("antenna", 1);
+    _antennaMode = !conf.value("antenna", 1);
     LOGV("halow_enable: %d", _sta_enable);
 
     int sta = 2; // no halow
@@ -321,7 +321,7 @@ api_status_t api_halow::switchHalow(request_t req, response_t res)
 api_status_t api_halow::switchAntenna(request_t req, response_t res)
 {
     _antennaMode = parse_body(req).value("mode", _antennaMode);
-    script(__func__, _antennaMode);
+    script(__func__, !_antennaMode);
     response(res, 0, STR_OK);
     // 0 = RF1 1 = RF2
     _nw_info["antennaEnable"] = _antennaMode;
