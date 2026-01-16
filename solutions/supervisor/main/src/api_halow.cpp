@@ -49,7 +49,7 @@ json api_halow::get_halow_current()
     }
 
     std::string ssid = parse_escaped_string(c.value("ssid", ""));
-    c["auth"] = c.value("key_mgmt", "").find("WPA") != std::string::npos ? 1 : 0;
+    c["auth"] = c.value("key_mgmt", "").find("SAE") != std::string::npos ? 1 : 0;
     c["macAddress"] = c.value("address", "");
     c["ip"] = ip;
     c["ipAssignment"] = 1; // static/dhcp
@@ -171,12 +171,22 @@ api_status_t api_halow::_halow_ctrl(request_t req, response_t res, std::string c
     return API_STATUS_OK;
 }
 
-// APIs
 api_status_t api_halow::connectHalow(request_t req, response_t res)
 {
+    int mode = -1;
+    std::string ssid, country, encryption;
     auto&& body = parse_body(req);
-    std::string ssid = body.value("ssid", "");
-    if (ssid.empty()) {
+
+    if (body.contains("halowInfo")) {
+        country = body["halowInfo"].value("country", "");
+        encryption = body["halowInfo"].value("encryption", "");
+        mode = body["halowInfo"].value("mode", 0);
+    }
+
+    LOGV("country: %s, encryption: %s, mode: %d\n", country.c_str(), encryption.c_str(), mode);
+
+    ssid = body.value("ssid", "");
+    if (ssid.empty() || country.empty() || encryption.empty() || mode == -1) {
         response(res, -1, STR_FAILED);
         return API_STATUS_OK;
     }
@@ -201,7 +211,7 @@ api_status_t api_halow::connectHalow(request_t req, response_t res)
     _halow_mutex.unlock();
 
     if (!ssid.empty()) {
-        script(__func__, id, ssid, body.value("password", ""));
+        script(__func__, id, ssid, body.value("password", ""), country, encryption, mode);
     }
     trigger_scan();
     response(res, 0, msg);
@@ -266,7 +276,7 @@ json api_halow::get_halow_scan_list(json& connected)
     std::map<std::string, json> m;
     for (auto& j : _parse_halow_scan(script(__func__))) {
         // Compatible with previous
-        j["auth"] = j.value("rsn", "").empty() ? 0 : 1;
+        j["auth"] = j.value("rsn", "").find("SAE") != std::string::npos ? 1 : 0;
         j["macAddress"] = j["bssid"];
         m[j["ssid"]] = j;
     }

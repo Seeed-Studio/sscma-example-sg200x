@@ -646,6 +646,18 @@ _halow_start() {
     }
 }
 
+_wait_halow() {
+    prev_count=$(ip -o link show | wc -l)
+    while true; do
+        sleep 0.5
+
+        curr_count=$(ip -o link show | wc -l)
+        if [[ "$curr_count" -gt "$prev_count" ]]; then
+            break
+        fi
+    done
+}
+
 function start_halow() {
     local halow=-1 antenna=-1
     _check_halow && {
@@ -698,8 +710,34 @@ function get_halow_scan_list() {
     return 0
 }
 
+function setup_halow0()
+{
+    if [ ! -e /dev/morse_io ]; then
+        return
+    fi
+    if [ -z "$(ifconfig wlan1 2>/dev/null)" ]; then
+        ip link set wlan0 down
+        ip link set wlan0 name halow0
+        ip link set halow0 up
+        return
+    fi
+    ip link set wlan2 down
+    ip link set wlan2 name halow0
+    ip link set halow0 up
+}
+
 function connectHalow() {
-    local id="$2" ssid="$3" pwd="$4"
+    local id="$2" ssid="$3" pwd="$4" country="$5" encryption="$6" mode="$7"
+
+    if [ "$country" != "$(cat /sys/module/morse/parameters/country)" ]; then
+        $WPA_CLI_S1G save_config >/dev/null 2>&1
+        _halow_stop
+        rmmod morse && insmod /mnt/system/ko/morse.ko country=$country
+        _wait_halow
+        setup_halow0
+        sed -i "s/^country=.*/country=$country/" /etc/wpa_supplicant_s1g.conf
+        _halow_start
+    fi
 
     # Todo: filter duplicate ssid
     $WPA_CLI_S1G reconfigure >/dev/null 2>&1
@@ -713,15 +751,22 @@ function connectHalow() {
         }
 
         if [ "$pwd" == "" ]; then
-            $WPA_CLI_S1G set_network "$id" key_mgmt NONE >/dev/null 2>&1
+            if [ "$encryption" == "OWE" ]; then
+                $WPA_CLI_S1G set_network "$id" key_mgmt OWE  >/dev/null 2>&1
+                $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
+            elif [ "$encryption" == "No encryption" ]; then
+                $WPA_CLI_S1G set_network "$id" key_mgmt NONE  >/dev/null 2>&1
+            fi
         else
             ret=$($WPA_CLI_S1G set_network "$id" psk "\"$pwd\"")
             [ "$ret" != "OK" ] && {
                 $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
                 return
             }
-            $WPA_CLI_S1G set_network "$id" key_mgmt SAE WPA-PSK >/dev/null 2>&1
-            $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
+            if [ "$encryption" == "WPA3-SAE" ]; then
+                $WPA_CLI_S1G set_network "$id" key_mgmt SAE WPA-PSK >/dev/null 2>&1
+                $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
+            fi
         fi
     }
     [ $((id)) -lt 0 ] && {
@@ -735,6 +780,12 @@ function connectHalow() {
         [ $((i)) -eq $((id)) ] && { pri=100; }
         $WPA_CLI_S1G set_network "$i" priority "$pri" >/dev/null 2>&1
     done
+
+    if [ "$mode" == "0" ]; then
+        iw dev halow0 set 4addr off
+    else
+        iw dev halow0 set 4addr on
+    fi
 
     $WPA_CLI_S1G enable_network "$id" >/dev/null 2>&1
     $WPA_CLI_S1G save_config >/dev/null 2>&1
