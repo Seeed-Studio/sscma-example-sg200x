@@ -80,6 +80,7 @@ interface IInitialState {
   selectedHalowInfo?: IWifiInfo;
   halowTimer: NodeJS.Timeout | null;
   halowConfig?: IHalowInfo; // Halow 配置信息
+  halowCountry?: "AU" | "EU" | "IN" | "JP" | "KR" | "NZ" | "SG" | "US"; // Halow 国家设置
 }
 type ActionType = { type: "setState"; payload: Partial<IInitialState> };
 const initialState: IInitialState = {
@@ -110,6 +111,7 @@ const initialState: IInitialState = {
   selectedHalowInfo: undefined,
   halowTimer: null,
   halowConfig: undefined,
+  halowCountry: "US",
 };
 function reducer(state: IInitialState, action: ActionType): IInitialState {
   switch (action.type) {
@@ -599,6 +601,14 @@ export function useData() {
     }
   };
 
+  const onOpenManualHalowConfig = () => {
+    setStates({
+      visible: true,
+      formType: FormType.HalowConfig,
+      selectedHalowInfo: undefined,
+    });
+  };
+
   const onConnectHalow = async (
     values?: FormParams & { halowConfig?: IHalowInfo },
     ssid?: string
@@ -773,5 +783,6 @@ export function useData() {
     onClickHalowInfo,
     onHandleHalowOperate,
     onConnectHalow,
+    onOpenManualHalowConfig,
   };
 }

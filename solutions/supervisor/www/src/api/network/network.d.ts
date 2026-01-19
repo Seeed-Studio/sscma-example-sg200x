@@ -27,8 +27,6 @@ interface IConnectParams {
 // Halow 配置信息（用于连接 Halow 时的配置）
 interface IHalowInfo {
   country: "AU" | "EU" | "IN" | "JP" | "KR" | "NZ" | "SG" | "US"; // 国家
-  width: 1 | 2 | 4 | 8; // 带宽 (MHz)
-  signal: number; // 通道
   mode: 0 | 1; // 0：no WDS, 1: WDS
   encryption: "WPA3-SAE" | "OWE" | "WPA3-EAP" | "No encryption"; // 加密方法
 }

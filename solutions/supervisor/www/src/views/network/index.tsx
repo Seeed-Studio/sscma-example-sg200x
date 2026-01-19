@@ -6,9 +6,8 @@ import {
   Modal,
   Tabs,
   Select,
-  InputNumber,
 } from "antd";
-import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { LoadingOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import WarnImg from "@/assets/images/warn.png";
 import LockImg from "@/assets/images/svg/lock.svg";
 import ConnectedImg from "@/assets/images/svg/connected.svg";
@@ -72,6 +71,7 @@ function Network() {
     onClickHalowInfo,
     onHandleHalowOperate,
     onConnectHalow,
+    onOpenManualHalowConfig,
   } = useData();
 
   return (
@@ -287,16 +287,39 @@ function Network() {
                   )}
 
                   {/* Antenna开关：显示天线状态 */}
-                  {state.halowEnable !== 2 && (
+                  {state.halowEnable !== 2 && state.halowChecked && (
                     <div className="mt-20">
                       <div className="flex justify-between items-center mb-20">
-                        <div className="font-bold text-18">Antenna</div>
+                        <div className="font-bold text-18">IPEX Antenna</div>
                         <div className="flex items-center">
                           <Switch
                             checked={state.antennaEnable === AntennaEnable.RF2}
                             onChange={handleSwitchAntenna}
                           />
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Country选择器 */}
+                  {state.halowEnable !== 2 && state.halowChecked && (
+                    <div className="mt-20">
+                      <div className="flex justify-between items-center mb-20">
+                        <div className="font-bold text-18">Country</div>
+                        <Select
+                          value={state.halowCountry}
+                          onChange={(value) => setStates({ halowCountry: value })}
+                          options={[
+                            { label: "AU", value: "AU" },
+                            { label: "EU", value: "EU" },
+                            { label: "IN", value: "IN" },
+                            { label: "JP", value: "JP" },
+                            { label: "KR", value: "KR" },
+                            { label: "NZ", value: "NZ" },
+                            { label: "SG", value: "SG" },
+                            { label: "US", value: "US" },
+                          ]}
+                        />
                       </div>
                     </div>
                   )}
@@ -373,68 +396,76 @@ function Network() {
                     )}
 
                   {/* 其他发现的网络（HaLow 开启时显示） */}
-                  {state.halowChecked && state.halowInfoList.length > 0 && (
+                  {state.halowChecked && (
                     <div className="mt-30">
-                      <div className="font-bold text-18 mb-20">
-                        Networks Found
+                      <div className="flex justify-between items-center mb-20">
+                        <div className="font-bold text-18">Networks Found</div>
+                        <Button
+                          type="primary"
+                          icon={<PlusOutlined />}
+                          size="small"
+                          onClick={onOpenManualHalowConfig}
+                        />
                       </div>
-                      <div className="border-b text-16">
-                        {state.halowInfoList.map((halowItem, index) => (
-                          <div
-                            className="flex justify-between border-t py-10"
-                            key={index}
-                            onClick={() => onClickHalowItem(halowItem)}
-                          >
-                            <span className="flex flex-1 truncate">
-                              <span className="self-center truncate flex items-center">
-                                {halowItem.status ===
-                                NetworkStatus.Connecting ? (
-                                  <span className="mr-12 flex items-center">
-                                    <LoadingOutlined />
-                                  </span>
-                                ) : halowItem.status ===
-                                  NetworkStatus.Connected ? (
-                                  <img
-                                    className="w-18 mr-12"
-                                    src={ConnectedImg}
-                                    alt=""
-                                  />
-                                ) : null}
-                                {halowItem.ssid}
+                      {state.halowInfoList.length > 0 && (
+                        <div className="border-b text-16">
+                          {state.halowInfoList.map((halowItem, index) => (
+                            <div
+                              className="flex justify-between border-t py-10"
+                              key={index}
+                              onClick={() => onClickHalowItem(halowItem)}
+                            >
+                              <span className="flex flex-1 truncate">
+                                <span className="self-center truncate flex items-center">
+                                  {halowItem.status ===
+                                  NetworkStatus.Connecting ? (
+                                    <span className="mr-12 flex items-center">
+                                      <LoadingOutlined />
+                                    </span>
+                                  ) : halowItem.status ===
+                                    NetworkStatus.Connected ? (
+                                    <img
+                                      className="w-18 mr-12"
+                                      src={ConnectedImg}
+                                      alt=""
+                                    />
+                                  ) : null}
+                                  {halowItem.ssid}
+                                </span>
                               </span>
-                            </span>
-                            <div className="flex items-center">
-                              {halowItem.auth == WifiAuth.Need && (
-                                <div className="px-12">
-                                  <img
-                                    className="w-18"
-                                    src={LockImg}
-                                    alt=""
-                                    onClick={(event: React.MouseEvent) => {
-                                      event.stopPropagation();
-                                      onClickHalowItem(halowItem);
-                                    }}
-                                  />
-                                </div>
-                              )}
-                              <img
-                                className="w-18"
-                                src={wifiImg[getSignalIcon(halowItem.signal)]}
-                                alt=""
-                              />
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<InfoCircleOutlined />}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  onClickHalowInfo(halowItem);
-                                }}
-                              />
+                              <div className="flex items-center">
+                                {halowItem.auth == WifiAuth.Need && (
+                                  <div className="px-12">
+                                    <img
+                                      className="w-18"
+                                      src={LockImg}
+                                      alt=""
+                                      onClick={(event: React.MouseEvent) => {
+                                        event.stopPropagation();
+                                        onClickHalowItem(halowItem);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <img
+                                  className="w-18"
+                                  src={wifiImg[getSignalIcon(halowItem.signal)]}
+                                  alt=""
+                                />
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<InfoCircleOutlined />}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    onClickHalowInfo(halowItem);
+                                  }}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -508,66 +539,29 @@ function Network() {
             requiredMark={false}
             onFinish={(values) => {
               const halowConfig = {
-                country: values.country,
-                width: values.width,
-                signal: values.signal,
+                country: state.halowCountry || "US",
                 mode: values.mode,
                 encryption: values.encryption,
               };
-              onConnectHalow({ ...values, halowConfig });
+              // 如果有 selectedHalowInfo，使用它的 ssid；否则使用表单输入的 ssid
+              const ssid = state.selectedHalowInfo?.ssid || values.ssid;
+              onConnectHalow({ ...values, halowConfig }, ssid);
             }}
             initialValues={{
-              country: "US",
-              width: 8,
-              signal: 12,
               mode: 0,
               encryption: "WPA3-SAE",
             }}
           >
-            <Form.Item
-              name="country"
-              label="Country"
-              rules={[{ required: true, message: "Please select country" }]}
-            >
-              <Select
-                options={[
-                  { label: "AU", value: "AU" },
-                  { label: "EU", value: "EU" },
-                  { label: "IN", value: "IN" },
-                  { label: "JP", value: "JP" },
-                  { label: "KR", value: "KR" },
-                  { label: "NZ", value: "NZ" },
-                  { label: "SG", value: "SG" },
-                  { label: "US", value: "US" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item
-              name="width"
-              label="Width (MHz)"
-              rules={[{ required: true, message: "Please select width" }]}
-            >
-              <Select
-                options={[
-                  { label: "1 MHz", value: 1 },
-                  { label: "2 MHz", value: 2 },
-                  { label: "4 MHz", value: 4 },
-                  { label: "8 MHz", value: 8 },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item
-              name="signal"
-              label="Channel"
-              rules={[{ required: true, message: "Please enter channel" }]}
-            >
-              <InputNumber
-                style={{ width: "100%" }}
-                placeholder="Enter channel number"
-                min={1}
-                max={100}
-              />
-            </Form.Item>
+            {/* 如果没有 selectedHalowInfo（手动添加），显示 SSID 输入框 */}
+            {!state.selectedHalowInfo && (
+              <Form.Item
+                name="ssid"
+                label="SSID"
+                rules={[requiredTrimValidate()]}
+              >
+                <Input placeholder="Enter SSID" allowClear maxLength={63} />
+              </Form.Item>
+            )}
             <Form.Item
               name="mode"
               label="Mode"
@@ -594,7 +588,8 @@ function Network() {
                 ]}
               />
             </Form.Item>
-            {state.selectedHalowInfo?.auth === WifiAuth.Need && (
+            {/* 如果有 selectedHalowInfo 且需要密码，或者手动添加时，显示密码输入框 */}
+            {(state.selectedHalowInfo?.auth === WifiAuth.Need || !state.selectedHalowInfo) && (
               <Form.Item
                 name="password"
                 label="Password"
