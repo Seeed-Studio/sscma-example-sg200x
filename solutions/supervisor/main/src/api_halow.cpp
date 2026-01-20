@@ -195,7 +195,7 @@ api_status_t api_halow::connectHalow(request_t req, response_t res)
     int id = -1;
     _halow_mutex.lock();
     if (_nw_info.value("Selected", "") != ssid) {
-        auto& n = _nw_info["connectedWifiInfoList"];
+        auto& n = _nw_info["connectedHalowInfoList"];
         for (auto& _n : n) {
             if (_n.value("ssid", "") == ssid) {
                 id = stoi(_n.value("id", "-1"));
