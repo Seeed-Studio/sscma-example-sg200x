@@ -739,36 +739,36 @@ function connectHalow() {
         _halow_start
     fi
 
-    # Todo: filter duplicate ssid
     $WPA_CLI_S1G reconfigure >/dev/null 2>&1
     [ $((id)) -lt 0 ] && { # create new
         id=$($WPA_CLI_S1G add_network)
+    }
 
-        local ret=$($WPA_CLI_S1G set_network "$id" ssid "\"$ssid\"")
+    local ret=$($WPA_CLI_S1G set_network "$id" ssid "\"$ssid\"")
+    [ "$ret" != "OK" ] && {
+        $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
+        return
+    }
+
+    if [ "$pwd" == "" ]; then
+        if [ "$encryption" == "OWE" ]; then
+            $WPA_CLI_S1G set_network "$id" key_mgmt OWE  >/dev/null 2>&1
+            $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
+        elif [ "$encryption" == "No encryption" ]; then
+            $WPA_CLI_S1G set_network "$id" key_mgmt NONE  >/dev/null 2>&1
+        fi
+    else
+        ret=$($WPA_CLI_S1G set_network "$id" psk "\"$pwd\"")
         [ "$ret" != "OK" ] && {
             $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
             return
         }
-
-        if [ "$pwd" == "" ]; then
-            if [ "$encryption" == "OWE" ]; then
-                $WPA_CLI_S1G set_network "$id" key_mgmt OWE  >/dev/null 2>&1
-                $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
-            elif [ "$encryption" == "No encryption" ]; then
-                $WPA_CLI_S1G set_network "$id" key_mgmt NONE  >/dev/null 2>&1
-            fi
-        else
-            ret=$($WPA_CLI_S1G set_network "$id" psk "\"$pwd\"")
-            [ "$ret" != "OK" ] && {
-                $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
-                return
-            }
-            if [ "$encryption" == "WPA3-SAE" ]; then
-                $WPA_CLI_S1G set_network "$id" key_mgmt SAE WPA-PSK >/dev/null 2>&1
-                $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
-            fi
+        if [ "$encryption" == "WPA3-SAE" ]; then
+            $WPA_CLI_S1G set_network "$id" key_mgmt SAE WPA-PSK >/dev/null 2>&1
+            $WPA_CLI_S1G set_network "$id" ieee80211w 2 >/dev/null 2>&1
         fi
-    }
+    fi
+
     [ $((id)) -lt 0 ] && {
         echo "$STR_FAILED"
         return
