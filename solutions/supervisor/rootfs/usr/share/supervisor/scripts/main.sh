@@ -658,6 +658,14 @@ _wait_halow() {
     done
 }
 
+_connect_halow() {
+	local id="$1"
+    $WPA_CLI_S1G enable_network "$id" >/dev/null 2>&1
+    $WPA_CLI_S1G save_config >/dev/null 2>&1
+    $WPA_CLI_S1G disconnect >/dev/null 2>&1
+    $WPA_CLI_S1G select_network "$id" >/dev/null 2>&1
+}
+
 function start_halow() {
     local halow=-1 antenna=-1
     _check_halow && {
@@ -729,12 +737,19 @@ function setup_halow0()
 function connectHalow() {
     local id="$2" ssid="$3" pwd="$4" country="$5" encryption="$6" mode="$7"
 
+	if [ "$id" != "-1" ]; then
+		_connect_halow "$id"
+		echo "$STR_OK"
+		return
+	fi
+
     if [ "$country" != "$(cat /sys/module/morse/parameters/country)" ]; then
         $WPA_CLI_S1G save_config >/dev/null 2>&1
         _halow_stop
         rmmod morse && insmod /mnt/system/ko/morse.ko country=$country
         _wait_halow
         setup_halow0
+        sleep 1
         sed -i "s/^country=.*/country=$country/" /etc/wpa_supplicant_s1g.conf
         _halow_start
     fi
@@ -787,10 +802,8 @@ function connectHalow() {
         iw dev halow0 set 4addr on
     fi
 
-    $WPA_CLI_S1G enable_network "$id" >/dev/null 2>&1
-    $WPA_CLI_S1G save_config >/dev/null 2>&1
-    $WPA_CLI_S1G disconnect >/dev/null 2>&1
-    $WPA_CLI_S1G select_network "$id" >/dev/null 2>&1
+	_connect_halow "$id"
+
     echo "$STR_OK"
 }
 
