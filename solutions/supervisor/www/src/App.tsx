@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App as AntdApp } from "antd";
 import { createHashRouter, RouterProvider } from "react-router-dom";
 import Routes from "@/router";
 import Login from "@/views/login";
@@ -65,9 +65,11 @@ const App = () => {
         },
       }}
     >
-      <div className="w-full h-full">
-        {token ? <RouterProvider router={router} /> : <Login />}
-      </div>
+      <AntdApp>
+        <div className="w-full h-full">
+          {token ? <RouterProvider router={router} /> : <Login />}
+        </div>
+      </AntdApp>
     </ConfigProvider>
   );
 };
