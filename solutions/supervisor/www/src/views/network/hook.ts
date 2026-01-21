@@ -538,6 +538,36 @@ export function useData() {
     onShowHalowItemInfo(halowItem);
   };
 
+  // 直接连接 Halow（不弹窗，用于重连已保存的网络）
+  const onConnectHalowDirect = async (ssid: string) => {
+    try {
+      if (!ssid) {
+        return;
+      }
+      setStates({
+        connectLoading: true,
+      });
+      setConnectingHalowVisualState(ssid);
+
+      // 直接连接，只传 ssid，后端会根据已保存的网络信息自动使用之前的配置
+      const params: IConnectHalowParams = {
+        ssid: ssid,
+      };
+
+      await connectHalowApi(params);
+      setTimeout(() => {
+        setStates({
+          needRefresh: true,
+          connectLoading: false,
+        });
+      }, 1000);
+    } catch (err) {
+      setStates({
+        connectLoading: false,
+      });
+    }
+  };
+
   const onClickHalowItem = (halowItem: IWifiInfo) => {
     if (state.connectLoading) {
       return;
@@ -549,6 +579,16 @@ export function useData() {
       onShowHalowItemInfo(halowItem);
       return;
     }
+    // 如果是已连接过的网络（在 My Networks 中），直接连接，不弹窗
+    const isConnectedNetwork = state.connectedHalowInfoList.some(
+      (item) => item.ssid === halowItem.ssid
+    );
+    if (isConnectedNetwork) {
+      // 直接连接，只传 ssid
+      onConnectHalowDirect(halowItem.ssid);
+      return;
+    }
+    // 如果是未连接过的网络，弹出配置表单
     onHandleConnectHalow(halowItem);
   };
 

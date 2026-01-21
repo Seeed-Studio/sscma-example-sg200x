@@ -301,28 +301,6 @@ function Network() {
                     </div>
                   )}
 
-                  {/* Country选择器 */}
-                  {state.halowEnable !== 2 && state.halowChecked && (
-                    <div className="mt-20">
-                      <div className="flex justify-between items-center mb-20">
-                        <div className="font-bold text-18">Country</div>
-                        <Select
-                          value={state.halowCountry}
-                          onChange={(value) => setStates({ halowCountry: value })}
-                          options={[
-                            { label: "AU", value: "AU" },
-                            { label: "EU", value: "EU" },
-                            { label: "IN", value: "IN" },
-                            { label: "JP", value: "JP" },
-                            { label: "KR", value: "KR" },
-                            { label: "NZ", value: "NZ" },
-                            { label: "SG", value: "SG" },
-                            { label: "US", value: "US" },
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {/* 我的网络 - 已连接过的Halow列表（HaLow 开启时显示） */}
                   {state.halowChecked &&
@@ -539,7 +517,7 @@ function Network() {
             requiredMark={false}
             onFinish={(values) => {
               const halowConfig = {
-                country: state.halowCountry || "US",
+                country: values.country || "US",
                 mode: values.mode,
                 encryption: values.encryption,
               };
@@ -548,6 +526,7 @@ function Network() {
               onConnectHalow({ ...values, halowConfig }, ssid);
             }}
             initialValues={{
+              country: "US",
               mode: 0,
               encryption: "WPA3-SAE",
             }}
@@ -562,6 +541,18 @@ function Network() {
                 <Input placeholder="Enter SSID" allowClear maxLength={63} />
               </Form.Item>
             )}
+            <Form.Item
+              name="country"
+              label="Country"
+              rules={[{ required: true, message: "Please select country" }]}
+            >
+              <Select
+                options={[
+                  { label: "US", value: "US" },
+                  { label: "AU", value: "AU" },
+                ]}
+              />
+            </Form.Item>
             <Form.Item
               name="mode"
               label="Mode"
@@ -583,21 +574,40 @@ function Network() {
                 options={[
                   { label: "WPA3-SAE", value: "WPA3-SAE" },
                   { label: "OWE", value: "OWE" },
-                  { label: "WPA3-EAP", value: "WPA3-EAP" },
                   { label: "No encryption", value: "No encryption" },
                 ]}
               />
             </Form.Item>
-            {/* 如果有 selectedHalowInfo 且需要密码，或者手动添加时，显示密码输入框 */}
-            {(state.selectedHalowInfo?.auth === WifiAuth.Need || !state.selectedHalowInfo) && (
-              <Form.Item
-                name="password"
-                label="Password"
-                rules={[requiredTrimValidate()]}
-              >
-                <Input.Password placeholder="" allowClear maxLength={63} />
-              </Form.Item>
-            )}
+            {/* 密码输入框显示逻辑 */}
+            <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.encryption !== currentValues.encryption}>
+              {({ getFieldValue }) => {
+                const encryption = getFieldValue("encryption");
+                // 如果是点击列表项，根据 auth 判断；如果是手动添加，根据加密方式判断
+                if (state.selectedHalowInfo) {
+                  // 点击列表项：根据 auth 判断
+                  return state.selectedHalowInfo.auth === WifiAuth.Need ? (
+                    <Form.Item
+                      name="password"
+                      label="Password"
+                      rules={[requiredTrimValidate()]}
+                    >
+                      <Input.Password placeholder="" allowClear maxLength={63} />
+                    </Form.Item>
+                  ) : null;
+                } else {
+                  // 手动添加：根据加密方式判断，OWE 和 No encryption 不需要密码
+                  return encryption && encryption !== "OWE" && encryption !== "No encryption" ? (
+                    <Form.Item
+                      name="password"
+                      label="Password"
+                      rules={[requiredTrimValidate()]}
+                    >
+                      <Input.Password placeholder="" allowClear maxLength={63} />
+                    </Form.Item>
+                  ) : null;
+                }
+              }}
+            </Form.Item>
             <Button
               block
               type="primary"
