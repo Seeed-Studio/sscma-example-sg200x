@@ -186,7 +186,7 @@ api_status_t api_halow::connectHalow(request_t req, response_t res)
     LOGV("country: %s, encryption: %s, mode: %d\n", country.c_str(), encryption.c_str(), mode);
 
     ssid = body.value("ssid", "");
-    if (ssid.empty() || country.empty() || encryption.empty() || mode == -1) {
+    if (ssid.empty()) {
         response(res, -1, STR_FAILED);
         return API_STATUS_OK;
     }
@@ -209,6 +209,11 @@ api_status_t api_halow::connectHalow(request_t req, response_t res)
         msg = "Connecting...";
     }
     _halow_mutex.unlock();
+
+	if (id == -1 && (country.empty() || encryption.empty() || mode == -1)) {
+        response(res, -1, STR_FAILED);
+        return API_STATUS_OK;
+	}
 
     if (!ssid.empty()) {
         script(__func__, id, ssid, body.value("password", ""), country, encryption, mode);
