@@ -630,6 +630,7 @@ function forgetWiFi() {
 ##################################################
 # halow
 readonly CONF_HALOW="$CONFIG_DIR/halow"
+readonly CONF_COUNTRY="$CONFIG_DIR/halow_country"
 readonly CONF_ANTENNA="$CONFIG_DIR/antenna"
 readonly WPA_CLI_S1G="wpa_cli_s1g -i halow0"
 readonly GPIO_ANTENNA=431
@@ -647,13 +648,20 @@ _halow_start() {
 }
 
 _wait_halow() {
+    local timeout=6
+    local count=0
     prev_count=$(ip -o link show | wc -l)
     while true; do
         sleep 0.5
+        count=$((count + 1))
 
         curr_count=$(ip -o link show | wc -l)
-        if [[ "$curr_count" -gt "$prev_count" ]]; then
-            break
+        if [ "$curr_count" -gt "$prev_count" ]; then
+            return 0
+        fi
+
+        if [ "$count" -ge "$timeout" ]; then
+            return 1
         fi
     done
 }
@@ -744,10 +752,15 @@ function connectHalow() {
 	fi
 
     if [ "$country" != "$(cat /sys/module/morse/parameters/country)" ]; then
+        echo "$country" > "$CONF_COUNTRY"
         $WPA_CLI_S1G save_config >/dev/null 2>&1
         _halow_stop
         rmmod morse && insmod /mnt/system/ko/morse.ko country=$country
         _wait_halow
+        if [ $? -ne 0 ]; then
+            echo "$STR_FAILED"
+            return
+        fi
         setup_halow0
         sleep 1
         sed -i "s/^country=.*/country=$country/" /etc/wpa_supplicant_s1g.conf
