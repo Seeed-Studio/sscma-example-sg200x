@@ -126,9 +126,7 @@ void api_halow::start_halow()
 
                 _halow_mutex.lock();
                 _nw_info["connectedHalowInfoList"] = n;
-                if (!l.empty()) {
-                    _nw_info["halowInfoList"] = l;
-                }
+				_nw_info["halowInfoList"] = l;
                 _halow_mutex.unlock();
             }
 
