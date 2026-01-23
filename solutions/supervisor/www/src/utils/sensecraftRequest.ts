@@ -24,11 +24,14 @@ const sensecraftService = axios.create({});
 // 根据api类型修改baseurl
 sensecraftService.interceptors.request.use((config) => {
   config.headers.Authorization = getToken();
-  if (config.url?.startsWith("portalapi")) {
+  if (config.url?.startsWith('portalapi')) {
     config.baseURL = portalApi;
-  } else if (config.url?.startsWith("aiserverapi")) {
+  } else if (config.url?.startsWith('aiserverapi')) {
     config.baseURL = sensecraftApi;
-  } else if (config.url?.startsWith("v1/api")) {
+  } else if (config.url?.startsWith('v1/api')) {
+    // 模型转换 API 使用独立的 baseURL
+    config.baseURL = sensecraftTrainApi;
+  } else if (config.url?.startsWith('v2/api')) {
     // 模型转换 API 使用独立的 baseURL
     config.baseURL = sensecraftTrainApi;
   }
@@ -46,7 +49,7 @@ sensecraftService.interceptors.response.use(
     }
     const code = response.data?.code;
     if (
-      (code == 11101 || code == 11102) &&
+      (code == 11101 || code == 11102 || code == 401) &&
       !response.request.responseURL.includes("portalapi/auth/refreshToken")
     ) {
       return handleTokenRefresh(response.config);
@@ -64,7 +67,7 @@ sensecraftService.interceptors.response.use(
         const text = await response.data.text();
         const jsonData = JSON.parse(text);
         const code = jsonData.code;
-        if (code === 11101 || code === 11102) {
+        if (code === 11101 || code === 11102 || code === 401) {
           return handleTokenRefresh(error.config);
         }
         return Promise.reject(new Error(jsonData.msg || "Download failed"));
@@ -74,7 +77,7 @@ sensecraftService.interceptors.response.use(
       }
     }
     const code = response.data?.code;
-    if (code === 11101 || code === 11102) {
+    if (code === 11101 || code === 11102 || code === 401) {
       return handleTokenRefresh(error.config);
     }
     return Promise.reject(error);

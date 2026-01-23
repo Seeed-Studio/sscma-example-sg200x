@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Modal, Button, Input, message, ButtonProps } from "antd";
+import { Modal, Button, Input, message, ButtonProps, Tooltip } from "antd";
 import {
   PlusCircleOutlined,
   SyncOutlined,
@@ -235,20 +235,22 @@ const ApplicationList = ({
           {applist?.length > 0 &&
             applist.map((app, index) =>
               appInfo?.app_id == app.app_id ? (
-                <div key={index} className="flex mb-10 mr-6 h-40">
+                <div key={index} className="flex mb-10 mr-6 h-40 min-w-0">
                   <div
-                    className="flex flex-1 text-14 text-primary border border-primary rounded-4 p-8"
+                    className="flex flex-1 min-w-0 text-14 text-primary border border-primary rounded-4 p-8 overflow-hidden"
                     onMouseEnter={() => handleFocusApp(app.app_id)}
                     onMouseLeave={() => handleBlurApp()}
                   >
+                    <Tooltip title={app.app_name}>
+                      <div
+                        className="flex flex-1 min-w-0 font-medium cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                        onClick={() => handleSelectApp(app.app_id)}
+                      >
+                        {app.app_name}
+                      </div>
+                    </Tooltip>
                     <div
-                      className="flex flex-1 font-medium cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
-                      onClick={() => handleSelectApp(app.app_id)}
-                    >
-                      {app.app_name}
-                    </div>
-                    <div
-                      className={`flex ${
+                      className={`flex shrink-0 ${
                         focusAppid == app.app_id ? "flex" : "hidden"
                       }`}
                     >
@@ -275,18 +277,20 @@ const ApplicationList = ({
               ) : (
                 <div
                   key={index}
-                  className="flex mb-10 mr-6 h-30 text-12 bg-background text-text border border-disable rounded-4 px-8"
+                  className="flex mb-10 mr-6 h-30 min-w-0 text-12 bg-background text-text border border-disable rounded-4 px-8 overflow-hidden"
                   onMouseEnter={() => handleFocusApp(app.app_id)}
                   onMouseLeave={() => handleBlurApp()}
                 >
+                  <Tooltip title={app.app_name}>
+                    <div
+                      className="flex flex-1 min-w-0 items-center cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
+                      onClick={() => handleSelectApp(app.app_id)}
+                    >
+                      {app.app_name}
+                    </div>
+                  </Tooltip>
                   <div
-                    className="flex flex-1 items-center cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
-                    onClick={() => handleSelectApp(app.app_id)}
-                  >
-                    {app.app_name}
-                  </div>
-                  <div
-                    className={`flex ${
+                    className={`flex shrink-0 ${
                       focusAppid == app.app_id ? "flex" : "hidden"
                     }`}
                   >

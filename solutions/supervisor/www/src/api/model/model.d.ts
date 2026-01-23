@@ -60,3 +60,40 @@ export interface IGetTrainStatusResponse {
   finished_at: string; // Unix 毫秒时间戳
 }
 
+export interface IModelMetadata {
+  classes?: string[];
+}
+
+export interface IGetModelInfoResponse {
+  model_id: string;
+  task_id?: number;
+  display_name?: string;
+  display_ext?: string;
+  prompt?: string;
+  framework_type?: number;
+  device_type?: number;
+  status?: ModelConversionStatus;
+  progress?: number;
+  error_message?: string | null;
+  started_at?: string;
+  finished_at?: string;
+  created_at?: string;
+  model_size?: string;
+  metadata?: IModelMetadata;
+}
+
+export interface IGetModelV2Response {
+  model_id: string;
+  task_id?: number;
+  display_name?: string;
+  display_ext?: string;
+  framework_type?: number;
+  device_type?: number;
+  status?: ModelConversionStatus;
+  download_url?: string;
+  download_filename?: string;
+  md5?: string;
+  model_size?: string;
+  classes?: string[];
+  metadata?: IModelMetadata;
+}

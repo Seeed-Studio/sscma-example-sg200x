@@ -5,6 +5,8 @@ import {
   IGetTrainingRecordsParams,
   IGetTrainingRecordsResponse,
   IGetTrainStatusResponse,
+  IGetModelInfoResponse,
+  IGetModelV2Response,
 } from "./model.d";
 
 /**
@@ -64,19 +66,57 @@ export const getTrainStatusApi = async (model_id: string) =>
  * GET /v1/api/get_model
  * 返回二进制文件流
  */
-export const getModelApi = async (model_id: string): Promise<Blob> => {
+export const getModelApi = async (
+  model_id: string,
+  params?: { device_type?: number; task_id?: number }
+): Promise<Blob> => {
   // 使用 sensecraftRequest 以便自动携带鉴权，且支持 baseURL
   const blobResponse = await sensecraftRequest<Blob>({
     url: "v1/api/get_model",
     method: "get",
     params: {
       model_id: model_id,
+      ...params,
     },
     responseType: "blob",
   });
   // responseType: "blob" 时返回的结构是后端原始响应体；此处约定为 Blob
   return blobResponse as unknown as Blob;
 };
+
+/**
+ * 获取单个模型信息
+ * GET /v1/api/get_model_info
+ */
+export const getModelInfoApi = async (
+  model_id: string,
+  params?: { task_id?: number; device_type?: number }
+) =>
+  sensecraftRequest<IGetModelInfoResponse>({
+    url: "v1/api/get_model_info",
+    method: "get",
+    params: {
+      model_id,
+      ...params,
+    },
+  });
+
+/**
+ * 获取模型信息（v2）
+ * GET /v2/api/get_model
+ */
+export const getModelV2Api = async (
+  model_id: string,
+  params?: { task_id?: number; device_type?: number }
+) =>
+  sensecraftRequest<IGetModelV2Response>({
+    url: "v2/api/get_model",
+    method: "get",
+    params: {
+      model_id,
+      ...params,
+    },
+  });
 
 /**
  * 删除模型

@@ -67,4 +67,6 @@ export const encryptPassword = (password: string) => {
 export const DefaultFlowData =
   '[{"id":"30a71ccb9b1d15ef","type":"tab","label":"Flow 1","disabled":false,"info":"","env":[]},{"id":"9d4b3a6a5e8eaea6","type":"sscma","host":"localhost","mqttport":"1883","apiport":"80","clientid":"recamera","username":"","password":""},{"id":"144cb94c134b5e2a","type":"camera","z":"30a71ccb9b1d15ef","option":0,"light":false,"client":"9d4b3a6a5e8eaea6","x":150,"y":140,"wires":[["a7f38a5be039ae97"]]},{"id":"a7f38a5be039ae97","type":"model","z":"30a71ccb9b1d15ef","name":"","uri":"","model":"Gesture Detection","tscore":0.45,"tiou":0.25,"debug":false,"trace":false,"counting":false,"classes":"paper,rock,scissors","splitter":"0,0,0,0","client":"9d4b3a6a5e8eaea6","x":350,"y":140,"wires":[[]]}]';
 
+export { DefaultFlowDataWithDashboard } from "./flowDefaults";
+
 export const Version = "2025-08-15 18:00";

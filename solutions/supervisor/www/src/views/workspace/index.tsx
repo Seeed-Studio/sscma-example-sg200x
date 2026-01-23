@@ -39,9 +39,15 @@ import {
   acquireFileUrlApi,
   applyModelApi,
 } from "@/api/sensecraft";
+import { getModelApi, getModelV2Api } from "@/api/model";
 import recamera_logo from "@/assets/images/recamera_logo.png";
 import { IAppInfo, IModelData, IActionInfo } from "@/api/sensecraft/sensecraft";
-import { sensecraftAuthorize, parseUrlParam, DefaultFlowData } from "@/utils";
+import {
+  sensecraftAuthorize,
+  parseUrlParam,
+  DefaultFlowData,
+  DefaultFlowDataWithDashboard,
+} from "@/utils";
 import usePlatformStore, {
   savePlatformInfo,
   initPlatformStore,
@@ -96,6 +102,29 @@ const Workspace = () => {
 
   const [userInfoLoading, setUserInfoLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("application");
+
+  const waitForDashboardReady = async (
+    ip: string,
+    timeoutMs = 30000,
+    intervalMs = 1500
+  ) => {
+    const url = `http://${ip}:1880/dashboard`;
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const res = await fetch(url, { method: "GET" });
+        if (res.ok && (res.status === 200 || res.status === 204)) {
+          return true;
+        }
+      } catch (error) {
+        // ignore and retry
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    return false;
+  };
+
   useEffect(() => {
     const initPlatform = async () => {
       const param = parseUrlParam(window.location.href);
@@ -105,6 +134,9 @@ const Workspace = () => {
       const app_id = param.app_id; //type为app时才需要传
       const model_id = param.model_id; //type为model时才需要传
 
+      if (action) {
+        sessionStorage.removeItem("sensecraft_action");
+      }
       let actionInfo;
       if (action) {
         actionInfo = {
@@ -113,13 +145,31 @@ const Workspace = () => {
           model_id: model_id,
         };
       } else {
-        actionInfo = {
-          action: "normal",
-        };
+        const cachedAction = sessionStorage.getItem("sensecraft_action");
+        if (cachedAction) {
+          try {
+            actionInfo = JSON.parse(cachedAction);
+          } catch (error) {
+            actionInfo = {
+              action: "normal",
+            };
+          }
+          sessionStorage.removeItem("sensecraft_action");
+        } else {
+          actionInfo = {
+            action: "normal",
+          };
+        }
       }
 
       if (token_url && refresh_token) {
         await initPlatformStore(token_url, refresh_token);
+        if (actionInfo?.action && actionInfo.action !== "normal") {
+          sessionStorage.setItem(
+            "sensecraft_action",
+            JSON.stringify(actionInfo)
+          );
+        }
         setActionInfo(actionInfo);
         savePlatformInfo();
         const currentUrl = window.location.href;
@@ -232,6 +282,13 @@ const Workspace = () => {
             //获取模型详情
             deployAndCreateAppForSensecraft(model_id);
           }
+        } else if (action == "train") {
+          //训练模型
+          if (model_id) {
+            //获取模型文件并上传到设备
+            handleTrainModel(model_id, model_name);
+          }
+          sessionStorage.removeItem("sensecraft_action");
         } else if (action == "normal") {
           checkAndSyncAppData();
         }
@@ -310,12 +367,12 @@ const Workspace = () => {
             formData.append("model_file", blob); // 文件名可以根据需要修改
           }
           formData.append("model_info", JSON.stringify(model_data));
-          
+
           // 使用分片上传并显示进度
           const resp = await uploadModelApi(formData, (progress) => {
             setLoadingTip(`Uploading model to reCamera: ${progress.toFixed(1)}%`);
           });
-          
+
           setLoading(false);
           setLoadingTip("");
           const ret = resp.code == 0;
@@ -519,6 +576,206 @@ const Workspace = () => {
       setLoadingTip("");
     } catch (error) {
       messageApi.error("Deploy model failed");
+      setLoading(false);
+      setLoadingTip("");
+    }
+  };
+
+  const handleTrainModel = async (model_id: string, model_name?: string) => {
+    if (!deviceInfo?.ip) {
+      messageApi.error("Device not connected");
+      return;
+    }
+
+    try {
+      console.info("train:start", { model_id, model_name });
+      setLoading(true);
+      let classesCsv: string | null = null;
+      let classesList: string[] | null = null;
+      let resolvedModelName = model_name;
+      let trainDeviceType: number | null = null;
+      let trainTaskId: number | null = null;
+      setLoadingTip("Getting model info");
+      console.info("train:step:get_model_info:start", { model_id });
+      console.info("train:step:get_model_info:request", {
+        url: `${import.meta.env.VITE_SENSECRAFT_TRAIN_API_URL}/v2/api/get_model`,
+        params: { model_id },
+      });
+      const infoResp = await getModelV2Api(model_id);
+      console.info("train:step:get_model_info:done", infoResp);
+      trainDeviceType = infoResp.data?.device_type ?? null;
+      trainTaskId = infoResp.data?.task_id ?? null;
+      const classes = infoResp.data?.classes ?? infoResp.data?.metadata?.classes;
+      if (Array.isArray(classes) && classes.length > 0) {
+        classesList = classes;
+        classesCsv = classes.join(",");
+      }
+      if (!resolvedModelName) {
+        const displayName = infoResp.data?.display_name;
+        const displayExt = infoResp.data?.display_ext;
+        if (displayName && displayExt) {
+          resolvedModelName = `${displayName}.${displayExt}`;
+        } else if (displayName) {
+          resolvedModelName = displayName;
+        }
+      }
+      console.info("train:model_info_v2", {
+        model_id,
+        resolvedModelName,
+        device_type: trainDeviceType,
+        task_id: trainTaskId,
+        classes: classesList,
+      });
+
+      if (trainDeviceType && trainDeviceType !== 40) {
+        setLoading(false);
+        setLoadingTip("");
+        await modal.confirm({
+          title: "Device type mismatch",
+          content:
+            "The selected model was trained for a different device type. Please choose a reCamera (device_type=40) model.",
+          okText: "OK",
+          cancelButtonProps: { style: { display: "none" } },
+        });
+        return;
+      }
+
+      setLoadingTip("Getting model");
+      console.info("train:step:get_model:start", {
+        model_id,
+        task_id: trainTaskId,
+        device_type: trainDeviceType,
+      });
+      console.info("train:step:get_model:request", {
+        url: `${import.meta.env.VITE_SENSECRAFT_TRAIN_API_URL}/v1/api/get_model`,
+        params: {
+          model_id,
+          task_id: trainTaskId ?? undefined,
+          device_type: trainDeviceType ?? undefined,
+        },
+      });
+      const blob = await getModelApi(model_id, {
+        task_id: trainTaskId ?? undefined,
+        device_type: trainDeviceType ?? undefined,
+      });
+      console.info("train:step:get_model:done", {
+        size: blob.size,
+        type: blob.type,
+      });
+      if (blob.type && blob.type.includes("text/html")) {
+        try {
+          const html = await blob.text();
+          console.warn("train:get_model:html_response", html.slice(0, 500));
+        } catch (error) {
+          console.warn("train:get_model:html_parse_failed", error);
+        }
+      }
+
+      // 上传模型到设备
+      setLoadingTip("Uploading model to device");
+      const formData = new FormData();
+      const fileName = resolvedModelName
+        ? `${resolvedModelName}.cvimodel`
+        : `${model_id}.cvimodel`;
+      formData.append("model_file", blob, fileName);
+
+      // 创建简单的模型信息
+      const modelInfo = {
+        model_id: model_id,
+        model_name: resolvedModelName || model_id,
+        ...(classesList ? { classes: classesList } : {}),
+      };
+      formData.append("model_info", JSON.stringify(modelInfo));
+      console.info("train:upload_model", {
+        model_id,
+        model_name: modelInfo.model_name,
+        classes: classesList,
+        model_info: modelInfo,
+      });
+
+      console.info("train:step:upload_model:start", { model_id });
+      const resp = await uploadModelApi(formData);
+      if (resp.code == 0) {
+        messageApi.success("Model uploaded to device successfully");
+        console.info("train:upload_model_success", { model_id });
+        try {
+          const deviceInfoResp = await getModelInfoApi();
+          console.info("train:device_model_info", deviceInfoResp);
+        } catch (error) {
+          console.warn("train:get_device_model_info failed", error);
+        }
+
+        // 创建新的应用并同步到云端，同时更新 flow
+        setLoadingTip("Creating app and updating flow");
+        console.info("train:step:create_app:start");
+        try {
+          let flowData = DefaultFlowDataWithDashboard;
+          if (classesCsv) {
+            try {
+              const flowObj = JSON.parse(flowData);
+              if (Array.isArray(flowObj)) {
+                const updated = flowObj.map((node: Record<string, unknown>) => {
+                  if (node.type === "model") {
+                    return {
+                      ...node,
+                      classes: classesCsv,
+                      uri: "",
+                    };
+                  }
+                  return node;
+                });
+                flowData = JSON.stringify(updated);
+              }
+            } catch (error) {
+              console.warn("train:update_flow_classes_failed", error);
+            }
+          }
+
+          const appNameBase = (resolvedModelName || model_id).replace(
+            /\.cvimodel$/i,
+            ""
+          );
+          const ok = await createAppAndUpdateFlow({
+            app_name: `classify_${appNameBase}`,
+            flow_data: flowData,
+            model_data: null,
+            needUpdateFlow: true,
+          });
+          console.info("train:step:create_app:done", { ok });
+
+          if (ok && deviceInfo?.ip) {
+            setLoadingTip("Waiting for dashboard");
+            console.info("train:step:wait_dashboard:start", {
+              ip: deviceInfo.ip,
+            });
+            const ready = await waitForDashboardReady(deviceInfo.ip);
+            console.info("train:step:wait_dashboard:done", { ready });
+            if (ready) {
+              window.location.href = `http://${deviceInfo.ip}/#/dashboard`;
+            } else {
+              messageApi.warning("Dashboard not ready yet");
+            }
+          }
+        } catch (error) {
+          console.error("Create app/update flow error:", error);
+          // 不显示错误，因为模型已经上传成功
+        }
+      } else {
+        messageApi.error("Upload model to device failed");
+      }
+    } catch (error) {
+      console.error("Train model error:", error);
+      if (typeof error === "string") {
+        console.error("train:error:string", error.slice(0, 500));
+      } else if (error instanceof Error) {
+        console.error("train:error:message", error.message);
+      }
+      const errorMsg =
+        error && typeof error === "object" && "msg" in error
+          ? (error as { msg?: string }).msg
+          : "Train model failed";
+      messageApi.error(errorMsg || "Train model failed");
+    } finally {
       setLoading(false);
       setLoadingTip("");
     }
