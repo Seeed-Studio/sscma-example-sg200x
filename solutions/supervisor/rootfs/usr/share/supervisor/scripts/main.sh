@@ -640,10 +640,16 @@ _halow_stop() { _stop_pidname "wpa_supplicant_s1g"; }
 
 _halow_start() {
     _check_halow || return 0
+
+    local conf="/etc/wpa_supplicant_s1g.conf"
+    if [ -f "$conf" ] && ! grep -q "network={" "$conf"; then
+        printf '\nnetwork={\n    disabled=1\n}\n' >> "$conf"
+    fi
+
     [ -z "$(pidof wpa_supplicant_s1g 2>/dev/null)" ] && {
         ifconfig halow0 down
         ifconfig halow0 up
-        wpa_supplicant_s1g -B -Dnl80211 -ihalow0 -c "/etc/wpa_supplicant_s1g.conf" >/dev/null 2>&1
+        wpa_supplicant_s1g -B -Dnl80211 -ihalow0 -c "$conf" >/dev/null 2>&1
     }
 }
 
