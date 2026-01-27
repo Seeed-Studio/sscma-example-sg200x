@@ -65,7 +65,7 @@ const App = () => {
         },
       }}
     >
-      <AntdApp>
+      <AntdApp className="w-full h-full">
         <div className="w-full h-full">
           {token ? <RouterProvider router={router} /> : <Login />}
         </div>
