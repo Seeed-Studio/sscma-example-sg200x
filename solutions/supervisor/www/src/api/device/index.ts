@@ -123,7 +123,8 @@ export const getModelInfoApi = async () =>
 // 上传模型（支持分片上传）
 export const uploadModelApi = async (
   data: FormData,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  signal?: AbortSignal
 ) => {
   const CHUNK_SIZE = 512 * 1024; // 512KB
   
@@ -145,6 +146,7 @@ export const uploadModelApi = async (
       url: "api/deviceMgr/uploadModel",
       method: "post",
       data,
+      signal,
     });
   }
   
@@ -169,6 +171,7 @@ export const uploadModelApi = async (
       url: "api/deviceMgr/uploadModel",
       method: "post",
       data: chunkFormData,
+      signal,
     });
     
     offset += CHUNK_SIZE;

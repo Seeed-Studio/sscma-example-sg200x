@@ -102,6 +102,7 @@ const Workspace = () => {
 
   const [userInfoLoading, setUserInfoLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("application");
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   const waitForDashboardReady = async (
     ip: string,
@@ -555,6 +556,7 @@ const Workspace = () => {
       setLoadingTip("Deploying model");
       // 获取模型下载地址
       const response = await applyModelApi(model_id);
+      console.info("model:apply_response", response);
       if (response.code == 0) {
         const data = response.data;
         const model_snapshot = data.model_snapshot;
@@ -562,11 +564,53 @@ const Workspace = () => {
           //上传设备本地
           const ret = await uploadModel(model_snapshot);
           if (ret) {
-            await createAppAndUpdateFlow({
-              flow_data: DefaultFlowData,
+            const taskType = model_snapshot?.arguments?.task;
+            const modelFormat = model_snapshot?.model_format?.toLowerCase();
+            const useDashboardFlow =
+              taskType === "classify" && modelFormat === "cvimodel";
+            let flowData = useDashboardFlow
+              ? DefaultFlowDataWithDashboard
+              : DefaultFlowData;
+            try {
+              const flowObj = JSON.parse(flowData);
+              if (Array.isArray(flowObj)) {
+                const updated = flowObj.map((node: Record<string, unknown>) => {
+                  if (node.type === "model") {
+                    return {
+                      ...node,
+                      model: model_snapshot?.model_name || node.model,
+                      classes: Array.isArray(model_snapshot?.classes)
+                        ? model_snapshot.classes.join(",")
+                        : node.classes,
+                      uri: "",
+                    };
+                  }
+                  return node;
+                });
+                flowData = JSON.stringify(updated);
+              }
+            } catch (error) {
+              console.warn("model:update_flow_model_failed", error);
+            }
+            const ok = await createAppAndUpdateFlow({
+              flow_data: flowData,
               model_data: model_snapshot,
               needUpdateFlow: true,
             });
+            if (
+              ok &&
+              useDashboardFlow &&
+              deviceInfo?.ip
+            ) {
+              setLoadingTip("Waiting for dashboard");
+              const ready = await waitForDashboardReady(deviceInfo.ip);
+              if (ready) {
+                sessionStorage.removeItem("sensecraft_action");
+                window.location.href = `http://${deviceInfo.ip}/#/dashboard`;
+              } else {
+                messageApi.warning("Dashboard not ready yet");
+              }
+            }
           }
           return;
         }
@@ -694,7 +738,53 @@ const Workspace = () => {
       });
 
       console.info("train:step:upload_model:start", { model_id });
-      const resp = await uploadModelApi(formData);
+      const uploadController = new AbortController();
+      uploadAbortRef.current = uploadController;
+      const uploadNoticeKey = "train-upload";
+      messageApi.open({
+        key: uploadNoticeKey,
+        type: "warning",
+        duration: 0,
+        content:
+          "Uploading model… You may cancel, but it can leave partial files on device.",
+        btn: (
+          <Button
+            size="small"
+            onClick={() => {
+              modal.confirm({
+                title: "Cancel upload?",
+                content:
+                  "Canceling may leave partial model files on the device. You may need to re-upload or reboot.",
+                okText: "Cancel Upload",
+                cancelText: "Continue",
+                onOk: () => {
+                  uploadAbortRef.current?.abort();
+                  messageApi.destroy(uploadNoticeKey);
+                  messageApi.warning(
+                    "Upload canceled. Please re-upload if needed."
+                  );
+                },
+              });
+            }}
+          >
+            Cancel Upload
+          </Button>
+        ),
+      });
+      const slowUploadTimer = window.setTimeout(() => {
+        messageApi.warning(
+          "Uploading model is taking longer than expected. Please check device connection."
+        );
+      }, 15000);
+      const resp = await uploadModelApi(
+        formData,
+        (progress) => {
+          setLoadingTip(`Uploading model to device: ${progress.toFixed(1)}%`);
+        },
+        uploadController.signal
+      );
+      window.clearTimeout(slowUploadTimer);
+      messageApi.destroy(uploadNoticeKey);
       if (resp.code == 0) {
         messageApi.success("Model uploaded to device successfully");
         console.info("train:upload_model_success", { model_id });
@@ -751,6 +841,7 @@ const Workspace = () => {
             const ready = await waitForDashboardReady(deviceInfo.ip);
             console.info("train:step:wait_dashboard:done", { ready });
             if (ready) {
+              sessionStorage.removeItem("sensecraft_action");
               window.location.href = `http://${deviceInfo.ip}/#/dashboard`;
             } else {
               messageApi.warning("Dashboard not ready yet");
@@ -764,6 +855,13 @@ const Workspace = () => {
         messageApi.error("Upload model to device failed");
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        console.warn("Train model upload aborted");
+        sessionStorage.removeItem("sensecraft_action");
+        setLoading(false);
+        setLoadingTip("");
+        return;
+      }
       console.error("Train model error:", error);
       if (typeof error === "string") {
         console.error("train:error:string", error.slice(0, 500));

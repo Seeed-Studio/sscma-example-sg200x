@@ -66,7 +66,9 @@
 
 - `applyModelApi(model_id)` 返回 `model_snapshot`。
 - `uploadModel(model_snapshot)` 上传至设备。
-- `createAppAndUpdateFlow()` 使用 `DefaultFlowData` 创建应用并更新 flow。
+- `createAppAndUpdateFlow()` 根据 `model_snapshot.arguments.task` 选择默认 flow：
+  - `classify` → `DefaultFlowDataWithDashboard`
+  - 其它 → `DefaultFlowData`
 
 ### 5.2 平台训练模型下载
 
