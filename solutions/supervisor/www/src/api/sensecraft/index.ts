@@ -30,6 +30,13 @@ export const getAppListApi = async () =>
   });
 
 // 新建应用
+const truncateAppName = (name?: string | null, maxLen = 64) => {
+  if (!name) return name;
+  if (name.length <= maxLen) return name;
+  if (maxLen <= 3) return name.slice(0, maxLen);
+  return `${name.slice(0, maxLen - 3)}...`;
+};
+
 export const createAppApi = async (data: {
   app_name?: string | null;
   flow_data?: string | null;
@@ -40,7 +47,10 @@ export const createAppApi = async (data: {
   }>({
     url: "aiserverapi/flow/application/create_app",
     method: "post",
-    data,
+    data: {
+      ...data,
+      app_name: truncateAppName(data.app_name),
+    },
   });
 
 // 查看应用

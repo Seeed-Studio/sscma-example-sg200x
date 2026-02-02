@@ -129,6 +129,7 @@ const Workspace = () => {
   useEffect(() => {
     const initPlatform = async () => {
       const param = parseUrlParam(window.location.href);
+      console.info("initPlatform:params", param);
       const token_url = param.token;
       const refresh_token = param.refresh_token;
       const action = param.action; //new / app / clone / model /normal  action为空默认为normal
@@ -164,6 +165,11 @@ const Workspace = () => {
       }
 
       if (token_url && refresh_token) {
+        console.info("initPlatform:auth:with_tokens", {
+          actionInfo,
+          hasToken: Boolean(token_url),
+          hasRefreshToken: Boolean(refresh_token),
+        });
         await initPlatformStore(token_url, refresh_token);
         if (actionInfo?.action && actionInfo.action !== "normal") {
           sessionStorage.setItem(
@@ -178,9 +184,16 @@ const Workspace = () => {
         // 如果存在问号，截取问号之前的部分
         if (indexOfQuestionMark !== -1) {
           const newUrl = currentUrl.substring(0, indexOfQuestionMark);
+          console.info("initPlatform:redirect:strip_query", {
+            from: currentUrl,
+            to: newUrl,
+          });
           window.location.href = newUrl;
         }
       } else {
+        console.info("initPlatform:auth:cached_or_existing", {
+          actionInfo,
+        });
         await initPlatformStore();
         setActionInfo(actionInfo);
       }
@@ -433,10 +446,44 @@ const Workspace = () => {
   //往nodered更新flow
   const sendFlow = async (flows?: string) => {
     try {
+      const summarizeFlow = (flow?: string) => {
+        const summary = {
+          len: flow?.length ?? 0,
+          nodes: null as number | null,
+          hasUi: false,
+          hasUiTab: false,
+          hasTab: false,
+          hasModel: false,
+          typesSample: [] as string[],
+        };
+        if (!flow) return summary;
+        try {
+          const data = JSON.parse(flow);
+          if (Array.isArray(data)) {
+            summary.nodes = data.length;
+            const types = new Set<string>();
+            for (const node of data) {
+              const type = (node as { type?: string })?.type || "";
+              if (type) types.add(type);
+              if (type.startsWith("ui-")) summary.hasUi = true;
+              if (type === "ui-tab") summary.hasUiTab = true;
+              if (type === "tab") summary.hasTab = true;
+              if (type === "model") summary.hasModel = true;
+            }
+            summary.typesSample = Array.from(types).slice(0, 8);
+          }
+        } catch (error) {
+          // ignore parse errors for debug summary
+        }
+        return summary;
+      };
+      console.info("sendFlow:start", summarizeFlow(flows));
       const revision = await saveFlows(flows);
+      console.info("sendFlow:saveFlows:done", { revision });
       if (revision) {
         revRef.current = revision;
         const response = await getFlowsState();
+        console.info("sendFlow:flows_state", response);
         if (response?.state == "stop") {
           await setFlowsState({ state: "start" });
         }
@@ -571,6 +618,10 @@ const Workspace = () => {
             let flowData = useDashboardFlow
               ? DefaultFlowDataWithDashboard
               : DefaultFlowData;
+            console.info("model:flow:select_default", {
+              useDashboardFlow,
+              flowLen: flowData?.length ?? 0,
+            });
             try {
               const flowObj = JSON.parse(flowData);
               if (Array.isArray(flowObj)) {
@@ -592,6 +643,11 @@ const Workspace = () => {
             } catch (error) {
               console.warn("model:update_flow_model_failed", error);
             }
+            console.info("model:flow:final", {
+              flowLen: flowData?.length ?? 0,
+              hasUiTab: flowData?.includes('"ui-tab"') ?? false,
+              hasUiTemplate: flowData?.includes('"ui-template"') ?? false,
+            });
             const ok = await createAppAndUpdateFlow({
               flow_data: flowData,
               model_data: model_snapshot,
@@ -606,7 +662,12 @@ const Workspace = () => {
               const ready = await waitForDashboardReady(deviceInfo.ip);
               if (ready) {
                 sessionStorage.removeItem("sensecraft_action");
-                window.location.href = `http://${deviceInfo.ip}/#/dashboard`;
+                const targetUrl = `http://${deviceInfo.ip}/#/dashboard`;
+                console.info("model:redirect:dashboard", {
+                  from: window.location.href,
+                  to: targetUrl,
+                });
+                window.location.href = targetUrl;
               } else {
                 messageApi.warning("Dashboard not ready yet");
               }
@@ -800,6 +861,9 @@ const Workspace = () => {
         console.info("train:step:create_app:start");
         try {
           let flowData = DefaultFlowDataWithDashboard;
+          console.info("train:flow:select_default", {
+            flowLen: flowData?.length ?? 0,
+          });
           if (classesCsv) {
             try {
               const flowObj = JSON.parse(flowData);
@@ -820,6 +884,11 @@ const Workspace = () => {
               console.warn("train:update_flow_classes_failed", error);
             }
           }
+          console.info("train:flow:final", {
+            flowLen: flowData?.length ?? 0,
+            hasUiTab: flowData?.includes('"ui-tab"') ?? false,
+            hasUiTemplate: flowData?.includes('"ui-template"') ?? false,
+          });
 
           const appNameBase = (resolvedModelName || model_id).replace(
             /\.cvimodel$/i,
@@ -833,7 +902,13 @@ const Workspace = () => {
           });
           console.info("train:step:create_app:done", { ok });
 
-          if (ok && deviceInfo?.ip) {
+          if (!ok) {
+            console.warn("train:create_app_failed:fall_back_sendFlow");
+            setLoadingTip("Deploying flow to device");
+            await sendFlow(flowData);
+          }
+
+          if (deviceInfo?.ip) {
             setLoadingTip("Waiting for dashboard");
             console.info("train:step:wait_dashboard:start", {
               ip: deviceInfo.ip,
@@ -842,7 +917,12 @@ const Workspace = () => {
             console.info("train:step:wait_dashboard:done", { ready });
             if (ready) {
               sessionStorage.removeItem("sensecraft_action");
-              window.location.href = `http://${deviceInfo.ip}/#/dashboard`;
+              const targetUrl = `http://${deviceInfo.ip}/#/dashboard`;
+              console.info("train:redirect:dashboard", {
+                from: window.location.href,
+                to: targetUrl,
+              });
+              window.location.href = targetUrl;
             } else {
               messageApi.warning("Dashboard not ready yet");
             }
@@ -1178,19 +1258,59 @@ const Workspace = () => {
     try {
       setLoading(true);
       setLoadingTip("Creating App");
-      const res = await createAppApi({
-        app_name: app_name,
-        flow_data: flow_data,
-        model_data: model_data,
+      console.info("createAppAndUpdateFlow:create_app:request", {
+        app_name,
+        flowLen: flow_data?.length ?? 0,
+        model_id: model_data?.model_id ?? null,
+        model_name: model_data?.model_name ?? null,
+        needUpdateFlow,
+        needUpdateApp,
+      });
+      let res;
+      try {
+        res = await createAppApi({
+          app_name: app_name,
+          flow_data: flow_data,
+          model_data: model_data,
+        });
+        console.info("createAppAndUpdateFlow:create_app:done", {
+          code: res?.code,
+          app_id: res?.data?.app_id,
+        });
+      } catch (error) {
+        console.error("createAppAndUpdateFlow:create_app:error", error);
+        throw error;
+      }
+      console.info("createAppAndUpdateFlow:request", {
+        needUpdateFlow,
+        needUpdateApp,
+        flowLen: flow_data?.length ?? 0,
+        hasUiTab: flow_data?.includes('"ui-tab"') ?? false,
+        hasUiTemplate: flow_data?.includes('"ui-template"') ?? false,
       });
 
       if (res.code == 0) {
-        const response = await getAppListApi();
+        let response;
+        try {
+          response = await getAppListApi();
+          console.info("createAppAndUpdateFlow:list_app:done", {
+            code: response?.code,
+            listLength: response?.data?.list?.length ?? null,
+          });
+        } catch (error) {
+          console.error("createAppAndUpdateFlow:list_app:error", error);
+          throw error;
+        }
         if (response.code == 0) {
           const data = response.data;
           const list = data.list;
           if (needUpdateApp && list.length > 0) {
             const app = list[0];
+            console.info("createAppAndUpdateFlow:list_app:first", {
+              firstAppId: app?.app_id,
+              createdAppId: res?.data?.app_id,
+              sameAsCreated: app?.app_id === res?.data?.app_id,
+            });
             app.flow_data = flow_data;
             app.model_data = model_data;
             if (app) {
@@ -1213,11 +1333,16 @@ const Workspace = () => {
           return true;
         }
       }
+      console.error("createAppAndUpdateFlow:create_app:failed", {
+        code: res?.code,
+        msg: (res as { msg?: string } | undefined)?.msg,
+      });
       messageApi.error("Create app failed");
       setLoading(false);
       setLoadingTip("");
       return false;
     } catch (error) {
+      console.error("createAppAndUpdateFlow:exception", error);
       messageApi.error("Create app failed");
       setLoading(false);
       setLoadingTip("");
