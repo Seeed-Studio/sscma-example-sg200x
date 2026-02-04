@@ -737,3 +737,97 @@ api_status_t api_device::getTimezoneList(request_t req, response_t res)
 
     return API_STATUS_OK;
 }
+
+api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
+{
+    // Lock mutex to prevent concurrent access to GPIO430
+    // The lock is held for the entire operation: set HIGH -> read -> set LOW
+    std::lock_guard<std::mutex> lock(_battery_mutex);
+
+    json data = json::object();
+
+    // ADC enable GPIO (GPIO430)
+    const char* adc_enable_gpio = "/sys/class/gpio/gpio430/value";
+    const char* adc_export = "/sys/class/gpio/export";
+    const char* adc_direction = "/sys/class/gpio/gpio430/direction";
+
+    // Check if GPIO is already exported
+    std::ifstream gpio_check(adc_enable_gpio);
+    bool gpio_exported = gpio_check.is_open();
+    gpio_check.close();
+
+    if (!gpio_exported) {
+        // Export GPIO430
+        std::ofstream export_file(adc_export);
+        if (export_file.is_open()) {
+            export_file << "430";
+            export_file.flush();
+            export_file.close();
+        }
+
+        // Set direction to out
+        std::ofstream direction_file(adc_direction);
+        if (direction_file.is_open()) {
+            direction_file << "out";
+            direction_file.flush();
+            direction_file.close();
+        }
+    } else {
+        // Ensure direction is out even if already exported (no delay needed)
+        std::ofstream direction_file(adc_direction);
+        if (direction_file.is_open()) {
+            direction_file << "out";
+            direction_file.flush();
+            direction_file.close();
+        }
+    }
+
+    // Step 1: Set GPIO430 HIGH to enable ADC
+    std::ofstream gpio_value(adc_enable_gpio);
+    if (gpio_value.is_open()) {
+        gpio_value << "1";
+        gpio_value.flush();
+        gpio_value.close();
+    }
+
+    // Wait for ADC to stabilize
+    usleep(10000); // 10ms
+
+    // Step 2: Read raw ADC value
+    std::ifstream raw_file("/sys/bus/iio/devices/iio:device0/in_voltage0_raw");
+    long raw_value = 0;
+    if (raw_file.is_open()) {
+        raw_file >> raw_value;
+        raw_file.close();
+    }
+
+    // Read ADC scale factor
+    std::ifstream scale_file("/sys/bus/iio/devices/iio:device0/in_voltage0_scale");
+    double scale = 1.0;
+    if (scale_file.is_open()) {
+        scale_file >> scale;
+        scale_file.close();
+    }
+
+    // Calculate actual voltage: voltage = raw * scale
+    // Hardware voltage divider ratio is 1/2, so multiply by 2
+    double voltage_mv = raw_value * scale * 2.0;
+
+    // Step 3: Set GPIO430 LOW to disable ADC
+    std::ofstream gpio_value_off(adc_enable_gpio);
+    if (gpio_value_off.is_open()) {
+        gpio_value_off << "0";
+        gpio_value_off.flush();
+        gpio_value_off.close();
+    }
+
+    // Return voltage in millivolts
+    data["voltage"] = (int)voltage_mv;
+    data["raw"] = raw_value;
+    data["scale"] = scale;
+
+    LOGD("Battery voltage: %.2f mV (raw=%ld, scale=%.6f)", voltage_mv, raw_value, scale);
+
+    response(res, 0, STR_OK, data);
+    return API_STATUS_OK;
+}
