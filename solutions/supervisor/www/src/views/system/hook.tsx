@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormInstance } from "antd-mobile/es/components/form";
 import useConfigStore from "@/store/config";
 import {
@@ -8,7 +8,7 @@ import {
   SystemUpdateStatus,
   UpdateStatus,
 } from "@/enum";
-import { IChannelParams } from "@/api/device/device";
+import { IChannelParams, IBatteryInfo } from "@/api/device/device";
 import {
   queryDeviceInfoApi,
   changeChannleApi,
@@ -17,6 +17,7 @@ import {
   getUpdateSystemProgressApi,
   cancelUpdateApi,
   getSystemUpdateVesionInfoApi,
+  queryBatteryInfoApi,
 } from "@/api/device/index";
 import { ReloadOutlined } from "@ant-design/icons";
 import { message, Modal } from "antd";
@@ -37,9 +38,21 @@ export function useData() {
   const checkCountRef = useRef(0);
   const maxCheckCount = 10;
 
+  const [batteryInfo, setBatteryInfo] = useState<IBatteryInfo | null>(null);
+
   const onQueryDeviceInfo = async () => {
     const res = await queryDeviceInfoApi();
     updateDeviceInfo(res.data);
+  };
+
+  const onQueryBatteryInfo = async () => {
+    try {
+      const res = await queryBatteryInfoApi();
+      setBatteryInfo(res.data);
+    } catch (err) {
+      // Keep previous battery info on error, don't clear it
+      console.log("Failed to query battery info:", err);
+    }
   };
 
   const onCancel = () => {
@@ -262,8 +275,17 @@ export function useData() {
     }
   }, [deviceInfo.channel, deviceInfo.serverUrl, deviceInfo.needRestart]);
 
+  useEffect(() => {
+    onQueryBatteryInfo();
+    const interval = setInterval(() => {
+      onQueryBatteryInfo();
+    }, 5000); // Update battery info every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   return {
     deviceInfo,
+    batteryInfo,
     addressFormRef,
     onEditServerAddress,
     onCancel,

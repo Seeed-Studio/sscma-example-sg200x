@@ -25,10 +25,13 @@ const infoList = [
   { label: "NPU", key: "npu" },
   { label: "OS", key: "osVersion" },
   { label: "Device Info", key: "type" },
+  { label: "Battery", key: "battery", isBattery: true },
 ];
+
 function System() {
   const {
     deviceInfo,
+    batteryInfo,
     addressFormRef,
     onEditServerAddress,
     onCancel,
@@ -56,6 +59,15 @@ function System() {
     );
     return index > -1 && channelList[index].label;
   }, [systemUpdateState.channel]);
+
+  const displayInfoList = useMemo(() => {
+    return infoList.filter((item) => {
+      if ((item as any).isBattery && (!batteryInfo || batteryInfo.voltage === 0)) {
+        return false;
+      }
+      return true;
+    });
+  }, [batteryInfo]);
 
   return (
     <div className="my-8 p-16">
@@ -175,7 +187,7 @@ function System() {
         <div>
           <div className="font-bold text-18 mb-14 my-24"> System Info</div>
           <div className="bg-white rounded-20 px-24">
-            {infoList.map((item, index) => {
+            {displayInfoList.map((item, index) => {
               return (
                 <div
                   key={item.key}
@@ -187,9 +199,19 @@ function System() {
                     {item.label}
                   </span>
                   <div className="flex-1 truncate text-right">
-                    {item.key == "osVersion"
-                      ? `${deviceInfo.osName} ${deviceInfo[item.key]}`
-                      : deviceInfo[item.key]}
+                    {(item as any).isBattery && batteryInfo ? (
+                      <span>
+                        {batteryInfo.voltage > 0
+                          ? (batteryInfo.voltage < 2000
+                              ? "Charging"
+                              : `${(batteryInfo.voltage / 1000).toFixed(2)} V`)
+                          : "No Battery"}
+                      </span>
+                    ) : item.key == "osVersion" ? (
+                      `${deviceInfo.osName} ${deviceInfo[item.key]}`
+                    ) : (
+                      deviceInfo[item.key]
+                    )}
                   </div>
                 </div>
               );

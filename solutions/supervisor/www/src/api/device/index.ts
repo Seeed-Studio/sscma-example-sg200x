@@ -5,6 +5,7 @@ import {
   IChannelParams,
   IServiceStatus,
   IIPDevice,
+  IBatteryInfo,
 } from "./device";
 
 // 获取设备信息
@@ -207,6 +208,18 @@ export const getPlatformInfoApi = async () =>
   }>(
     {
       url: "api/deviceMgr/getPlatformInfo",
+      method: "get",
+    },
+    {
+      catchs: true,
+    }
+  );
+
+// 获取电池信息
+export const queryBatteryInfoApi = async () =>
+  supervisorRequest<IBatteryInfo>(
+    {
+      url: "api/deviceMgr/queryBatteryInfo",
       method: "get",
     },
     {

@@ -42,3 +42,7 @@ interface IIPDevice {
   ip: string;
   type: string;
 }
+
+interface IBatteryInfo {
+  voltage: number;         // 电池电压 (mV)
+}
