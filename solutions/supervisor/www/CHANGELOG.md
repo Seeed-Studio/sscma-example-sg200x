@@ -7,6 +7,7 @@
 - Default dashboard flow moved to `src/utils/flowDefaults.ts` and re‑exported via `src/utils/index.ts`.
 - Train flow enhancements: device type guard, dashboard readiness polling, upload progress, slow‑upload warning, cancel upload (abort).
 - Train flow fallback: if cloud app creation fails, deploy flow directly to device.
+- Train init action now passes `model_name` to avoid runtime errors.
 - `action=model` flow selection: use `DefaultFlowDataWithDashboard` when `task=classify` and `model_format=cvimodel`, otherwise use default flow; update `model` node fields before deploy.
 - App list UI fixes: overflow handling and tooltip for long names.
 - One‑click deploy script `scripts/deploy.sh`.
@@ -32,6 +33,7 @@
 - 默认 Dashboard Flow 拆分至 `src/utils/flowDefaults.ts`，由 `src/utils/index.ts` 重新导出。
 - 训练流程增强：设备类型校验、Dashboard 就绪轮询、上传进度提示、慢上传提醒、支持取消上传。
 - 训练流程兜底：云端应用创建失败时，直接下发 Flow 到设备。
+- 训练流程初始化补充 `model_name`，避免运行时错误。
 - `action=model` 按 `task=classify` 且 `model_format=cvimodel` 选择 Dashboard Flow，否则使用默认 Flow；部署前更新 `model` 节点字段。
 - 应用列表 UI 修复：长名称溢出处理 + Tooltip。
 - 一键部署脚本 `scripts/deploy.sh`。

@@ -276,6 +276,7 @@ const Workspace = () => {
         const action = actionInfo.action; //new / app / clone / model /normal  action为空默认为normal
         const app_id = actionInfo.app_id; //type为app时才需要传
         const model_id = actionInfo.model_id; //type为model时才需要传
+        const model_name = actionInfo.model_name; //type为train时才需要传
         if (action == "app") {
           if (app_id) {
             //打开云端应用
