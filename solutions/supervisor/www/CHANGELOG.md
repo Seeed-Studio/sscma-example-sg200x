@@ -7,11 +7,14 @@
 - Default dashboard flow moved to `src/utils/flowDefaults.ts` and re‑exported via `src/utils/index.ts`.
 - Train flow enhancements: device type guard, dashboard readiness polling, upload progress, slow‑upload warning, cancel upload (abort).
 - Train flow fallback: if cloud app creation fails, deploy flow directly to device.
+- Train flow adds Node-RED startup gating before flow deployment (`queryServiceStatusApi` polling).
+- Train failure fallback adds confirm dialog: reload and replay `action=train` from URL/session payload.
 - Train init action now passes `model_name` to avoid runtime errors.
 - `action=model` flow selection: use `DefaultFlowDataWithDashboard` when `task=classify` and `model_format=cvimodel`, otherwise use default flow; update `model` node fields before deploy.
 - App list UI fixes: overflow handling and tooltip for long names.
 - One‑click deploy script `scripts/deploy.sh`.
 - Train API v2 model info wrappers and types.
+- Workspace refactor: extracted flow lifecycle helpers to `src/views/workspace/services/flowService.ts` and extracted train orchestration to `src/views/workspace/services/trainActionService.tsx`.
 
 ### Changed
 - `action=train` now creates a cloud app (name `classify_<model>`), deploys flow, and redirects in‑tab to dashboard after readiness check.
@@ -25,6 +28,8 @@
 - App name overflow no longer hides edit/delete buttons.
 - Upload flow provides progress, warning, and cancel option.
 - Dashboard jump uses current tab with readiness gating.
+- `sendFlow` no longer silently succeeds when Node-RED `/flows` rejects writes (`revision` empty now treated as failure).
+- On flow deployment failure, workspace can prompt user to reload and retry.
 
 ## 中文
 
@@ -33,11 +38,14 @@
 - 默认 Dashboard Flow 拆分至 `src/utils/flowDefaults.ts`，由 `src/utils/index.ts` 重新导出。
 - 训练流程增强：设备类型校验、Dashboard 就绪轮询、上传进度提示、慢上传提醒、支持取消上传。
 - 训练流程兜底：云端应用创建失败时，直接下发 Flow 到设备。
+- 训练流程新增 Node-RED 启动就绪门控（轮询 `queryServiceStatusApi` 后再下发 Flow）。
+- 训练流程失败新增确认框：支持重载并重放 `action=train`。
 - 训练流程初始化补充 `model_name`，避免运行时错误。
 - `action=model` 按 `task=classify` 且 `model_format=cvimodel` 选择 Dashboard Flow，否则使用默认 Flow；部署前更新 `model` 节点字段。
 - 应用列表 UI 修复：长名称溢出处理 + Tooltip。
 - 一键部署脚本 `scripts/deploy.sh`。
 - 训练平台 v2 模型信息接口封装与类型补齐。
+- Workspace 重构：Flow 生命周期能力拆分到 `src/views/workspace/services/flowService.ts`，`train` 编排拆分到 `src/views/workspace/services/trainActionService.tsx`。
 
 ### 变更
 - `action=train` 改为创建云端应用（`classify_<model>`），部署后在当前页跳转 Dashboard。
@@ -51,3 +59,5 @@
 - 长应用名不再遮挡编辑/删除按钮。
 - 上传过程提供进度、超时提醒与取消入口。
 - Dashboard 跳转改为当前页，并基于就绪检测。
+- `sendFlow` 对 Node-RED `/flows` 写入失败不再静默成功（`revision` 为空视为失败）。
+- Flow 下发失败场景支持提示用户重载并重试。
