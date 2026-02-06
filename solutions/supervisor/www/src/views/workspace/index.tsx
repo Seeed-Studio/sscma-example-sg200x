@@ -21,16 +21,10 @@ import {
 import {
   getDeviceListApi,
   getModelInfoApi,
-  queryServiceStatusApi,
   uploadModelApi,
 } from "@/api/device";
 import { IIPDevice } from "@/api/device/device";
-import {
-  getFlows,
-  saveFlows,
-  getFlowsState,
-  setFlowsState,
-} from "@/api/nodered";
+import { getFlows } from "@/api/nodered";
 import {
   getAppListApi,
   createAppApi,
@@ -40,7 +34,6 @@ import {
   acquireFileUrlApi,
   applyModelApi,
 } from "@/api/sensecraft";
-import { getModelApi, getModelV2Api } from "@/api/model";
 import recamera_logo from "@/assets/images/recamera_logo.png";
 import { IAppInfo, IModelData, IActionInfo } from "@/api/sensecraft/sensecraft";
 import {
@@ -62,7 +55,13 @@ import NodeRed from "@/views/nodered";
 import ApplicationList from "./ApplicationList";
 import ModelConversion from "./ModelConversion";
 import styles from "./index.module.css";
-import { ServiceStatus } from "@/enum";
+import {
+  deployFlowToNodeRed,
+  FLOW_DEPLOY_EMPTY_REVISION_ERROR,
+  summarizeFlow,
+  waitForDashboardReady,
+} from "./services/flowService";
+import { runTrainAction } from "./services/trainActionService";
 
 // 定义 type 优先级
 const typePriority = { eth: 1, usb: 2, wlan: 3 };
@@ -76,15 +75,6 @@ interface Node {
   type: string;
   label?: string;
 }
-
-interface ITrainReplayAction extends IActionInfo {
-  action: "train";
-  model_id: string;
-  model_name?: string;
-}
-
-const FLOW_DEPLOY_EMPTY_REVISION_ERROR =
-  "Node-RED did not accept flow deployment (empty revision)";
 
 const Workspace = () => {
   const { token, appInfo, nickname, updateAppInfo, updateNickname } =
@@ -114,78 +104,6 @@ const Workspace = () => {
   const [userInfoLoading, setUserInfoLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("application");
   const uploadAbortRef = useRef<AbortController | null>(null);
-
-  const waitForDashboardReady = async (
-    ip: string,
-    timeoutMs = 30000,
-    intervalMs = 1500
-  ) => {
-    const url = `http://${ip}:1880/dashboard`;
-    const start = Date.now();
-
-    while (Date.now() - start < timeoutMs) {
-      try {
-        const res = await fetch(url, { method: "GET" });
-        if (res.ok && (res.status === 200 || res.status === 204)) {
-          return true;
-        }
-      } catch (error) {
-        // ignore and retry
-      }
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-    return false;
-  };
-
-  const waitForNodeRedReady = async (
-    timeoutMs = 120000,
-    intervalMs = 2000
-  ) => {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      try {
-        const response = await queryServiceStatusApi();
-        if (response.code === 0 && response.data) {
-          if (response.data.nodeRed === ServiceStatus.RUNNING) {
-            return true;
-          }
-        }
-      } catch (error) {
-        // ignore and retry
-      }
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
-    return false;
-  };
-
-  const reloadForTrainAction = (payload: ITrainReplayAction) => {
-    sessionStorage.setItem("sensecraft_action", JSON.stringify(payload));
-    const url = new URL(window.location.href);
-    url.search = "";
-    url.searchParams.set("action", "train");
-    url.searchParams.set("model_id", payload.model_id);
-    if (payload.model_name) {
-      url.searchParams.set("model_name", payload.model_name);
-    }
-    window.location.href = url.toString();
-  };
-
-  const confirmTrainReload = (reason: string, payload: ITrainReplayAction) =>
-    new Promise<boolean>((resolve) => {
-      modal.confirm({
-        title: "Train flow not fully ready",
-        content: reason,
-        okText: "Reload and retry train",
-        cancelText: "Stay on current page",
-        onOk: () => {
-          resolve(true);
-          reloadForTrainAction(payload);
-        },
-        onCancel: () => {
-          resolve(false);
-        },
-      });
-    });
 
   const confirmPageReloadOnFlowFailed = async (reason: string) => {
     const confirmed = await modal.confirm({
@@ -519,51 +437,11 @@ const Workspace = () => {
 
   //往nodered更新flow
   const sendFlow = async (flows?: string) => {
-    const summarizeFlow = (flow?: string) => {
-      const summary = {
-        len: flow?.length ?? 0,
-        nodes: null as number | null,
-        hasUi: false,
-        hasUiTab: false,
-        hasTab: false,
-        hasModel: false,
-        typesSample: [] as string[],
-      };
-      if (!flow) return summary;
-      try {
-        const data = JSON.parse(flow);
-        if (Array.isArray(data)) {
-          summary.nodes = data.length;
-          const types = new Set<string>();
-          for (const node of data) {
-            const type = (node as { type?: string })?.type || "";
-            if (type) types.add(type);
-            if (type.startsWith("ui-")) summary.hasUi = true;
-            if (type === "ui-tab") summary.hasUiTab = true;
-            if (type === "tab") summary.hasTab = true;
-            if (type === "model") summary.hasModel = true;
-          }
-          summary.typesSample = Array.from(types).slice(0, 8);
-        }
-      } catch (error) {
-        // ignore parse errors for debug summary
-      }
-      return summary;
-    };
-
     console.info("sendFlow:start", summarizeFlow(flows));
-    const revision = await saveFlows(flows);
+    const { revision, flowState } = await deployFlowToNodeRed(flows);
     console.info("sendFlow:saveFlows:done", { revision });
-    if (!revision) {
-      throw new Error(FLOW_DEPLOY_EMPTY_REVISION_ERROR);
-    }
-
     revRef.current = revision;
-    const response = await getFlowsState();
-    console.info("sendFlow:flows_state", response);
-    if (response?.state == "stop") {
-      await setFlowsState({ state: "start" });
-    }
+    console.info("sendFlow:flows_state", { state: flowState });
     setTimestamp(new Date().getTime());
   };
 
@@ -759,315 +637,19 @@ const Workspace = () => {
     }
   };
 
-  const handleTrainModel = async (model_id: string, model_name?: string) => {
-    if (!deviceInfo?.ip) {
-      messageApi.error("Device not connected");
-      return;
-    }
-
-    try {
-      console.info("train:start", { model_id, model_name });
-      const replayPayload: ITrainReplayAction = {
-        action: "train",
-        model_id,
-        ...(model_name ? { model_name } : {}),
-      };
-      setLoading(true);
-      let classesCsv: string | null = null;
-      let classesList: string[] | null = null;
-      let resolvedModelName = model_name;
-      let trainDeviceType: number | null = null;
-      let trainTaskId: number | null = null;
-      setLoadingTip("Getting model info");
-      console.info("train:step:get_model_info:start", { model_id });
-      console.info("train:step:get_model_info:request", {
-        url: `${import.meta.env.VITE_SENSECRAFT_TRAIN_API_URL}/v2/api/get_model`,
-        params: { model_id },
-      });
-      const infoResp = await getModelV2Api(model_id);
-      console.info("train:step:get_model_info:done", infoResp);
-      trainDeviceType = infoResp.data?.device_type ?? null;
-      trainTaskId = infoResp.data?.task_id ?? null;
-      const classes = infoResp.data?.classes ?? infoResp.data?.metadata?.classes;
-      if (Array.isArray(classes) && classes.length > 0) {
-        classesList = classes;
-        classesCsv = classes.join(",");
-      }
-      if (!resolvedModelName) {
-        const displayName = infoResp.data?.display_name;
-        const displayExt = infoResp.data?.display_ext;
-        if (displayName && displayExt) {
-          resolvedModelName = `${displayName}.${displayExt}`;
-        } else if (displayName) {
-          resolvedModelName = displayName;
-        }
-      }
-      console.info("train:model_info_v2", {
-        model_id,
-        resolvedModelName,
-        device_type: trainDeviceType,
-        task_id: trainTaskId,
-        classes: classesList,
-      });
-
-      if (trainDeviceType && trainDeviceType !== 40) {
-        setLoading(false);
-        setLoadingTip("");
-        await modal.confirm({
-          title: "Device type mismatch",
-          content:
-            "The selected model was trained for a different device type. Please choose a reCamera (device_type=40) model.",
-          okText: "OK",
-          cancelButtonProps: { style: { display: "none" } },
-        });
-        return;
-      }
-
-      setLoadingTip("Getting model");
-      console.info("train:step:get_model:start", {
-        model_id,
-        task_id: trainTaskId,
-        device_type: trainDeviceType,
-      });
-      console.info("train:step:get_model:request", {
-        url: `${import.meta.env.VITE_SENSECRAFT_TRAIN_API_URL}/v1/api/get_model`,
-        params: {
-          model_id,
-          task_id: trainTaskId ?? undefined,
-          device_type: trainDeviceType ?? undefined,
-        },
-      });
-      const blob = await getModelApi(model_id, {
-        task_id: trainTaskId ?? undefined,
-        device_type: trainDeviceType ?? undefined,
-      });
-      console.info("train:step:get_model:done", {
-        size: blob.size,
-        type: blob.type,
-      });
-      if (blob.type && blob.type.includes("text/html")) {
-        try {
-          const html = await blob.text();
-          console.warn("train:get_model:html_response", html.slice(0, 500));
-        } catch (error) {
-          console.warn("train:get_model:html_parse_failed", error);
-        }
-      }
-
-      // 上传模型到设备
-      setLoadingTip("Uploading model to device");
-      const formData = new FormData();
-      const fileName = resolvedModelName
-        ? `${resolvedModelName}.cvimodel`
-        : `${model_id}.cvimodel`;
-      formData.append("model_file", blob, fileName);
-
-      // 创建简单的模型信息
-      const modelInfo = {
-        model_id: model_id,
-        model_name: resolvedModelName || model_id,
-        ...(classesList ? { classes: classesList } : {}),
-      };
-      formData.append("model_info", JSON.stringify(modelInfo));
-      console.info("train:upload_model", {
-        model_id,
-        model_name: modelInfo.model_name,
-        classes: classesList,
-        model_info: modelInfo,
-      });
-
-      console.info("train:step:upload_model:start", { model_id });
-      const uploadController = new AbortController();
-      uploadAbortRef.current = uploadController;
-      const uploadNoticeKey = "train-upload";
-      messageApi.open({
-        key: uploadNoticeKey,
-        type: "warning",
-        duration: 0,
-        content:
-          "Uploading model… You may cancel, but it can leave partial files on device.",
-        btn: (
-          <Button
-            size="small"
-            onClick={() => {
-              modal.confirm({
-                title: "Cancel upload?",
-                content:
-                  "Canceling may leave partial model files on the device. You may need to re-upload or reboot.",
-                okText: "Cancel Upload",
-                cancelText: "Continue",
-                onOk: () => {
-                  uploadAbortRef.current?.abort();
-                  messageApi.destroy(uploadNoticeKey);
-                  messageApi.warning(
-                    "Upload canceled. Please re-upload if needed."
-                  );
-                },
-              });
-            }}
-          >
-            Cancel Upload
-          </Button>
-        ),
-      });
-      const slowUploadTimer = window.setTimeout(() => {
-        messageApi.warning(
-          "Uploading model is taking longer than expected. Please check device connection."
-        );
-      }, 15000);
-      const resp = await uploadModelApi(
-        formData,
-        (progress) => {
-          setLoadingTip(`Uploading model to device: ${progress.toFixed(1)}%`);
-        },
-        uploadController.signal
-      );
-      window.clearTimeout(slowUploadTimer);
-      messageApi.destroy(uploadNoticeKey);
-      if (resp.code == 0) {
-        messageApi.success("Model uploaded to device successfully");
-        console.info("train:upload_model_success", { model_id });
-        try {
-          const deviceInfoResp = await getModelInfoApi();
-          console.info("train:device_model_info", deviceInfoResp);
-        } catch (error) {
-          console.warn("train:get_device_model_info failed", error);
-        }
-
-        // 创建新的应用并同步到云端，同时更新 flow
-        setLoadingTip("Waiting for Node-RED");
-        const nodeRedReady = await waitForNodeRedReady();
-        if (!nodeRedReady) {
-          const shouldReload = await confirmTrainReload(
-            "Node-RED is still not running. Flow deployment may not take effect. Reload and retry train from the beginning?",
-            replayPayload
-          );
-          if (!shouldReload) {
-            messageApi.warning("Node-RED not ready yet");
-          }
-          return;
-        }
-
-        setLoadingTip("Creating app and updating flow");
-        console.info("train:step:create_app:start");
-        try {
-          let flowData = DefaultFlowDataWithDashboard;
-          console.info("train:flow:select_default", {
-            flowLen: flowData?.length ?? 0,
-          });
-          if (classesCsv) {
-            try {
-              const flowObj = JSON.parse(flowData);
-              if (Array.isArray(flowObj)) {
-                const updated = flowObj.map((node: Record<string, unknown>) => {
-                  if (node.type === "model") {
-                    return {
-                      ...node,
-                      classes: classesCsv,
-                      uri: "",
-                    };
-                  }
-                  return node;
-                });
-                flowData = JSON.stringify(updated);
-              }
-            } catch (error) {
-              console.warn("train:update_flow_classes_failed", error);
-            }
-          }
-          console.info("train:flow:final", {
-            flowLen: flowData?.length ?? 0,
-            hasUiTab: flowData?.includes('"ui-tab"') ?? false,
-            hasUiTemplate: flowData?.includes('"ui-template"') ?? false,
-          });
-
-          const appNameBase = (resolvedModelName || model_id).replace(
-            /\.cvimodel$/i,
-            ""
-          );
-          const ok = await createAppAndUpdateFlow({
-            app_name: `classify_${appNameBase}`,
-            flow_data: flowData,
-            model_data: null,
-            needUpdateFlow: true,
-            reloadOnFlowFail: false,
-          });
-          console.info("train:step:create_app:done", { ok });
-
-          if (!ok) {
-            console.warn("train:create_app_failed:fall_back_sendFlow");
-            setLoadingTip("Deploying flow to device");
-            try {
-              await sendFlow(flowData);
-            } catch (error) {
-              console.error("train:fall_back_send_flow_failed", error);
-              const shouldReload = await confirmTrainReload(
-                "Flow deployment failed because Node-RED is not ready. Reload and retry train from the beginning?",
-                replayPayload
-              );
-              if (!shouldReload) {
-                messageApi.warning("Flow deployment failed");
-              }
-              return;
-            }
-          }
-
-          if (deviceInfo?.ip) {
-            setLoadingTip("Waiting for dashboard");
-            console.info("train:step:wait_dashboard:start", {
-              ip: deviceInfo.ip,
-            });
-            const ready = await waitForDashboardReady(deviceInfo.ip);
-            console.info("train:step:wait_dashboard:done", { ready });
-            if (ready) {
-              sessionStorage.removeItem("sensecraft_action");
-              const targetUrl = `http://${deviceInfo.ip}/#/dashboard`;
-              console.info("train:redirect:dashboard", {
-                from: window.location.href,
-                to: targetUrl,
-              });
-              window.location.href = targetUrl;
-            } else {
-              const shouldReload = await confirmTrainReload(
-                "Dashboard did not become ready in time. Reload and retry train from the beginning?",
-                replayPayload
-              );
-              if (!shouldReload) {
-                messageApi.warning("Dashboard not ready yet");
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Create app/update flow error:", error);
-          // 不显示错误，因为模型已经上传成功
-        }
-      } else {
-        messageApi.error("Upload model to device failed");
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        console.warn("Train model upload aborted");
-        sessionStorage.removeItem("sensecraft_action");
-        setLoading(false);
-        setLoadingTip("");
-        return;
-      }
-      console.error("Train model error:", error);
-      if (typeof error === "string") {
-        console.error("train:error:string", error.slice(0, 500));
-      } else if (error instanceof Error) {
-        console.error("train:error:message", error.message);
-      }
-      const errorMsg =
-        error && typeof error === "object" && "msg" in error
-          ? (error as { msg?: string }).msg
-          : "Train model failed";
-      messageApi.error(errorMsg || "Train model failed");
-    } finally {
-      setLoading(false);
-      setLoadingTip("");
-    }
-  };
+  const handleTrainModel = async (model_id: string, model_name?: string) =>
+    runTrainAction({
+      modelId: model_id,
+      modelName: model_name,
+      deviceIp: deviceInfo?.ip,
+      setLoading,
+      setLoadingTip,
+      messageApi,
+      modal,
+      uploadAbortRef,
+      createAppAndUpdateFlow,
+      sendFlow,
+    });
 
   //检查提示用户当前应用是不是需要保存，如果需要就保存
   const checkAndSaveLocalApp = async () => {
