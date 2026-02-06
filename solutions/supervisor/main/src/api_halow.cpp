@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include <arpa/inet.h>
 
 #include "api_halow.h"
 
@@ -392,20 +393,39 @@ api_status_t api_halow::startPing(request_t req, response_t res)
             c[line[0]] = line[1];
         }
         std::string my_ip = c.value("ip_address", "");
+        std::string subnet_mask = c.value("subnet_mask", "");
 
         if (my_ip.empty() || my_ip.find("169.254") == 0) {
             response(res, -1, "Halow not connected or no valid IP");
             return API_STATUS_OK;
         }
 
-        size_t last_dot = my_ip.find_last_of('.');
-        if (last_dot != std::string::npos) {
-            ip = my_ip.substr(0, last_dot) + ".1";
+        if (subnet_mask.empty()) {
+            size_t last_dot = my_ip.find_last_of('.');
+            if (last_dot != std::string::npos) {
+                ip = my_ip.substr(0, last_dot) + ".1";
+            }
         } else {
-            response(res, -1, "Invalid IP format");
-            return API_STATUS_OK;
+            struct in_addr ip_addr, mask_addr, network_addr, gateway_addr;
+            if (inet_pton(AF_INET, my_ip.c_str(), &ip_addr) == 1 &&
+                inet_pton(AF_INET, subnet_mask.c_str(), &mask_addr) == 1) {
+                
+                network_addr.s_addr = ip_addr.s_addr & mask_addr.s_addr;
+                // Assuming gateway is the first usable address (network + 1)
+                gateway_addr.s_addr = network_addr.s_addr | htonl(1);
+                
+                char gateway_str[INET_ADDRSTRLEN];
+                if (inet_ntop(AF_INET, &gateway_addr, gateway_str, INET_ADDRSTRLEN)) {
+                    ip = gateway_str;
+                }
+            }
         }
-        LOGI("Auto-detected ping target: %s (from %s)", ip.c_str(), my_ip.c_str());
+
+        if (ip.empty()) {
+             response(res, -1, "Invalid IP or Mask format");
+             return API_STATUS_OK;
+        }
+        LOGI("Auto-detected ping target: %s (from %s/%s)", ip.c_str(), my_ip.c_str(), subnet_mask.c_str());
     }
 
     start_ping(ip, interval);

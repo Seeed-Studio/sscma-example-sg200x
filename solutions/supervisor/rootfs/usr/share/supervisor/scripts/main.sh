@@ -706,6 +706,7 @@ function switchHalow() {
 function get_halow_current() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     $WPA_CLI_S1G status 2>/dev/null > "$out"
+    echo "subnet_mask=$(_mask halow0)" >> "$out"
     echo "$out"
 }
 
