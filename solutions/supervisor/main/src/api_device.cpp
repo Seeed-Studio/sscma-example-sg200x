@@ -791,27 +791,36 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
     }
 
     // Wait for ADC to stabilize
-    usleep(10000); // 10ms
+    usleep(15000); // 30ms
 
-    // Step 2: Read raw ADC value
-    std::ifstream raw_file("/sys/bus/iio/devices/iio:device0/in_voltage0_raw");
-    long raw_value = 0;
-    if (raw_file.is_open()) {
-        raw_file >> raw_value;
-        raw_file.close();
-    }
-
-    // Read ADC scale factor
-    std::ifstream scale_file("/sys/bus/iio/devices/iio:device0/in_voltage0_scale");
+    // Step 2: Read raw ADC value multiple times and average
+    long raw_sum = 0;
+    int samples = 5;
     double scale = 1.0;
+
+    // Read ADC scale factor once
+    std::ifstream scale_file("/sys/bus/iio/devices/iio:device0/in_voltage0_scale");
     if (scale_file.is_open()) {
         scale_file >> scale;
         scale_file.close();
     }
 
+    for (int i = 0; i < samples; i++) {
+        std::ifstream raw_file("/sys/bus/iio/devices/iio:device0/in_voltage0_raw");
+        long raw_value = 0;
+        if (raw_file.is_open()) {
+            raw_file >> raw_value;
+            raw_file.close();
+            raw_sum += raw_value;
+        }
+        if (i < samples - 1) usleep(5000); // 5ms interval between samples
+    }
+
+    long raw_avg = raw_sum / samples;
+
     // Calculate actual voltage: voltage = raw * scale
     // Hardware voltage divider ratio is 1/2, so multiply by 2
-    double voltage_mv = raw_value * scale * 2.0;
+    double voltage_mv = raw_avg * scale * 2.0;
 
     // Step 3: Set GPIO430 LOW to disable ADC
     std::ofstream gpio_value_off(adc_enable_gpio);
@@ -823,10 +832,10 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
 
     // Return voltage in millivolts
     data["voltage"] = (int)voltage_mv;
-    data["raw"] = raw_value;
+    data["raw"] = raw_avg;
     data["scale"] = scale;
 
-    LOGD("Battery voltage: %.2f mV (raw=%ld, scale=%.6f)", voltage_mv, raw_value, scale);
+    LOGD("Battery voltage: %.2f mV (raw_avg=%ld, scale=%.6f)", voltage_mv, raw_avg, scale);
 
     response(res, 0, STR_OK, data);
     return API_STATUS_OK;
