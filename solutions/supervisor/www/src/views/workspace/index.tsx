@@ -21,6 +21,7 @@ import {
 import {
   getDeviceListApi,
   getModelInfoApi,
+  queryServiceStatusApi,
   uploadModelApi,
 } from "@/api/device";
 import { IIPDevice } from "@/api/device/device";
@@ -61,6 +62,7 @@ import NodeRed from "@/views/nodered";
 import ApplicationList from "./ApplicationList";
 import ModelConversion from "./ModelConversion";
 import styles from "./index.module.css";
+import { ServiceStatus } from "@/enum";
 
 // 定义 type 优先级
 const typePriority = { eth: 1, usb: 2, wlan: 3 };
@@ -74,6 +76,15 @@ interface Node {
   type: string;
   label?: string;
 }
+
+interface ITrainReplayAction extends IActionInfo {
+  action: "train";
+  model_id: string;
+  model_name?: string;
+}
+
+const FLOW_DEPLOY_EMPTY_REVISION_ERROR =
+  "Node-RED did not accept flow deployment (empty revision)";
 
 const Workspace = () => {
   const { token, appInfo, nickname, updateAppInfo, updateNickname } =
@@ -124,6 +135,69 @@ const Workspace = () => {
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
     return false;
+  };
+
+  const waitForNodeRedReady = async (
+    timeoutMs = 120000,
+    intervalMs = 2000
+  ) => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const response = await queryServiceStatusApi();
+        if (response.code === 0 && response.data) {
+          if (response.data.nodeRed === ServiceStatus.RUNNING) {
+            return true;
+          }
+        }
+      } catch (error) {
+        // ignore and retry
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    return false;
+  };
+
+  const reloadForTrainAction = (payload: ITrainReplayAction) => {
+    sessionStorage.setItem("sensecraft_action", JSON.stringify(payload));
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.searchParams.set("action", "train");
+    url.searchParams.set("model_id", payload.model_id);
+    if (payload.model_name) {
+      url.searchParams.set("model_name", payload.model_name);
+    }
+    window.location.href = url.toString();
+  };
+
+  const confirmTrainReload = (reason: string, payload: ITrainReplayAction) =>
+    new Promise<boolean>((resolve) => {
+      modal.confirm({
+        title: "Train flow not fully ready",
+        content: reason,
+        okText: "Reload and retry train",
+        cancelText: "Stay on current page",
+        onOk: () => {
+          resolve(true);
+          reloadForTrainAction(payload);
+        },
+        onCancel: () => {
+          resolve(false);
+        },
+      });
+    });
+
+  const confirmPageReloadOnFlowFailed = async (reason: string) => {
+    const confirmed = await modal.confirm({
+      title: "Flow deploy failed",
+      content: reason,
+      okText: "Reload page",
+      cancelText: "Stay on current page",
+    });
+    if (confirmed) {
+      window.location.reload();
+    }
+    return confirmed;
   };
 
   useEffect(() => {
@@ -303,7 +377,6 @@ const Workspace = () => {
             //获取模型文件并上传到设备
             handleTrainModel(model_id, model_name);
           }
-          sessionStorage.removeItem("sensecraft_action");
         } else if (action == "normal") {
           checkAndSyncAppData();
         }
@@ -446,53 +519,52 @@ const Workspace = () => {
 
   //往nodered更新flow
   const sendFlow = async (flows?: string) => {
-    try {
-      const summarizeFlow = (flow?: string) => {
-        const summary = {
-          len: flow?.length ?? 0,
-          nodes: null as number | null,
-          hasUi: false,
-          hasUiTab: false,
-          hasTab: false,
-          hasModel: false,
-          typesSample: [] as string[],
-        };
-        if (!flow) return summary;
-        try {
-          const data = JSON.parse(flow);
-          if (Array.isArray(data)) {
-            summary.nodes = data.length;
-            const types = new Set<string>();
-            for (const node of data) {
-              const type = (node as { type?: string })?.type || "";
-              if (type) types.add(type);
-              if (type.startsWith("ui-")) summary.hasUi = true;
-              if (type === "ui-tab") summary.hasUiTab = true;
-              if (type === "tab") summary.hasTab = true;
-              if (type === "model") summary.hasModel = true;
-            }
-            summary.typesSample = Array.from(types).slice(0, 8);
-          }
-        } catch (error) {
-          // ignore parse errors for debug summary
-        }
-        return summary;
+    const summarizeFlow = (flow?: string) => {
+      const summary = {
+        len: flow?.length ?? 0,
+        nodes: null as number | null,
+        hasUi: false,
+        hasUiTab: false,
+        hasTab: false,
+        hasModel: false,
+        typesSample: [] as string[],
       };
-      console.info("sendFlow:start", summarizeFlow(flows));
-      const revision = await saveFlows(flows);
-      console.info("sendFlow:saveFlows:done", { revision });
-      if (revision) {
-        revRef.current = revision;
-        const response = await getFlowsState();
-        console.info("sendFlow:flows_state", response);
-        if (response?.state == "stop") {
-          await setFlowsState({ state: "start" });
+      if (!flow) return summary;
+      try {
+        const data = JSON.parse(flow);
+        if (Array.isArray(data)) {
+          summary.nodes = data.length;
+          const types = new Set<string>();
+          for (const node of data) {
+            const type = (node as { type?: string })?.type || "";
+            if (type) types.add(type);
+            if (type.startsWith("ui-")) summary.hasUi = true;
+            if (type === "ui-tab") summary.hasUiTab = true;
+            if (type === "tab") summary.hasTab = true;
+            if (type === "model") summary.hasModel = true;
+          }
+          summary.typesSample = Array.from(types).slice(0, 8);
         }
-        setTimestamp(new Date().getTime());
+      } catch (error) {
+        // ignore parse errors for debug summary
       }
-    } catch (error) {
-      console.log(error);
+      return summary;
+    };
+
+    console.info("sendFlow:start", summarizeFlow(flows));
+    const revision = await saveFlows(flows);
+    console.info("sendFlow:saveFlows:done", { revision });
+    if (!revision) {
+      throw new Error(FLOW_DEPLOY_EMPTY_REVISION_ERROR);
     }
+
+    revRef.current = revision;
+    const response = await getFlowsState();
+    console.info("sendFlow:flows_state", response);
+    if (response?.state == "stop") {
+      await setFlowsState({ state: "start" });
+    }
+    setTimestamp(new Date().getTime());
   };
 
   // 判断本地应用和云端应用是否一致
@@ -695,6 +767,11 @@ const Workspace = () => {
 
     try {
       console.info("train:start", { model_id, model_name });
+      const replayPayload: ITrainReplayAction = {
+        action: "train",
+        model_id,
+        ...(model_name ? { model_name } : {}),
+      };
       setLoading(true);
       let classesCsv: string | null = null;
       let classesList: string[] | null = null;
@@ -858,6 +935,19 @@ const Workspace = () => {
         }
 
         // 创建新的应用并同步到云端，同时更新 flow
+        setLoadingTip("Waiting for Node-RED");
+        const nodeRedReady = await waitForNodeRedReady();
+        if (!nodeRedReady) {
+          const shouldReload = await confirmTrainReload(
+            "Node-RED is still not running. Flow deployment may not take effect. Reload and retry train from the beginning?",
+            replayPayload
+          );
+          if (!shouldReload) {
+            messageApi.warning("Node-RED not ready yet");
+          }
+          return;
+        }
+
         setLoadingTip("Creating app and updating flow");
         console.info("train:step:create_app:start");
         try {
@@ -900,13 +990,26 @@ const Workspace = () => {
             flow_data: flowData,
             model_data: null,
             needUpdateFlow: true,
+            reloadOnFlowFail: false,
           });
           console.info("train:step:create_app:done", { ok });
 
           if (!ok) {
             console.warn("train:create_app_failed:fall_back_sendFlow");
             setLoadingTip("Deploying flow to device");
-            await sendFlow(flowData);
+            try {
+              await sendFlow(flowData);
+            } catch (error) {
+              console.error("train:fall_back_send_flow_failed", error);
+              const shouldReload = await confirmTrainReload(
+                "Flow deployment failed because Node-RED is not ready. Reload and retry train from the beginning?",
+                replayPayload
+              );
+              if (!shouldReload) {
+                messageApi.warning("Flow deployment failed");
+              }
+              return;
+            }
           }
 
           if (deviceInfo?.ip) {
@@ -925,7 +1028,13 @@ const Workspace = () => {
               });
               window.location.href = targetUrl;
             } else {
-              messageApi.warning("Dashboard not ready yet");
+              const shouldReload = await confirmTrainReload(
+                "Dashboard did not become ready in time. Reload and retry train from the beginning?",
+                replayPayload
+              );
+              if (!shouldReload) {
+                messageApi.warning("Dashboard not ready yet");
+              }
             }
           }
         } catch (error) {
@@ -1137,6 +1246,16 @@ const Workspace = () => {
       }
       setLoading(false);
     } catch (error) {
+      const isFlowDeployError =
+        error instanceof Error &&
+        error.message === FLOW_DEPLOY_EMPTY_REVISION_ERROR;
+      if (isFlowDeployError) {
+        await confirmPageReloadOnFlowFailed(
+          "Flow was not deployed to Node-RED. Reload page and retry?"
+        );
+      } else {
+        messageApi.error("Sync app to Node-RED failed");
+      }
       setLoading(false);
     }
   };
@@ -1249,12 +1368,14 @@ const Workspace = () => {
     model_data,
     needUpdateFlow,
     needUpdateApp = true,
+    reloadOnFlowFail = true,
   }: {
     app_name?: string;
     flow_data?: string;
     model_data?: IModelData | null;
     needUpdateFlow?: boolean;
     needUpdateApp?: boolean;
+    reloadOnFlowFail?: boolean;
   }) => {
     try {
       setLoading(true);
@@ -1344,6 +1465,14 @@ const Workspace = () => {
       return false;
     } catch (error) {
       console.error("createAppAndUpdateFlow:exception", error);
+      const isFlowDeployError =
+        error instanceof Error &&
+        error.message === FLOW_DEPLOY_EMPTY_REVISION_ERROR;
+      if (needUpdateFlow && reloadOnFlowFail && isFlowDeployError) {
+        await confirmPageReloadOnFlowFailed(
+          "Flow was not deployed to Node-RED. Reload page and retry?"
+        );
+      }
       messageApi.error("Create app failed");
       setLoading(false);
       setLoadingTip("");
