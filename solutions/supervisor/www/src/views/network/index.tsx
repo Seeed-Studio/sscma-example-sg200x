@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Button,
   Form,
@@ -76,6 +77,7 @@ function Network() {
     handleStartPing,
     handleStopPing,
   } = useData();
+  const [showPingInput, setShowPingInput] = useState(false);
 
   return (
     <div className="px-16 pb-24">
@@ -313,41 +315,52 @@ function Network() {
                           <span style={{ marginRight: 10, color: '#999' }}>
                             {state.pingEnabled ? `Target: ${state.pingIp}` : ''}
                           </span>
-                          <Input
-                            placeholder="Interval"
-                            value={state.pingInterval}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === '') {
-                                setStates({ pingInterval: null });
-                              } else if (/^\d+$/.test(val)) {
-                                setStates({ pingInterval: Number(val) });
-                              }
-                            }}
-                            onBlur={() => {
-                              if (!state.pingInterval || state.pingInterval < 1) {
-                                setStates({ pingInterval: 5 });
-                              }
-                            }}
-                            style={{ 
-                              minWidth: 60, 
-                              width: `${Math.max(60, ((state.pingInterval?.toString() || '').length || 8) * 9 + 24)}px`,
-                              marginRight: 0, 
-                              textAlign: 'center' 
-                            }}
-                            disabled={state.pingEnabled}
-                          />
-                          <span style={{ marginRight: 10, marginLeft: 5 }}>s</span>
-                          <Switch
-                            checked={state.pingEnabled}
-                            onChange={(checked) => {
-                               if (checked) {
-                                 handleStartPing();
-                               } else {
-                                 handleStopPing();
-                               }
-                            }}
-                          />
+                          {(state.pingEnabled || showPingInput) && (
+                            <>
+                              <Input
+                                placeholder="Interval"
+                                value={state.pingInterval}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '') {
+                                    setStates({ pingInterval: null });
+                                  } else if (/^\d+$/.test(val)) {
+                                    setStates({ pingInterval: Number(val) });
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (!state.pingInterval || state.pingInterval < 1) {
+                                    setStates({ pingInterval: 5 });
+                                  }
+                                }}
+                                style={{
+                                  minWidth: 60,
+                                  width: `${Math.max(60, ((state.pingInterval?.toString() || '').length || 8) * 9 + 24)}px`,
+                                  marginRight: 0,
+                                  textAlign: 'center'
+                                }}
+                                disabled={state.pingEnabled}
+                              />
+                              <span style={{ marginRight: 10, marginLeft: 5 }}>s</span>
+                            </>
+                          )}
+                          {state.pingEnabled ? (
+                            <Button onClick={handleStopPing} danger>
+                              Stop
+                            </Button>
+                          ) : !showPingInput ? (
+                            <Button onClick={() => setShowPingInput(true)}>Start</Button>
+                          ) : (
+                            <Button
+                              type="primary"
+                              onClick={async () => {
+                                await handleStartPing();
+                                setShowPingInput(false);
+                              }}
+                            >
+                              Confirm
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
