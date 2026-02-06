@@ -98,3 +98,30 @@ export const forgetHalowApi = async (data: { ssid: string }) =>
     method: "post",
     data,
   });
+
+// 开启Ping保活
+export const startPingApi = async (data: { ip: string; interval: number }) =>
+  supervisorRequest({
+    url: "api/halowMgr/startPing",
+    method: "post",
+    data,
+  });
+
+// 停止Ping保活
+export const stopPingApi = async () =>
+  supervisorRequest({
+    url: "api/halowMgr/stopPing",
+    method: "post",
+    data: {},
+  });
+
+// 获取Ping状态
+export const getPingStatusApi = async () =>
+  supervisorRequest<{
+    pingIp: string;
+    pingInterval: number;
+    pingEnabled: boolean;
+  }>({
+    url: "api/halowMgr/getPingStatus",
+    method: "get",
+  });

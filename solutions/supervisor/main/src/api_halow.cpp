@@ -340,3 +340,103 @@ api_status_t api_halow::switchAntenna(request_t req, response_t res)
     _nw_info["antennaEnable"] = _antennaMode;
     return API_STATUS_OK;
 }
+
+void api_halow::start_ping(const std::string& ip, int interval)
+{
+    stop_ping(); // Stop existing if any
+
+    _ping_ip = ip;
+    _ping_interval = interval;
+    _ping_running = true;
+
+    _ping_worker = std::thread([]() {
+        LOGI("Ping task started: ip=%s, interval=%d", _ping_ip.c_str(), _ping_interval.load());
+        while (_ping_running) {
+            std::string cmd = "ping -I halow0 -c 1 -W 1 " + _ping_ip + " >/dev/null 2>&1";
+            int ret = system(cmd.c_str());
+            // LOGD("Ping %s result: %d", _ping_ip.c_str(), ret);
+
+            std::unique_lock<std::mutex> lock(_ping_mutex);
+            if (_ping_cv.wait_for(lock, std::chrono::seconds(_ping_interval), [] { return !_ping_running; })) {
+                break;
+            }
+        }
+        LOGI("Ping task stopped");
+    });
+    _ping_worker.detach();
+}
+
+void api_halow::stop_ping()
+{
+    if (_ping_running) {
+        _ping_running = false;
+        _ping_cv.notify_all();
+        if (_ping_worker.joinable()) {
+            _ping_worker.join();
+        }
+    }
+}
+
+api_status_t api_halow::startPing(request_t req, response_t res)
+{
+    auto&& body = parse_body(req);
+    std::string ip = body.value("ip", "");
+    int interval = body.value("interval", 5);
+
+    if (interval < 1) interval = 1;
+
+    if (ip.empty()) {
+        json c = json::object();
+        for (auto& line : parse_result(script("get_halow_current"), '=', false)) {
+            if (line.size() < 2) continue;
+            c[line[0]] = line[1];
+        }
+        std::string my_ip = c.value("ip_address", "");
+
+        if (my_ip.empty() || my_ip.find("169.254") == 0) {
+            response(res, -1, "Halow not connected or no valid IP");
+            return API_STATUS_OK;
+        }
+
+        size_t last_dot = my_ip.find_last_of('.');
+        if (last_dot != std::string::npos) {
+            ip = my_ip.substr(0, last_dot) + ".1";
+        } else {
+            response(res, -1, "Invalid IP format");
+            return API_STATUS_OK;
+        }
+        LOGI("Auto-detected ping target: %s (from %s)", ip.c_str(), my_ip.c_str());
+    }
+
+    start_ping(ip, interval);
+
+    json data = json::object();
+    data["pingIp"] = _ping_ip;
+    data["pingInterval"] = _ping_interval.load();
+    data["pingEnabled"] = _ping_running.load();
+
+    response(res, 0, STR_OK, data);
+    return API_STATUS_OK;
+}
+
+api_status_t api_halow::stopPing(request_t req, response_t res)
+{
+    stop_ping();
+
+    json data = json::object();
+    data["pingEnabled"] = false;
+
+    response(res, 0, STR_OK, data);
+    return API_STATUS_OK;
+}
+
+api_status_t api_halow::getPingStatus(request_t req, response_t res)
+{
+    json data = json::object();
+    data["pingEnabled"] = _ping_running.load();
+    data["pingIp"] = _ping_ip;
+    data["pingInterval"] = _ping_interval.load();
+
+    response(res, 0, STR_OK, data);
+    return API_STATUS_OK;
+}

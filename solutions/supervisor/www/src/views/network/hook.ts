@@ -12,6 +12,9 @@ import {
   disconnectHalowApi,
   connectHalowApi,
   forgetHalowApi,
+  startPingApi,
+  stopPingApi,
+  getPingStatusApi,
 } from "@/api/network";
 import {
   WifiConnectedStatus,
@@ -81,6 +84,10 @@ interface IInitialState {
   halowTimer: NodeJS.Timeout | null;
   halowConfig?: IHalowInfo; // Halow 配置信息
   halowCountry?: "AU" | "EU" | "IN" | "JP" | "KR" | "NZ" | "SG" | "US"; // Halow 国家设置
+  // Ping 保活
+  pingIp: string;
+  pingInterval: number;
+  pingEnabled: boolean;
 }
 type ActionType = { type: "setState"; payload: Partial<IInitialState> };
 const initialState: IInitialState = {
@@ -112,6 +119,9 @@ const initialState: IInitialState = {
   halowTimer: null,
   halowConfig: undefined,
   halowCountry: "US",
+  pingIp: "",
+  pingInterval: 5,
+  pingEnabled: false,
 };
 function reducer(state: IInitialState, action: ActionType): IInitialState {
   switch (action.type) {
@@ -649,6 +659,44 @@ export function useData() {
     });
   };
 
+  const handleStartPing = async () => {
+    try {
+      const { data } = await startPingApi({
+        ip: "", // Let backend auto-detect
+        interval: state.pingInterval,
+      });
+      setStates({ 
+        pingEnabled: true,
+        pingIp: data.pingIp || state.pingIp 
+      });
+    } catch (e) {}
+  };
+
+  const handleStopPing = async () => {
+    try {
+      await stopPingApi();
+      setStates({ pingEnabled: false });
+    } catch (e) {}
+  };
+
+  const getPingStatus = async () => {
+      try {
+          const { data } = await getPingStatusApi();
+          setStates({
+              pingIp: data.pingIp,
+              pingInterval: data.pingInterval,
+              pingEnabled: data.pingEnabled
+          });
+      } catch (e) {}
+  };
+
+  // 定时刷新 Ping 状态，或者在初始化时获取一次
+  useEffect(() => {
+    if (state.activeTab === "halow" && state.halowChecked) {
+        getPingStatus();
+    }
+  }, [state.activeTab, state.halowChecked]);
+
   const onConnectHalow = async (
     values?: FormParams & { halowConfig?: IHalowInfo },
     ssid?: string
@@ -824,5 +872,7 @@ export function useData() {
     onHandleHalowOperate,
     onConnectHalow,
     onOpenManualHalowConfig,
+    handleStartPing,
+    handleStopPing,
   };
 }

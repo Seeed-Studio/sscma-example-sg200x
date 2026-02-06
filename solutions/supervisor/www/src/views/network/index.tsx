@@ -6,6 +6,7 @@ import {
   Modal,
   Tabs,
   Select,
+  InputNumber,
 } from "antd";
 import { LoadingOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import WarnImg from "@/assets/images/warn.png";
@@ -72,6 +73,8 @@ function Network() {
     onHandleHalowOperate,
     onConnectHalow,
     onOpenManualHalowConfig,
+    handleStartPing,
+    handleStopPing,
   } = useData();
 
   return (
@@ -295,6 +298,55 @@ function Network() {
                           <Switch
                             checked={state.antennaEnable === AntennaEnable.RF2}
                             onChange={handleSwitchAntenna}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {state.halowEnable !== 2 && state.halowChecked && (
+                    <div className="mt-20">
+                      <div className="flex justify-between items-center mb-20">
+                        <div className="font-bold text-18">Keep-Alive</div>
+                        <div className="flex items-center">
+                          {/* 显示当前目标IP (只读) */}
+                          <span style={{ marginRight: 10, color: '#999' }}>
+                            {state.pingEnabled ? `Target: ${state.pingIp}` : ''}
+                          </span>
+                          <Input
+                            placeholder="Interval"
+                            value={state.pingInterval}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '') {
+                                setStates({ pingInterval: null });
+                              } else if (/^\d+$/.test(val)) {
+                                setStates({ pingInterval: Number(val) });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (!state.pingInterval || state.pingInterval < 1) {
+                                setStates({ pingInterval: 5 });
+                              }
+                            }}
+                            style={{ 
+                              minWidth: 60, 
+                              width: `${Math.max(60, ((state.pingInterval?.toString() || '').length || 8) * 9 + 24)}px`,
+                              marginRight: 0, 
+                              textAlign: 'center' 
+                            }}
+                            disabled={state.pingEnabled}
+                          />
+                          <span style={{ marginRight: 10, marginLeft: 5 }}>s</span>
+                          <Switch
+                            checked={state.pingEnabled}
+                            onChange={(checked) => {
+                               if (checked) {
+                                 handleStartPing();
+                               } else {
+                                 handleStopPing();
+                               }
+                            }}
                           />
                         </div>
                       </div>
