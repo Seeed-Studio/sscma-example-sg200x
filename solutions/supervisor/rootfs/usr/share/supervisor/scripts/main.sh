@@ -632,6 +632,7 @@ function forgetWiFi() {
 readonly CONF_HALOW="$CONFIG_DIR/halow"
 readonly CONF_COUNTRY="$CONFIG_DIR/halow_country"
 readonly CONF_ANTENNA="$CONFIG_DIR/antenna"
+readonly CONF_PING="$CONFIG_DIR/halow_ping"
 readonly WPA_CLI_S1G="wpa_cli_s1g -i halow0"
 readonly GPIO_ANTENNA=431
 
@@ -861,6 +862,22 @@ function switchAntenna() {
 
     printf $value > /sys/class/gpio/gpio$GPIO_ANTENNA/value
     echo "$value" > "$CONF_ANTENNA"
+}
+
+function savePing() {
+    local ip="$2" interval="$3" enabled="$4"
+    echo "ip=$ip" > "$CONF_PING"
+    echo "interval=$interval" >> "$CONF_PING"
+    echo "enabled=$enabled" >> "$CONF_PING"
+    echo "$STR_OK"
+}
+
+function getPingConfig() {
+    if [ -f "$CONF_PING" ]; then
+        cat "$CONF_PING"
+    else
+        echo "enabled=0"
+    fi
 }
 # halow
 ##################################################

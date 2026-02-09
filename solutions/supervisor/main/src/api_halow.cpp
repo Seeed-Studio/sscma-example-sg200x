@@ -114,6 +114,35 @@ void api_halow::start_halow()
     _nw_info["halowEnable"] = sta;
     _nw_info["antennaEnable"] = _antennaMode;
 
+    // Restore ping
+    std::string conf_str = script("getPingConfig");
+    std::string p_ip = "";
+    int p_interval = 5;
+    int p_enabled = 0;
+
+    std::stringstream ss(conf_str);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto pos = line.find('=');
+        if (pos == std::string::npos) continue;
+        std::string key = line.substr(0, pos);
+        std::string val = line.substr(pos + 1);
+        
+        if (key == "ip") p_ip = val;
+        else if (key == "interval") p_interval = std::stoi(val);
+        else if (key == "enabled") p_enabled = std::stoi(val);
+    }
+
+    if (p_enabled == 1 && !p_ip.empty()) {
+        start_ping(p_ip, p_interval);
+    } else {
+        _ping_ip = p_ip;
+        _ping_interval = p_interval;
+        _ping_running = (p_enabled == 1); 
+    }
+
+    LOGE("_ping_ip=%s, _ping_interval=%d, _ping_running=%d", _ping_ip.c_str(), _ping_interval.load(), _ping_running.load());
+
     _worker = std::thread([&]() {
         uint8_t timeout = 10;
 
@@ -329,6 +358,12 @@ api_status_t api_halow::switchHalow(request_t req, response_t res)
     if (_sta_enable != -1)
         sta = _sta_enable;
     _nw_info["halowEnable"] = sta;
+    
+    // Stop ping if halow is disabled
+    if (sta == 0) {
+        stop_ping();
+    }
+    
     return API_STATUS_OK;
 }
 
@@ -430,6 +465,8 @@ api_status_t api_halow::startPing(request_t req, response_t res)
 
     start_ping(ip, interval);
 
+    script("savePing", ip, interval, 1);
+
     json data = json::object();
     data["pingIp"] = _ping_ip;
     data["pingInterval"] = _ping_interval.load();
@@ -441,6 +478,7 @@ api_status_t api_halow::startPing(request_t req, response_t res)
 
 api_status_t api_halow::stopPing(request_t req, response_t res)
 {
+    script("savePing", _ping_ip, _ping_interval.load(), 0);
     stop_ping();
 
     json data = json::object();

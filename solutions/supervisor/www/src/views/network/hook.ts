@@ -482,6 +482,10 @@ export function useData() {
       connectedHalowInfoList: data.connectedHalowInfoList || [],
       halowInfoList: data.halowInfoList || [],
     });
+    // Update ping status when halow results are fetched and enabled
+    if (data.halowEnable === 1) {
+        getPingStatus();
+    }
   };
 
   const getHalowList = async () => {
@@ -510,6 +514,8 @@ export function useData() {
     setStates({
       halowChecked: !state.halowChecked,
       visible: false,
+      // If disabling halow, also disable ping in UI
+      ...(!state.halowChecked ? {} : { pingEnabled: false })
     });
   };
 
@@ -802,6 +808,10 @@ export function useData() {
       const prevChecked = prevHalowCheckedRef.current;
       const currentChecked = state.halowChecked;
 
+      if (currentChecked) {
+          getPingStatus();
+      }
+
       // 只有当从 false 变为 true 时才请求列表（用户手动打开开关）
       if (
         currentChecked &&
@@ -840,6 +850,7 @@ export function useData() {
       getHalowResults();
       if (state.halowChecked) {
         onAutoRefreshHalowList();
+        getPingStatus();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
