@@ -697,6 +697,7 @@ function start_halow() {
 
 function stop_halow() {
     _halow_stop >/dev/null 2>&1 &
+    rm -f "$CONF_PING"
 }
 
 function switchHalow() {
@@ -839,11 +840,13 @@ _halow_set_networks() {
 function disconnectHalow() {
     echo "$STR_OK"
     _halow_set_networks "$2" disable_network >/dev/null 2>&1 &
+    rm -f "$CONF_PING"
 }
 
 function forgetHalow() {
     echo "$STR_OK"
     _halow_set_networks "$2" remove_network >/dev/null 2>&1 &
+    rm -f "$CONF_PING"
 }
 
 function switchAntenna() {

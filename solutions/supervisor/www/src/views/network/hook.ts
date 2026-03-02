@@ -120,7 +120,7 @@ const initialState: IInitialState = {
   halowConfig: undefined,
   halowCountry: "US",
   pingIp: "",
-  pingInterval: 5,
+  pingInterval: 3,
   pingEnabled: false,
 };
 function reducer(state: IInitialState, action: ActionType): IInitialState {
@@ -482,9 +482,14 @@ export function useData() {
       connectedHalowInfoList: data.connectedHalowInfoList || [],
       halowInfoList: data.halowInfoList || [],
     });
-    // Update ping status when halow results are fetched and enabled
+    // Update ping status only when HaLow is enabled and connected
     if (data.halowEnable === 1) {
+      const isConnected = (data.connectedHalowInfoList || []).some(
+        (item: IWifiInfo) => item.status === NetworkStatus.Connected
+      );
+      if (isConnected) {
         getPingStatus();
+      }
     }
   };
 
@@ -696,13 +701,6 @@ export function useData() {
       } catch (e) {}
   };
 
-  // 定时刷新 Ping 状态，或者在初始化时获取一次
-  useEffect(() => {
-    if (state.activeTab === "halow" && state.halowChecked) {
-        getPingStatus();
-    }
-  }, [state.activeTab, state.halowChecked]);
-
   const onConnectHalow = async (
     values?: FormParams & { halowConfig?: IHalowInfo },
     ssid?: string
@@ -808,10 +806,6 @@ export function useData() {
       const prevChecked = prevHalowCheckedRef.current;
       const currentChecked = state.halowChecked;
 
-      if (currentChecked) {
-          getPingStatus();
-      }
-
       // 只有当从 false 变为 true 时才请求列表（用户手动打开开关）
       if (
         currentChecked &&
@@ -850,7 +844,6 @@ export function useData() {
       getHalowResults();
       if (state.halowChecked) {
         onAutoRefreshHalowList();
-        getPingStatus();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

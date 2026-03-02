@@ -59,7 +59,7 @@ private:
     // Ping task
     static inline std::thread _ping_worker;
     static inline std::atomic<bool> _ping_running { false };
-    static inline std::atomic<int> _ping_interval { 5 };
+    static inline std::atomic<int> _ping_interval { 3 };
     static inline std::string _ping_ip;
     static inline std::condition_variable _ping_cv;
     static inline std::mutex _ping_mutex;

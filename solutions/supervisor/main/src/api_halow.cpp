@@ -117,7 +117,7 @@ void api_halow::start_halow()
     // Restore ping
     std::string conf_str = script("getPingConfig");
     std::string p_ip = "";
-    int p_interval = 5;
+    int p_interval = 3;
     int p_enabled = 0;
 
     std::stringstream ss(conf_str);
@@ -417,7 +417,7 @@ api_status_t api_halow::startPing(request_t req, response_t res)
 {
     auto&& body = parse_body(req);
     std::string ip = body.value("ip", "");
-    int interval = body.value("interval", 5);
+    int interval = body.value("interval", 3);
 
     if (interval < 1) interval = 1;
 

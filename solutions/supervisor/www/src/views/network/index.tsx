@@ -330,7 +330,7 @@ function Network() {
                                 }}
                                 onBlur={() => {
                                   if (!state.pingInterval || state.pingInterval < 1) {
-                                    setStates({ pingInterval: 5 });
+                                    setStates({ pingInterval: 3 });
                                   }
                                 }}
                                 style={{
