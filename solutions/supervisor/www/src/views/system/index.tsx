@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import EditBlackImg from "@/assets/images/svg/editBlack.svg";
 import ArrowImg from "@/assets/images/svg/downArrow.svg";
+import PlugImg from "@/assets/images/svg/plug.svg";
 import CommonPopup from "@/components/common-popup";
 import { Form, Input, Picker, ProgressBar, Mask } from "antd-mobile";
 import {
@@ -200,10 +201,12 @@ function System() {
                   </span>
                   <div className="flex-1 truncate text-right">
                     {(item as any).isBattery && batteryInfo ? (
-                      <span>
+                      <span className="flex items-center justify-end">
                         {batteryInfo.voltage > 0
                           ? (batteryInfo.voltage < 2000
-                              ? "Charging"
+                              ? (<>
+                                  <img src={PlugImg} alt="charging" className="w-16 h-16" style={{color: '#07c160'}} />
+                                </>)
                               : `${(batteryInfo.voltage / 1000).toFixed(2)} V`)
                           : "No Battery"}
                       </span>
