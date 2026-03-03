@@ -18,6 +18,7 @@ import Wifi1 from "@/assets/images/svg/wifi_1.svg";
 import Wifi2 from "@/assets/images/svg/wifi_2.svg";
 import Wifi3 from "@/assets/images/svg/wifi_3.svg";
 import Wifi4 from "@/assets/images/svg/wifi_4.svg";
+import WifiDisabled from "@/assets/images/svg/wifi_disabled.svg";
 import { useData, OperateType, FormType } from "./hook";
 
 import {
@@ -32,6 +33,7 @@ import { requiredTrimValidate } from "@/utils/validate";
 const wifiImg: {
   [prop: number]: string;
 } = {
+  0: WifiDisabled, // Network not visible in current scan
   1: Wifi1,
   2: Wifi2,
   3: Wifi3,
@@ -40,6 +42,8 @@ const wifiImg: {
 
 // 将信号强度值转换为图标索引
 const getSignalIcon = (signal: number): number => {
+  // Signal = 0 means network not visible (disabled)
+  if (signal === 0) return 0;
   // 信号强度是负值，数值越大（越接近0）信号越强
   if (signal >= -50) return 4; // 信号很强
   if (signal >= -60) return 3; // 信号强

@@ -334,6 +334,15 @@ json api_halow::get_halow_scan_list(json& connected)
         if (!found)
             result.push_back(std::move(m[ssid]));
     }
+
+    // Mark saved networks that are not visible in current scan
+    for (auto& j : connected) {
+        std::string ssid = j.value("ssid", "");
+        if (!ssid.empty() && m.find(ssid) == m.end()) {
+            j["signal"] = 0; // Signal = 0 means network not visible
+        }
+    }
+
     return result;
 }
 
