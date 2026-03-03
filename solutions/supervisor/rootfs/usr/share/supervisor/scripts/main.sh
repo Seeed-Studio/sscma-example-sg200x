@@ -691,6 +691,7 @@ function start_halow() {
         [ ! -f "$CONF_ANTENNA" ] && echo 1 >"$CONF_ANTENNA"
         antenna=$(cat "$CONF_ANTENNA")
         switchAntenna "$antenna" >/dev/null 2>&1
+        $WPA_CLI_S1G scan 2>/dev/null &
     }
     printf '{"halow": %d, "antenna": %d}' $((halow)) $((antenna))
 }
@@ -725,13 +726,21 @@ function get_halow_connected() {
 function get_halow_scan_list() {
     local out=$WORK_DIR/${FUNCNAME[0]}
     local result="$out.tmp"
+
+    # Return cached result first (immediate return, non-blocking)
     [ -s "$result" ] && {
         cp "$result" "$out"
         rm "$result"
     }
     [ -f "$out" ] || >"$out"
     echo "$out"
+
+    # Use iw to trigger scan asynchronously (avoid radio work queue limitation)
+    [ -z "$(pidof iw 2>/dev/null)" ] && { iw dev halow0 scan >/dev/null 2>&1 & }
+
+    # Get wpa_cli scan_results (wpa_supplicant cache will be updated after iw scan completes)
     $WPA_CLI_S1G scan_results >"$result" 2>/dev/null &
+
     return 0
 }
 
