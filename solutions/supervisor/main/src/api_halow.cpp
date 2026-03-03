@@ -367,12 +367,18 @@ api_status_t api_halow::switchHalow(request_t req, response_t res)
     if (_sta_enable != -1)
         sta = _sta_enable;
     _nw_info["halowEnable"] = sta;
-    
-    // Stop ping if halow is disabled
+
+    // Stop ping and clear cache if halow is disabled
     if (sta == 0) {
         stop_ping();
+        // Clear halow network info cache
+        _halow_mutex.lock();
+        _nw_info["connectedHalowInfoList"] = json::array();
+        _nw_info["halowInfoList"] = json::array();
+        _nw_info["Selected"] = "";
+        _halow_mutex.unlock();
     }
-    
+
     return API_STATUS_OK;
 }
 
