@@ -845,7 +845,28 @@ function disconnectHalow() {
 
 function forgetHalow() {
     echo "$STR_OK"
-    _halow_set_networks "$2" remove_network >/dev/null 2>&1 &
+    local ssid="$2"
+
+    # Get network id
+    local id=$(cat $(get_halow_connected) | grep -w "$ssid" | awk -F'\t' '{print $1}')
+    [ -z "$id" ] && { rm -f "$CONF_PING"; return 0; }
+
+    # Check if this is the last network (count from config file)
+    local conf="/etc/wpa_supplicant_s1g.conf"
+    local network_count=$(grep -c "^network={" "$conf" 2>/dev/null || echo 0)
+
+    if [ "$network_count" -le 1 ]; then
+        # This is the last network, add a new empty network first, then remove the old one
+        # This avoids errors when network info becomes empty during transition
+        local new_id=$($WPA_CLI_S1G add_network)
+        $WPA_CLI_S1G disable_network "$new_id" >/dev/null 2>&1
+        $WPA_CLI_S1G remove_network "$id" >/dev/null 2>&1
+        $WPA_CLI_S1G save_config >/dev/null 2>&1
+    else
+        # Not the last network, remove normally
+        _halow_set_networks "$ssid" disable_network >/dev/null 2>&1
+        _halow_set_networks "$ssid" remove_network >/dev/null 2>&1
+    fi
     rm -f "$CONF_PING"
 }
 
