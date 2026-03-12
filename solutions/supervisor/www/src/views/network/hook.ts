@@ -576,12 +576,18 @@ export function useData() {
       };
 
       await connectHalowApi(params);
+
+      // 立即关闭弹窗
+      setStates({
+        wifiVisible: false,
+      });
+
       setTimeout(() => {
         setStates({
           needRefresh: true,
           connectLoading: false,
         });
-      }, 1000);
+      }, 500);
     } catch (err) {
       setStates({
         connectLoading: false,
@@ -647,7 +653,18 @@ export function useData() {
       const selected = targetHalow || state.selectedHalowInfo;
       if (!selected || !selected.ssid) return;
 
-      // Halow 连接总是需要配置信息，先弹出配置表单
+      // 检查是否是已保存的网络
+      const isConnectedNetwork = state.connectedHalowInfoList.some(
+        (item) => item.ssid === selected.ssid
+      );
+
+      // 如果是已保存的网络，直接连接，不需要弹窗
+      if (isConnectedNetwork) {
+        onConnectHalowDirect(selected.ssid);
+        return;
+      }
+
+      // 如果是新网络，弹出配置表单
       // 如果需要密码，会在配置表单提交后再处理
       setStates({
         visible: true,
