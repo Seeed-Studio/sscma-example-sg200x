@@ -1,6 +1,9 @@
 #include "api_device.h"
 #include "api_file.h"
 #include <iterator>
+#include <algorithm>
+#include <numeric>
+#include <chrono>
 
 api_status_t api_device::getCameraWebsocketUrl(request_t req, response_t res)
 {
@@ -740,11 +743,31 @@ api_status_t api_device::getTimezoneList(request_t req, response_t res)
 
 api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
 {
-    // Lock mutex to prevent concurrent access to GPIO430
-    // The lock is held for the entire operation: set HIGH -> read -> set LOW
-    std::lock_guard<std::mutex> lock(_battery_mutex);
-
     json data = json::object();
+
+    // Get processed voltage from cache (fast return)
+    BatteryVoltageData result = process_voltage_queue();
+
+    if (result.valid) {
+        data["voltage"] = result.voltage_mv;
+        data["raw"] = result.raw_value;
+        data["scale"] = result.scale;
+        response(res, 0, STR_OK, data);
+        LOGD("Battery voltage: %ld mV (raw=%ld, scale=%.6f, queue_size=%zu)",
+             result.voltage_mv, result.raw_value, result.scale, _voltage_queue.size());
+    } else {
+        // Not enough data yet, return error or wait
+        response(res, -1, "Battery voltage data not ready yet");
+        LOGW("Battery voltage queue not ready, size=%zu", _voltage_queue.size());
+    }
+
+    return API_STATUS_OK;
+}
+
+// Read battery voltage once (called by collector thread)
+api_device::BatteryVoltageData api_device::read_battery_voltage()
+{
+    BatteryVoltageData data = {0, 0, 0.0, false};
 
     // ADC enable GPIO (GPIO430)
     const char* adc_enable_gpio = "/sys/class/gpio/gpio430/value";
@@ -772,17 +795,9 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
             direction_file.flush();
             direction_file.close();
         }
-    } else {
-        // Ensure direction is out even if already exported (no delay needed)
-        std::ofstream direction_file(adc_direction);
-        if (direction_file.is_open()) {
-            direction_file << "out";
-            direction_file.flush();
-            direction_file.close();
-        }
     }
 
-    // Step 1: Set GPIO430 HIGH to enable ADC
+    // Set GPIO430 HIGH to enable ADC
     std::ofstream gpio_value(adc_enable_gpio);
     if (gpio_value.is_open()) {
         gpio_value << "1";
@@ -791,19 +806,20 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
     }
 
     // Wait for ADC to stabilize
-    usleep(15000); // 30ms
+    usleep(50000);  // 50ms for better stability
 
-    // Step 2: Read raw ADC value multiple times and average
-    long raw_sum = 0;
-    int samples = 5;
+    // Read ADC scale factor
     double scale = 1.0;
-
-    // Read ADC scale factor once
     std::ifstream scale_file("/sys/bus/iio/devices/iio:device0/in_voltage0_scale");
     if (scale_file.is_open()) {
         scale_file >> scale;
         scale_file.close();
     }
+
+    // Read raw ADC value multiple times and average
+    long raw_sum = 0;
+    const int samples = 5;
+    int valid_samples = 0;
 
     for (int i = 0; i < samples; i++) {
         std::ifstream raw_file("/sys/bus/iio/devices/iio:device0/in_voltage0_raw");
@@ -812,17 +828,12 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
             raw_file >> raw_value;
             raw_file.close();
             raw_sum += raw_value;
+            valid_samples++;
         }
-        if (i < samples - 1) usleep(5000); // 5ms interval between samples
+        if (i < samples - 1) usleep(10000);  // 10ms interval
     }
 
-    long raw_avg = raw_sum / samples;
-
-    // Calculate actual voltage: voltage = raw * scale
-    // Hardware voltage divider ratio is 1/2, so multiply by 2
-    double voltage_mv = raw_avg * scale * 2.0;
-
-    // Step 3: Set GPIO430 LOW to disable ADC
+    // Set GPIO430 LOW to disable ADC
     std::ofstream gpio_value_off(adc_enable_gpio);
     if (gpio_value_off.is_open()) {
         gpio_value_off << "0";
@@ -830,13 +841,150 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
         gpio_value_off.close();
     }
 
-    // Return voltage in millivolts
-    data["voltage"] = (int)voltage_mv;
-    data["raw"] = raw_avg;
-    data["scale"] = scale;
+    if (valid_samples > 0) {
+        long raw_avg = raw_sum / valid_samples;
+        data.raw_value = raw_avg;
+        data.scale = scale;
+        data.voltage_mv = (long)(raw_avg * scale * 2.0);  // Hardware divider is 1/2
+        data.valid = true;
+    }
 
-    LOGD("Battery voltage: %.2f mV (raw_avg=%ld, scale=%.6f)", voltage_mv, raw_avg, scale);
+    return data;
+}
 
-    response(res, 0, STR_OK, data);
-    return API_STATUS_OK;
+// Process voltage queue: filter outliers and calculate average
+api_device::BatteryVoltageData api_device::process_voltage_queue()
+{
+    std::lock_guard<std::mutex> lock(_voltage_queue_mutex);
+
+    BatteryVoltageData result = {0, 0, 0.0, false};
+
+    if (_voltage_queue.empty()) {
+        return result;
+    }
+
+    // If queue has data, process it
+    if (_voltage_queue.size() >= 3) {
+        // Calculate average for threshold comparison
+        long sum = 0;
+        for (const auto& d : _voltage_queue) {
+            if (d.valid) {
+                sum += d.voltage_mv;
+            }
+        }
+        long avg = sum / _voltage_queue.size();
+
+        // Filter out values that deviate too much from average
+        std::vector<long> filtered;
+        for (const auto& d : _voltage_queue) {
+            if (d.valid && std::abs(d.voltage_mv - avg) <= VOLTAGE_THRESHOLD_MV) {
+                filtered.push_back(d.voltage_mv);
+            }
+        }
+
+        if (!filtered.empty()) {
+            // Calculate final average from filtered values
+            long final_sum = 0;
+            for (auto v : filtered) {
+                final_sum += v;
+            }
+            result.voltage_mv = final_sum / filtered.size();
+
+            // Use the scale and raw value from the most recent sample
+            for (auto it = _voltage_queue.rbegin(); it != _voltage_queue.rend(); ++it) {
+                if (it->valid) {
+                    result.raw_value = it->raw_value;
+                    result.scale = it->scale;
+                    break;
+                }
+            }
+            result.valid = true;
+        }
+    } else {
+        // Not enough data, return the first valid sample
+        for (const auto& d : _voltage_queue) {
+            if (d.valid) {
+                result = d;
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
+// Battery collector thread - runs in background
+void api_device::battery_collector_thread()
+{
+    // Initialize GPIO first
+    const char* adc_export = "/sys/class/gpio/export";
+    const char* adc_direction = "/sys/class/gpio/gpio430/direction";
+
+    // Export GPIO430 if needed
+    std::ifstream gpio_check("/sys/class/gpio/gpio430/value");
+    bool gpio_exported = gpio_check.is_open();
+    gpio_check.close();
+
+    if (!gpio_exported) {
+        std::ofstream export_file(adc_export);
+        if (export_file.is_open()) {
+            export_file << "430";
+            export_file.flush();
+            export_file.close();
+            usleep(100000);  // Wait for GPIO to be ready
+        }
+
+        std::ofstream direction_file(adc_direction);
+        if (direction_file.is_open()) {
+            direction_file << "out";
+            direction_file.flush();
+            direction_file.close();
+        }
+    }
+
+    // Signal that initialization is complete
+    {
+        std::lock_guard<std::mutex> lock(_battery_init_mutex);
+        _battery_collector_initialized = true;
+    }
+    _battery_cv.notify_one();
+
+    LOGI("Battery collector initialized, starting data collection");
+
+    // Collection loop
+    while (_battery_collector_running) {
+        // Read voltage
+        BatteryVoltageData data = read_battery_voltage();
+
+        // 特殊处理：当检测到电压为 0 时，丢弃数据并重新采集一次
+        if (data.valid && data.voltage_mv == 0) {
+            LOGD("Detected 0mV voltage, discarding and retrying...");
+            usleep(50000);  // 等待 50ms 后重新采集
+            data = read_battery_voltage();
+        }
+
+        // Add to queue (如果重试后仍然是 0，也会正常入队，表示真的没有电池)
+        {
+            std::lock_guard<std::mutex> lock(_voltage_queue_mutex);
+
+            if (data.valid) {
+                _voltage_queue.push_back(data);
+
+                // Keep queue size fixed - remove oldest when full
+                if (_voltage_queue.size() > VOLTAGE_QUEUE_SIZE) {
+                    _voltage_queue.pop_front();
+                }
+
+                LOGV("Battery data added: %ld mV (queue size: %zu)",
+                     data.voltage_mv, _voltage_queue.size());
+            }
+        }
+
+        // Wait before next collection (500ms)
+        std::unique_lock<std::mutex> lock(_battery_init_mutex);
+        _battery_cv.wait_for(lock, std::chrono::milliseconds(500),
+                             [] { return !api_device::_battery_collector_running; });
+    }
+
+    LOGI("Battery collector thread stopped");
 }

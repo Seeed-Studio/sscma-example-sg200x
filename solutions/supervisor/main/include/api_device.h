@@ -4,13 +4,37 @@
 #include <memory>
 #include <stdexcept>
 #include <mutex>
+#include <deque>
+#include <thread>
+#include <atomic>
+#include <condition_variable>
 
 #include "api_base.h"
 #include "serviced.h"
 
 class api_device : public api_base {
 private:
+    // Battery voltage cache structure
+    struct BatteryVoltageData {
+        long voltage_mv;       // Voltage in millivolts
+        long raw_value;        // Raw ADC value
+        double scale;          // Scale factor
+        bool valid;            // Data validity flag
+    };
+
     static inline std::unique_ptr<serviced> _serviced;
+
+    // Battery monitoring variables
+    static const int VOLTAGE_QUEUE_SIZE = 10;
+    static const int VOLTAGE_THRESHOLD_MV = 100;  // 100mV threshold for filtering
+    static inline std::deque<BatteryVoltageData> _voltage_queue;
+    static inline std::mutex _voltage_queue_mutex;
+    static inline std::thread _battery_collector_thread;
+    static inline std::atomic<bool> _battery_collector_running{false};
+    static inline BatteryVoltageData _cached_voltage_data{0, 0, 0.0, false};
+    static inline bool _battery_collector_initialized = false;
+    static inline std::condition_variable _battery_cv;
+    static inline std::mutex _battery_init_mutex;
 
     static api_status_t getCameraWebsocketUrl(request_t req, response_t res);
 
@@ -47,6 +71,11 @@ private:
     static api_status_t getTimezoneList(request_t req, response_t res);
 
     static api_status_t queryBatteryInfo(request_t req, response_t res);
+
+    // Battery collector thread function
+    static void battery_collector_thread();
+    static BatteryVoltageData read_battery_voltage();
+    static BatteryVoltageData process_voltage_queue();
 
 public:
     api_device()
@@ -105,10 +134,22 @@ public:
         REG_API(getTimezoneList);
 
         REG_API_NO_AUTH(queryBatteryInfo);
+
+        // Start battery collector thread
+        _battery_collector_running = true;
+        std::thread collector(battery_collector_thread);
+        _battery_collector_thread = std::move(collector);
+        LOGI("Battery collector thread started");
     }
 
     ~api_device()
     {
+        // Stop battery collector thread
+        _battery_collector_running = false;
+        if (_battery_collector_thread.joinable()) {
+            _battery_cv.notify_all();
+            _battery_collector_thread.join();
+        }
         LOGV("");
     }
 
