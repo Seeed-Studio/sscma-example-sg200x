@@ -7,6 +7,7 @@ import {
   DeviceNeedRestart,
   SystemUpdateStatus,
   UpdateStatus,
+  PowerSourceMode,
 } from "@/enum";
 import { IChannelParams, IBatteryInfo } from "@/api/device/device";
 import {
@@ -283,6 +284,10 @@ export function useData() {
     return () => clearInterval(interval);
   }, []);
 
+  const onPowerSourceChange = (mode: PowerSourceMode) => {
+    setSystemUpdateState({ powerSourceMode: mode });
+  };
+
   return {
     deviceInfo,
     batteryInfo,
@@ -296,5 +301,6 @@ export function useData() {
     onConfirm,
     onUpdateRestart,
     onUpdateCheck,
+    onPowerSourceChange,
   };
 }

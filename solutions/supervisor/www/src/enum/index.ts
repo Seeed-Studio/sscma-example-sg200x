@@ -39,3 +39,10 @@ export enum ModelConversionStatus {
   Error = "error", // 转换失败
   // 数值字符串表示进行中（进度百分比）
 }
+
+// 电源模式
+export enum PowerSourceMode {
+  None = -1,    // 未选中
+  Adapter = 0,  // 外部电源
+  Battery = 1,  // 电池供电
+}

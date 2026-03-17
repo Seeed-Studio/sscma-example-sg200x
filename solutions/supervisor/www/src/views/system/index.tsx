@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import EditBlackImg from "@/assets/images/svg/editBlack.svg";
 import ArrowImg from "@/assets/images/svg/downArrow.svg";
-import PlugImg from "@/assets/images/svg/plug.svg";
 import CommonPopup from "@/components/common-popup";
 import { Form, Input, Picker, ProgressBar, Mask } from "antd-mobile";
 import {
@@ -11,7 +10,7 @@ import {
 import { Button } from "antd";
 import moment from "moment";
 import { useData } from "./hook";
-import { DeviceChannleMode, UpdateStatus } from "@/enum";
+import { DeviceChannleMode, UpdateStatus, PowerSourceMode } from "@/enum";
 import { requiredTrimValidate } from "@/utils/validate";
 import { parseUrlParam } from "@/utils";
 import useConfigStore from "@/store/config";
@@ -26,7 +25,7 @@ const infoList = [
   { label: "NPU", key: "npu" },
   { label: "OS", key: "osVersion" },
   { label: "Device Info", key: "type" },
-  { label: "Battery", key: "battery", isBattery: true },
+  { label: "Power Mode", key: "powerSource", isPowerSource: true },
 ];
 
 function System() {
@@ -43,6 +42,7 @@ function System() {
     onChannelChange,
     onUpdateRestart,
     onUpdateCheck,
+    onPowerSourceChange,
   } = useData();
 
   const { systemUpdateState, setSystemUpdateState } = useConfigStore();
@@ -62,13 +62,8 @@ function System() {
   }, [systemUpdateState.channel]);
 
   const displayInfoList = useMemo(() => {
-    return infoList.filter((item) => {
-      if ((item as any).isBattery && (!batteryInfo || batteryInfo.voltage === 0)) {
-        return false;
-      }
-      return true;
-    });
-  }, [batteryInfo]);
+    return infoList;
+  }, []);
 
   return (
     <div className="my-8 p-16">
@@ -192,7 +187,7 @@ function System() {
               return (
                 <div
                   key={item.key}
-                  className={`flex justify-between py-24 ${
+                  className={`flex justify-between items-center py-24 ${
                     index && "border-t"
                   }`}
                 >
@@ -200,16 +195,35 @@ function System() {
                     {item.label}
                   </span>
                   <div className="flex-1 truncate text-right">
-                    {(item as any).isBattery && batteryInfo ? (
-                      <span className="flex items-center justify-end">
-                        {batteryInfo.voltage > 0
-                          ? (batteryInfo.voltage < 2000
-                              ? (<>
-                                  <img src={PlugImg} alt="charging" className="w-16 h-16" style={{color: '#07c160'}} />
-                                </>)
-                              : `${(batteryInfo.voltage / 1000).toFixed(2)} V`)
-                          : "No Battery"}
-                      </span>
+                    {(item as any).isPowerSource ? (
+                      <div className="flex items-center justify-end gap-8">
+                        <span
+                          className={`cursor-pointer px-12 py-6 rounded-8 transition-colors ${
+                            systemUpdateState.powerSourceMode === PowerSourceMode.Adapter
+                              ? 'bg-primary text-white'
+                              : 'hover:bg-gray-100'
+                          }`}
+                          onClick={() => onPowerSourceChange(PowerSourceMode.Adapter)}
+                        >
+                          🔌 Adapter
+                        </span>
+                        <span className="self-center opacity-40">|</span>
+                        <span
+                          className={`cursor-pointer px-6 py-6 rounded-8 transition-colors flex items-center justify-between min-w-[75px] ${
+                            systemUpdateState.powerSourceMode === PowerSourceMode.Battery
+                              ? 'bg-amber-500 text-white'
+                              : 'hover:bg-gray-100'
+                          }`}
+                          onClick={() => onPowerSourceChange(PowerSourceMode.Battery)}
+                        >
+                          <span>🔋</span>
+                          <span>
+                            {systemUpdateState.powerSourceMode === PowerSourceMode.Battery
+                              ? (batteryInfo?.voltage ? (batteryInfo.voltage / 1000).toFixed(1) : '0.0') + ' V'
+                              : 'Battery'}
+                          </span>
+                        </span>
+                      </div>
                     ) : item.key == "osVersion" ? (
                       `${deviceInfo.osName} ${deviceInfo[item.key]}`
                     ) : (

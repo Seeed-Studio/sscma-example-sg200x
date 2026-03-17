@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { IDeviceInfo } from "@/api/device/device";
 import { NetworkStatus } from "@/enum/network";
-import { DeviceChannleMode, UpdateStatus } from "@/enum";
+import { DeviceChannleMode, UpdateStatus, PowerSourceMode } from "@/enum";
 
 interface SystemUpdateState {
   status: UpdateStatus;
@@ -11,6 +11,8 @@ interface SystemUpdateState {
   percent: number;
   channel: DeviceChannleMode;
   address: string;
+  powerSourceMode: PowerSourceMode;
+  powerSourceMenuVisible: boolean;
 }
 
 type ConfigStoreType = {
@@ -36,6 +38,8 @@ const useConfigStore = create<ConfigStoreType>((set) => ({
     channel: DeviceChannleMode.Official,
     updateInfoVisible: false,
     address: "",
+    powerSourceMode: PowerSourceMode.None,
+    powerSourceMenuVisible: false,
   },
   updateDeviceInfo: (deviceInfo: IDeviceInfo) => set(() => ({ deviceInfo })),
   updateWifiStatus: (wifiStatus: NetworkStatus) => set(() => ({ wifiStatus })),
