@@ -25,7 +25,7 @@ const infoList = [
   { label: "NPU", key: "npu" },
   { label: "OS", key: "osVersion" },
   { label: "Device Info", key: "type" },
-  { label: "Power Mode", key: "powerSource", isPowerSource: true },
+  { label: "Battery", key: "powerSource", isPowerSource: true },
 ];
 
 function System() {
@@ -198,18 +198,7 @@ function System() {
                     {(item as any).isPowerSource ? (
                       <div className="flex items-center justify-end gap-8">
                         <span
-                          className={`cursor-pointer px-12 py-6 rounded-8 transition-colors ${
-                            systemUpdateState.powerSourceMode === PowerSourceMode.Adapter
-                              ? 'bg-primary text-white'
-                              : 'hover:bg-gray-100'
-                          }`}
-                          onClick={() => onPowerSourceChange(PowerSourceMode.Adapter)}
-                        >
-                          🔌 Adapter
-                        </span>
-                        <span className="self-center opacity-40">|</span>
-                        <span
-                          className={`cursor-pointer px-6 py-6 rounded-8 transition-colors flex items-center justify-between min-w-[75px] ${
+                          className={`cursor-pointer select-none px-12 py-6 rounded-8 transition-colors flex items-center justify-between w-[85px] ${
                             systemUpdateState.powerSourceMode === PowerSourceMode.Battery
                               ? 'bg-amber-500 text-white'
                               : 'hover:bg-gray-100'
@@ -217,7 +206,7 @@ function System() {
                           onClick={() => onPowerSourceChange(PowerSourceMode.Battery)}
                         >
                           <span>🔋</span>
-                          <span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                             {systemUpdateState.powerSourceMode === PowerSourceMode.Battery
                               ? (batteryInfo?.voltage ? (batteryInfo.voltage / 1000).toFixed(1) : '0.0') + ' V'
                               : 'Battery'}

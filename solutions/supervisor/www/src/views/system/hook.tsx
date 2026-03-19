@@ -285,7 +285,11 @@ export function useData() {
   }, []);
 
   const onPowerSourceChange = (mode: PowerSourceMode) => {
-    setSystemUpdateState({ powerSourceMode: mode });
+    // Toggle between Battery and None
+    const newMode = systemUpdateState.powerSourceMode === PowerSourceMode.Battery
+      ? PowerSourceMode.None
+      : PowerSourceMode.Battery;
+    setSystemUpdateState({ powerSourceMode: newMode });
   };
 
   return {
