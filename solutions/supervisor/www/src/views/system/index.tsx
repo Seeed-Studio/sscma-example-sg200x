@@ -184,41 +184,54 @@ function System() {
           <div className="font-bold text-18 mb-14 my-24"> System Info</div>
           <div className="bg-white rounded-20 px-24">
             {displayInfoList.map((item, index) => {
+              const isPowerSource = (item as any).isPowerSource;
               return (
-                <div
-                  key={item.key}
-                  className={`flex justify-between items-center py-24 ${
-                    index && "border-t"
-                  }`}
-                >
-                  <span className="opacity-60 text-black mr-20">
-                    {item.label}
-                  </span>
-                  <div className="flex-1 truncate text-right">
-                    {(item as any).isPowerSource ? (
-                      <div className="flex items-center justify-end gap-8">
-                        <span
-                          className={`cursor-pointer select-none px-12 py-6 rounded-8 transition-colors flex items-center justify-between w-[85px] ${
+                <div key={item.key} className={isPowerSource && systemUpdateState.powerSourceMode === PowerSourceMode.Battery ? 'pb-20' : ''}>
+                  <div
+                    className={`flex justify-between items-center py-24 ${
+                      index && "border-t"
+                    }`}
+                  >
+                    <span className="opacity-60 text-black mr-20">
+                      {item.label}
+                    </span>
+                    <div className="flex-1 truncate text-right flex items-center justify-end">
+                      {isPowerSource ? (
+                        <div
+                          className={`cursor-pointer select-none w-28 h-15 rounded-full relative transition-colors shadow-sm ${
                             systemUpdateState.powerSourceMode === PowerSourceMode.Battery
-                              ? 'bg-amber-500 text-white'
-                              : 'hover:bg-gray-100'
+                              ? 'bg-green-500'
+                              : 'bg-gray-300'
                           }`}
                           onClick={() => onPowerSourceChange(PowerSourceMode.Battery)}
                         >
-                          <span>🔋</span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                            {systemUpdateState.powerSourceMode === PowerSourceMode.Battery
-                              ? (batteryInfo?.voltage ? (batteryInfo.voltage / 1000).toFixed(1) : '0.0') + ' V'
-                              : 'Battery'}
-                          </span>
-                        </span>
-                      </div>
-                    ) : item.key == "osVersion" ? (
-                      `${deviceInfo.osName} ${deviceInfo[item.key]}`
-                    ) : (
-                      deviceInfo[item.key]
-                    )}
+                          <div
+                            className={`w-13 h-13 bg-white rounded-full absolute top-1 shadow-md transition-all duration-300 ${
+                              systemUpdateState.powerSourceMode === PowerSourceMode.Battery
+                                ? 'right-[1px]'
+                                : 'left-[1px]'
+                            }`}
+                          />
+                        </div>
+                      ) : item.key == "osVersion" ? (
+                        `${deviceInfo.osName} ${deviceInfo[item.key]}`
+                      ) : (
+                        deviceInfo[item.key]
+                      )}
+                    </div>
                   </div>
+                  {isPowerSource && systemUpdateState.powerSourceMode === PowerSourceMode.Battery && (
+                    <div className="flex items-center text-14 text-gray-600 relative h-10">
+                      {/* L-shaped arrow from Battery label */}
+                      <svg className="absolute left-8 -top-6 w-16 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 60 40">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5 L5 35 L40 35" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M35 30 L40 35 L35 40" />
+                      </svg>
+                      <span className="ml-20 px-2" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        🔋{batteryInfo?.voltage ? (batteryInfo.voltage / 1000).toFixed(1) : '0.0'} V
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
