@@ -956,11 +956,13 @@ void api_device::battery_collector_thread()
         // Read voltage
         BatteryVoltageData data = read_battery_voltage();
 
-        // 特殊处理：当检测到电压为 0 时，丢弃数据并重新采集一次
-        if (data.valid && data.voltage_mv == 0) {
-            LOGD("Detected 0mV voltage, discarding and retrying...");
+        // 特殊处理：当检测到电压为 0 时，最多重试 3 次，丢弃数据并重新采集
+        int retry_count = 0;
+        while (data.valid && data.voltage_mv == 0 && retry_count < 3) {
+            LOGD("Detected 0mV voltage, discarding and retrying... (attempt %d)", retry_count + 1);
             usleep(50000);  // 等待 50ms 后重新采集
             data = read_battery_voltage();
+            retry_count++;
         }
 
         // Add to queue (如果重试后仍然是 0，也会正常入队，表示真的没有电池)

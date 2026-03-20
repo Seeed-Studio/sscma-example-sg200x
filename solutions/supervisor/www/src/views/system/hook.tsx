@@ -277,12 +277,17 @@ export function useData() {
   }, [deviceInfo.channel, deviceInfo.serverUrl, deviceInfo.needRestart]);
 
   useEffect(() => {
+    // Only start polling when battery mode is enabled
+    if (systemUpdateState.powerSourceMode !== PowerSourceMode.Battery) {
+      return;
+    }
+
     onQueryBatteryInfo();
     const interval = setInterval(() => {
       onQueryBatteryInfo();
     }, 5000); // Update battery info every 5 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [systemUpdateState.powerSourceMode]);
 
   const onPowerSourceChange = (mode: PowerSourceMode) => {
     // Toggle between Battery and None
