@@ -62,8 +62,11 @@ function System() {
   }, [systemUpdateState.channel]);
 
   const displayInfoList = useMemo(() => {
-    return infoList;
-  }, []);
+    // Only show Battery row if battery hardware is detected as available
+    return infoList.filter(
+      (item) => !(item as any).isPowerSource || systemUpdateState.batteryAvailable === true
+    );
+  }, [systemUpdateState.batteryAvailable]);
 
   return (
     <div className="my-8 p-16">

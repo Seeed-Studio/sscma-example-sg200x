@@ -35,6 +35,7 @@ private:
     static inline bool _battery_collector_initialized = false;
     static inline std::condition_variable _battery_cv;
     static inline std::mutex _battery_init_mutex;
+    static inline bool _adc_available = false;
 
     static api_status_t getCameraWebsocketUrl(request_t req, response_t res);
 
@@ -76,6 +77,7 @@ private:
     static void battery_collector_thread();
     static BatteryVoltageData read_battery_voltage();
     static BatteryVoltageData process_voltage_queue();
+    static bool check_adc_available();
 
 public:
     api_device()
@@ -135,20 +137,27 @@ public:
 
         REG_API_NO_AUTH(queryBatteryInfo);
 
-        // Start battery collector thread
-        _battery_collector_running = true;
-        std::thread collector(battery_collector_thread);
-        _battery_collector_thread = std::move(collector);
-        LOGI("Battery collector thread started");
+        // Check ADC availability before starting battery collector
+        _adc_available = check_adc_available();
+        if (_adc_available) {
+            _battery_collector_running = true;
+            std::thread collector(battery_collector_thread);
+            _battery_collector_thread = std::move(collector);
+            LOGI("Battery collector thread started");
+        } else {
+            LOGI("Battery collector thread NOT started (ADC unavailable)");
+        }
     }
 
     ~api_device()
     {
-        // Stop battery collector thread
-        _battery_collector_running = false;
-        if (_battery_collector_thread.joinable()) {
-            _battery_cv.notify_all();
-            _battery_collector_thread.join();
+        // Stop battery collector thread only if it was started
+        if (_adc_available) {
+            _battery_collector_running = false;
+            if (_battery_collector_thread.joinable()) {
+                _battery_cv.notify_all();
+                _battery_collector_thread.join();
+            }
         }
         LOGV("");
     }

@@ -13,6 +13,7 @@ interface SystemUpdateState {
   address: string;
   powerSourceMode: PowerSourceMode;
   powerSourceMenuVisible: boolean;
+  batteryAvailable: boolean | undefined;  // undefined=not detected yet, true=available, false=unavailable
 }
 
 type ConfigStoreType = {
@@ -40,6 +41,7 @@ const useConfigStore = create<ConfigStoreType>((set) => ({
     address: "",
     powerSourceMode: PowerSourceMode.None,
     powerSourceMenuVisible: false,
+    batteryAvailable: undefined,  // Start as undefined (not detected yet)
   },
   updateDeviceInfo: (deviceInfo: IDeviceInfo) => set(() => ({ deviceInfo })),
   updateWifiStatus: (wifiStatus: NetworkStatus) => set(() => ({ wifiStatus })),

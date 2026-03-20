@@ -49,9 +49,20 @@ export function useData() {
   const onQueryBatteryInfo = async () => {
     try {
       const res = await queryBatteryInfoApi();
-      setBatteryInfo(res.data);
+      if (res.code === 0) {
+        // Success: battery data ready
+        setBatteryInfo(res.data);
+        setSystemUpdateState({ batteryAvailable: true });
+      } else if (res.code === -1 && res.msg?.includes("not available")) {
+        // ADC hardware not available
+        setSystemUpdateState({ batteryAvailable: false });
+        setBatteryInfo(null);
+      } else if (res.code === -2 || res.msg?.includes("not ready")) {
+        // ADC available but data not ready yet - mark as available and will retry
+        setSystemUpdateState({ batteryAvailable: true });
+      }
+      // Other errors: keep previous state
     } catch (err) {
-      // Keep previous battery info on error, don't clear it
       console.log("Failed to query battery info:", err);
     }
   };
@@ -277,17 +288,21 @@ export function useData() {
   }, [deviceInfo.channel, deviceInfo.serverUrl, deviceInfo.needRestart]);
 
   useEffect(() => {
-    // Only start polling when battery mode is enabled
-    if (systemUpdateState.powerSourceMode !== PowerSourceMode.Battery) {
+    // First time detection (batteryAvailable is undefined)
+    if (systemUpdateState.batteryAvailable === undefined) {
+      onQueryBatteryInfo();  // One-time call to detect availability
       return;
     }
 
-    onQueryBatteryInfo();
-    const interval = setInterval(() => {
+    // Only poll when battery is available AND battery mode is enabled (switch is ON)
+    if (systemUpdateState.batteryAvailable === true && systemUpdateState.powerSourceMode === PowerSourceMode.Battery) {
       onQueryBatteryInfo();
-    }, 5000); // Update battery info every 5 seconds
-    return () => clearInterval(interval);
-  }, [systemUpdateState.powerSourceMode]);
+      const interval = setInterval(() => {
+        onQueryBatteryInfo();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [systemUpdateState.batteryAvailable, systemUpdateState.powerSourceMode]);
 
   const onPowerSourceChange = (mode: PowerSourceMode) => {
     // Toggle between Battery and None

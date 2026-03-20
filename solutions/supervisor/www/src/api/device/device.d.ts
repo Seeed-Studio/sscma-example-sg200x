@@ -44,5 +44,5 @@ interface IIPDevice {
 }
 
 interface IBatteryInfo {
-  voltage: number;         // 电池电压 (mV)
+  voltage?: number;         // Battery voltage (mV), undefined when unavailable
 }

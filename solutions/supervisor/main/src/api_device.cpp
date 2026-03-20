@@ -741,9 +741,31 @@ api_status_t api_device::getTimezoneList(request_t req, response_t res)
     return API_STATUS_OK;
 }
 
+bool api_device::check_adc_available()
+{
+    // Check if ADC device file exists
+    std::ifstream adc_test("/sys/bus/iio/devices/iio:device0/in_voltage0_raw");
+    bool available = adc_test.is_open();
+    adc_test.close();
+
+    if (available) {
+        LOGI("ADC device detected, battery monitoring enabled");
+    } else {
+        LOGW("ADC device not found, battery monitoring disabled");
+    }
+
+    return available;
+}
+
 api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
 {
     json data = json::object();
+
+    // Check if ADC is available
+    if (!_adc_available) {
+        response(res, -1, "Battery not available");
+        return API_STATUS_OK;
+    }
 
     // Get processed voltage from cache (fast return)
     BatteryVoltageData result = process_voltage_queue();
@@ -756,8 +778,8 @@ api_status_t api_device::queryBatteryInfo(request_t req, response_t res)
         LOGD("Battery voltage: %ld mV (raw=%ld, scale=%.6f, queue_size=%zu)",
              result.voltage_mv, result.raw_value, result.scale, _voltage_queue.size());
     } else {
-        // Not enough data yet, return error or wait
-        response(res, -1, "Battery voltage data not ready yet");
+        // Not enough data yet - use different message to indicate ADC is available
+        response(res, -2, "Battery data not ready");
         LOGW("Battery voltage queue not ready, size=%zu", _voltage_queue.size());
     }
 
