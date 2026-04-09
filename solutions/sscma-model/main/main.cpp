@@ -62,7 +62,7 @@ cv::Mat preprocessImage(cv::Mat& image, ma::Model* model) {
 
 
 void drawMaskOnImage(int cls, cv::Mat& targetImage, const std::vector<uint8_t>& maskData, int maskWidth, int maskHeight, double alpha = 0.5) {
-    if (maskData.size() != (maskWidth * maskHeight) / 8) {
+    if (maskData.size() < (maskWidth * maskHeight + 7) / 8) {
         throw std::runtime_error("Mask data size is incorrect.");
     }
 
@@ -185,20 +185,48 @@ int main(int argc, char** argv) {
         ma::model::Segmentor* segmenter = static_cast<ma::model::Segmentor*>(model);
         segmenter->run(&img);
         auto _results = segmenter->getResults();
-        for (auto result : _results) {
-            printf("x: %f, y: %f, w: %f, h: %f, score: %f target: %d\n", result.box.x, result.box.y, result.box.w, result.box.h, result.box.score, result.box.target);
-            float x1 = (result.box.x - result.box.w / 2.0) * image.cols;
-            float y1 = (result.box.y - result.box.h / 2.0) * image.rows;
-            float x2 = (result.box.x + result.box.w / 2.0) * image.cols;
-            float y2 = (result.box.y + result.box.h / 2.0) * image.rows;
 
-            char content[100];
-            sprintf(content, "%d(%.3f)", result.box.target, result.box.score);
+        // Semantic segmentation: single-pass color blend (much faster than per-class)
+        // Collect all non-empty masks
+        std::vector<std::pair<int, const ma_segm2f_t*> > seg_results;
+        for (auto it = _results.begin(); it != _results.end(); ++it) {
+            seg_results.push_back(std::make_pair(it->box.target, &(*it)));
+            printf("x: %f, y: %f, w: %f, h: %f, score: %f target: %d\n", it->box.x, it->box.y, it->box.w, it->box.h, it->box.score, it->box.target);
+        }
 
-            cv::rectangle(image, cv::Point(x1, y1), cv::Point(x2, y2), ColorPalette::getColor(result.box.target), 3, 8, 0);
-            cv::putText(image, content, cv::Point(x1, y1 - 10), cv::FONT_HERSHEY_SIMPLEX, 0.6, ColorPalette::getColor(result.box.target), 2, cv::LINE_AA);
-
-            drawMaskOnImage(result.box.target, image, result.mask.data, result.mask.width, result.mask.height);
+        if (!seg_results.empty()) {
+            int maskW = seg_results[0].second->mask.width;
+            int maskH = seg_results[0].second->mask.height;
+            // Build colorized mask in one pass
+            cv::Mat colorMask(maskH, maskW, CV_8UC3, cv::Scalar(0, 0, 0));
+            cv::Mat anyMask(maskH, maskW, CV_8UC1, cv::Scalar(0));
+            for (size_t si = 0; si < seg_results.size(); si++) {
+                int cls = seg_results[si].first;
+                const ma_segm2f_t* seg = seg_results[si].second;
+                cv::Scalar color = ColorPalette::getColor(cls);
+                for (int j = 0; j < maskH; ++j) {
+                    int row_off = j * maskW;
+                    for (int i = 0; i < maskW; ++i) {
+                        if (seg->mask.data[row_off / 8 + i / 8] & (1 << (i % 8))) {
+                            colorMask.at<cv::Vec3b>(j, i) = cv::Vec3b(color[0], color[1], color[2]);
+                            anyMask.at<uchar>(j, i) = 255;
+                        }
+                    }
+                }
+            }
+            // Single resize + blend
+            cv::Mat scaledColor, scaledAny;
+            cv::resize(colorMask, scaledColor, cv::Size(image.cols, image.rows), 0, 0, cv::INTER_NEAREST);
+            cv::resize(anyMask, scaledAny, cv::Size(image.cols, image.rows), 0, 0, cv::INTER_NEAREST);
+            for (int j = 0; j < image.rows; ++j) {
+                for (int i = 0; i < image.cols; ++i) {
+                    if (scaledAny.at<uchar>(j, i) > 0) {
+                        cv::Vec3b& px = image.at<cv::Vec3b>(j, i);
+                        cv::Vec3b& mc = scaledColor.at<cv::Vec3b>(j, i);
+                        px = (1.0 - 0.5) * px + 0.5 * mc;
+                    }
+                }
+            }
         }
     } else if (model->getOutputType() == MA_OUTPUT_TYPE_BBOX) {
         ma::model::Detector* detector = static_cast<ma::model::Detector*>(model);
