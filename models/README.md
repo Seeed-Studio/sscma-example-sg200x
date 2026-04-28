@@ -76,17 +76,11 @@ Each solution references models from this directory or its own `models/` subdire
 
 ## Model Conversion
 
-All models converted using TPU-MLIR (`tpu_mlir:1.12` Docker image):
+All models were converted from ONNX to `.cvimodel` using the [onnx-to-cvimodel](https://github.com/Seeed-Studio/ai-skills/tree/main/skills/onnx-to-cvimodel) skill:
 
-```bash
-# INT8 conversion with calibration
-model_deploy.py \
-    --model model.onnx \
-    --quantize INT8 \
-    --calibration_table calibration.table \
-    --fuse_preprocess \
-    --model_version cv181x \
-    --mlir model.mlir
+```
+# Claude Code
+/onnx-to-cvimodel model.onnx --platform cv181x --quantize INT8
 ```
 
-See `~/ai-skills/skills/onnx-to-cvimodel/` for automated conversion scripts.
+The skill automates the full conversion pipeline (ONNX graph surgery, calibration, TPU-MLIR deployment) and provides model-specific scripts for YOLO, BiSeNetV2, PP-LiteSeg, SCRFD, etc.
