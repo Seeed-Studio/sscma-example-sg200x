@@ -24,34 +24,33 @@ static void l2_normalize(float* v, int dim) {
     float norm = 0;
     for (int i = 0; i < dim; i++) norm += v[i] * v[i];
     norm = sqrtf(norm + 1e-10f);
-    for (int i = 0; i < dim; i++) v[i] /= norm;
+    if (norm > 1e-10f) {
+        for (int i = 0; i < dim; i++) v[i] /= norm;
+    }
 }
 
 static std::vector<float> extractEmbedding(const uint8_t* aligned_rgb_112) {
     // Feed aligned 112x112 RGB to MobileFaceNet
     auto& input = g_emb_engine->getInput(0);
-    // Input is uint8 NHWC for RGB_PACKED
-    int total = 112 * 112 * 3;
-    memcpy(input.data.u8, aligned_rgb_112, total);
+    memcpy(input.data.u8, aligned_rgb_112, 112 * 112 * 3);
     g_emb_engine->run(0);
 
-    auto& output = g_emb_engine->getOutput(0);
-    std::vector<float> emb(128);
-
-    if (output.type == MA_TENSOR_TYPE_F32) {
-        memcpy(emb.data(), output.data.f32, 128 * sizeof(float));
-    } else if (output.type == MA_TENSOR_TYPE_S8) {
-        // INT8 output: dequantize
-        // Need to find scale from output tensor info
-        for (int i = 0; i < 128; i++) {
-            emb[i] = (float)output.data.s8[i];
+    // Find the 128D float32 embedding output
+    int num_outputs = g_emb_engine->getOutputSize();
+    for (int i = 0; i < num_outputs; i++) {
+        auto& out = g_emb_engine->getOutput(i);
+        if (out.type != MA_TENSOR_TYPE_F32) continue;
+        int total = 1;
+        for (int d = 0; d < out.shape.size; d++) total *= out.shape.dims[d];
+        if (total == 128) {
+            std::vector<float> emb(128);
+            memcpy(emb.data(), out.data.f32, 128 * sizeof(float));
+            l2_normalize(emb.data(), 128);
+            return emb;
         }
-        // Simple scaling - the quantization scale will be in the tensor
-        // For fuse_preprocess models, the output is typically float32
     }
-
-    l2_normalize(emb.data(), 128);
-    return emb;
+    fprintf(stderr, "ERROR: No 128D float32 embedding output found\n");
+    return std::vector<float>(128, 0.0f);
 }
 
 // ── SCRFD inference ──
@@ -78,34 +77,54 @@ static std::vector<FaceBox> detectFaces(cv::Mat& image) {
 
     // Feed to SCRFD engine
     auto& input = g_scrfd_engine->getInput(0);
-    // RGB_PACKED: NHWC uint8
-    if (input.shape.dims[3] == 3) {
-        // NHWC input
-        memcpy(input.data.u8, rgb.data, 640 * 640 * 3);
-    } else {
-        // NCHW input - shouldn't happen with RGB_PACKED
-        fprintf(stderr, "ERROR: unexpected input layout\n");
-        return {};
-    }
+    memcpy(input.data.u8, rgb.data, 640 * 640 * 3);
     g_scrfd_engine->run(0);
 
-    // Collect 9 outputs
-    const float* out_data[9] = {};
-    int out_shapes[9][2] = {};
+    // Find the 9 _f32 output tensors by shape
+    // Score: (N, 1, 1, 1) float32  — already sigmoided
+    // BBox:  (N, 4, 1, 1) float32
+    // Kps:   (N, 10, 1, 1) float32
+    // Where N = 12800 (stride 8), 3200 (stride 16), 800 (stride 32)
+    struct OutRef { const float* data; int d0, d1; };
+    std::vector<OutRef> scores, bboxes, kps_list;
 
-    for (int i = 0; i < 9 && i < (int)g_scrfd_engine->getOutputSize(); i++) {
+    int num_outputs = g_scrfd_engine->getOutputSize();
+    for (int i = 0; i < num_outputs; i++) {
         auto& out = g_scrfd_engine->getOutput(i);
-        if (out.type == MA_TENSOR_TYPE_F32) {
-            out_data[i] = out.data.f32;
-        } else {
-            // For int8 output, we'd need dequantization - handle if needed
-            out_data[i] = (const float*)out.data.f32;  // cast for now
-        }
-        out_shapes[i][0] = out.shape.dims[0];
-        out_shapes[i][1] = out.shape.dims[1];
+        if (out.type != MA_TENSOR_TYPE_F32) continue;
+        if (out.shape.size < 2) continue;
+        int d0 = out.shape.dims[0];
+        int d1 = out.shape.dims[1];
+        if (d0 != 12800 && d0 != 3200 && d0 != 800) continue;
+        if (d1 == 1)       scores.push_back({out.data.f32, d0, d1});
+        else if (d1 == 4)  bboxes.push_back({out.data.f32, d0, d1});
+        else if (d1 == 10) kps_list.push_back({out.data.f32, d0, d1});
     }
 
-    // Decode: scale maps model coords to original image coords
+    // Sort by d0 descending to match strides 8, 16, 32
+    auto cmp = [](const OutRef& a, const OutRef& b) { return a.d0 > b.d0; };
+    std::sort(scores.begin(), scores.end(), cmp);
+    std::sort(bboxes.begin(), bboxes.end(), cmp);
+    std::sort(kps_list.begin(), kps_list.end(), cmp);
+
+    if (scores.size() != 3 || bboxes.size() != 3 || kps_list.size() != 3) {
+        fprintf(stderr, "ERROR: Expected 3 score + 3 bbox + 3 kps outputs, got %zu/%zu/%zu\n",
+                scores.size(), bboxes.size(), kps_list.size());
+        return {};
+    }
+
+    const float* out_data[9] = {
+        scores[0].data, scores[1].data, scores[2].data,
+        bboxes[0].data, bboxes[1].data, bboxes[2].data,
+        kps_list[0].data, kps_list[1].data, kps_list[2].data,
+    };
+    int out_shapes[9][2] = {};
+    for (int i = 0; i < 3; i++) {
+        out_shapes[i][0]   = scores[i].d0;   out_shapes[i][1]   = scores[i].d1;
+        out_shapes[i+3][0] = bboxes[i].d0;   out_shapes[i+3][1] = bboxes[i].d1;
+        out_shapes[i+6][0] = kps_list[i].d0; out_shapes[i+6][1] = kps_list[i].d1;
+    }
+
     float inv_scale = 1.0f / scale;
     return g_detector.detect(out_data, out_shapes, inv_scale, (float)pad_w, (float)pad_h);
 }
@@ -182,8 +201,6 @@ int main(int argc, char** argv) {
 
         // Save result
         drawFaces(img, faces);
-        cv::Mat rgb_out;
-        cv::cvtColor(img, rgb_out, cv::COLOR_BGR2RGB);
 
         std::string out_path = "result_detect.jpg";
         for (int i = 4; i < argc - 1; i++) {
