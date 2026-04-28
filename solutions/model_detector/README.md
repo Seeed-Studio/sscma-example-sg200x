@@ -29,10 +29,8 @@ cd solutions/model_detector
 ### 2. Build the Application
 
 ```bash
-mkdir build
-cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain-riscv64-linux-musl-x86_64.cmake
-make
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
 ```
 
 ### 3. Run the Application

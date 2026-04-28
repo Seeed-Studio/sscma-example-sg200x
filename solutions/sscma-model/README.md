@@ -29,10 +29,8 @@ cd solutions/sscma-model
 ### 2. Build the Application
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
 ```
 
 ### 3. Run the Application

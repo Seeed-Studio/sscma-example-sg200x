@@ -20,10 +20,9 @@ Face recognition example for CV181x TPU, using SCRFD face detection and MobileFa
 ## Build
 
 ```bash
-cd sscma-example-sg200x
-mkdir build && cd build
-cmake .. -DFACE_RECOGNITION=ON
-make face-recognition -j$(nproc)
+cd solutions/face-recognition
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
 ```
 
 ## Usage
