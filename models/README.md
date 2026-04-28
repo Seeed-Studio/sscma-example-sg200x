@@ -2,6 +2,14 @@
 
 Pre-converted `.cvimodel` files for Sophgo CV181x (SG200X) TPU inference.
 
+## Conversion Tool
+
+All models were converted using the [onnx-to-cvimodel](https://github.com/Seeed-Studio/ai-skills/tree/main/skills/onnx-to-cvimodel) skill:
+
+```
+/onnx-to-cvimodel model.onnx --platform cv181x --quantize INT8
+```
+
 ## Directory Structure
 
 ```
@@ -17,51 +25,48 @@ models/
 
 ### Detection
 
-| Model | File | Size | Input | Precision |
-|-------|------|------|-------|-----------|
-| YOLO11n | `yolo11n_detection_cv181x_int8.cvimodel` | 3.0 MB | 640x640 | INT8 |
-| YOLO11n | `yolo11n_cv181x_int8.cvimodel` | 3.0 MB | 640x640 | INT8 |
-| YOLO26n | `yolo26n_cv181x_int8.cvimodel` | 2.9 MB | 640x640 | INT8 |
+| Model | File | Size | Input | Source | License |
+|-------|------|------|-------|--------|---------|
+| YOLO11n | `yolo11n_detection_cv181x_int8.cvimodel` | 3.0 MB | 640x640 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
+| YOLO26n | `yolo26n_cv181x_int8.cvimodel` | 2.9 MB | 640x640 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
 
 ### Classification
 
-| Model | File | Size | Input | Precision |
-|-------|------|------|-------|-----------|
-| YOLO11n-cls | `yolo11n_classify_cv181x_int8.cvimodel` | 2.9 MB | 224x224 | INT8 |
-| YOLO11n-cls | `yolo11n-cls_cv181x_int8.cvimodel` | 2.9 MB | 224x224 | INT8 |
-| YOLO26n-cls | `yolo26n-cls_cv181x_int8.cvimodel` | 2.9 MB | 224x224 | INT8 |
+| Model | File | Size | Input | Source | License |
+|-------|------|------|-------|--------|---------|
+| YOLO11n-cls | `yolo11n_classify_cv181x_int8.cvimodel` | 2.9 MB | 224x224 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
+| YOLO26n-cls | `yolo26n-cls_cv181x_int8.cvimodel` | 2.9 MB | 224x224 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
 
 ### Segmentation
 
-| Model | File | Size | Input | Precision | ION Memory |
-|-------|------|------|-------|-----------|------------|
-| YOLO11n-seg | `yolo11n_segment_cv181x_int8.cvimodel` | 3.9 MB | 640x640 | INT8 | — |
-| YOLO11n-seg | `yolo11n-seg_cv181x_mix.cvimodel` | 3.8 MB | 640x640 | MIX | — |
-| BiSeNetV2 | `bisenetv2_cityscapes_cv181x_int8.cvimodel` | 6.0 MB | 512x1024 | INT8 | 22.16 MB |
-| BiSeNetV2 | `bisenetv2_cityscapes_cv181x_int8_qout.cvimodel` | 5.9 MB | 512x1024 | INT8+QO | 18.10 MB |
-| PP-LiteSeg | `pp_liteseg_int8.cvimodel` | 9.9 MB | 512x1024 | INT8 | 22.16 MB |
-| PP-LiteSeg | `pp_liteseg_int8_qout.cvimodel` | 9.8 MB | 512x1024 | INT8+QO | 26.73 MB |
-
-> **QO** = quant_output: output tensors kept as INT8 to reduce ION memory.
+| Model | File | Size | Input | Source | License |
+|-------|------|------|-------|--------|---------|
+| YOLO11n-seg | `yolo11n_segment_cv181x_int8.cvimodel` | 3.9 MB | 640x640 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
+| BiSeNetV2 | `bisenetv2_cityscapes_cv181x_int8_qout.cvimodel` | 5.9 MB | 512x1024 | [CoinCheung/BiSeNet](https://github.com/CoinCheung/BiSeNet) | MIT |
+| PP-LiteSeg | `pp_liteseg_int8.cvimodel` | 9.9 MB | 512x1024 | [PaddlePaddle/PaddleSeg](https://github.com/PaddlePaddle/PaddleSeg) | Apache-2.0 |
 
 ### Pose Estimation
 
-| Model | File | Size | Input | Precision |
-|-------|------|------|-------|-----------|
-| YOLO11n-pose | `yolo11n_pose_cv181x_int8.cvimodel` | 3.6 MB | 640x640 | INT8 |
-| YOLO11n-pose | `yolo11n-pose_cv181x_mix.cvimodel` | 3.5 MB | 640x640 | MIX |
-| YOLO11-pose | `yolo11pose_cv181x_bf16.cvimodel` | 7.5 MB | 640x640 | BF16 |
+| Model | File | Size | Input | Source | License |
+|-------|------|------|-------|--------|---------|
+| YOLO11n-pose | `yolo11n_pose_cv181x_int8.cvimodel` | 3.6 MB | 640x640 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
+| YOLO11-pose | `yolo11pose_cv181x_bf16.cvimodel` | 7.5 MB | 640x640 | [ultralytics/ultralytics](https://github.com/ultralytics/ultralytics) | AGPL-3.0 |
 
 ### Face
 
-| Model | File | Size | Input | Precision | ION Memory |
-|-------|------|------|-------|-----------|------------|
-| SCRFD-500M-KPS | `scrfd_500m_kps_int8.cvimodel` | 766 KB | 640x640 | INT8 | 4.36 MB |
-| MobileFaceNet | `mobilefacenet_128d_int8.cvimodel` | 1.1 MB | 112x112 | INT8 | 0.22 MB |
+| Model | File | Size | Input | Source | License |
+|-------|------|------|-------|--------|---------|
+| SCRFD-500M-KPS | `scrfd_500m_kps_int8.cvimodel` | 766 KB | 640x640 | [deepinsight/insightface](https://github.com/deepinsight/insightface) | Non-commercial |
+| MobileFaceNet | `mobilefacenet_128d_int8.cvimodel` | 1.1 MB | 112x112 | [foamliu/InsightFace-v3](https://github.com/foamliu/InsightFace-v3) | Apache-2.0 |
+
+## License Notices
+
+- **AGPL-3.0** (YOLO models): Code and pretrained weights require open-sourcing derivative works under AGPL-3.0. For commercial use without open-sourcing, an [Enterprise License](https://www.ultralytics.com/license) from Ultralytics is required.
+- **Non-commercial** (SCRFD): The pretrained model weights from InsightFace are for non-commercial research only. For commercial deployment, contact [InsightFace](https://www.insightface.ai).
+- **MIT** (BiSeNetV2): Freely permitted for commercial use with attribution.
+- **Apache-2.0** (PP-LiteSeg, MobileFaceNet): Freely permitted for commercial use with attribution.
 
 ## Usage in Solutions
-
-Each solution references models from this directory or its own `models/` subdirectory:
 
 ```bash
 # Example: sscma-model
@@ -73,14 +78,3 @@ Each solution references models from this directory or its own `models/` subdire
     models/face/mobilefacenet_128d_int8.cvimodel \
     photo.jpg facedb.txt
 ```
-
-## Model Conversion
-
-All models were converted from ONNX to `.cvimodel` using the [onnx-to-cvimodel](https://github.com/Seeed-Studio/ai-skills/tree/main/skills/onnx-to-cvimodel) skill:
-
-```
-# Claude Code
-/onnx-to-cvimodel model.onnx --platform cv181x --quantize INT8
-```
-
-The skill automates the full conversion pipeline (ONNX graph surgery, calibration, TPU-MLIR deployment) and provides model-specific scripts for YOLO, BiSeNetV2, PP-LiteSeg, SCRFD, etc.
