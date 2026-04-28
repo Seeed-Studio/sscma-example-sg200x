@@ -35,7 +35,7 @@ Ensure these dependencies are installed and configured in your development envir
 ### 1. Navigate to the `qrcode` Solution
 
 ```bash
-cd solutions/qrcode
+cd solutions/qrcode-quirc
 ```
 
 ### 2. Build the Application
@@ -64,7 +64,7 @@ This will create a `.deb` package for installation.
 Copy the package to the ReCamera device using `scp`:
 
 ```bash
-scp build/qrcode-1.0.0-1.deb recamera@192.168.42.1:/tmp/
+scp build/qrcode-quirc-1.0.0-1.deb recamera@192.168.42.1:/tmp/
 ```
 
 Replace `recamera@192.168.42.1` with your device's IP address.
@@ -75,7 +75,7 @@ SSH into the device and install the package:
 
 ```bash
 ssh recamera@192.168.42.1
-sudo opkg install /tmp/qrcode-1.0.0-1.deb
+sudo opkg install /tmp/qrcode-quirc-1.0.0-1.deb
 ```
 
 ### 3. Run the Application
@@ -83,7 +83,7 @@ sudo opkg install /tmp/qrcode-1.0.0-1.deb
 Once installed, execute the application with an image file containing a QR code:
 
 ```bash
-qrcode /path/to/qr_code_image.png
+qrcode-quirc /path/to/qr_code_image.png
 ```
 
 Replace `/path/to/qr_code_image.png` with the path to your QR code image file on the device.
@@ -100,7 +100,7 @@ If the image does not contain a valid QR code or cannot be loaded, an error mess
 ## Directory Structure
 
 ```
-qrcode/
+qrcode-quirc/
 ├── CMakeLists.txt    # CMake build configuration
 ├── main              # Main application file
 └── README.md         # This README file

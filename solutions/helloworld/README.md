@@ -83,8 +83,8 @@ Hello, ReCamera!
 ```
 helloworld/
 ├── CMakeLists.txt    # CMake build configuration
-├── src               # Source code directory
-│   └── main.c        # Main application file
+├── main              # Source code directory
+│   └── main.cpp      # Main application file
 ├── build             # Build output (generated after compilation)
 └── README.md         # This README file
 ```

@@ -35,19 +35,6 @@ This version is more concise and easier to follow, with a focus on clarity and s
 
 More details please refer to [tpu-mlir](https://github.com/sophgo/tpu-mlir).
 
-### Clone the Repository
-
-```bash
-git clone https://github.com/Seeed-Studio/sscma-example-sg200x
-cd sscma-example-sg200x
-git submodule update --init
-```
-
-### Create workspace
-```bash
-mkdir workspace
-```
-
 ### 1. Clone the Repository
 
 To get started, clone the repository and initialize the submodules:

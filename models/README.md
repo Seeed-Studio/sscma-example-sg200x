@@ -70,11 +70,11 @@ models/
 
 ```bash
 # Example: sscma-model
-./sscma-model models/detection/yolo11n_detection_cv181x_int8.cvimodel photo.jpg
+./sscma-model ../../models/detection/yolo11n_detection_cv181x_int8.cvimodel photo.jpg
 
 # Example: face-recognition
 ./face-recognition identify \
-    models/face/scrfd_500m_kps_int8.cvimodel \
-    models/face/mobilefacenet_128d_int8.cvimodel \
+    ../../models/face/scrfd_500m_kps_int8.cvimodel \
+    ../../models/face/mobilefacenet_128d_int8.cvimodel \
     photo.jpg facedb.txt
 ```

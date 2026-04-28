@@ -1,70 +1,81 @@
-# Device Example
+# QR Code Reader (Real-time Camera + QR Decoding)
 
 ## Overview
 
-**Device** is an example application demonstrating how to use the **SSCMA-Micro** framework to stream video from a camera using RTSP (Real-Time Streaming Protocol). This example shows how to initialize the device, configure the camera, and send video frames over RTSP.
+**qrcode-reader** captures video frames from the camera, decodes QR codes in real-time using the **quirc** library, and streams H.264 video over RTSP.
+
+QR decoding runs on every 30th frame from a 640x640 RGB channel, performing 10-iteration benchmarking for average decode time.
 
 ## Getting Started
 
-Before building this solution, ensure that you have set up the **ReCamera-OS** environment as described in the main project documentation:
+Before proceeding, ensure that you have set up the **ReCamera-OS** environment as described in the main project documentation:
 
 🔗 **[SSCMA Example for SG200X - Main README](../../README.md)**
 
-This includes:
-
-- Setting up **ReCamera-OS**
-- Configuring the SDK path
-- Preparing the necessary toolchain
-
-If you haven't completed these steps, follow the instructions in the main project README before proceeding.
-
 ## Building & Installing
 
-### 1. Navigate to the `device` Solution
+### 1. Navigate to the Solution
 
 ```bash
-cd solutions/device
+cd solutions/qrcode-reader
 ```
 
 ### 2. Build the Application
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cmake -B build -DCMAKE_BUILD_TYPE=Release .
+cmake --build build
+```
+
+### 3. Package the Application
+
+```bash
+cd build && cpack
+```
+
+## Deploying & Running
+
+### 1. Transfer the Package to Your Device
+
+```bash
+scp build/qrcode-reader-1.0.0-1.deb recamera@192.168.42.1:/tmp/
+```
+
+### 2. Install the Package
+
+```bash
+ssh recamera@192.168.42.1
+sudo opkg install /tmp/qrcode-reader-1.0.0-1.deb
 ```
 
 ### 3. Run the Application
 
-To run the application, use the following command:
-
 ```bash
-./device
+qrcode-reader
 ```
 
-## Expected Output
-
-Upon executing the application, the following occurs:
-
-1. The device instance is created, and the RTSP transport is initialized with the specified configuration.
-2. The application scans for available sensors and initializes the camera.
-3. The camera is configured with parameters such as channel and window size.
-4. The camera starts streaming, and video frames are retrieved in a loop.
-5. Retrieved frames are sent over RTSP.
-
-### Example Output Messages
-
-During execution, you may see log messages indicating the size of the frames being processed:
+#### Expected Output
 
 ```
-frame size: 4096
+QR code text: https://example.com, Average decode time: 12.50 ms
 ```
 
-The application continues to run until interrupted (e.g., by pressing `Ctrl+C`).
+The application runs continuously, scanning camera frames for QR codes and streaming video over RTSP.
 
-## Conclusion
+## Architecture
 
-This example serves as a basic introduction to using the SSCMA framework for streaming video from a camera. Users can modify the code and adapt it for their specific needs, experimenting with different camera settings and transport configurations.
+```
+Camera
+  ├─ Channel 0: RGB888 640x640 @ 1 FPS → QR code detection (quirc, every 30th frame)
+  └─ Channel 2: H.264 1920x1080 @ 30 FPS → RTSP streaming
+```
 
-For further details on the SSCMA framework, refer to the [SSCMA-Micro documentation](https://github.com/Seeed-Studio/SSCMA-Micro).
+## Directory Structure
+
+```
+qrcode-reader/
+├── CMakeLists.txt
+├── main/
+│   └── main.cpp
+└── README.md
+```

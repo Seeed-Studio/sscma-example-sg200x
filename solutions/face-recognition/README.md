@@ -32,7 +32,7 @@ cmake --build build
 Run SCRFD face detection only (no recognition):
 
 ```bash
-./face-recognition detect models/scrfd_500m_kps_int8.cvimodel photo.jpg -o result.jpg
+./face-recognition detect ../../models/face/scrfd_500m_kps_int8.cvimodel photo.jpg -o result.jpg
 ```
 
 ### 2. Register a Face
@@ -41,15 +41,15 @@ Save a face embedding into the database:
 
 ```bash
 ./face-recognition register \
-    models/scrfd_500m_kps_int8.cvimodel \
-    models/mobilefacenet_128d_int8.cvimodel \
+    ../../models/face/scrfd_500m_kps_int8.cvimodel \
+    ../../models/face/mobilefacenet_128d_int8.cvimodel \
     alice.jpg "Alice" facedb.txt
 ```
 
 Register multiple people by running the command repeatedly:
 
 ```bash
-./face-recognition register models/scrfd_500m_kps_int8.cvimodel models/mobilefacenet_128d_int8.cvimodel bob.jpg "Bob" facedb.txt
+./face-recognition register ../../models/face/scrfd_500m_kps_int8.cvimodel ../../models/face/mobilefacenet_128d_int8.cvimodel bob.jpg "Bob" facedb.txt
 ```
 
 ### 3. Identify Faces
@@ -58,8 +58,8 @@ Detect faces and match against the database:
 
 ```bash
 ./face-recognition identify \
-    models/scrfd_500m_kps_int8.cvimodel \
-    models/mobilefacenet_128d_int8.cvimodel \
+    ../../models/face/scrfd_500m_kps_int8.cvimodel \
+    ../../models/face/mobilefacenet_128d_int8.cvimodel \
     photo.jpg facedb.txt -o result.jpg
 ```
 
@@ -67,8 +67,8 @@ Example output:
 
 ```
 Detected 2 faces
-Face 0: Alice (0.72)
-Face 1: unknown (0.31)
+Face 0: Alice (0.720)
+Face 1: unknown (0.310)
 Saved: result.jpg
 ```
 
@@ -134,16 +134,15 @@ Input Image
 solutions/face-recognition/
 ├── CMakeLists.txt
 ├── README.md
-├── main/
-│   ├── CMakeLists.txt
-│   ├── main.cpp              # Entry point: register/identify/detect/list
-│   ├── face_detector.h/cpp   # SCRFD anchor decoding + NMS
-│   ├── face_aligner.h/cpp    # ArcFace 5-point alignment
-│   └── face_database.h/cpp   # Face database + cosine similarity
-└── models/
-    ├── scrfd_500m_kps_int8.cvimodel
-    └── mobilefacenet_128d_int8.cvimodel
+└── main/
+    ├── CMakeLists.txt
+    ├── main.cpp              # Entry point: register/identify/detect/list
+    ├── face_detector.h/cpp   # SCRFD anchor decoding + NMS
+    ├── face_aligner.h/cpp    # ArcFace 5-point alignment
+    └── face_database.h/cpp   # Face database + cosine similarity
 ```
+
+Model files are in the centralized [model zoo](../../models/face/).
 
 ## Model Sources
 
