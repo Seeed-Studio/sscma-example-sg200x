@@ -992,7 +992,7 @@ function start_service() {
         # the supervisor health loop handles a really-broken sscma itself.
         _stop_pidname_graceful "node-red" 10
         _stop_pidname_graceful "node" 10
-        /etc/init.d/S03node-red restart >/dev/null 2>&1
+        /etc/init.d/S92node-red restart >/dev/null 2>&1
         [ $? -ne 0 ] && {
             echo "$STR_FAILED"
             return

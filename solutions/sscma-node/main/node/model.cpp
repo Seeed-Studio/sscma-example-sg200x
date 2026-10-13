@@ -257,18 +257,21 @@ void ModelNode::threadEntry() {
         reply["data"]["perf"].push_back({_perf.preprocess, _perf.inference, _perf.postprocess});
 
         if (debug_) {
-            char* base64   = new char[4 * ((jpeg->img.size + 2) / 3 + 2)];
-            int base64_len = 4 * ((jpeg->img.size + 2) / 3 + 2);
-            ma::utils::base64_encode(jpeg->img.data, jpeg->img.size, base64, &base64_len);
-            reply["data"]["image"] = std::string(base64, base64_len);
-            delete[] base64;
+            size_t base64_cap = 4 * ((jpeg->img.size + 2) / 3 + 2);
+            base64_buf_.resize(base64_cap);
+            int base64_len = static_cast<int>(base64_cap);
+            ma::utils::base64_encode(jpeg->img.data, jpeg->img.size, &base64_buf_[0], &base64_len);
+            // NOTE: .data() keeps the (const char*, len) ctor; passing the
+            // std::string itself would select the (string, pos) substring ctor
+            reply["data"]["image"] = std::string(base64_buf_.data(), base64_len);
             jpeg->release();
         } else {
             reply["data"]["image"] = "";
         }
 
         if (websocket_) {
-            transport_->send(reinterpret_cast<const char*>(reply.dump().c_str()), reply.dump().size());
+            json_buf_ = reply.dump();
+            transport_->send(json_buf_.data(), json_buf_.size());
         }
         if (!output_) {
             reply["data"]["image"] = "";

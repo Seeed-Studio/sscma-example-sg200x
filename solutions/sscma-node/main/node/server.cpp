@@ -123,8 +123,10 @@ void NodeServer::response(const std::string& id, const json& msg) {
     }
     // Guard guard(m_mutex);
     std::string topic = m_topic_out_prefix + '/' + id;
-    MA_LOGV(TAG, "response: %s ==> %s", id.c_str(), msg.dump().c_str());
-    int mid = mosquitto_publish(m_client, nullptr, topic.c_str(), msg.dump().size(), msg.dump().data(), 0, false);
+    // serialize once: dump() scans the full message each call
+    std::string payload = msg.dump();
+    MA_LOGV(TAG, "response: %s ==> %s", id.c_str(), payload.c_str());
+    int mid = mosquitto_publish(m_client, nullptr, topic.c_str(), payload.size(), payload.data(), 0, false);
     return;
 }
 
