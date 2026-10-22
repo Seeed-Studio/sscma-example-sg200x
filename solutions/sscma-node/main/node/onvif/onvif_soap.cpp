@@ -68,28 +68,25 @@ static std::string getServices() {
 
 static std::string getCapabilities() {
     const std::string xaddr = Service::instance().deviceServiceUrl();
-    char buf[1024];
-    snprintf(buf,
-             sizeof(buf),
-             "<tds:GetCapabilitiesResponse><tds:Capabilities>"
-             "<tt:Media><tt:XAddr>%s</tt:XAddr><tt:StreamingUri></tt:StreamingUri>"
-             "<tt:RTP_Multicast>false</tt:RTP_Multicast><tt:TCP>true</tt:TCP><tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP>"
-             "<tt:Extension><tt:Profile>%d</tt:Profile></tt:Extension></tt:Media>"
-             "<tt:Device><tt:XAddr>%s</tt:XAddr>"
-             "<tt:Network><tt:IPFilter>false</tt:IPFilter><tt:ZeroConfiguration>false</tt:ZeroConfiguration>"
-             "<tt:IPVersion6>false</tt:IPVersion6><tt:DynDNS>false</tt:DynDNS></tt:Network>"
-             "<tt:System><tt:DiscoveryResolve>false</tt:DiscoveryResolve><tt:DiscoveryBye>false</tt:DiscoveryBye>"
-             "<tt:RemoteDiscovery>false</tt:RemoteDiscovery><tt:SystemBackup>false</tt:SystemBackup>"
-             "<tt:SystemLogging>false</tt:SystemLogging><tt:Upgrade>false</tt:Upgrade>"
-             "<tt:SupportedVersions><tt:Version><tt:Major>2</tt:Major><tt:Minor>60</tt:Minor></tt:Version></tt:SupportedVersions></tt:System>"
-             "<tt:Security><tt:TLS1_1>false</tt:TLS1_1><tt:TLS1_2>false</tt:TLS1_2><tt:OnboardKeyGeneration>false</tt:OnboardKeyGeneration>"
-             "<tt:AccessPolicyConfig>false</tt:AccessPolicyConfig><tt:DefaultAccessPolicy>true</tt:DefaultAccessPolicy>"
-             "<tt:Dot1X>false</tt:Dot1X><tt:RemoteUserHandling>false</tt:RemoteUserHandling></tt:Security>"
-             "</tt:Device></tds:Capabilities></tds:GetCapabilitiesResponse>",
-             xaddr.c_str(),
-             (int)Service::instance().profiles().size(),
-             xaddr.c_str());
-    return envelope(buf);
+    // Built by concatenation: the full capabilities document exceeds 1KB and
+    // snprintf into a fixed buffer silently truncates it into invalid XML,
+    // which strict ONVIF clients (e.g. Hikvision NVRs) reject at device add.
+    std::string out = "<tds:GetCapabilitiesResponse><tds:Capabilities>";
+    out += "<tt:Media><tt:XAddr>" + xaddr + "</tt:XAddr><tt:StreamingUri></tt:StreamingUri>";
+    out += "<tt:RTP_Multicast>false</tt:RTP_Multicast><tt:TCP>true</tt:TCP><tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP>";
+    out += "<tt:Extension><tt:Profile>" + std::to_string(Service::instance().profiles().size()) + "</tt:Profile></tt:Extension></tt:Media>";
+    out += "<tt:Device><tt:XAddr>" + xaddr + "</tt:XAddr>";
+    out += "<tt:Network><tt:IPFilter>false</tt:IPFilter><tt:ZeroConfiguration>false</tt:ZeroConfiguration>";
+    out += "<tt:IPVersion6>false</tt:IPVersion6><tt:DynDNS>false</tt:DynDNS></tt:Network>";
+    out += "<tt:System><tt:DiscoveryResolve>false</tt:DiscoveryResolve><tt:DiscoveryBye>false</tt:DiscoveryBye>";
+    out += "<tt:RemoteDiscovery>false</tt:RemoteDiscovery><tt:SystemBackup>false</tt:SystemBackup>";
+    out += "<tt:SystemLogging>false</tt:SystemLogging><tt:Upgrade>false</tt:Upgrade>";
+    out += "<tt:SupportedVersions><tt:Version><tt:Major>2</tt:Major><tt:Minor>60</tt:Minor></tt:Version></tt:SupportedVersions></tt:System>";
+    out += "<tt:Security><tt:TLS1_1>false</tt:TLS1_1><tt:TLS1_2>false</tt:TLS1_2><tt:OnboardKeyGeneration>false</tt:OnboardKeyGeneration>";
+    out += "<tt:AccessPolicyConfig>false</tt:AccessPolicyConfig><tt:DefaultAccessPolicy>true</tt:DefaultAccessPolicy>";
+    out += "<tt:Dot1X>false</tt:Dot1X><tt:RemoteUserHandling>false</tt:RemoteUserHandling></tt:Security>";
+    out += "</tt:Device></tds:Capabilities></tds:GetCapabilitiesResponse>";
+    return envelope(out);
 }
 
 static std::string getSystemDateAndTime() {
