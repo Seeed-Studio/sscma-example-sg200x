@@ -34,6 +34,7 @@ typedef enum {
     MA_AUDIO_FORMAT_AUTO = 0,
     MA_AUDIO_FORMAT_PCM  = 1,
     MA_AUDIO_FORMAT_AAC  = 2,
+    MA_AUDIO_FORMAT_NONE = 3,
 } ma_audio_format_t;
 
 #endif  // _MA_CONFIG_BOARD_H_

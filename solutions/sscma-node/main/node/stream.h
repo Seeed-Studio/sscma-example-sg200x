@@ -32,6 +32,7 @@ protected:
     std::string password_;
     bool onvif_;
     int onvifPort_;
+    bool audio_;
     TransportRTSP* transport_;
     CameraNode* camera_;
     MessageBox frame_;

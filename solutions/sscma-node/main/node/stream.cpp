@@ -11,7 +11,7 @@ namespace ma::node {
 
 static constexpr char TAG[] = "ma::node::stream";
 
-StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), onvif_(false), onvifPort_(8899), thread_(nullptr), camera_(nullptr), frame_(60), transport_(nullptr) {
+StreamNode::StreamNode(std::string id) : Node("stream", id), port_(0), host_(""), url_(""), username_(""), password_(""), onvif_(false), onvifPort_(8899), audio_(false), thread_(nullptr), camera_(nullptr), frame_(60), transport_(nullptr) {
     char hostname[1024];
     hostname[1023] = '\0';
     gethostname(hostname, 1023);
@@ -91,6 +91,13 @@ ma_err_t StreamNode::onCreate(const json& config) {
     } else {
         onvifPort_ = config["onvif_port"].get<int>();
     }
+    // Audio defaults to off: RTSP advertises L16/16000 which most NVR/VMS
+    // clients (e.g. Hikvision) cannot play and some refuse the whole stream.
+    if (!config.contains("audio")) {
+        audio_ = false;
+    } else {
+        audio_ = config["audio"].get<bool>();
+    }
 
     if (session_.empty()) {
         MA_THROW(Exception(MA_EINVAL, "Session is empty"));
@@ -113,7 +120,7 @@ ma_err_t StreamNode::onCreate(const json& config) {
         MA_THROW(Exception(MA_ENOMEM, "Not enough memory"));
     }
 
-    TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, MA_AUDIO_FORMAT_PCM, 16000, 1, 16, session_, username_, password_};
+    TransportRTSP::Config rtspConfig = {port_, MA_PIXEL_FORMAT_H264, audio_ ? MA_AUDIO_FORMAT_PCM : MA_AUDIO_FORMAT_NONE, 16000, 1, 16, session_, username_, password_};
 
     err = transport_->init(&rtspConfig);
     if (err != MA_OK) {

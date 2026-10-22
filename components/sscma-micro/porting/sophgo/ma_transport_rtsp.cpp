@@ -112,6 +112,9 @@ ma_err_t TransportRTSP::init(const void* config) noexcept {
     attr.audio.sampleRate = rtsp_config->sample_rate;
 
     switch (rtsp_config->audio_format) {
+        case MA_AUDIO_FORMAT_NONE:
+            attr.audio.codec = RTSP_AUDIO_NONE;
+            break;
         case MA_AUDIO_FORMAT_PCM:
             attr.audio.codec = RTSP_AUDIO_PCM_L16;
             break;
@@ -212,7 +215,7 @@ size_t TransportRTSP::sendVideo(const char* data, size_t length) noexcept {
 
 size_t TransportRTSP::sendAudio(const char* data, size_t length) noexcept {
     Guard guard(m_mutex);
-    if (!m_initialized) {
+    if (!m_initialized || m_session == nullptr || m_session->audio == nullptr) {
         return 0;
     }
     CVI_RTSP_DATA frame = {0};
