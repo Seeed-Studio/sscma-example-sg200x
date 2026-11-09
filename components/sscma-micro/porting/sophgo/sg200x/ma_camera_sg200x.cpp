@@ -111,6 +111,23 @@ int CameraSG200X::vpssCallback(void* pData, void* pArgs) {
     if (!m_streaming) {
         return CVI_SUCCESS;
     }
+
+    // Honour the channel fps before copying: VPSS delivers every sensor frame,
+    // and each raw copy here (640x640 RGB ~1.2 MB) costs CPU on the single core
+    // even though retrieveFrame() keeps only the newest one. Accept a frame once
+    // ~90 % of the channel period has passed (sensor frames quantise the rest).
+    {
+        channel& ch = m_channels[pstVencChnCfg->VencChn];
+        if (ch.fps > 0) {
+            const ma_tick_t now    = Tick::current();
+            const uint32_t period  = 1000 / ch.fps;
+            if (ch.last_raw_tick != 0 && Tick::toMilliseconds(now - ch.last_raw_tick) < period * 9 / 10) {
+                return CVI_SUCCESS;
+            }
+            ch.last_raw_tick = now;
+        }
+    }
+
     ma_img_t* frame  = new ma_img_t;
     frame->size      = f->u32Length[0] + f->u32Length[1] + f->u32Length[2];
     frame->width     = m_channels[pstVencChnCfg->VencChn].width;
@@ -130,7 +147,10 @@ int CameraSG200X::vpssCallback(void* pData, void* pArgs) {
         uint32_t offset = 0;
         for (int i = 0; i < 3; i++) {
             if (f->u32Length[i]) {
-                f->pu8VirAddr[i] = (CVI_U8*)CVI_SYS_Mmap(f->u64PhyAddr[i], f->u32Length[i]);
+                // Cached mapping: memcpy from the default uncached mapping reads DRAM
+                // word by word. Invalidate first so the CPU sees what VPSS wrote.
+                f->pu8VirAddr[i] = (CVI_U8*)CVI_SYS_MmapCache(f->u64PhyAddr[i], f->u32Length[i]);
+                CVI_SYS_IonInvalidateCache(f->u64PhyAddr[i], f->pu8VirAddr[i], f->u32Length[i]);
                 memcpy(frame->data + offset, f->pu8VirAddr[i], f->u32Length[i]);
                 CVI_SYS_Munmap(f->pu8VirAddr[i], f->u32Length[i]);
                 offset += f->u32Length[i];
@@ -238,7 +258,7 @@ ma_err_t CameraSG200X::startStream(StreamMode mode) noexcept {
     }
     for (int i = 0; i < CHN_MAX; i++) {
         if (m_channels[i].enabled) {
-            video_ch_param_t param;
+            video_ch_param_t param{};
             param.width  = m_channels[i].width;
             param.height = m_channels[i].height;
             param.fps    = m_channels[i].fps;
@@ -379,6 +399,28 @@ ma_err_t CameraSG200X::retrieveFrame(ma_img_t& frame, ma_pixel_format_t format) 
     ma_img_t* img = nullptr;
     if (!m_channels[chn].queue->fetch(reinterpret_cast<void**>(&img), Tick::fromMilliseconds(1000 / m_channels[chn].fps))) {
         return MA_AGAIN;
+    }
+
+    // Keep-latest for raw inference frames (chn 0 = RGB888/NV21). The queue is
+    // a FIFO whose depth equals the channel fps, so when inference is slower
+    // than capture it backs up and fetch() returns a frame that can be seconds
+    // old — the overlay then lags the live video badly. Drain any additional
+    // queued frames (non-blocking) and keep only the newest so inference always
+    // runs on a fresh frame. Raw frames are self-contained, so dropping stale
+    // ones is safe. Do NOT do this for H264/H265 (chn 2) — those packets are
+    // interdependent and must be delivered in order.
+    if (chn == 0) {
+        ma_img_t* next = nullptr;
+        while (m_channels[chn].queue->fetch(reinterpret_cast<void**>(&next), Tick::fromMilliseconds(0))) {
+            if (img != nullptr) {
+                if (!img->physical) {
+                    delete[] img->data;
+                }
+                delete img;
+            }
+            img  = next;
+            next = nullptr;
+        }
     }
 
     if (img != nullptr) {
