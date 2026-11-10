@@ -1375,7 +1375,7 @@ image_u8_t *threshold(apriltag_detector_t *td, image_u8_t *im)
                             max = v;
                     }
                 }
-                tmp->buf[y*s+x] = max;
+                tmp->buf[y * tmp->stride + x] = max;
             }
         }
 
@@ -1384,7 +1384,7 @@ image_u8_t *threshold(apriltag_detector_t *td, image_u8_t *im)
                 uint8_t min = 255;
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dx = -1; dx <= 1; dx++) {
-                        uint8_t v = tmp->buf[(y+dy)*s + x + dx];
+                        uint8_t v = tmp->buf[(y+dy) * tmp->stride + x + dx];
                         if (v < min)
                             min = v;
                     }

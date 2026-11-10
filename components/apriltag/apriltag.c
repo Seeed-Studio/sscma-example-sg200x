@@ -1108,6 +1108,12 @@ zarray_t *apriltag_detector_detect(apriltag_detector_t *td, image_u8_t *im_orig)
         timeprofile_stamp(td->tp, "decimate");
     }
 
+    if (quad_im->width < 4 || quad_im->height < 4) {
+        if (quad_im != im_orig)
+            image_u8_destroy(quad_im);
+        return zarray_create(sizeof(apriltag_detection_t*));
+    }
+
     if (td->quad_sigma != 0) {
         // compute a reasonable kernel width by figuring that the
         // kernel should go out 2 std devs.
