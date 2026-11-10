@@ -7,8 +7,22 @@ function(component_register)
 
     cmake_parse_arguments(COMPONENT_REGISTER "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
+    # Already registered: nothing to do.
+    #
+    # project.cmake resolves dependencies by sweeping the component list and
+    # re-sweeping everything it skipped, because a component's REQUIREDS only
+    # become known once its CMakeLists has been included. A component that is
+    # pulled in transitively -- and sorts before whoever pulls it in -- is
+    # therefore reached by that re-sweep on every remaining iteration, and the
+    # second visit fails with "another target with the same name already
+    # exists". Being included more than once is normal for this resolver; only
+    # registering twice is the error.
+    if(TARGET ${COMPONENT_REGISTER_COMPONENT_NAME})
+        return()
+    endif()
+
     message(STATUS "Registering component ${COMPONENT_REGISTER_COMPONENT_NAME}")
-    
+
     # option(ENABLE_${COMPONENT_REGISTER_COMPONENT_NAME} "Enable ${COMPONENT_REGISTER_COMPONENT_NAME}" OFF)
         
     # if(NOT ENABLE_${COMPONENT_REGISTER_COMPONENT_NAME})
