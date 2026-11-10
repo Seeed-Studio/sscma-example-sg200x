@@ -62,8 +62,8 @@ set(_manifest_src "${PROJECT_DIR}/rootfs/usr/share/${PROJECT_NAME}/${PROJECT_NAM
 if(EXISTS ${_manifest_src})
     file(READ ${_manifest_src} _manifest_text)
     string(REGEX REPLACE
-        "\"version\"[ \t]*:[ \t]*\"[^\"]*\""
-        "\"version\": \"${PROJECT_VERSION}\""
+        "\n  \"version\"[ \t]*:[ \t]*\"[^\"]*\""
+        "\n  \"version\": \"${PROJECT_VERSION}\""
         _manifest_text "${_manifest_text}")
     set(_manifest_gen "${CMAKE_BINARY_DIR}/manifest/${PROJECT_NAME}.json")
     file(WRITE ${_manifest_gen} "${_manifest_text}")
