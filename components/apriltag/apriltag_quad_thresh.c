@@ -25,6 +25,14 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the Regents of The University of Michigan.
 */
 
+/* Modified for rebot-vision (kits/recamera-b601dm/vision, see apriltag_patched/apriltag.cmake)
+ * from sscma-example-sg200x components/apriltag/apriltag_quad_thresh.c at commit 9af8118:
+ * - do_gradient_clusters(): rv_apriltag_options(td)->lazy_clusters checks the neighbour
+ *   colours before the union-find lookups.
+ * - rv_apriltag_options(td)->reuse_buffers: connected_components() and the cluster step use
+ *   buffers kept in the detector (rv_gradient_clusters() and the code around it).
+ */
+
 // limitation: image size must be <32768 in width and height. This is
 // because we use a fixed-point 16 bit integer representation with one
 // fractional bit.
@@ -36,6 +44,7 @@ either expressed or implied, of the Regents of The University of Michigan.
 #include <stdint.h>
 
 #include "apriltag.h"
+#include "rv_apriltag.h"
 #include "common/image_u8x3.h"
 #include "common/zarray.h"
 #include "common/unionfind.h"
@@ -105,6 +114,7 @@ struct cluster_task
     unionfind_t* uf;
     image_u8_t* im;
     zarray_t* clusters;
+    bool lazy;  // rebot-vision: rv_apriltag_options(td)->lazy_clusters
 };
 
 struct minmax_task {
@@ -1510,8 +1520,11 @@ image_u8_t *threshold_bayer(apriltag_detector_t *td, image_u8_t *im)
     return threshim;
 }
 
+static unionfind_t *rv_unionfind(apriltag_detector_t *td, uint32_t maxid);
+static bool rv_reuse(apriltag_detector_t *td);
+
 unionfind_t* connected_components(apriltag_detector_t *td, image_u8_t* threshim, int w, int h, int ts) {
-    unionfind_t *uf = unionfind_create(w * h);
+    unionfind_t *uf = rv_reuse(td) ? rv_unionfind(td, w * h) : unionfind_create(w * h);
 
     if (td->nthreads <= 1) {
         do_unionfind_first_line(uf, threshim, w, ts);
@@ -1557,7 +1570,7 @@ unionfind_t* connected_components(apriltag_detector_t *td, image_u8_t* threshim,
     return uf;
 }
 
-zarray_t* do_gradient_clusters(image_u8_t* threshim, int ts, int y0, int y1, int w, int nclustermap, unionfind_t* uf, zarray_t* clusters) {
+zarray_t* do_gradient_clusters(image_u8_t* threshim, int ts, int y0, int y1, int w, int nclustermap, unionfind_t* uf, zarray_t* clusters, bool lazy) {
     struct uint64_zarray_entry **clustermap = calloc(nclustermap, sizeof(struct uint64_zarray_entry*));
 
     int mem_chunk_size = 2048;
@@ -1574,6 +1587,17 @@ zarray_t* do_gradient_clusters(image_u8_t* threshim, int ts, int y0, int y1, int
             if (v0 == 127) {
                 connected_last = false;
                 continue;
+            }
+
+            // rebot-vision (lazy): a pixel adds a point only where one of the neighbours
+            // DO_CONN checks below is of the opposite colour; look its set up only then.
+            if (lazy) {
+                const uint8_t* r0 = &threshim->buf[y*ts + x];
+                const uint8_t* r1 = r0 + ts;
+                if (v0 + r0[1] != 255 && v0 + r1[0] != 255 && v0 + r1[-1] != 255 && v0 + r1[1] != 255) {
+                    connected_last = false;
+                    continue;
+                }
             }
 
             // XXX don't query this until we know we need it?
@@ -1705,7 +1729,7 @@ static void do_cluster_task(void *p)
 {
     struct cluster_task *task = (struct cluster_task*) p;
 
-    do_gradient_clusters(task->im, task->s, task->y0, task->y1, task->w, task->nclustermap, task->uf, task->clusters);
+    do_gradient_clusters(task->im, task->s, task->y0, task->y1, task->w, task->nclustermap, task->uf, task->clusters, task->lazy);
 }
 
 zarray_t* merge_clusters(zarray_t* c1, zarray_t* c2) {
@@ -1769,6 +1793,7 @@ zarray_t* gradient_clusters(apriltag_detector_t *td, image_u8_t* threshim, int w
         tasks[ntasks].im = threshim;
         tasks[ntasks].nclustermap = nclustermap/(sz / chunksize + 1);
         tasks[ntasks].clusters = zarray_create(sizeof(struct cluster_hash*));
+        tasks[ntasks].lazy = rv_apriltag_options(td)->lazy_clusters;
 
         workerpool_add_task(td->wp, do_cluster_task, &tasks[ntasks]);
         ntasks++;
@@ -1808,6 +1833,229 @@ zarray_t* gradient_clusters(apriltag_detector_t *td, image_u8_t* threshim, int w
     free(clusters_list);
     free(tasks);
     return clusters;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// rebot-vision: reuse_buffers (rv_apriltag.h). The union-find, the cluster hash map, its
+// entries and the cluster point arrays are kept in the detector from frame to frame, and
+// the clusters are built in one pass over the image (nthreads == 1), so no per-frame
+// merge of task results and no per-cluster heap calls once the pools are warm.
+
+#define RV_ENTRY_CHUNK 2048
+#define RV_POOL_MAX 8192         // cleared point arrays kept for the next frame
+#define RV_POOL_MAX_POINTS 4096  // larger arrays are freed instead of kept
+
+struct rv_quad_scratch
+{
+    unionfind_t *uf;
+    struct uint64_zarray_entry **clustermap;
+    int nclustermap;
+    struct uint64_zarray_entry **chunks;
+    int nchunks, chunks_alloc;
+    zarray_t **pool;
+    int npool, pool_alloc;
+    zarray_t *clusters;  // zarray of zarray_t*, the result of rv_gradient_clusters()
+};
+
+void rv_quad_scratch_destroy(struct rv_quad_scratch *s)
+{
+    if (s == NULL)
+        return;
+    if (s->uf)
+        unionfind_destroy(s->uf);
+    free(s->clustermap);
+    for (int i = 0; i < s->nchunks; i++)
+        free(s->chunks[i]);
+    free(s->chunks);
+    for (int i = 0; i < s->npool; i++)
+        zarray_destroy(s->pool[i]);
+    free(s->pool);
+    if (s->clusters)
+        zarray_destroy(s->clusters);
+    free(s);
+}
+
+static struct rv_quad_scratch *rv_scratch(apriltag_detector_t *td)
+{
+    struct rv_quad_scratch **ps = rv_apriltag_scratch(td);
+    if (*ps == NULL) {
+        *ps = calloc(1, sizeof(struct rv_quad_scratch));
+        (*ps)->clusters = zarray_create(sizeof(zarray_t*));
+    }
+    return *ps;
+}
+
+static bool rv_reuse(apriltag_detector_t *td)
+{
+    return rv_apriltag_options(td)->reuse_buffers && td->nthreads <= 1;
+}
+
+static unionfind_t *rv_unionfind(apriltag_detector_t *td, uint32_t maxid)
+{
+    struct rv_quad_scratch *s = rv_scratch(td);
+    if (s->uf == NULL || s->uf->maxid != maxid) {
+        if (s->uf)
+            unionfind_destroy(s->uf);
+        s->uf = unionfind_create(maxid);
+        return s->uf;
+    }
+    for (uint32_t i = 0; i <= maxid; i++) {
+        s->uf->data[i].parent = 0xffffffff;
+        s->uf->data[i].size = 0;
+    }
+    return s->uf;
+}
+
+static struct uint64_zarray_entry *rv_entry(struct rv_quad_scratch *s, int idx)
+{
+    int c = idx / RV_ENTRY_CHUNK;
+    if (c == s->nchunks) {
+        if (s->nchunks == s->chunks_alloc) {
+            s->chunks_alloc = s->chunks_alloc ? 2 * s->chunks_alloc : 8;
+            s->chunks = realloc(s->chunks, s->chunks_alloc * sizeof(*s->chunks));
+        }
+        s->chunks[s->nchunks++] = malloc(RV_ENTRY_CHUNK * sizeof(struct uint64_zarray_entry));
+    }
+    return &s->chunks[c][idx % RV_ENTRY_CHUNK];
+}
+
+static zarray_t *rv_points(struct rv_quad_scratch *s)
+{
+    if (s->npool > 0)
+        return s->pool[--s->npool];
+    return zarray_create(sizeof(struct pt));
+}
+
+// Gradient clusters as do_gradient_clusters() over rows 1..h-2 in one task; returns the
+// scratch's cluster list (zarray of zarray_t*), ordered by hash bucket then id.
+static zarray_t *rv_gradient_clusters(apriltag_detector_t *td, image_u8_t *threshim, int w, int h, int ts, unionfind_t *uf)
+{
+    struct rv_quad_scratch *s = rv_scratch(td);
+    const bool lazy = rv_apriltag_options(td)->lazy_clusters;
+    int nclustermap = 0.2*w*h;
+    if (nclustermap < 1)
+        nclustermap = 1;
+    if (s->nclustermap != nclustermap) {
+        free(s->clustermap);
+        s->clustermap = malloc(nclustermap * sizeof(*s->clustermap));
+        s->nclustermap = nclustermap;
+    }
+    struct uint64_zarray_entry **clustermap = s->clustermap;
+    memset(clustermap, 0, nclustermap * sizeof(*clustermap));
+    int nentries = 0;
+
+    for (int y = 1; y < h - 1; y++) {
+        bool connected_last = false;
+        for (int x = 1; x < w-1; x++) {
+            uint8_t v0 = threshim->buf[y*ts + x];
+            if (v0 == 127) {
+                connected_last = false;
+                continue;
+            }
+            if (lazy) {
+                const uint8_t* r0 = &threshim->buf[y*ts + x];
+                const uint8_t* r1 = r0 + ts;
+                if (v0 + r0[1] != 255 && v0 + r1[0] != 255 && v0 + r1[-1] != 255 && v0 + r1[1] != 255) {
+                    connected_last = false;
+                    continue;
+                }
+            }
+            uint64_t rep0 = unionfind_get_representative(uf, y*w + x);
+            if (uf->data[rep0].size + 1 < 25) {
+                connected_last = false;
+                continue;
+            }
+
+            bool connected;
+#define RV_DO_CONN(dx, dy)                                                      \
+            if (1) {                                                            \
+                uint8_t v1 = threshim->buf[(y + dy)*ts + x + dx];               \
+                if (v0 + v1 == 255) {                                           \
+                    uint64_t rep1 = unionfind_get_representative(uf, (y + dy)*w + x + dx); \
+                    if (uf->data[rep1].size + 1 > 24) {                         \
+                        uint64_t clusterid;                                     \
+                        if (rep0 < rep1)                                        \
+                            clusterid = (rep1 << 32) + rep0;                    \
+                        else                                                    \
+                            clusterid = (rep0 << 32) + rep1;                    \
+                        uint32_t bucket = u64hash_2(clusterid) % nclustermap;   \
+                        struct uint64_zarray_entry *entry = clustermap[bucket]; \
+                        while (entry && entry->id != clusterid)                 \
+                            entry = entry->next;                                \
+                        if (!entry) {                                           \
+                            entry = rv_entry(s, nentries++);                    \
+                            entry->id = clusterid;                              \
+                            entry->cluster = rv_points(s);                      \
+                            entry->next = clustermap[bucket];                   \
+                            clustermap[bucket] = entry;                         \
+                        }                                                       \
+                        struct pt p = { .x = 2*x + dx, .y = 2*y + dy, .gx = dx*((int) v1-v0), .gy = dy*((int) v1-v0)}; \
+                        zarray_add(entry->cluster, &p);                         \
+                        connected = true;                                       \
+                    }                                                           \
+                }                                                               \
+            }
+            RV_DO_CONN(1, 0);
+            RV_DO_CONN(0, 1);
+            if (!connected_last) {
+                RV_DO_CONN(-1, 1);
+            }
+            connected = false;
+            RV_DO_CONN(1, 1);
+            connected_last = connected;
+#undef RV_DO_CONN
+        }
+    }
+
+    // bucket order, then id within a bucket (as gradient_clusters() with one task)
+    zarray_t *clusters = s->clusters;
+    zarray_clear(clusters);
+    zarray_ensure_capacity(clusters, nentries);
+    for (int i = 0; i < nclustermap; i++) {
+        struct uint64_zarray_entry *e = clustermap[i];
+        if (e == NULL)
+            continue;
+        if (e->next == NULL) {
+            zarray_add(clusters, &e->cluster);
+            continue;
+        }
+        // short chains: selection by id
+        uint64_t last = 0;
+        bool first = true;
+        for (;;) {
+            struct uint64_zarray_entry *best = NULL;
+            for (struct uint64_zarray_entry *q = e; q; q = q->next)
+                if ((first || q->id > last) && (best == NULL || q->id < best->id))
+                    best = q;
+            if (best == NULL)
+                break;
+            zarray_add(clusters, &best->cluster);
+            last = best->id;
+            first = false;
+        }
+    }
+    return clusters;
+}
+
+// Return the point arrays of rv_gradient_clusters() to the pool.
+static void rv_release_clusters(apriltag_detector_t *td, zarray_t *clusters)
+{
+    struct rv_quad_scratch *s = rv_scratch(td);
+    for (int i = 0; i < zarray_size(clusters); i++) {
+        zarray_t *cluster;
+        zarray_get(clusters, i, &cluster);
+        if (s->npool >= RV_POOL_MAX || cluster->alloc > RV_POOL_MAX_POINTS) {
+            zarray_destroy(cluster);
+            continue;
+        }
+        if (s->npool == s->pool_alloc) {
+            s->pool_alloc = s->pool_alloc ? 2 * s->pool_alloc : 256;
+            s->pool = realloc(s->pool, s->pool_alloc * sizeof(*s->pool));
+        }
+        zarray_clear(cluster);
+        s->pool[s->npool++] = cluster;
+    }
+    zarray_clear(clusters);
 }
 
 zarray_t* fit_quads(apriltag_detector_t *td, int w, int h, zarray_t* clusters, image_u8_t* im) {
@@ -1919,7 +2167,9 @@ zarray_t *apriltag_quad_thresh(apriltag_detector_t *td, image_u8_t *im)
 
     timeprofile_stamp(td->tp, "unionfind");
 
-    zarray_t* clusters = gradient_clusters(td, threshim, w, h, ts, uf);
+    const bool reuse = rv_reuse(td);
+    zarray_t* clusters = reuse ? rv_gradient_clusters(td, threshim, w, h, ts, uf)
+                               : gradient_clusters(td, threshim, w, h, ts, uf);
 
     if (td->debug) {
         image_u8x3_t *d = image_u8x3_create(w, h);
@@ -2003,6 +2253,11 @@ zarray_t *apriltag_quad_thresh(apriltag_detector_t *td, image_u8_t *im)
     }
 
     timeprofile_stamp(td->tp, "fit quads to clusters");
+
+    if (reuse) {
+        rv_release_clusters(td, clusters);  // the union-find stays in the scratch
+        return quads;
+    }
 
     unionfind_destroy(uf);
 
