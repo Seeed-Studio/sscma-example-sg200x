@@ -282,7 +282,7 @@ bool MqttPublisher::init(const ClientOptions& options) {
         return false;
     }
 
-    rc = mosquitto_connect(client_, host.c_str(), port, 60);
+    rc = mosquitto_connect_async(client_, host.c_str(), port, 60);
     if (rc != MOSQ_ERR_SUCCESS) {
         MA_LOGW(TAG, "Initial connection failed (will retry): %d", rc);
     }
