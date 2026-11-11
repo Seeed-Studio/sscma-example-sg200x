@@ -26,6 +26,11 @@ static int sensorFps(void) {
     return 30;
 }
 
+static bool isViVpssOnline(void) {
+    APP_PARAM_SYS_CFG_S* sys_cfg = app_ipcam_Sys_Param_Get();
+    return sys_cfg != NULL && sys_cfg->stVIVPSSMode.aenMode[0] == VI_OFFLINE_VPSS_ONLINE;
+}
+
 static int setVbPool(video_ch_index_t ch, const video_ch_param_t* param) {
     APP_PARAM_SYS_CFG_S* sys = app_ipcam_Sys_Param_Get();
 
@@ -91,15 +96,11 @@ static int setGrpChn(int grp, video_ch_index_t ch, const video_ch_param_t* param
      * the shipped default on SG2002) the group is synchronous with the ISP, so
      * gating any channel throttles the whole group down to the slowest gated
      * dst rate: gating the JPEG preview channel (15 fps) dragged the un-gated
-     * H264 RTSP stream from ~28 fps down to ~15 fps (measured on reCamera
-     * SG2002, main @ 4926df7 + PR #45). Runtime decreases (Camera kFps) still
-     * go through the camera callback's software gate. */
-    bool vi_vpss_online = false;
-    APP_PARAM_SYS_CFG_S* sys_cfg = app_ipcam_Sys_Param_Get();
-    if (sys_cfg != NULL && sys_cfg->stVIVPSSMode.aenMode[0] == VI_OFFLINE_VPSS_ONLINE) {
-        vi_vpss_online = true;
-    }
-    if (!vi_vpss_online && param->fps > 0 && param->fps < sensorFps()) {
+     * H264 RTSP stream from ~28 fps down to ~15 fps. Runtime decreases (Camera
+     * kFps) and unbound pump channels go through the software gate. */
+    vpss_chn->stFrameRate.s32SrcFrameRate = -1;
+    vpss_chn->stFrameRate.s32DstFrameRate = -1;
+    if (!isViVpssOnline() && param->fps > 0 && param->fps < sensorFps()) {
         vpss_chn->stFrameRate.s32SrcFrameRate = sensorFps();
         vpss_chn->stFrameRate.s32DstFrameRate = param->fps;
     }
@@ -133,9 +134,7 @@ static int setVencChn(video_ch_index_t ch, const video_ch_param_t* param) {
     pvchn->u32Height          = param->height;
     pvchn->u32DstFrameRate    = param->fps;
     if (isEncoded(param) && param->fps > 0) {
-        /* VPSS already delivers param->fps: no further encoder frame-rate
-         * control, and rate control budgets per delivered frame. */
-        pvchn->u32SrcFrameRate = param->fps;
+        pvchn->u32SrcFrameRate = isViVpssOnline() ? sensorFps() : param->fps;
     }
 
     if ((VIDEO_FORMAT_RGB888 == param->format) || (VIDEO_FORMAT_NV21 == param->format)) {

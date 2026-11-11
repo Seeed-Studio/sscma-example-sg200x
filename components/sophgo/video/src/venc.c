@@ -445,9 +445,18 @@ static int app_ipcam_Venc_Rc_Attr_Set(VENC_RC_ATTR_S *pstRCAttr, APP_VENC_CHN_CF
     int IQP        = pstVencChnCfg->u32IQp;
     int PQP        = pstVencChnCfg->u32PQp;
 
+    /* Unbound channels are decimated in Thread_Streaming_Proc before SendFrame().
+     * Configure RC for the frames actually submitted to the encoder.
+     * Bound channels still require encoder-side FRC.
+     */
+    if (pstVencChnCfg->enBindMode == VENC_BIND_DISABLE &&
+        DstFrmRate > 0 && SrcFrmRate > DstFrmRate) {
+        SrcFrmRate = DstFrmRate;
+    }
+
     APP_PROF_LOG_PRINT(LEVEL_TRACE,"RcMode=%d EncType=%d SrcFR=%d DstFR=%d\n", 
         pstVencChnCfg->enRcMode, pstVencChnCfg->enType, 
-        pstVencChnCfg->u32SrcFrameRate, pstVencChnCfg->u32DstFrameRate);
+        SrcFrmRate, DstFrmRate);
     APP_PROF_LOG_PRINT(LEVEL_TRACE,"BR=%d MaxBR=%d statTime=%d gop=%d IQP=%d PQP=%d\n", 
         pstVencChnCfg->u32BitRate, pstVencChnCfg->u32MaxBitRate, 
         pstVencChnCfg->statTime, pstVencChnCfg->u32Gop, pstVencChnCfg->u32IQp, pstVencChnCfg->u32PQp);
@@ -899,6 +908,14 @@ static void* Thread_Streaming_Proc(void* pArgs)
     VIDEO_FRAME_INFO_S stVpssFrame = { 0 };
     bool bFrameHeld = false; // VPSS frame acquired, not yet released
 
+    const int src_fps = (int)pastVencChnCfg->u32SrcFrameRate;
+    const int dst_fps = (int)pastVencChnCfg->u32DstFrameRate;
+    const bool gate_frames =
+        src_fps > 0 && dst_fps > 0 && dst_fps < src_fps;
+
+    /* Preserve the first frame, then maintain the nominal dst/src ratio. */
+    CVI_U64 frame_credit = gate_frames ? src_fps - dst_fps : 0;
+
     while (pastVencChnCfg->bStart) {
         // a frame from the previous iteration (left held by select timeout /
         // EINTR continues) must be released before acquiring a new one,
@@ -916,6 +933,22 @@ static void* Thread_Streaming_Proc(void* pArgs)
             bFrameHeld = true;
             APP_PROF_LOG_PRINT(LEVEL_DEBUG, "VencChn-%d Get Frame takes %u ms \n", VencChn, (GetCurTimeInMsec() - iTime));
             iTime = GetCurTimeInMsec();
+
+            /* Drop before raw delivery or encoding. Never wait for encoder
+             * output from an input intentionally discarded here.
+             */
+            if (gate_frames) {
+                frame_credit += dst_fps;
+                if (frame_credit < (CVI_U64)src_fps) {
+                    s32Ret = CVI_VPSS_ReleaseChnFrame(vpssGrp, vpssChn, &stVpssFrame);
+                    if (s32Ret != CVI_SUCCESS) {
+                        APP_PROF_LOG_PRINT(LEVEL_ERROR, "vpss release dropped frame failed: %#x\n", s32Ret);
+                    }
+                    bFrameHeld = false;
+                    continue;
+                }
+                frame_credit -= src_fps;
+            }
 
             if (pastVencChnCfg->no_need_venc) {
                 for (uint32_t i = 0; i < APP_DATA_COMSUMES_MAX; i++) {
