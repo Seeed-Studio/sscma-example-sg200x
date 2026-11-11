@@ -95,9 +95,6 @@ static int setGrpChn(int grp, video_ch_index_t ch, const video_ch_param_t* param
     if (param->fps > 0 && param->fps < sensorFps()) {
         vpss_chn->stFrameRate.s32SrcFrameRate = sensorFps();
         vpss_chn->stFrameRate.s32DstFrameRate = param->fps;
-    } else {
-        vpss_chn->stFrameRate.s32SrcFrameRate = -1;
-        vpss_chn->stFrameRate.s32DstFrameRate = -1;
     }
 
     return 0;
