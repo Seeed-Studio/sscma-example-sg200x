@@ -86,13 +86,20 @@ static int setGrpChn(int grp, video_ch_index_t ch, const video_ch_param_t* param
     vpss_chn->u32Width        = param->width;
     vpss_chn->u32Height       = param->height;
     vpss_chn->enPixelFormat   = (param->format == VIDEO_FORMAT_RGB888) ? PIXEL_FORMAT_RGB_888 : PIXEL_FORMAT_NV21;
-    /* Drop frames in hardware down to the configured rate. With every enabled
-     * channel of the online group set below the sensor rate, the VPSS driver
-     * (osdrv online_frc) also lets the ISP skip frames above the fastest one,
-     * so a lower rate saves ISP work too. Raw channels are set to their start
-     * rate; runtime decreases (Camera kFps) still go through the camera
-     * callback's software gate. */
-    if (param->fps > 0 && param->fps < sensorFps()) {
+    /* Drop frames in hardware down to the configured rate — but only when the
+     * VPSS group runs offline. In VI-VPSS online mode (VI_OFFLINE_VPSS_ONLINE,
+     * the shipped default on SG2002) the group is synchronous with the ISP, so
+     * gating any channel throttles the whole group down to the slowest gated
+     * dst rate: gating the JPEG preview channel (15 fps) dragged the un-gated
+     * H264 RTSP stream from ~28 fps down to ~15 fps (measured on reCamera
+     * SG2002, main @ 4926df7 + PR #45). Runtime decreases (Camera kFps) still
+     * go through the camera callback's software gate. */
+    bool vi_vpss_online = false;
+    APP_PARAM_SYS_CFG_S* sys_cfg = app_ipcam_Sys_Param_Get();
+    if (sys_cfg != NULL && sys_cfg->stVIVPSSMode.aenMode[0] == VI_OFFLINE_VPSS_ONLINE) {
+        vi_vpss_online = true;
+    }
+    if (!vi_vpss_online && param->fps > 0 && param->fps < sensorFps()) {
         vpss_chn->stFrameRate.s32SrcFrameRate = sensorFps();
         vpss_chn->stFrameRate.s32DstFrameRate = param->fps;
     }
